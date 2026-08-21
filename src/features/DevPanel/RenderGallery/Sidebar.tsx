@@ -42,7 +42,7 @@ const Sidebar = memo<SidebarProps>(({ items, selectedKey, onSelect }) => (
   <aside className={styles.sidebar}>
     <div className={styles.header}>
       <Text fontSize={13} type={'secondary'} weight={600}>
-        Builtin Tool Renders
+        内置工具渲染
       </Text>
     </div>
     <div className={styles.scroll}>

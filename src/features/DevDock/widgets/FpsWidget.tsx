@@ -46,9 +46,9 @@ const FpsWidget = memo(() => {
   return (
     <span
       className={cx(styles.text, fps < 30 ? styles.low : fps < 50 ? styles.mid : undefined)}
-      title={'Frames per second'}
+      title={'每秒帧数'}
     >
-      {fps} FPS
+      {fps} 帧/秒
     </span>
   );
 });

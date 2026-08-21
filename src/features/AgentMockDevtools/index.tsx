@@ -13,7 +13,7 @@ const AgentMockPanel = memo(() => {
     <Flexbox gap={12} padding={16} style={{ marginInline: 'auto', maxWidth: 560, width: '100%' }}>
       {!isAgentTopicRoute && (
         <Text fontSize={12} type={'secondary'}>
-          Open an agent topic conversation to replay mock cases into it.
+          请先打开一个智能体话题，再把模拟案例回放到对话中。
         </Text>
       )}
       <Controls />

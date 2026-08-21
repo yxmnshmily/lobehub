@@ -167,12 +167,12 @@ const Bar = memo(() => {
     return (
       <button
         className={styles.pill}
-        title={'Open DevDock'}
+        title={'展开调试工具栏'}
         type={'button'}
         onClick={() => setExpanded(true)}
       >
         <Wrench size={10} />
-        <span>dev</span>
+        <span>调试</span>
       </button>
     );
 
@@ -182,7 +182,7 @@ const Bar = memo(() => {
     <Flexbox horizontal align={'center'} className={styles.bar} gap={8}>
       <button
         className={styles.iconButton}
-        title={'Collapse DevDock'}
+        title={'收起调试工具栏'}
         type={'button'}
         onClick={() => setExpanded(false)}
       >

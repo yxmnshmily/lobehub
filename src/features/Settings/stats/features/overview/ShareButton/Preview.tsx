@@ -58,7 +58,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   preview: cx(
     lobeStaticStylish.noScrollbar,
     css`
-      overflow: hidden scroll;
+      scrollbar-width: none;
+
+      overflow: hidden auto;
 
       width: 100%;
       max-height: 70dvh;
@@ -66,6 +68,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgLayout};
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
 
       * {
         pointer-events: none;
@@ -92,8 +98,8 @@ const Preview = memo(() => {
   const { t } = useTranslation('auth');
 
   return (
-    <div className={styles.preview}>
-      <div className={styles.background} id={'preview'}>
+    <div className={styles.preview} style={{ scrollbarWidth: 'none' }}>
+      <div className={styles.background} id={'preview'} style={{ boxSizing: 'border-box' }}>
         <Center className={styles.container} gap={12} padding={24}>
           <ProductLogo size={24} type={'text'} />
           <div className={styles.title}>{t('stats.share.title')}</div>
@@ -136,7 +142,9 @@ const Preview = memo(() => {
               <TotalTokens inShare />
             </Grid>
           </Flexbox>
-          <div className={styles.footer}>{OFFICIAL_URL}</div>
+          <div className={styles.footer} style={{ whiteSpace: 'nowrap' }}>
+            {OFFICIAL_URL}
+          </div>
         </Center>
       </div>
     </div>

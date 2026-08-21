@@ -29,10 +29,16 @@ const MemorySetting = memo(() => {
 
   if (!isUserStateInit) return <Skeleton active paragraph={{ rows: 3 }} title={false} />;
 
+  const memoryEnabledSwitch = <Switch disabled={!canManageMemory} />;
+
   const memorySettings: FormGroupItemType = {
     children: [
       {
-        children: <Switch disabled={!canManageMemory} />,
+        children: canManageMemory ? (
+          memoryEnabledSwitch
+        ) : (
+          <Tooltip title={reason}>{memoryEnabledSwitch}</Tooltip>
+        ),
         desc: t('memory.enabled.desc'),
         label: t('memory.enabled.title'),
         layout: 'horizontal',

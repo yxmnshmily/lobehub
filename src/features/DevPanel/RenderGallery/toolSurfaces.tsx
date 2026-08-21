@@ -50,7 +50,7 @@ export class RenderBoundary extends Component<
       <Block padding={16} variant={'outlined'}>
         <Flexbox gap={8}>
           <Text fontSize={14} type={'danger'} weight={500}>
-            {this.props.label} crashed
+            {this.props.label}渲染失败
           </Text>
           <Text fontSize={12} type={'secondary'}>
             {this.state.error.message}
@@ -62,7 +62,7 @@ export class RenderBoundary extends Component<
 }
 
 const Missing = ({ kind }: { kind: string }) => (
-  <div className={styles.missingShell}>No {kind} component registered for this API.</div>
+  <div className={styles.missingShell}>此接口未注册{kind}组件。</div>
 );
 
 const coerceInspectorContent = (value: unknown): string | null => {
@@ -86,11 +86,12 @@ interface ToolInspectorSlotProps {
 export const ToolInspectorSlot = memo<ToolInspectorSlotProps>(
   ({ api, derived, toolCallId, variant }) => {
     const Inspector = api.inspector;
-    if (!Inspector) return <Missing kind={'inspector'} />;
+    if (!Inspector) return <Missing kind={'参数检查器'} />;
 
     return (
-      <RenderBoundary label={'Inspector'}>
+      <RenderBoundary label={'参数检查器'}>
         <Inspector
+          apiDisplayName={api.apiDisplayName}
           apiName={api.apiName}
           args={derived.args}
           identifier={api.identifier}
@@ -99,6 +100,7 @@ export const ToolInspectorSlot = memo<ToolInspectorSlotProps>(
           partialArgs={derived.partialArgs}
           pluginState={derived.pluginState}
           toolCallId={toolCallId}
+          toolDisplayName={api.toolDisplayName}
           result={{
             content: coerceInspectorContent(variant.content),
             error: derived.pluginError,
@@ -199,7 +201,7 @@ export const ToolBodySlot = memo<ToolBodySlotProps>(
 
     const renderSlot = () =>
       api.render ? (
-        <RenderBoundary label={'Render'}>
+        <RenderBoundary label={'结果'}>
           <api.render
             apiName={api.apiName}
             args={derived.args}
@@ -212,14 +214,14 @@ export const ToolBodySlot = memo<ToolBodySlotProps>(
           />
         </RenderBoundary>
       ) : (
-        missing('render')
+        missing('结果渲染')
       );
 
     switch (bodyKindForMode(mode)) {
       case 'streaming': {
         if (api.streaming) {
           return (
-            <RenderBoundary label={'Streaming'}>
+            <RenderBoundary label={'流式内容'}>
               <api.streaming
                 apiName={api.apiName}
                 args={derived.args}
@@ -231,11 +233,11 @@ export const ToolBodySlot = memo<ToolBodySlotProps>(
           );
         }
         // No dedicated Streaming slot — fall back to the Render shown mid-stream.
-        return api.render ? renderSlot() : missing('streaming');
+        return api.render ? renderSlot() : missing('流式渲染');
       }
       case 'placeholder': {
         return api.placeholder ? (
-          <RenderBoundary label={'Placeholder'}>
+          <RenderBoundary label={'占位内容'}>
             <api.placeholder
               apiName={api.apiName}
               args={derived.args}
@@ -243,12 +245,12 @@ export const ToolBodySlot = memo<ToolBodySlotProps>(
             />
           </RenderBoundary>
         ) : (
-          missing('placeholder')
+          missing('占位内容')
         );
       }
       case 'intervention': {
         return api.intervention ? (
-          <RenderBoundary label={'Intervention'}>
+          <RenderBoundary label={'人工确认'}>
             <InterventionConversationHost
               api={api}
               derived={derived}
@@ -265,7 +267,7 @@ export const ToolBodySlot = memo<ToolBodySlotProps>(
             </InterventionConversationHost>
           </RenderBoundary>
         ) : (
-          missing('intervention')
+          missing('人工确认')
         );
       }
       default: {

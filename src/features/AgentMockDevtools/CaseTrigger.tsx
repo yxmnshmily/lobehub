@@ -135,9 +135,9 @@ const CasePanel = memo<CasePanelProps>(({ selectedCaseId, setSelectedCaseId }) =
     const match = (arr: MockCase[]) =>
       needle ? arr.filter((c) => c.name.toLowerCase().includes(needle)) : arr;
     return [
-      { items: match(builtins), key: 'builtin', label: 'Builtin' },
-      { items: match(snapshots), key: 'snapshots', label: 'Snapshots' },
-      { items: match(generated), key: 'generated', label: 'Generated' },
+      { items: match(builtins), key: 'builtin', label: '内置案例' },
+      { items: match(snapshots), key: 'snapshots', label: '快照案例' },
+      { items: match(generated), key: 'generated', label: '生成案例' },
     ];
   }, [builtins, snapshots, generated, query]);
 
@@ -153,14 +153,14 @@ const CasePanel = memo<CasePanelProps>(({ selectedCaseId, setSelectedCaseId }) =
       <div className={styles.search}>
         <Input
           autoFocus
-          placeholder="Search cases…"
+          placeholder="搜索案例…"
           size="small"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
       <div className={styles.list}>
-        {totalVisible === 0 && <div className={styles.empty}>No cases match.</div>}
+        {totalVisible === 0 && <div className={styles.empty}>没有匹配的案例。</div>}
         {groups.map((group) =>
           group.items.length === 0 ? null : (
             <Flexbox key={group.key} style={{ paddingBlockEnd: 4 }}>
@@ -179,7 +179,7 @@ const CasePanel = memo<CasePanelProps>(({ selectedCaseId, setSelectedCaseId }) =
                   >
                     <span className={styles.itemName}>{c.name}</span>
                     <span className={styles.itemMeta}>
-                      {events}e · {tools}t
+                      {events} 个事件 · {tools} 个工具
                     </span>
                   </div>
                 );
@@ -218,7 +218,7 @@ export const CaseTrigger = memo<CaseTriggerProps>(({ children, placement = 'bott
           {current ? (
             <span className={styles.triggerName}>{current.name}</span>
           ) : (
-            <Text className={styles.triggerPlaceholder}>Pick a case</Text>
+            <Text className={styles.triggerPlaceholder}>选择案例</Text>
           )}
           <ChevronDown size={12} />
         </span>

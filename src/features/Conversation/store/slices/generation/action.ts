@@ -35,7 +35,6 @@ import {
   resolveHeteroResume,
 } from '@/store/chat/slices/agentRun/actions/transports/hetero/heteroResume';
 import { operationSelectors } from '@/store/chat/slices/operation/selectors';
-import { INPUT_LOADING_OPERATION_TYPES } from '@/store/chat/slices/operation/types';
 import {
   mergeAgentRuntimeInitialContexts,
   resolveActiveTopicDocumentInitialContext,
@@ -1223,25 +1222,20 @@ export const generationSlice: StateCreator<
   stopGenerating: () => {
     const state = get();
     const { context, editor, hooks } = state;
-    const { agentId, groupId, isNew, scope, threadId, topicId } = context;
 
     const chatStore = useChatStore.getState();
 
-    // Cancel all running operations in this conversation context
-    // Includes sendMessage, AI runtime (client-side and server-side), and agent mode stream
-    chatStore.cancelOperations(
-      {
-        agentId,
-        groupId,
-        isNew,
-        scope,
-        status: 'running',
-        threadId,
-        topicId,
-        type: INPUT_LOADING_OPERATION_TYPES,
-      },
-      MESSAGE_CANCEL_FLAT,
-    );
+    // Resolve every operation represented by the input's loading/Stop state
+    // through the same canonical conversation key used by the operation index.
+    // Group runs may be owned by a member/supervisor agent and may omit an
+    // explicit scope, while the visible Conversation context carries a different
+    // agentId/scope/isNew shape. Exact field filters therefore miss the in-flight
+    // root operation and never reach its AbortController. Cancelling the indexed
+    // loading operations also recursively aborts their children.
+    const operationIds = operationSelectors.getRunningInputLoadingOperationIds(context)(chatStore);
+    operationIds.forEach((operationId) => {
+      chatStore.cancelOperation(operationId, MESSAGE_CANCEL_FLAT);
+    });
 
     // Restore editor content if a sendMessage operation was cancelled
     chatStore.cancelSendMessageInServer(context, editor);

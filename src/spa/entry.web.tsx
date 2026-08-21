@@ -17,10 +17,16 @@ bootTiming.mark('bundle-eval');
 startAppInitialization();
 
 const debugProxyBase = '/_dangerous_local_dev_proxy';
-const basename =
-  window.__DEBUG_PROXY__ || window.location.pathname.startsWith(debugProxyBase)
-    ? debugProxyBase
-    : undefined;
+const lobehubMountPath = '/lobehub';
+let basename: string | undefined;
+if (window.__DEBUG_PROXY__ || window.location.pathname.startsWith(debugProxyBase)) {
+  basename = debugProxyBase;
+} else if (
+  window.location.pathname === lobehubMountPath ||
+  window.location.pathname.startsWith(`${lobehubMountPath}/`)
+) {
+  basename = lobehubMountPath;
+}
 
 const router = createAppRouter(desktopRoutes, { basename });
 

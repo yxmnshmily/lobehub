@@ -109,6 +109,52 @@ const toolsetModules: ToolsetFixtureModule[] = [
 const fixtureRegistry = new Map<string, ToolRenderFixture>();
 const customToolsets = new Map<string, ToolsetFixtureModule>();
 
+const TOOLSET_NAME_ZH: Record<string, string> = {
+  'agent-signal-review': '智能体信号夜间复盘',
+  'agent-signal-reflection': '智能体自我反思',
+  'claude-code': 'Claude Code',
+  'codex': 'Codex',
+  'github': 'GitHub',
+  'linear': 'Linear',
+  'lobe-activator': '工具激活器',
+  'lobe-agent': 'Lobe 智能体',
+  'lobe-agent-builder': '智能体构建器',
+  'lobe-agent-documents': '智能体文档',
+  'lobe-agent-management': '智能体管理',
+  'lobe-brief': '简报工具',
+  'lobe-browser': '浏览器',
+  'lobe-cloud-sandbox': '云端沙箱',
+  'lobe-creds': '凭证管理',
+  'lobe-delivery-checker': '交付检查',
+  'lobe-group-agent-builder': '群组智能体构建器',
+  'lobe-group-management': '群组管理',
+  'lobe-image-generation': '图像生成',
+  'lobe-knowledge-base': '知识库',
+  'lobe-local-system': '本地系统',
+  'lobe-page-agent': '页面智能体',
+  'lobe-remote-device': '远程设备',
+  'lobe-skill-store': '技能商店',
+  'lobe-skills': '技能',
+  'lobe-task': '任务工具',
+  'lobe-topic-reference': '话题引用',
+  'lobe-user-interaction': '用户交互',
+  'lobe-user-memory': '用户记忆',
+  'lobe-verify': '交付检查验证器',
+  'lobe-web-browsing': '网页浏览',
+  'lobe-web-onboarding': '网页新手引导',
+};
+
+const API_DESCRIPTION_ZH: Record<string, string> = {
+  'lobe-agent-builder:getAvailableModels':
+    '获取智能体可用的全部 AI 模型和服务商，并列出视觉、函数调用、推理等能力。',
+  'lobe-agent-builder:installPlugin':
+    '为智能体安装插件。安装前始终需要用户批准；需要授权的工具会引导用户完成连接。',
+  'lobe-agent-builder:searchMarketTools': '在市场中搜索 MCP 插件，浏览并安装新的工具能力。',
+  'lobe-agent-builder:updateAgentConfig':
+    '更新智能体配置或资料，包括模型、服务商、插件、开场消息、参数、名称和头像等。',
+  'lobe-agent-builder:updatePrompt': '更新智能体的系统提示词，定义智能体的行为和回答方式。',
+};
+
 for (const toolset of toolsetModules) {
   customToolsets.set(toolset.identifier, toolset);
   for (const [apiName, fixture] of Object.entries(toolset.fixtures)) {
@@ -142,9 +188,14 @@ export const getToolRenderMeta = (identifier: string, apiName: string): ToolRend
   return {
     api,
     apiName,
-    description: api?.description || customApi?.description,
+    description:
+      API_DESCRIPTION_ZH[`${identifier}:${apiName}`] || api?.description || customApi?.description,
     identifier,
     toolsetDescription: manifest?.meta.description || customToolset?.meta?.description,
-    toolsetName: manifest?.meta.title || customToolset?.meta?.title || humanize(identifier),
+    toolsetName:
+      TOOLSET_NAME_ZH[identifier] ||
+      manifest?.meta.title ||
+      customToolset?.meta?.title ||
+      humanize(identifier),
   };
 };

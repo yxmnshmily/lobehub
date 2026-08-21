@@ -12,10 +12,15 @@ const grounding = { citations: ['https://example.com'] } as any;
 const usage = { cost: 5.980_015, totalOutputTokens: 25_220 } as any;
 
 let finishGrounding: unknown = grounding;
+let completionError: unknown;
 
 vi.mock('@/services/chat', () => ({
   chatService: {
     getChatCompletion: vi.fn(async (_params: any, options: any) => {
+      if (completionError) {
+        options.onErrorHandle?.(completionError);
+        return;
+      }
       await options.onFinish?.('', {
         grounding: finishGrounding,
         traceId: 'trace-1',
@@ -107,6 +112,7 @@ const input = {
 
 describe('ClientLLMTransport.runAttempt · empty-completion grounding guard', () => {
   beforeEach(() => {
+    completionError = undefined;
     finishGrounding = grounding;
   });
 
@@ -129,6 +135,32 @@ describe('ClientLLMTransport.runAttempt · empty-completion grounding guard', ()
       expect((result.error as ModelEmptyError).diagnostics).toMatchObject({ cost: 5.980_015 });
       expect(transport.retryPolicy.classifyError(result.error).kind).toBe('stop');
     }
+  });
+
+  it('returns an upstream canceled stream as an error instead of a blank success', async () => {
+    completionError = {
+      body: { message: 'canceled' },
+      message: 'canceled',
+      type: 'UnknownChatFetchError',
+    };
+
+    const result = await createTransport().runAttempt(input);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.error).toMatchObject({ message: 'canceled' });
+      expect(createTransport().retryPolicy.classifyError(result.error).kind).toBe('stop');
+    }
+  });
+});
+
+describe('ClientLLMTransport retry budget', () => {
+  it('keeps interactive chat failures bounded to one retry', () => {
+    const retryPolicy = createTransport().retryPolicy;
+
+    expect(retryPolicy.maxAttempts('qwen')).toBe(2);
+    expect(retryPolicy.maxAttempts('chatgpt')).toBe(2);
+    expect(retryPolicy.maxAttempts('lobehub')).toBe(1);
   });
 });
 

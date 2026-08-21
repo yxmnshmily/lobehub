@@ -5,26 +5,25 @@ import { getUserStoreState } from '@/store/user';
 
 export const triggerResetOnboarding = () => {
   confirmModal({
-    content:
-      'Clear user onboarding progress (step + finishedAt) so the onboarding flow runs again.',
+    content: '清除当前用户的新手引导进度，让引导流程重新开始。',
     okButtonProps: { danger: true },
-    okText: 'Reset',
+    okText: '重置引导',
     onOk: async () => {
       try {
         await getUserStoreState().resetOnboarding();
       } catch (error) {
         console.error('[DevDock] Failed to reset user onboarding:', error);
-        toast.error({ title: 'Failed to reset user onboarding' });
+        toast.error({ title: '新手引导重置失败' });
         return;
       }
 
       if (isDesktop) {
-        toast.success({ title: 'User onboarding reset' });
+        toast.success({ title: '已重置新手引导' });
       } else {
         window.location.href = '/onboarding';
       }
     },
-    title: 'Reset user onboarding?',
+    title: '重置新手引导？',
   });
 };
 

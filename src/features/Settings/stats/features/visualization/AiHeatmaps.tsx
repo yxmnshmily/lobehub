@@ -16,6 +16,16 @@ import { HeatmapType } from '../../types';
 import StatsFormGroup from '../components/StatsFormGroup';
 import HeatmapStats from './HeatmapStats';
 
+const getShareMonthLabels = (startDate?: string) => {
+  const parsedStartMonth = Number(startDate?.slice(5, 7)) - 1;
+  const startMonth =
+    Number.isInteger(parsedStartMonth) && parsedStartMonth >= 0 && parsedStartMonth < 12
+      ? parsedStartMonth
+      : 0;
+
+  return Array.from({ length: 12 }, (_, index) => `${((startMonth + index) % 12) + 1}月`);
+};
+
 const AiHeatmaps = memo<
   Omit<HeatmapsProps, 'data' | 'ref'> & { inShare?: boolean; mobile?: boolean }
 >(({ inShare, mobile, ...rest }) => {
@@ -31,6 +41,7 @@ const AiHeatmaps = memo<
 
   const days = data?.filter((item) => item.level > 0).length || '--';
   const hotDays = data?.filter((item) => item.level >= 3).length || '--';
+  const shareMonthLabels = getShareMonthLabels(data?.[0]?.date);
 
   const content = (
     <Heatmaps
@@ -38,6 +49,7 @@ const AiHeatmaps = memo<
       blockRadius={mobile ? 2 : undefined}
       blockSize={mobile ? 6 : 14}
       data={data || []}
+      hideMonthLabels={inShare}
       hideTotalCount={isTokens}
       loading={isLoading || !data}
       maxLevel={4}
@@ -110,8 +122,8 @@ const AiHeatmaps = memo<
 
   if (inShare) {
     return (
-      <Flexbox gap={4}>
-        <Flexbox horizontal align={'baseline'} gap={4} justify={'space-between'}>
+      <Flexbox gap={12}>
+        <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
           <div
             style={{
               color: cssVar.colorTextDescription,
@@ -122,6 +134,22 @@ const AiHeatmaps = memo<
           </div>
           {dayTags}
         </Flexbox>
+        <div
+          style={{
+            color: cssVar.colorTextDescription,
+            display: 'grid',
+            fontSize: 10,
+            gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+            lineHeight: '16px',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            width: '100%',
+          }}
+        >
+          {shareMonthLabels.map((label) => (
+            <span key={label}>{label}</span>
+          ))}
+        </div>
         {content}
       </Flexbox>
     );

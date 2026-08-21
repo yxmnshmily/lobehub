@@ -167,6 +167,121 @@ describe('Operation Selectors', () => {
         operationSelectors.getRunningQueueBlockingOperationIds(context)(result.current),
       ).toEqual([runningId]);
     });
+
+    it('finds a group run by group/topic even before the supervisor agent id is resolved', () => {
+      const { result } = renderHook(() => useChatStore());
+      let currentTopicId = '';
+      let otherTopicId = '';
+
+      act(() => {
+        currentTopicId = result.current.startOperation({
+          context: { agentId: 'member-agent', groupId: 'group-1', topicId: 'topic-1' },
+          type: 'execAgentRuntime',
+        }).operationId;
+        otherTopicId = result.current.startOperation({
+          context: { agentId: 'member-agent', groupId: 'group-1', topicId: 'topic-2' },
+          type: 'execAgentRuntime',
+        }).operationId;
+      });
+
+      expect(
+        operationSelectors.getRunningQueueBlockingOperationIds({
+          agentId: '',
+          groupId: 'group-1',
+          scope: 'group',
+          topicId: 'topic-1',
+        })(result.current),
+      ).toEqual([currentTopicId]);
+      expect(result.current.operations[otherTopicId].status).toBe('running');
+    });
+  });
+
+  describe('getRunningInputLoadingOperationIds', () => {
+    it('matches isNew false to an omitted visible isNew via the canonical group/topic key', () => {
+      const { result } = renderHook(() => useChatStore());
+      const operationContext = {
+        agentId: 'supervisor-agent',
+        groupId: 'group-1',
+        isNew: false,
+        scope: 'group' as const,
+        topicId: 'topic-1',
+      };
+      const visibleContext = {
+        agentId: 'supervisor-agent',
+        groupId: 'group-1',
+        scope: 'group' as const,
+        topicId: 'topic-1',
+      };
+      let rootId = '';
+      let childId = '';
+      let otherTopicId = '';
+      let rootSignal: AbortSignal;
+      let childSignal: AbortSignal;
+
+      act(() => {
+        const root = result.current.startOperation({
+          context: operationContext,
+          type: 'execAgentRuntime',
+        });
+        rootId = root.operationId;
+        rootSignal = root.abortController.signal;
+        const child = result.current.startOperation({
+          parentOperationId: rootId,
+          type: 'toolCalling',
+        });
+        childId = child.operationId;
+        childSignal = child.abortController.signal;
+        otherTopicId = result.current.startOperation({
+          context: { ...operationContext, topicId: 'topic-2' },
+          type: 'execAgentRuntime',
+        }).operationId;
+      });
+
+      expect(messageMapKey(operationContext)).toBe(messageMapKey(visibleContext));
+      const operationIds = operationSelectors.getRunningInputLoadingOperationIds(visibleContext)(
+        result.current,
+      );
+      expect(operationIds).toEqual([rootId]);
+
+      act(() => {
+        operationIds.forEach((operationId) => {
+          result.current.cancelOperation(operationId, 'User stopped generation');
+        });
+      });
+
+      expect(rootSignal!.aborted).toBe(true);
+      expect(childSignal!.aborted).toBe(true);
+      expect(result.current.operations[rootId].status).toBe('cancelled');
+      expect(result.current.operations[childId].status).toBe('cancelled');
+      expect(result.current.operations[otherTopicId].status).toBe('running');
+    });
+
+    it('includes autoRetryPending and isolates another topic in the same group', () => {
+      const { result } = renderHook(() => useChatStore());
+      let currentTopicId = '';
+      let otherTopicId = '';
+
+      act(() => {
+        currentTopicId = result.current.startOperation({
+          context: { agentId: 'member-agent', groupId: 'group-1', topicId: 'topic-1' },
+          type: 'autoRetryPending',
+        }).operationId;
+        otherTopicId = result.current.startOperation({
+          context: { agentId: 'member-agent', groupId: 'group-1', topicId: 'topic-2' },
+          type: 'autoRetryPending',
+        }).operationId;
+      });
+
+      expect(
+        operationSelectors.getRunningInputLoadingOperationIds({
+          agentId: '',
+          groupId: 'group-1',
+          scope: 'group',
+          topicId: 'topic-1',
+        })(result.current),
+      ).toEqual([currentTopicId]);
+      expect(result.current.operations[otherTopicId].status).toBe('running');
+    });
   });
 
   describe('getOperationsByType', () => {

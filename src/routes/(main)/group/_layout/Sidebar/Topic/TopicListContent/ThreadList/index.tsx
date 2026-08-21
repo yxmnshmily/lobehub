@@ -17,12 +17,14 @@ const MAX_HEIGHT = 9 * 37;
 const ThreadList = memo(() => {
   const [id, activeThreadId] = useChatStore((s) => [s.activeTopicId, s.activeThreadId]);
   const threads = useChatStore(threadSelectors.getThreadsByTopic(id));
+  // Isolation threads are internal AI execution records, not user-created navigation branches.
+  const visibleThreads = threads?.filter((thread) => thread.type !== ThreadType.Isolation);
 
   useFetchThreads(id);
 
-  const containerRef = useScrollActiveThreadIntoView(activeThreadId, threads?.length);
+  const containerRef = useScrollActiveThreadIntoView(activeThreadId, visibleThreads?.length);
 
-  if (!threads || threads.length === 0) return;
+  if (!visibleThreads || visibleThreads.length === 0) return;
 
   return (
     <ScrollShadow
@@ -32,14 +34,8 @@ const ThreadList = memo(() => {
       size={12}
       style={{ maxHeight: MAX_HEIGHT }}
     >
-      {threads?.map((item, index) => (
-        <ThreadItem
-          id={item.id}
-          index={index}
-          isSubagent={item.type === ThreadType.Isolation}
-          key={item.id}
-          title={item.title}
-        />
+      {visibleThreads.map((item, index) => (
+        <ThreadItem id={item.id} index={index} key={item.id} title={item.title} />
       ))}
     </ScrollShadow>
   );

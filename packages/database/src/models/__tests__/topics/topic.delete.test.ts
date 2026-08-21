@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../../core/getTestDB';
@@ -8,6 +8,7 @@ import {
   chatGroups,
   messages,
   sessions,
+  threads,
   topics,
   users,
   workspaces,
@@ -35,7 +36,7 @@ describe('TopicModel - Delete', () => {
   });
 
   describe('delete', () => {
-    it('should delete a topic and its associated messages', async () => {
+    it('should delete a topic with its child threads and associated messages', async () => {
       const topicId = 'topic1';
       await serverDB.transaction(async (tx) => {
         await tx.insert(users).values({ id: '345' });
@@ -47,9 +48,21 @@ describe('TopicModel - Delete', () => {
           { id: topicId, sessionId: 'session1', userId },
           { id: 'topic2', sessionId: 'session2', userId: '345' },
         ]);
+        await tx.insert(threads).values([
+          { id: 'thread1', topicId, type: 'isolation', userId },
+          {
+            id: 'thread2',
+            parentThreadId: 'thread1',
+            topicId,
+            type: 'continuation',
+            userId,
+          },
+        ]);
         await tx.insert(messages).values([
-          { id: 'message1', role: 'user', topicId, userId },
-          { id: 'message2', role: 'assistant', topicId, userId },
+          // This message intentionally has no topicId: it can only be removed through
+          // threadId -> threads.id ON DELETE CASCADE.
+          { id: 'message1', role: 'user', threadId: 'thread1', userId },
+          { id: 'message2', role: 'assistant', threadId: 'thread2', topicId, userId },
           { id: 'message3', role: 'user', topicId: 'topic2', userId: '345' },
         ]);
       });
@@ -58,6 +71,15 @@ describe('TopicModel - Delete', () => {
 
       expect(
         await serverDB.select().from(messages).where(eq(messages.topicId, topicId)),
+      ).toHaveLength(0);
+      expect(
+        await serverDB
+          .select()
+          .from(messages)
+          .where(inArray(messages.id, ['message1', 'message2'])),
+      ).toHaveLength(0);
+      expect(
+        await serverDB.select().from(threads).where(eq(threads.topicId, topicId)),
       ).toHaveLength(0);
       expect(await serverDB.select().from(topics)).toHaveLength(1);
       expect(await serverDB.select().from(messages)).toHaveLength(1);

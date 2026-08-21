@@ -85,7 +85,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     min-width: 0;
 
-    font-family: ${cssVar.fontFamilyCode};
+    font-family: ${cssVar.fontFamily};
     font-size: 13px;
   `,
   /** Trailing action segment — always kept visible. */
@@ -144,20 +144,20 @@ const ApiList = memo<ApiListProps>(({ apis, activeApiName, onSelect }) => {
     <aside className={styles.column}>
       <div className={styles.header}>
         <Text fontSize={12} type={'secondary'} weight={600}>
-          APIs · {apis.length}
+          接口 · {apis.length}
         </Text>
       </div>
       <Flexbox className={styles.list} ref={listRef}>
         {apis.map((api) => {
           const active = api.apiName === activeApiName;
-          const { head, tail } = splitName(api.apiName);
+          const { head, tail } = splitName(api.apiDisplayName);
           return (
             <Flexbox
               horizontal
               className={cx(styles.item, active && styles.itemActive)}
               data-api={api.apiName}
               key={api.apiName}
-              title={api.apiName}
+              title={api.apiDisplayName}
               onClick={() => onSelect(api.apiName)}
             >
               <span className={cx(styles.dot, api.render && styles.dotActive)} />

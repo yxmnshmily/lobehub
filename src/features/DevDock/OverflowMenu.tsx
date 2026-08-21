@@ -96,7 +96,7 @@ const PinToggle = memo<{ item: DevDockItem }>(({ item }) => {
     <button
       className={cx(PIN_CLASS, styles.pinButton)}
       data-pinned={pinned}
-      title={pinned ? 'Unpin from bar' : 'Pin to bar'}
+      title={pinned ? '从底栏取消固定' : '固定到底栏'}
       type={'button'}
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}
@@ -156,7 +156,7 @@ const OverflowMenu = memo(() => {
           label: item.label,
           onClick: () => togglePanel(item.id),
         })),
-        label: 'Panels',
+        label: '面板',
         type: 'group' as const,
       });
 
@@ -173,7 +173,7 @@ const OverflowMenu = memo(() => {
           onCheckedChange: item.onToggle,
           type: 'switch' as const,
         })),
-        label: 'Toggles',
+        label: '开关',
         type: 'group' as const,
       });
 
@@ -187,7 +187,7 @@ const OverflowMenu = memo(() => {
           label: item.label,
           onClick: item.onTrigger,
         })),
-        label: 'Actions',
+        label: '操作',
         type: 'group' as const,
       });
 
@@ -202,7 +202,7 @@ const OverflowMenu = memo(() => {
           label: item.label,
           onClick: () => setPinned(item.id, !pinned(item)),
         })),
-        label: 'Metrics',
+        label: '性能指标',
         type: 'group' as const,
       });
 
@@ -220,7 +220,7 @@ const OverflowMenu = memo(() => {
       placement={'topRight'}
       popupProps={{ className: styles.popup }}
     >
-      <span className={styles.trigger} title={'More tools'}>
+      <span className={styles.trigger} title={'更多调试工具'}>
         <Ellipsis size={13} />
       </span>
     </DropdownMenu>

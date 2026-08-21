@@ -288,7 +288,10 @@ export function defineConfig() {
         logBetterAuth('Request a protected route, redirecting to sign-in page');
 
         const callbackUrl = `${appEnv.APP_URL}${req.nextUrl.pathname}${req.nextUrl.search}`;
-        const signInUrl = new URL('/signin', appEnv.APP_URL);
+        // APP_URL can include the public `/lobehub` mount path.  A leading
+        // slash would discard that prefix and redirect users back to the
+        // website root instead of the LobeHub sign-in page.
+        const signInUrl = new URL('signin', `${appEnv.APP_URL.replace(/\/+$/, '')}/`);
         signInUrl.searchParams.set('callbackUrl', callbackUrl);
         const hl = req.nextUrl.searchParams.get('hl');
         if (hl) {

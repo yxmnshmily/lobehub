@@ -85,15 +85,14 @@ const Panel = memo(() => {
     });
   }, [flagKeys, overrides, overriddenOnly, search]);
 
-  if (!originalFlags)
-    return <div className={styles.empty}>Server feature flags are not loaded yet.</div>;
+  if (!originalFlags) return <div className={styles.empty}>服务器功能开关尚未加载。</div>;
 
   return (
     <div className={styles.container}>
       <div className={styles.toolbar}>
         <Input
           allowClear
-          placeholder={'Search flag name…'}
+          placeholder={'搜索功能开关键名…'}
           size={'small'}
           style={{ flex: 1 }}
           value={search}
@@ -102,14 +101,14 @@ const Panel = memo(() => {
         <Flexbox horizontal align={'center'} gap={6}>
           <Switch checked={overriddenOnly} size={'small'} onChange={setOverriddenOnly} />
           <Text style={{ fontSize: 12, whiteSpace: 'nowrap' }} type={'secondary'}>
-            overridden only
+            仅显示已覆盖项
           </Text>
         </Flexbox>
       </div>
 
       <div className={styles.body}>
         {visibleKeys.length === 0 ? (
-          <div className={styles.empty}>No flags match</div>
+          <div className={styles.empty}>没有匹配的功能开关</div>
         ) : (
           visibleKeys.map((key) => <FlagRow flagKey={key} key={key} />)
         )}
@@ -117,8 +116,7 @@ const Panel = memo(() => {
 
       <div className={styles.footer}>
         <Text style={{ fontSize: 11 }} type={'secondary'}>
-          {overrideCount} active override{overrideCount === 1 ? '' : 's'} · client-side ·
-          localStorage persisted
+          已启用 {overrideCount} 项覆盖 · 客户端生效 · 保存在本地存储中
         </Text>
         <Button
           disabled={overrideCount === 0}
@@ -126,7 +124,7 @@ const Panel = memo(() => {
           size={'small'}
           onClick={resetFlagOverrides}
         >
-          Reset all
+          全部重置
         </Button>
       </div>
     </div>

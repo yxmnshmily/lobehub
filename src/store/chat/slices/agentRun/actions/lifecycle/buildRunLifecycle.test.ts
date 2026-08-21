@@ -1,5 +1,5 @@
 import type { ConversationContext } from '@lobechat/types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChatStore } from '@/store/chat/store';
 
@@ -59,6 +59,7 @@ const makeStore = (afterCompletionCallbacks?: Array<() => void>) => {
       },
     },
     refreshTopic: vi.fn(async () => {}),
+    sendMessage: vi.fn(async () => {}),
     summaryTopicTitle: vi.fn(),
     // topicDataMap / messagesMap reads default to empty (no topic, no messages).
     topicDataMap: {},
@@ -96,6 +97,10 @@ const completeEvent = (
 beforeEach(() => {
   agentSignalBridgeMock.emitClientAgentSignalSourceEvent.mockClear();
   desktopNotificationMock.notifyDesktopAgentCompleted.mockClear();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('buildRunLifecycle.completeRun — transport-driven disposition', () => {
@@ -163,6 +168,20 @@ describe('buildRunLifecycle.completeRun — transport-driven disposition', () =>
     await lifecycle('hetero', get).completeRun(completeEvent('hetero', { status: 'completed' }));
 
     expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it('terminalizes the operation before awaiting afterCompletion callbacks', async () => {
+    const { get, store } = makeStore();
+    let terminalizedBeforeCallback = false;
+    const callback = vi.fn(async () => {
+      terminalizedBeforeCallback = store.completeOperation.mock.calls.some(([id]) => id === OP);
+    });
+    store.operations[OP]!.metadata.runtimeHooks = { afterCompletionCallbacks: [callback] };
+
+    await lifecycle('client', get).completeRun(completeEvent('client', { runtimeStatus: 'done' }));
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(terminalizedBeforeCallback).toBe(true);
   });
 });
 
@@ -292,6 +311,26 @@ describe('buildRunLifecycle — sub-agent runs skip top-level effects', () => {
     );
 
     expect(store.drainQueuedMessages).toHaveBeenCalled();
+  });
+
+  it('a top_level cancellation drains and sends the queued follow-up', async () => {
+    vi.useFakeTimers();
+    const { get, store } = makeStore();
+    store.drainQueuedMessages = vi.fn(() => [
+      { content: 'queued follow-up', createdAt: 1, id: 'q1', interruptMode: 'soft' } as any,
+    ]);
+
+    const { requeued } = await lifecycle('client', get, 'top_level').completeRun(
+      completeEvent('client', { runtimeStatus: 'interrupted' }),
+    );
+
+    expect(requeued).toBe(true);
+    expect(store.drainQueuedMessages).toHaveBeenCalledWith(messageMapKey(CONTEXT));
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(store.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ context: CONTEXT, message: 'queued follow-up' }),
+    );
   });
 
   it('afterRunComplete is a no-op for a sub_agent run (no notification)', async () => {

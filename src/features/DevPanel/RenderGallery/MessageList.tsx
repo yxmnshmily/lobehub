@@ -170,7 +170,7 @@ const MessageList = memo<MessageListProps>(({ apis, mode }) => {
   );
 
   if (messages.length === 0) {
-    return <Text className={styles.empty}>No renderable APIs in this toolset.</Text>;
+    return <Text className={styles.empty}>这个工具集中没有可渲染的 API。</Text>;
   }
 
   return (

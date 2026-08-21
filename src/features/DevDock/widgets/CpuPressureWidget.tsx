@@ -5,6 +5,13 @@ import { memo, useEffect, useState } from 'react';
 
 type PressureState = 'critical' | 'fair' | 'nominal' | 'serious';
 
+const STATE_LABEL_ZH: Record<PressureState, string> = {
+  critical: '临界',
+  fair: '一般',
+  nominal: '正常',
+  serious: '严重',
+};
+
 interface PressureRecord {
   source: string;
   state: PressureState;
@@ -65,8 +72,8 @@ const CpuPressureWidget = memo(() => {
   if (!state) return null;
 
   return (
-    <span className={cx(styles.text, STATE_CLASS[state])} title={'Compute Pressure (CPU)'}>
-      CPU {state}
+    <span className={cx(styles.text, STATE_CLASS[state])} title={'CPU 计算压力'}>
+      CPU {STATE_LABEL_ZH[state]}
     </span>
   );
 });

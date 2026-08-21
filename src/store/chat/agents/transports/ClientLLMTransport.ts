@@ -36,6 +36,10 @@ import type { ClientLLMModelParameters } from './ClientContextBuilder';
 import type { ClientRuntimeSession } from './ClientRuntimeStreamSink';
 
 const CLIENT_LLM_RETRY_POLICY = {
+  // Keep the app-level retry budget to one attempt beyond the initial call.
+  // This replaces the runtime default of five retries while still allowing a
+  // short transient failure to recover.
+  maxRetries: 1,
   noRetryProviders: [BRANDING_PROVIDER],
 };
 

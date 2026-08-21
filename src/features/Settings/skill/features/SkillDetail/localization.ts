@@ -3,6 +3,19 @@ import { type TFunction } from 'i18next';
 
 type Translate = TFunction<'setting'>;
 
+const stripOuterGuideTag = (content: string) => {
+  const trimmedContent = content.trim();
+  const openingTag = trimmedContent.match(/^<([A-Za-z][\w.-]*_guides)>/);
+
+  if (!openingTag) return content;
+
+  const closingTag = `</${openingTag[1]}>`;
+
+  if (!trimmedContent.endsWith(closingTag)) return content;
+
+  return trimmedContent.slice(openingTag[0].length, -closingTag.length).trim();
+};
+
 export const getLocalizedBuiltinSkillDetail = (
   builtinSkill: BuiltinSkill | undefined,
   identifier: string,
@@ -13,6 +26,13 @@ export const getLocalizedBuiltinSkillDetail = (
   }
 
   return {
+    content: builtinSkill.content
+      ? stripOuterGuideTag(
+          t(`tools.builtins.${builtinSkill.identifier}.content`, {
+            defaultValue: builtinSkill.content,
+          }),
+        )
+      : undefined,
     description: builtinSkill.description
       ? t(`tools.builtins.${builtinSkill.identifier}.description`, {
           defaultValue: builtinSkill.description,

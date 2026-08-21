@@ -23,7 +23,7 @@ const TabRoutersWidget = memo(() => {
     <BarButton
       icon={AppWindow}
       label={`${liveCount}/${tabCount}`}
-      title={'Live tab routers / open tabs'}
+      title={'活动标签页路由 / 已打开标签页'}
       onClick={() => togglePanel('tab-routers')}
     />
   );

@@ -307,11 +307,28 @@ const isAgentRuntimeVisiblyRunningByContext =
   };
 
 /**
- * All live queue-blocking operation ids in a context (see
+ * All running operations that keep the current conversation input in its
+ * loading/Stop state. This intentionally uses INPUT_LOADING_OPERATION_TYPES,
+ * which is broader than the queue-blocking set (for example
+ * `autoRetryPending` is stoppable but does not block queued sends).
+ */
+const getRunningInputLoadingOperationIds =
+  (context: MessageMapKeyInput) =>
+  (s: ChatStoreState): string[] => {
+    // Group buckets are keyed by groupId, so an unresolved supervisor agent id
+    // must not prevent Stop from finding a member-owned group run.
+    if (!context.agentId && !context.groupId) return [];
+    return getOperationsByContext(context)(s)
+      .filter((op) => INPUT_LOADING_OPERATION_TYPES.includes(op.type) && op.status === 'running')
+      .map((op) => op.id);
+  };
+
+/**
+ * All running queue-blocking operation ids in a context (see
  * `isQueueBlockingOperation` — the same predicate the enqueue check uses, so
  * "Send now" cancels exactly what a fresh send would have queued behind and
- * never fires at an op that already stopped holding the queue). "Send now"
- * cancels every one of them, not just
+ * never fires at an operation that already stopped holding the queue. It
+ * cancels every matching operation, not just
  * the first: a retry via delAndRegenerate/delAndResendThread runs an outer
  * wrapper `regenerate` op AND an inner regenerateUserMessage `regenerate` op at
  * once, so cancelling only one would leave the queue blocked and make "Send now"
@@ -320,7 +337,10 @@ const isAgentRuntimeVisiblyRunningByContext =
 const getRunningQueueBlockingOperationIds =
   (context: MessageMapKeyInput) =>
   (s: ChatStoreState): string[] => {
-    if (!context.agentId) return [];
+    // Group buckets are keyed by groupId (not agentId). During group bootstrap
+    // the supervisor agent id can still be empty even though a member-owned root
+    // operation is already indexed under the group/topic key.
+    if (!context.agentId && !context.groupId) return [];
     const hasQueuedMessages = getQueuedMessages(context)(s).length > 0;
     return getOperationsByContext(context)(s)
       .filter((op) => isQueueBlockingOperation(op, { hasQueuedMessages }))
@@ -932,6 +952,7 @@ export const operationSelectors = {
   getOperationsByMessage,
   getOperationsByType,
   getRunningOperations,
+  getRunningInputLoadingOperationIds,
   getRunningQueueBlockingOperationIds,
   getRunningToolCallStartTime,
   hasAnyRunningOperation,

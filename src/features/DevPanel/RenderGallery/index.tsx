@@ -83,7 +83,7 @@ const RenderGallery = () => {
         {toolset ? (
           <ToolPage toolset={toolset} />
         ) : (
-          <Flexbox className={styles.empty}>No builtin tool renders registered.</Flexbox>
+          <Flexbox className={styles.empty}>没有已注册的内置工具渲染预览。</Flexbox>
         )}
       </Flexbox>
     </Flexbox>

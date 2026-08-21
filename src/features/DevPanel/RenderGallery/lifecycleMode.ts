@@ -6,12 +6,7 @@
  * tool call's life.
  */
 export type LifecycleMode =
-  | 'streaming'
-  | 'loading'
-  | 'success'
-  | 'error'
-  | 'placeholder'
-  | 'intervention';
+  'streaming' | 'loading' | 'success' | 'error' | 'placeholder' | 'intervention';
 
 export const LIFECYCLE_MODES: LifecycleMode[] = [
   'streaming',
@@ -23,15 +18,22 @@ export const LIFECYCLE_MODES: LifecycleMode[] = [
 ];
 
 export const LIFECYCLE_MODE_LABEL: Record<LifecycleMode, string> = {
-  error: 'Error',
-  intervention: 'Intervention',
-  loading: 'Loading',
-  placeholder: 'Placeholder',
-  streaming: 'Streaming',
-  success: 'Success',
+  error: '错误',
+  intervention: '等待干预',
+  loading: '加载中',
+  placeholder: '占位状态',
+  streaming: '流式输出',
+  success: '成功',
 };
 
 export type FixtureBodyKind = 'render' | 'streaming' | 'placeholder' | 'intervention';
+
+export const FIXTURE_BODY_KIND_LABEL: Record<FixtureBodyKind, string> = {
+  intervention: '等待干预',
+  placeholder: '占位内容',
+  render: '结果渲染',
+  streaming: '流式内容',
+};
 
 /**
  * Map a lifecycle mode to the body slot it targets. Streaming/placeholder/
@@ -104,21 +106,21 @@ const deriveErrorState = (variant: ToolRenderFixtureVariant) => {
   if (variant.pluginState && typeof variant.pluginState === 'object') {
     return {
       ...variant.pluginState,
-      error: 'Devtools simulated error: command failed',
+      error: '调试工具模拟错误：命令执行失败',
       exitCode: 1,
       success: false,
     };
   }
   return {
-    error: 'Devtools simulated error: command failed',
+    error: '调试工具模拟错误：命令执行失败',
     success: false,
   };
 };
 
 const deriveErrorPayload = (variant: ToolRenderFixtureVariant) =>
   variant.pluginError ?? {
-    body: 'Devtools simulated error: the underlying executor threw before returning a result.',
-    message: 'Tool execution failed',
+    body: '调试工具模拟错误：底层执行器在返回结果前发生异常。',
+    message: '工具执行失败',
     type: 'PluginServerError',
   };
 

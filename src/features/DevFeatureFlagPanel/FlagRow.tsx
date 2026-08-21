@@ -56,9 +56,9 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const segmentOptions = [
-  { label: 'true', value: 'true' as const },
-  { label: 'false', value: 'false' as const },
-  { label: 'inherit', value: 'inherit' as const },
+  { label: '开启', value: 'true' as const },
+  { label: '关闭', value: 'false' as const },
+  { label: '继承', value: 'inherit' as const },
 ];
 
 interface FlagRowProps {
@@ -73,6 +73,7 @@ const FlagRow = memo<FlagRowProps>(({ flagKey }) => {
   const setFlagOverride = useServerConfigStore((s) => s.setFlagOverride);
 
   const isOverridden = overrideValue !== undefined;
+  const originalLabel = original === undefined ? '未设置' : original ? '开启' : '关闭';
 
   const value: SegmentedValue = useMemo(() => {
     if (overrideValue === true) return 'true';
@@ -94,7 +95,7 @@ const FlagRow = memo<FlagRowProps>(({ flagKey }) => {
         <Text ellipsis className={styles.name}>
           {snakeCase(flagKey as string)}
         </Text>
-        <span className={styles.meta}>server: {String(original)}</span>
+        <span className={styles.meta}>服务器：{originalLabel}</span>
       </Flexbox>
       <Segmented
         className={styles.control}

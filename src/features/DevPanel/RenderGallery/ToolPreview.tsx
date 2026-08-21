@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import {
   bodyKindForMode,
   deriveFixtureProps,
+  FIXTURE_BODY_KIND_LABEL,
   type LifecycleMode,
   type ToolRenderFixtureVariant,
 } from './lifecycleMode';
@@ -94,9 +95,8 @@ const ToolPreview = ({ api, mode }: ToolPreviewProps) => {
       <Flexbox className={styles.cardHeader}>
         <Flexbox horizontal align={'center'} gap={8} wrap={'wrap'}>
           <Text fontSize={18} weight={600}>
-            {api.apiName}
+            {api.apiDisplayName}
           </Text>
-          <Tag>{api.identifier}</Tag>
           {variants.length > 1 && (
             <Tabs
               activeKey={activeVariant.id}
@@ -120,7 +120,7 @@ const ToolPreview = ({ api, mode }: ToolPreviewProps) => {
         <Flexbox gap={8}>
           <Flexbox horizontal className={styles.sectionLabel}>
             <Text fontSize={12} type={'secondary'} weight={600}>
-              Inspector
+              参数检查器
             </Text>
           </Flexbox>
           <div className={styles.previewShell}>
@@ -136,9 +136,9 @@ const ToolPreview = ({ api, mode }: ToolPreviewProps) => {
         <Flexbox gap={8}>
           <Flexbox horizontal className={styles.sectionLabel}>
             <Text fontSize={12} type={'secondary'} weight={600}>
-              Body
+              结果内容
             </Text>
-            <Tag>{bodyKindForMode(mode)}</Tag>
+            <Tag>{FIXTURE_BODY_KIND_LABEL[bodyKindForMode(mode)]}</Tag>
           </Flexbox>
           <div className={styles.previewShell}>
             <ToolBodySlot
@@ -152,7 +152,7 @@ const ToolPreview = ({ api, mode }: ToolPreviewProps) => {
         </Flexbox>
 
         <details>
-          <summary className={styles.fixtureSummary}>Fixture payload</summary>
+          <summary className={styles.fixtureSummary}>测试数据详情</summary>
           <pre className={styles.code}>
             {JSON.stringify(
               {

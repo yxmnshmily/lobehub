@@ -76,6 +76,9 @@ export const Controls = memo(() => {
   const idleOrComplete = !playback || status === 'idle' || status === 'complete';
   const disabled = !selected;
   const stoppable = playback != null && status !== 'idle';
+  let playTitle = '播放';
+  if (running) playTitle = '暂停';
+  else if (paused) playTitle = '继续';
 
   const progressRef = useRef<HTMLDivElement | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
@@ -84,11 +87,11 @@ export const Controls = memo(() => {
     if (!selected) return;
     const { agentId, threadId, topicId } = resolveReplayTarget();
     if (!agentId) {
-      toast.warning('Open an agent conversation first.');
+      toast.warning('请先打开一个智能体对话。');
       return;
     }
     if (!topicId) {
-      toast.warning('Open a topic before playing a mock case.');
+      toast.warning('请先打开一个话题，再播放模拟案例。');
       return;
     }
     start({ agentId, case: selected, threadId, topicId });
@@ -184,21 +187,21 @@ export const Controls = memo(() => {
           disabled={disabled}
           icon={running ? Pause : Play}
           size={'small'}
-          title={running ? 'Pause' : paused ? 'Resume' : 'Play'}
+          title={playTitle}
           onClick={handlePlay}
         />
         <ActionIcon
           disabled={disabled}
           icon={SkipForward}
           size={'small'}
-          title={'Next event'}
+          title={'下一个事件'}
           onClick={stepEvent}
         />
         <ActionIcon
           disabled={disabled}
           icon={RotateCcw}
           size={'small'}
-          title={'Replay from start'}
+          title={'从头回放'}
           onClick={handleReplay}
         />
         <ActionIcon
@@ -206,7 +209,7 @@ export const Controls = memo(() => {
           aria-pressed={loop}
           icon={Repeat}
           size={'small'}
-          title={loop ? 'Loop on' : 'Loop off'}
+          title={loop ? '循环已开启' : '循环已关闭'}
           onClick={() => setLoop(!loop)}
         />
         <ActionIcon
@@ -214,11 +217,11 @@ export const Controls = memo(() => {
           disabled={!stoppable}
           icon={Square}
           size={'small'}
-          title={'Stop playback'}
+          title={'停止回放'}
           onClick={stop}
         />
         <span style={{ flex: 1 }} />
-        <span className={styles.counter}>{selected ? selected.name : 'No case selected'}</span>
+        <span className={styles.counter}>{selected ? selected.name : '未选择案例'}</span>
       </Flexbox>
     </Flexbox>
   );

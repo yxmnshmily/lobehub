@@ -43,7 +43,6 @@ vi.mock('@/const/layoutTokens', () => ({ FORM_STYLE: {} }));
 vi.mock('@/features/ModelSwitchPanel/components/ControlsForm/LevelSlider', () => ({
   default: () => null,
 }));
-
 vi.mock('@lobehub/ui/base-ui', () => ({
   Switch: ({
     checked,

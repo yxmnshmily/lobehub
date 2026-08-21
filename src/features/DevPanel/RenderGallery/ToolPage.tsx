@@ -178,9 +178,8 @@ const DevtoolsToolPage = ({ toolset }: DevtoolsToolPageProps) => {
               <Text fontSize={22} weight={700}>
                 {toolset.toolsetName}
               </Text>
-              <Tag>{toolset.identifier}</Tag>
               <Text fontSize={12} type={'secondary'}>
-                {toolset.apis.length} API{toolset.apis.length === 1 ? '' : 's'}
+                {toolset.apis.length} 个接口
               </Text>
             </Flexbox>
             {toolset.toolsetDescription && (
@@ -193,21 +192,21 @@ const DevtoolsToolPage = ({ toolset }: DevtoolsToolPageProps) => {
           <Flexbox horizontal className={styles.modeBar} wrap={'wrap'}>
             <Flexbox horizontal className={styles.controlGroup}>
               <Text fontSize={12} type={'secondary'} weight={600}>
-                View
+                查看方式
               </Text>
               <Tabs
                 activeKey={view}
                 size={'small'}
                 items={[
-                  { key: 'api', label: 'By API' },
-                  { key: 'aggregate', label: 'Aggregate' },
+                  { key: 'api', label: '按接口' },
+                  { key: 'aggregate', label: '汇总预览' },
                 ]}
                 onChange={(key) => setView(key as GalleryView)}
               />
             </Flexbox>
             <Flexbox horizontal className={styles.controlGroup}>
               <Text fontSize={12} type={'secondary'} weight={600}>
-                Lifecycle
+                运行状态
               </Text>
               <Tabs
                 activeKey={mode}
