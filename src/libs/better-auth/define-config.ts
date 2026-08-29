@@ -145,7 +145,8 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
     },
 
-    baseURL: appEnv.APP_URL,
+    basePath: '/api/auth',
+    baseURL: new URL(appEnv.APP_URL).origin,
     secret: authEnv.AUTH_SECRET,
     trustedOrigins: getTrustedOrigins(enabledSSOProviders),
 
