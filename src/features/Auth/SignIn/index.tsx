@@ -1,5 +1,6 @@
 'use client';
 
+import DevSeedSignIn from './DevSeedSignIn';
 import { SignInEmailSentStep } from './SignInEmailSentStep';
 import { SignInEmailStep } from './SignInEmailStep';
 import { SignInPasswordStep } from './SignInPasswordStep';
@@ -88,6 +89,7 @@ const SignIn = () => {
         callbackUrl={callbackUrl}
         onClose={closeWechatAuth}
       />
+      <DevSeedSignIn />
     </>
   );
 };

@@ -8,6 +8,7 @@ import {
 } from '@/features/Auth/utils/mountedPath';
 import { useSingleton } from '@/hooks/useSingleton';
 import { emailOtp, sendVerificationEmail } from '@/libs/better-auth/auth-client';
+import { toAbsoluteAuthCallbackUrl } from '@/utils/onboardingRedirect';
 
 export type EmailVerificationMode = 'link' | 'otp';
 
@@ -156,7 +157,10 @@ export const useVerifyEmail = ({ email, callbackUrl, onVerified }: UseVerifyEmai
     try {
       const result = await runRequest((signal) =>
         sendVerificationEmail({
-          callbackURL: buildMountedEmailVerificationResultPath(callbackUrl, email),
+          callbackURL: toAbsoluteAuthCallbackUrl(
+            buildMountedEmailVerificationResultPath(callbackUrl, email),
+            window.location.origin,
+          ),
           email,
           fetchOptions: { signal },
         }),

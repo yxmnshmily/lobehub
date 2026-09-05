@@ -1,4 +1,5 @@
-import { Block, Flexbox, Skeleton } from '@lobehub/ui';
+import { Block, Flexbox } from '@lobehub/ui';
+import { Skeleton } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,11 +104,7 @@ const HeatmapStats = memo(() => {
             style={{ minWidth: 0, paddingBlock: 6, paddingInline: 4, textAlign: 'center' }}
           >
             <div style={{ fontSize: 20, fontWeight: 'bold' }}>
-              {loading || item.loading ? (
-                <Skeleton.Button active size={'small'} style={{ width: 56 }} />
-              ) : (
-                item.value
-              )}
+              {loading || item.loading ? <Skeleton height={28} width={56} /> : item.value}
             </div>
             <div
               style={{

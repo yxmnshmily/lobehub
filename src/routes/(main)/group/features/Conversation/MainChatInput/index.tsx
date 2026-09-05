@@ -15,8 +15,6 @@ import { useServerConfigStore } from '@/store/serverConfig';
 import { useSendMenuItems } from './useSendMenuItems';
 
 const leftActions: ActionKeys[] = [
-  'model',
-  'effort',
   'search',
   'memory',
   'fileUpload',
@@ -26,7 +24,7 @@ const leftActions: ActionKeys[] = [
   ['typo', 'params', 'clear'],
 ];
 
-const rightActions: ActionKeys[] = ['voiceMessage', 'contextWindow'];
+const rightActions: ActionKeys[] = ['model', 'voiceMessage', 'contextWindow'];
 
 const MAX_SAFE_CREDITS = Number.MAX_SAFE_INTEGER;
 

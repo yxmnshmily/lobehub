@@ -33,7 +33,8 @@ vi.mock('react-router', () => ({
   useSearchParams: () => [{ get: mockSearchParamsGet }],
 }));
 
-vi.mock('@lobehub/ui/base-ui', () => ({
+vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   toast: { error: mockMessageError, success: mockMessageSuccess },
 }));
 
@@ -54,6 +55,7 @@ vi.mock('@/libs/better-auth/utils/client', () => ({
 
 vi.mock('@lobechat/business-const', () => ({
   BRANDING_NAME: 'LobeHub',
+  ORG_NAME: 'LobeHub',
 }));
 
 vi.mock('@/business/client/hooks/useBusinessSignin', () => ({
@@ -66,7 +68,7 @@ vi.mock('@/business/client/hooks/useBusinessSignin', () => ({
 
 let mockEnableBusinessFeatures = false;
 let mockEnableMagicLink = false;
-vi.mock('@/features/AuthShell', () => ({
+vi.mock('@/features/AuthShell/AuthServerConfigProvider', () => ({
   useAuthServerConfigStore: (selector: (s: any) => any) =>
     selector({
       serverConfig: {
@@ -240,7 +242,7 @@ describe('useSignIn', () => {
 
       expect(mockSignInEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: '/lobehub/',
+          callbackURL: `${originalLocation.origin}/lobehub/`,
           email: 'user@example.com',
           password: 'password123',
         }),
@@ -324,7 +326,7 @@ describe('useSignIn', () => {
         });
 
         expect(mockSignInEmail).toHaveBeenCalledWith(
-          expect.objectContaining({ callbackURL: '/lobehub/' }),
+          expect.objectContaining({ callbackURL: `${originalLocation.origin}/lobehub/` }),
           expect.any(Object),
         );
         expect(window.location.href).toBe('/lobehub/');
@@ -521,6 +523,37 @@ describe('useSignIn', () => {
       expect(open).not.toHaveBeenCalled();
     });
 
+    it('should bind relative OAuth callbacks to the current auth origin', async () => {
+      const authOrigin = 'https://auth.example.com';
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          ...originalLocation,
+          href: `${authOrigin}/signin`,
+          origin: authOrigin,
+          pathname: '/signin',
+        },
+        writable: true,
+      });
+      mockSearchParamsGet.mockImplementation((key: string) =>
+        key === 'callbackUrl' ? '/workspace?tab=members' : null,
+      );
+      mockSignInSocial.mockResolvedValue({ url: 'https://google.com/auth' });
+
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleSocialSignIn('google');
+      });
+
+      expect(mockSignInSocial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          callbackURL: `${authOrigin}/workspace?tab=members`,
+          newUserCallbackURL: `${authOrigin}/onboarding?callbackUrl=%2Fworkspace%3Ftab%3Dmembers`,
+        }),
+      );
+    });
+
     it('should call signIn.social for builtin providers', async () => {
       mockSignInSocial.mockResolvedValue({ url: 'https://google.com/auth' });
 
@@ -532,7 +565,7 @@ describe('useSignIn', () => {
 
       expect(mockSignInSocial).toHaveBeenCalledWith(
         expect.objectContaining({
-          newUserCallbackURL: '/lobehub/onboarding',
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
           provider: 'google',
         }),
       );
@@ -550,7 +583,7 @@ describe('useSignIn', () => {
 
       expect(mockSignInOauth2).toHaveBeenCalledWith(
         expect.objectContaining({
-          newUserCallbackURL: '/lobehub/onboarding',
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
           providerId: 'custom-oidc',
         }),
       );
@@ -681,7 +714,7 @@ describe('useSignIn', () => {
       expect(mockRequestPasswordReset).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'user@example.com',
-          redirectTo: '/lobehub/reset-password?email=user%40example.com',
+          redirectTo: `${originalLocation.origin}/lobehub/reset-password?email=user%40example.com`,
         }),
       );
       // Success is a persistent landing state, not a fleeting toast
@@ -705,7 +738,7 @@ describe('useSignIn', () => {
       expect(mockRequestPasswordReset).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'traveler_name',
-          redirectTo: '/lobehub/reset-password?email=traveler_name',
+          redirectTo: `${originalLocation.origin}/lobehub/reset-password?email=traveler_name`,
         }),
       );
       expect(result.current.step).toBe('emailSent');
@@ -793,8 +826,8 @@ describe('useSignIn', () => {
       expect(mockSignInMagicLink).toHaveBeenCalledTimes(1);
       expect(mockSignInMagicLink).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: '/lobehub/',
-          newUserCallbackURL: '/lobehub/onboarding',
+          callbackURL: `${originalLocation.origin}/lobehub/`,
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
         }),
       );
       expect(result.current.step).toBe('emailSent');

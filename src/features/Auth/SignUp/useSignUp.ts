@@ -12,9 +12,10 @@ import {
   buildMountedEmailVerificationResultPath,
   buildMountedOnboardingPath,
 } from '@/features/Auth/utils/mountedPath';
-import { useAuthServerConfigStore } from '@/features/AuthShell';
+import { useAuthServerConfigStore } from '@/features/AuthShell/AuthServerConfigProvider';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 import { signUp } from '@/libs/better-auth/auth-client';
+import { toAbsoluteAuthCallbackUrl } from '@/utils/onboardingRedirect';
 
 import type { BaseSignUpFormValues } from './types';
 
@@ -70,7 +71,10 @@ export const useSignUp = () => {
 
       const submit = async (nextFetchOptions?: AuthFetchOptions) =>
         signUp.email({
-          callbackURL: enableEmailVerification ? verificationResultUrl : redirectUrl,
+          callbackURL: toAbsoluteAuthCallbackUrl(
+            enableEmailVerification ? verificationResultUrl : redirectUrl,
+            window.location.origin,
+          ),
           email: values.email,
           fetchOptions: nextFetchOptions,
           name: username,

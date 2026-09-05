@@ -22,7 +22,10 @@ import {
 import { type LobeChatDatabase } from '../../type';
 import { sanitizeBm25Query } from '../../utils/bm25';
 import { normalizeInboxAgentMeta } from '../../utils/inboxAgent';
+import { inJsonStringArray } from '../../utils/inJsonStringArray';
+import { notShareVisitorTopic } from '../../utils/shareVisitor';
 import { buildWorkspaceWhere } from '../../utils/workspace';
+import type { FtsSearchCandidateSource } from '../ftsSearch';
 
 // Mirrors the main chat sidebar's system-topic exclusions, plus the legacy
 // task_manager trigger. These topics are surfaced in their own product surfaces,
@@ -44,11 +47,18 @@ export class HomeRepository {
   private userId: string;
   private workspaceId?: string;
   private db: LobeChatDatabase;
+  private ftsSearchCandidateSource?: FtsSearchCandidateSource;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    ftsSearchCandidateSource?: FtsSearchCandidateSource,
+  ) {
     this.userId = userId;
     this.workspaceId = workspaceId;
     this.db = db;
+    this.ftsSearchCandidateSource = ftsSearchCandidateSource;
   }
 
   private get scope() {
@@ -244,6 +254,9 @@ export class HomeRepository {
         .where(
           and(
             buildWorkspaceWhere(this.scope, topics),
+            // Agent-share visitor topics keep the creator's userId — never bump
+            // the creator's own unread badge for a visitor's conversation.
+            notShareVisitorTopic(),
             isUnread,
             isMainSidebarTopic,
             sql`${topics.agentId} is not null`,
@@ -256,6 +269,7 @@ export class HomeRepository {
         .where(
           and(
             buildWorkspaceWhere(this.scope, topics),
+            notShareVisitorTopic(),
             isUnread,
             isMainSidebarTopic,
             sql`${topics.groupId} is not null`,
@@ -469,6 +483,24 @@ export class HomeRepository {
     if (!keyword.trim()) return [];
 
     const bm25Query = sanitizeBm25Query(keyword);
+    const candidateResults = this.ftsSearchCandidateSource?.ftsSearchCandidateEnabled
+      ? await Promise.all([
+          this.ftsSearchCandidateSource.ftsSearchCandidates({
+            entity: 'agents',
+            filters: { excludeVirtual: true },
+            pagination: {},
+            query: { fields: ['title', 'description'], text: keyword },
+          }),
+          this.ftsSearchCandidateSource.ftsSearchCandidates({
+            entity: 'chatGroups',
+            filters: {},
+            pagination: {},
+            query: { fields: ['title', 'description'], text: keyword },
+          }),
+        ])
+      : undefined;
+    const agentCandidateIds = candidateResults?.[0].candidates.map(({ id }) => id);
+    const chatGroupCandidateIds = candidateResults?.[1].candidates.map(({ id }) => id);
 
     // Run agent and chat group searches in parallel
     const [agentResults, chatGroupResults] = await Promise.all([
@@ -496,7 +528,9 @@ export class HomeRepository {
           and(
             buildWorkspaceWhere(this.scope, agents),
             not(eq(agents.virtual, true)),
-            sql`(${agents.title} @@@ ${bm25Query} OR ${agents.description} @@@ ${bm25Query})`,
+            agentCandidateIds
+              ? inJsonStringArray(agents.id, agentCandidateIds)
+              : sql`(${agents.title} @@@ ${bm25Query} OR ${agents.description} @@@ ${bm25Query})`,
           ),
         )
         .orderBy(desc(agents.updatedAt)),
@@ -517,7 +551,9 @@ export class HomeRepository {
         .where(
           and(
             buildWorkspaceWhere(this.scope, chatGroups),
-            sql`(${chatGroups.title} @@@ ${bm25Query} OR ${chatGroups.description} @@@ ${bm25Query})`,
+            chatGroupCandidateIds
+              ? inJsonStringArray(chatGroups.id, chatGroupCandidateIds)
+              : sql`(${chatGroups.title} @@@ ${bm25Query} OR ${chatGroups.description} @@@ ${bm25Query})`,
           ),
         )
         .orderBy(desc(chatGroups.updatedAt)),

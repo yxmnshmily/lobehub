@@ -250,7 +250,7 @@ describe('aiProviderRouter', () => {
 
       expect(result.providerBindingAgentTypes).toEqual({
         'anthropic-custom': ['claude-code', 'grok-build', 'kimi-code', 'pi'],
-        'openai': ['codex', 'grok-build', 'kimi-code', 'pi'],
+        'openai': ['codex', 'grok-build', 'kimi-code', 'pi', 'trae'],
       });
       expect(JSON.stringify(result.providerBindingAgentTypes)).not.toContain('secret');
       expect(JSON.stringify(result.providerBindingAgentTypes)).not.toContain('example.com');

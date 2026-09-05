@@ -215,9 +215,10 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       enabled: !authEnv.AUTH_DISABLE_EMAIL_PASSWORD,
       maxPasswordLength: 64,
       minPasswordLength: 8,
-      // Registration owns the one-time mailbox verification flow. A valid
-      // password must not be challenged again on every later sign-in.
-      requireEmailVerification: false,
+      // Email ownership is verified once at registration when enabled. Better
+      // Auth then accepts the password for later sign-ins without re-sending a
+      // verification email.
+      requireEmailVerification: authEnv.AUTH_EMAIL_VERIFICATION,
       revokeSessionsOnPasswordReset: true,
 
       // Compatible with bcrypt password hashes migrated from Clerk; after login, you can re-hash in the backend using BetterAuth's default scrypt.

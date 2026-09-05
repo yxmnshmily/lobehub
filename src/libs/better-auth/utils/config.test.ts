@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createSecondaryStorage, getTrustedOrigins, normalizeOrigin } from './config';
 
@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => {
 
   return {
     appEnv: { APP_URL: 'http://localhost:3010/lobehub' },
-    authEnv: { AUTH_TRUSTED_ORIGINS: undefined as string | undefined },
+    authEnv: {
+      AUTH_ADDITIONAL_TRUSTED_ORIGINS: undefined as string | undefined,
+      AUTH_TRUSTED_ORIGINS: undefined as string | undefined,
+    },
     initializeRedis: vi.fn().mockResolvedValue(redisClient),
     isRedisEnabled: vi.fn(() => false),
     redisClient,
@@ -29,12 +32,22 @@ vi.mock('@/libs/redis', () => ({
 vi.mock('@/utils/env', () => ({ isDev: false }));
 
 describe('Better Auth trusted origins', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.appEnv.APP_URL = 'http://localhost:3010/lobehub';
+    mocks.authEnv.AUTH_ADDITIONAL_TRUSTED_ORIGINS = undefined;
     mocks.authEnv.AUTH_TRUSTED_ORIGINS = undefined;
     mocks.initializeRedis.mockResolvedValue(mocks.redisClient);
     mocks.isRedisEnabled.mockReturnValue(false);
+    process.env = { ...originalEnv };
+    delete process.env.VERCEL_BRANCH_URL;
+    delete process.env.VERCEL_URL;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   it.each([
@@ -51,6 +64,30 @@ describe('Better Auth trusted origins', () => {
       'https://travel.example.test/lobehub, https://travel.example.test';
 
     expect(getTrustedOrigins([])).toEqual(['https://travel.example.test']);
+  });
+
+  it('appends normalized additional origins to provider-aware defaults', () => {
+    mocks.authEnv.AUTH_ADDITIONAL_TRUSTED_ORIGINS = [
+      'https://gateway.example.com/signin',
+      'gateway.example.com/another-path',
+    ].join(',');
+
+    expect(getTrustedOrigins(['apple'])).toEqual([
+      'http://localhost:3010',
+      'com.lobehub.app://',
+      'https://appleid.apple.com',
+      'https://gateway.example.com',
+    ]);
+  });
+
+  it('appends additional origins without changing override semantics', () => {
+    mocks.authEnv.AUTH_TRUSTED_ORIGINS = 'https://override.example.com/callback';
+    mocks.authEnv.AUTH_ADDITIONAL_TRUSTED_ORIGINS = 'https://gateway.example.com/signin';
+
+    expect(getTrustedOrigins(['apple'])).toEqual([
+      'https://override.example.com',
+      'https://gateway.example.com',
+    ]);
   });
 
   it('rejects malformed callback origins', () => {

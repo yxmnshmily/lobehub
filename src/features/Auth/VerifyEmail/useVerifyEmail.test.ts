@@ -48,8 +48,7 @@ describe('useVerifyEmail', () => {
 
     expect(mocks.sendVerificationEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        callbackURL:
-          '/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=member%40example.test',
+        callbackURL: `${window.location.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=member%40example.test`,
         email: 'member@example.test',
         fetchOptions: { signal: expect.any(AbortSignal) },
       }),
@@ -210,8 +209,7 @@ describe('useVerifyEmail', () => {
 
       expect(mocks.sendVerificationEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL:
-            '/lobehub/verify-email?callbackUrl=%2Flobehub%2F&status=success&email=member%40example.test',
+          callbackURL: `${window.location.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2F&status=success&email=member%40example.test`,
           email: 'member@example.test',
           fetchOptions: { signal: expect.any(AbortSignal) },
         }),

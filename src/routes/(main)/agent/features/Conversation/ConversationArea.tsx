@@ -14,6 +14,7 @@ import {
 } from '@/features/AgentTransferMigration';
 import ChatMiniMap from '@/features/ChatMiniMap';
 import { ChatList, ConversationProvider } from '@/features/Conversation';
+import { useMessageDeepLink } from '@/features/Conversation/ChatList/hooks/useMessageDeepLink';
 import ComposerDraftReceiver from '@/features/Conversation/ComposerDraftReceiver';
 import { useChatFollowUp } from '@/features/Conversation/hooks/useChatFollowUp';
 import {
@@ -69,13 +70,11 @@ interface ConversationAreaProps {
 const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
   const { t } = useTranslation('chat');
   const context = useAgentContext();
+  const messageDeepLink = useMessageDeepLink();
 
   // Get raw dbMessages from ChatStore for this context
   // ConversationStore will parse them internally to generate displayMessages
-  const chatKey = useMemo(
-    () => messageMapKey(context),
-    [context.agentId, context.topicId, context.threadId],
-  );
+  const chatKey = messageMapKey(context);
   const replaceMessages = useChatStore((s) => s.replaceMessages);
   const messages = useChatStore((s) => s.dbMessagesMap[chatKey]);
 
@@ -160,8 +159,8 @@ const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
             <TopicMigrationPlaceholder agentId={context.agentId} topicId={context.topicId} />
           ) : (
             <ChatList
-              defaultWorkflowExpandLevel={isHeterogeneousAgent ? { streaming: 'full' } : undefined}
               headerSlot={<div aria-hidden className={styles.floatingHeaderSpacer} />}
+              messageDeepLink={messageDeepLink}
               welcome={<AgentHome />}
               footerSlot={
                 isSubagentThread ? (

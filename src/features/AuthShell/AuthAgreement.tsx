@@ -2,7 +2,7 @@
 
 import { Checkbox, confirmModal, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { AUTH_PRIVACY_URL, AUTH_TERMS_URL } from './policyLinks';
@@ -107,9 +107,13 @@ export const useAuthAgreement = (
   defaultChecked = false,
 ) => {
   const { t } = useTranslation(['auth', 'common']);
-  const [agreementChecked, setAgreementCheckedState] = useState(
-    () => defaultChecked || readStoredAgreement(),
-  );
+  // Read after mount, not during render — the sign-in page is prerendered and a
+  // remembered acceptance would not match the document's unchecked box.
+  const [agreementChecked, setAgreementCheckedState] = useState(false);
+
+  useEffect(() => {
+    setAgreementCheckedState(defaultChecked || readStoredAgreement());
+  }, [defaultChecked]);
 
   const setAgreementChecked = useCallback((checked: boolean) => {
     setAgreementCheckedState(checked);

@@ -171,12 +171,16 @@ describe('ServerLLMTransport retry budget', () => {
     consoleError.mockRestore();
   });
 
-  it('keeps background agent failures bounded to one retry', () => {
+  it('keeps ordinary background failures bounded while reserving the network-empty ceiling', () => {
     const transport = new ServerLLMTransport({} as any);
+    const ordinaryError = new Error('provider failed');
 
-    expect(transport.retryPolicy.maxAttempts('qwen')).toBe(2);
-    expect(transport.retryPolicy.maxAttempts('chatgpt')).toBe(2);
-    expect(transport.retryPolicy.maxAttempts('lobehub')).toBe(1);
+    expect(transport.retryPolicy.maxAttempts('qwen')).toBe(4);
+    expect(transport.retryPolicy.maxAttempts('chatgpt')).toBe(4);
+    expect(transport.retryPolicy.maxAttempts('lobehub')).toBe(4);
+    expect(transport.retryPolicy.resolveRetryBudget('qwen', ordinaryError)).toBe(1);
+    expect(transport.retryPolicy.resolveRetryBudget('chatgpt', ordinaryError)).toBe(1);
+    expect(transport.retryPolicy.resolveRetryBudget('lobehub', ordinaryError)).toBe(0);
   });
 
   it('does not retry a provider call whose completed output failed Credits settlement', () => {

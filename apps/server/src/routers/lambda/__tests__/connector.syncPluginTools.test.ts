@@ -149,7 +149,15 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
     );
   });
 
-  it('copies Composio account metadata when bootstrapping its connector projection', async () => {
+  /** @example A removed Composio provider cannot be projected back into connector storage. */
+  it('does not bootstrap legacy GitHub Composio plugin rows', async () => {
+    // ROOT CAUSE:
+    //
+    // GitHub was removed from the Composio catalog, but an existing plugin row could still reach
+    // syncPluginTools and recreate a connector carrying its obsolete Composio account metadata.
+    //
+    // Before: opening the legacy plugin detail created a GitHub Composio connector projection.
+    // We fixed this by requiring every Composio plugin projection to remain in the live catalog.
     pluginModelMock.findById.mockResolvedValueOnce({
       type: 'plugin',
       customParams: {
@@ -163,12 +171,33 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
       manifest: { api: [], meta: { title: 'GitHub' } },
     });
 
-    await callerFor().syncPluginTools({ identifier: 'github' });
+    const result = await callerFor().syncPluginTools({ identifier: 'github' });
+
+    expect(result).toEqual({ connectorId: null, toolCount: 0 });
+    expect(connectorModelMock.create).not.toHaveBeenCalled();
+    expect(connectorToolModelMock.upsertMany).not.toHaveBeenCalled();
+  });
+
+  it('copies Composio account metadata when bootstrapping its connector projection', async () => {
+    pluginModelMock.findById.mockResolvedValueOnce({
+      type: 'plugin',
+      customParams: {
+        composio: {
+          appSlug: 'GMAIL',
+          authConfigId: 'ac-gmail',
+          connectedAccountId: 'ca-gmail',
+          status: 'ACTIVE',
+        },
+      },
+      manifest: { api: [], meta: { title: 'Gmail' } },
+    });
+
+    await callerFor().syncPluginTools({ identifier: 'gmail' });
 
     expect(connectorModelMock.create).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
-          composio: expect.objectContaining({ connectedAccountId: 'ca-github' }),
+          composio: expect.objectContaining({ connectedAccountId: 'ca-gmail' }),
         }),
       }),
     );
@@ -185,9 +214,9 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
         id: 'conn-existing',
         metadata: {
           composio: {
-            appSlug: 'GITHUB',
-            authConfigId: 'ac-github',
-            connectedAccountId: 'ca-github',
+            appSlug: 'GMAIL',
+            authConfigId: 'ac-gmail',
+            connectedAccountId: 'ca-gmail',
             status: 'ACTIVE',
           },
           mountedByAgentId: 'agent-1',
@@ -199,21 +228,21 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
       type: 'plugin',
       customParams: {
         composio: {
-          appSlug: 'GITHUB',
-          authConfigId: 'ac-github',
-          connectedAccountId: 'ca-github',
+          appSlug: 'GMAIL',
+          authConfigId: 'ac-gmail',
+          connectedAccountId: 'ca-gmail',
           status: 'ACTIVE',
         },
       },
-      manifest: { api: [], meta: { description: 'GitHub tools', title: 'GitHub' } },
+      manifest: { api: [], meta: { description: 'Gmail tools', title: 'Gmail' } },
     });
 
-    await callerFor().syncPluginTools({ identifier: 'github' });
+    await callerFor().syncPluginTools({ identifier: 'gmail' });
 
     expect(connectorModelMock.update).toHaveBeenCalledWith('conn-existing', {
       metadata: expect.objectContaining({
-        composio: expect.objectContaining({ connectedAccountId: 'ca-github' }),
-        description: 'GitHub tools',
+        composio: expect.objectContaining({ connectedAccountId: 'ca-gmail' }),
+        description: 'Gmail tools',
         mountedByAgentId: 'agent-1',
       }),
     });
@@ -437,7 +466,7 @@ describe('connectorRouter.delete — agent connector unpins from the owning agen
     expect(agentModelMock.update).not.toHaveBeenCalled();
   });
 
-  it('revokes the remote account and removes the legacy plugin for a personal Composio connector', async () => {
+  it('revokes the remote account and removes a legacy GitHub Composio connector', async () => {
     // ROOT CAUSE:
     //
     // The connector settings page called connector.delete, which previously

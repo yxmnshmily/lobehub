@@ -248,8 +248,7 @@ export const ModelInfoTags = memo<ModelInfoTagsProps>(
 );
 
 interface ModelItemRenderProps
-  extends ChatModelCard,
-    Partial<Pick<FlexboxProps, 'className' | 'style'>> {
+  extends ChatModelCard, Partial<Pick<FlexboxProps, 'className' | 'style'>> {
   abilities?: ModelAbilities;
   audio?: boolean;
   newBadgeLabel?: string;
@@ -293,12 +292,7 @@ export const ModelItemRender = memo<ModelItemRenderProps>(
           ...style,
         }}
       >
-        <Flexbox
-          horizontal
-          align={'center'}
-          gap={8}
-          style={{ minWidth: 0, overflow: 'hidden' }}
-        >
+        <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0, overflow: 'hidden' }}>
           <ModelIcon model={id} size={20} />
           <Text
             style={mobile ? { maxWidth: '60vw' } : { minWidth: 0, overflow: 'hidden' }}

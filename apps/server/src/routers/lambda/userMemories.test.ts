@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getServerDB } from '@/database/core/db-adaptor';
 import type * as UserMemoryModule from '@/database/models/userMemory';
 import { UserMemoryModel } from '@/database/models/userMemory';
+import { FtsSearchCandidateError } from '@/database/repositories/ftsSearch';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 
 import { userMemoriesRouter } from './userMemories';
@@ -245,6 +246,24 @@ describe('userMemories.queryMemories', () => {
 
     expect(queryMemories).toHaveBeenCalledWith({
       order: 'desc',
+    });
+  });
+
+  it('propagates candidate-provider failures instead of returning a successful empty page', async () => {
+    const providerError = new Error('Elasticsearch unavailable');
+    const queryMemories = vi.fn().mockRejectedValue(new FtsSearchCandidateError(providerError));
+
+    vi.mocked(UserMemoryModel).mockImplementation(() => ({ queryMemories }) as any);
+    vi.mocked(getServerDB).mockResolvedValue(makeServerDBMock() as any);
+
+    const caller = userMemoriesRouter.createCaller(mockCtx as any);
+
+    await expect(caller.queryMemories({ q: 'atlas' })).rejects.toMatchObject({
+      cause: {
+        cause: providerError,
+        name: FtsSearchCandidateError.name,
+      },
+      code: 'INTERNAL_SERVER_ERROR',
     });
   });
 });

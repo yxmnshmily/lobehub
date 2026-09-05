@@ -15,7 +15,8 @@ vi.mock('react-router', () => ({
   useSearchParams: () => [{ get: mockSearchParamsGet }],
 }));
 
-vi.mock('@lobehub/ui/base-ui', () => ({
+vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   toast: { error: mockMessageError, success: vi.fn() },
 }));
 
@@ -38,7 +39,7 @@ vi.mock('@/business/client/hooks/useBusinessSignup', () => ({
 
 let mockEnableEmailVerification = false;
 let mockEnableBusinessFeatures = false;
-vi.mock('@/features/AuthShell', () => ({
+vi.mock('@/features/AuthShell/AuthServerConfigProvider', () => ({
   useAuthServerConfigStore: (selector: (s: any) => any) =>
     selector({
       serverConfig: {
@@ -60,7 +61,12 @@ describe('useSignUp', () => {
     mockEnableEmailVerification = false;
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...originalLocation, href: '', pathname: '/lobehub/signup' },
+      value: {
+        ...originalLocation,
+        href: '',
+        origin: originalLocation.origin,
+        pathname: '/lobehub/signup',
+      },
       writable: true,
     });
   });
@@ -132,7 +138,7 @@ describe('useSignUp', () => {
       });
 
       expect(mockSignUpEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ callbackURL: '/lobehub/onboarding' }),
+        expect.objectContaining({ callbackURL: `${originalLocation.origin}/lobehub/onboarding` }),
       );
       expect(window.location.href).toBe('/lobehub/onboarding');
     });
@@ -151,7 +157,7 @@ describe('useSignUp', () => {
 
       expect(mockSignUpEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: '/lobehub/onboarding?callbackUrl=%2Findex.html',
+          callbackURL: `${originalLocation.origin}/lobehub/onboarding?callbackUrl=%2Findex.html`,
         }),
       );
       expect(window.location.href).toBe('/lobehub/onboarding?callbackUrl=%2Findex.html');
@@ -172,8 +178,7 @@ describe('useSignUp', () => {
       );
       expect(mockSignUpEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL:
-            '/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=new%40example.com',
+          callbackURL: `${originalLocation.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=new%40example.com`,
         }),
       );
     });

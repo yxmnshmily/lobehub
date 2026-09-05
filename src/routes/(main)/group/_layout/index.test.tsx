@@ -45,6 +45,7 @@ vi.mock('@lobehub/ui', () => ({
 
 vi.mock('react-router', () => ({
   Outlet: () => <div data-testid="group-layout-outlet">outlet</div>,
+  useLocation: () => ({ pathname: `/group/${mocks.gid}`, search: '' }),
   useParams: () => ({ gid: mocks.gid }),
 }));
 

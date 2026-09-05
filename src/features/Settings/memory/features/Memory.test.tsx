@@ -11,14 +11,6 @@ import MemorySetting from './Memory';
 const setSettingsMock = vi.hoisted(() => vi.fn());
 const memorySettingsMock = vi.hoisted(() => ({ value: {} as { enabled?: boolean } }));
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-vi.mock('@/hooks/usePermission', () => ({
-  usePermission: () => ({ allowed: true }),
-}));
-
 vi.mock('@/hooks/useSaveState', () => ({
   useSaveState: () => ({
     lastSavedAt: undefined,

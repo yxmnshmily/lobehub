@@ -8,6 +8,7 @@ import type {
   ToolSource,
 } from '@lobechat/context-engine';
 import type {
+  AgentShareVisitorContext,
   ChatTopicBotContext,
   EvalToolForwardingConfig,
   ExpertiseContextSnapshot,
@@ -364,6 +365,14 @@ export interface OperationCreationParams {
    * `agt_*` IDs) — no per-step DB lookup, mirroring `botContext`.
    */
   agentGroup?: AgentGroupConfig;
+  /**
+   * Shared-agent visitor marker. Persisted to
+   * `state.metadata.agentShareVisitor` so every later step can re-derive the
+   * share's restrictions without re-reading the share, and so
+   * `AgentRuntimeService.executeStep` can re-prove the run's authorization at
+   * each step boundary.
+   */
+  agentShareVisitor?: AgentShareVisitorContext;
   appContext: {
     agentId?: string;
     /**
@@ -372,6 +381,8 @@ export interface OperationCreationParams {
      * read on the completion path to project receipts.
      */
     agentSignal?: AgentSignalOperationMarker;
+    /** Server-derived billing actor for a hosted group run. */
+    billingActorUserId?: string;
     /**
      * Client IP of the originating request. Spread onto `state.metadata.clientIp`
      * so downstream LLM-call metadata can carry it for auditing and spend
@@ -381,6 +392,8 @@ export interface OperationCreationParams {
     defaultTaskAssigneeAgentId?: string;
     documentId?: string | null;
     groupId?: string | null;
+    /** Signed server-derived hosted group run binding; never client-passable. */
+    hostedGroupRun?: unknown;
     isSubAgent?: boolean;
     /**
      * Group orchestration role, spread onto `state.metadata.orchestrationRole`.
@@ -393,6 +406,8 @@ export interface OperationCreationParams {
     platformManagedExecutionAuthorized?: true;
     /** Trusted generation limit; never accepted from public execution schemas. */
     platformManagedMaxCredits?: number;
+    /** Server-derived resource owner for a hosted group run. */
+    resourceOwnerUserId?: string;
     scope?: string | null;
     /** Conversation/session locator used to rebuild an authenticated Review route. */
     sessionId?: string;
@@ -413,6 +428,8 @@ export interface OperationCreationParams {
     subAgentProgress?: { parentOperationId: string; toolMessageId: string };
     taskId?: string;
     threadId?: string | null;
+    /** Server-owned deterministic tool policy for this operation. */
+    toolDispatchPolicy?: OperationToolDispatchPolicy;
     topicId?: string | null;
     trigger?: string;
     /**

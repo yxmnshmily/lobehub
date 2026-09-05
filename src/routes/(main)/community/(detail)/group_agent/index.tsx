@@ -13,7 +13,6 @@ import { DetailProvider } from './features/DetailProvider';
 import Details from './features/Details';
 import Header from './features/Header';
 import StatusPage from './features/StatusPage';
-import Loading from './loading';
 
 interface GroupAgentDetailPageProps {
   mobile?: boolean;
@@ -26,9 +25,7 @@ const GroupAgentDetailPage = memo<GroupAgentDetailPageProps>(({ mobile }) => {
 
   // Fetch group agent detail
   const useGroupAgentDetail = useDiscoverStore((s) => s.useGroupAgentDetail);
-  const { data, isLoading } = useGroupAgentDetail({ identifier, version });
-
-  if (isLoading) return <Loading />;
+  const { data } = useGroupAgentDetail({ identifier, version });
 
   if (!data) return <NotFound />;
 

@@ -146,6 +146,16 @@ describe('Better Auth verification security boundaries', () => {
     const verified = await verifyLatest(harness, accounts.a.email);
     expect(verified.status).toBe(200);
 
+    const deliveredVerificationCount = harness.verificationLinks.get(accounts.a.email)?.length;
+    const verifiedLogin = await harness.signIn(accounts.a.email, accounts.a.password);
+    expect(verifiedLogin.response.status).toBe(200);
+    expect(
+      Boolean(await harness.instance.auth.api.getSession({ headers: verifiedLogin.headers })),
+    ).toBe(true);
+    expect(harness.verificationLinks.get(accounts.a.email)?.length).toBe(
+      deliveredVerificationCount,
+    );
+
     const replayed = await harness.request(
       `/api/auth/verify-email?token=${encodeURIComponent(token!)}`,
       { method: 'GET' },

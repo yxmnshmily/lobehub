@@ -1,9 +1,11 @@
 import { Flexbox } from '@lobehub/ui';
 import { type FC } from 'react';
 import { Outlet, useParams } from 'react-router';
+import { SWRConfig } from 'swr';
 
 import AsyncError from '@/components/AsyncError';
 import SurfaceSkeleton from '@/components/Skeleton/Surface';
+import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import { isDesktop } from '@/const/version';
 import { GroupNotFound, GroupNotFoundGuard } from '@/features/GroupNotFound';
 import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
@@ -37,7 +39,11 @@ const Layout: FC = () => {
   } else if (gid) {
     content = (
       <GroupNotFoundGuard>
-        <Outlet />
+        <SWRConfig value={{ suspense: true }}>
+          <SuspenseRouteBoundary>
+            <Outlet />
+          </SuspenseRouteBoundary>
+        </SWRConfig>
       </GroupNotFoundGuard>
     );
   }

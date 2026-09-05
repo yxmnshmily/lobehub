@@ -1148,6 +1148,13 @@
       "when": 1788460000000,
       "tag": "0163_group_sponsored_default_member_template",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1788573107512,
+      "tag": "0164_upstream_v2_2_16_schema",
+      "breakpoints": true
     }
   ],
   "version": "6"

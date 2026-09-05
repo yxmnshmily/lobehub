@@ -9,13 +9,8 @@ import type * as ModelSelectModule from '@/components/ModelSelect';
 
 import { MultipleProvidersModelItem } from '../MultipleProvidersModelItem';
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
-
-vi.mock('@lobehub/ui', () => ({
+vi.mock('@lobehub/ui', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   DropdownMenuGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
@@ -39,13 +34,16 @@ vi.mock('@lobehub/ui', () => ({
       {children}
     </div>
   ),
-  Flexbox: ({ children, horizontal: _horizontal, ...props }: HTMLAttributes<HTMLDivElement> & { horizontal?: boolean }) => <div {...props}>{children}</div>,
+  Flexbox: ({
+    children,
+    horizontal: _horizontal,
+    ...props
+  }: HTMLAttributes<HTMLDivElement> & { horizontal?: boolean }) => <div {...props}>{children}</div>,
   Icon: () => <span />,
   Tag: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   Tooltip: ({ children, title }: { children: ReactNode; title: string }) => (
     <span data-testid={`tooltip-${title}`}>{children}</span>
   ),
-  menuSharedStyles: { item: 'item' },
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({

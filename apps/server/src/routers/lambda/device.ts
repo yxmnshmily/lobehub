@@ -313,7 +313,16 @@ export const deviceRouter = router({
         cwd: z.string().optional(),
         deviceId: z.string(),
         env: z.record(z.string(), z.string()).optional(),
-        type: z.enum(['codebuddy', 'cursor', 'grok-build', 'opencode', 'pi', 'qoder', 'trae']),
+        type: z.enum([
+          'codebuddy',
+          'cursor',
+          'droid',
+          'grok-build',
+          'opencode',
+          'pi',
+          'qoder',
+          'trae',
+        ]),
       }),
     )
     .query(async ({ ctx, input }) =>
@@ -609,7 +618,9 @@ export const deviceRouter = router({
   searchProjectFiles: deviceProcedure
     .input(
       z.object({
+        changedOnly: z.boolean().optional(),
         deviceId: z.string(),
+        excludeIgnored: z.boolean().optional(),
         limit: z.number().int().positive().max(500).optional(),
         query: z.string(),
         scope: z.string(),
@@ -617,7 +628,9 @@ export const deviceRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const result = await deviceGateway.searchProjectFiles({
+        changedOnly: input.changedOnly,
         deviceId: input.deviceId,
+        excludeIgnored: input.excludeIgnored,
         limit: input.limit,
         query: input.query,
         scope: input.scope,

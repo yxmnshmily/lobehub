@@ -84,11 +84,15 @@ describe('platform sponsored Credits migration metadata', () => {
     const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as {
       entries: Array<{ idx: number; tag: string }>;
     };
-    expect(journal.entries.at(-2)).toMatchObject({
+    const reservationEntryIndex = journal.entries.findIndex(
+      ({ idx, tag }) => idx === 161 && tag === '0161_platform_credit_reservations',
+    );
+    expect(reservationEntryIndex).toBeGreaterThanOrEqual(0);
+    expect(journal.entries[reservationEntryIndex]).toMatchObject({
       idx: 161,
       tag: '0161_platform_credit_reservations',
     });
-    expect(journal.entries.at(-1)).toMatchObject({
+    expect(journal.entries[reservationEntryIndex + 1]).toMatchObject({
       idx: 162,
       tag: '0162_platform_credit_sponsored_membership_purchase',
     });

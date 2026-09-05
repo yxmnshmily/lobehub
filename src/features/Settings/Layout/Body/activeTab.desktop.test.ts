@@ -61,7 +61,6 @@ vi.mock('@lobehub/ui', () => ({
   Flexbox: ({ children }: { children?: ReactNode }) => h('div', null, children),
   Text: ({ children }: { children?: ReactNode }) => h('span', null, children),
 }));
-
 const tab = (id: string, url: string) => ({ id, lastVisited: 0, url });
 
 const activeStateOf = (label: string) =>

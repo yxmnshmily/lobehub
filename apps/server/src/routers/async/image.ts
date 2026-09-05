@@ -5,7 +5,7 @@ import {
   resolveBusinessModelMapping,
 } from '@lobechat/business-model-runtime';
 import { type CreateImageMethodOptions } from '@lobechat/model-runtime';
-import { AsyncTaskError, AsyncTaskStatus, RequestTrigger } from '@lobechat/types';
+import { AsyncTaskError, AsyncTaskStatus, RequestTrigger, type SpendOrigin } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 import debug from 'debug';
 import { type RuntimeImageGenParams } from 'model-bank';
@@ -142,6 +142,7 @@ export const imageRouter = router({
       let platformReservationHandle: PlatformImageUsageReservationHandle | undefined;
       let platformReservationOwned = false;
       let platformProviderClaimAttempted = false;
+      let spendOrigin: SpendOrigin | undefined;
 
       log('Claiming pending image task');
       const claimed = await asyncTaskModel.transitionStatus(
@@ -163,16 +164,20 @@ export const imageRouter = router({
             identity: { generationId, provider, workspaceId },
             metadata,
             runtime: {
-              findPlatformImageReservation: (id) => reservations.getReservation(id),
+              findPlatformImageReservation: async (id) =>
+                (await reservations.getReservation(id)) ?? null,
               releasePlatformImageReservation: async (reservation) =>
                 (await reservations.releaseUnclaimed(reservation)).reservation,
-              settlePlatformImageReservation: async (reservation) =>
-                (
-                  await reservations.completeAndSettle({
-                    ...reservation,
-                    completeRequest: true,
-                  })
-                ).reservation,
+              settlePlatformImageReservation: async (reservation) => {
+                const result = await reservations.completeAndSettle({
+                  ...reservation,
+                  completeRequest: true,
+                });
+                if (!result.reservation) {
+                  throw new Error('Platform image reservation settlement did not persist.');
+                }
+                return result.reservation;
+              },
             },
           });
           if (recovery.state === 'settled') {
@@ -205,9 +210,13 @@ export const imageRouter = router({
               platformAiRuntime?: unknown;
               platformUsageReservation?: unknown;
               precharge?: unknown;
+              spendOrigin?: SpendOrigin;
             }
           | undefined;
         prechargeResult = taskMetadata?.precharge;
+        // Preserve request attribution across the async boundary, including
+        // free or unpriced legacy paths that have no precharge handle.
+        spendOrigin = taskMetadata?.spendOrigin;
         const requestedPlatformManagedExecution =
           ctx.modelRuntimeMode === 'platform-managed' && taskMetadata?.platformAiRuntime === true;
         platformManagedExecution = requestedPlatformManagedExecution;
@@ -444,6 +453,7 @@ export const imageRouter = router({
               await chargeAfterGenerate({
                 metrics: { latency: duration },
                 metadata: {
+                  ...spendOrigin,
                   asyncTaskId: taskId,
                   generationBatchId,
                   topicId: generationTopicId,
@@ -537,6 +547,7 @@ export const imageRouter = router({
             await chargeAfterGenerate({
               isError: true,
               metadata: {
+                ...spendOrigin,
                 asyncTaskId: taskId,
                 generationBatchId,
                 topicId: generationTopicId,

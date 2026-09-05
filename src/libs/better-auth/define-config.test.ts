@@ -175,13 +175,13 @@ describe('defineConfig', () => {
     delete process.env.no_proxy;
   });
 
-  it('does not require email verification again for password sign-in', async () => {
+  it('requires one-time registration verification when email verification is enabled', async () => {
     const { defineConfig } = await import('./define-config');
 
     defineConfig({ plugins: [] });
     const [options] = mocks.betterAuth.mock.lastCall!;
 
-    expect(options.emailAndPassword.requireEmailVerification).toBe(false);
+    expect(options.emailAndPassword.requireEmailVerification).toBe(true);
   });
 
   it('disables client session snapshots so account revocation reaches native auth endpoints', async () => {

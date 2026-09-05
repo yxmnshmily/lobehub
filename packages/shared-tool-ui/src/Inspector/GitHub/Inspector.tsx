@@ -228,14 +228,16 @@ const GitHubInspectorImpl = memo<BuiltinInspectorProps<Record<string, unknown>>>
     const { branch, primary } = pickChip(effectiveArgs);
 
     return (
-      <div
-        className={cx(
-          inspectorTextStyles.root,
-          (isArgumentsStreaming || isLoading) && shinyTextStyles.shinyText,
-        )}
-      >
+      <div className={inspectorTextStyles.root}>
         <GitHubMark />
-        <span className={styles.productPrefix}>{toolDisplayName || 'GitHub'}</span>
+        <span
+          className={cx(
+            styles.productPrefix,
+            (isArgumentsStreaming || isLoading) && shinyTextStyles.shinyText,
+          )}
+        >
+          {toolDisplayName || 'GitHub'}
+        </span>
         <span className={styles.chip}>
           <span className={styles.chipAction}>{label}</span>
           {primary && (

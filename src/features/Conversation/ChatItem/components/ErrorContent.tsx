@@ -1,5 +1,4 @@
-import { Skeleton } from '@lobehub/ui';
-import { Alert, Button } from '@lobehub/ui/base-ui';
+import { Alert, Button, Skeleton } from '@lobehub/ui/base-ui';
 import { RotateCcw } from 'lucide-react';
 import { memo, Suspense, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,9 +52,7 @@ const ErrorContent = memo<ErrorContentProps>(({ customErrorRender, error, id, on
   if (!error) return;
 
   if (customErrorRender) {
-    return (
-      <Suspense fallback={<Skeleton.Button active block />}>{customErrorRender(error)}</Suspense>
-    );
+    return <Suspense fallback={<Skeleton height={36} />}>{customErrorRender(error)}</Suspense>;
   }
 
   return (

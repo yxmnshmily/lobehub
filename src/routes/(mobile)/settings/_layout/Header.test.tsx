@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+// @vitest-environment happy-dom
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,7 @@ const renderHeader = (tab: string) => {
     { initialEntries: [`/acme/settings/${tab}`] },
   );
 
-  return renderToStaticMarkup(<RouterProvider router={router} />);
+  return render(<RouterProvider router={router} />);
 };
 
 describe('mobile settings Header', () => {
@@ -77,16 +77,16 @@ describe('mobile settings Header', () => {
       [{ element: <Header />, handle: { settingsTab: 'credits' }, path: '/settings/credits' }],
       { initialEntries: ['/settings/credits'] },
     );
-    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+    render(<RouterProvider router={router} />);
 
-    expect(html).toContain('>Credits 余额</span></header>');
+    expect(within(screen.getByRole('banner')).getByText('Credits 余额')).toBeInTheDocument();
   });
 
   it('gives the back button an accessible name', () => {
-    const html = renderHeader('credits');
+    renderHeader('credits');
 
-    expect(html).toContain('aria-label="back"');
-    expect(html).toContain('data-block-size="44"');
+    const button = within(screen.getByRole('banner')).getByRole('button', { name: 'back' });
+    expect(button).toHaveAttribute('data-block-size', '44');
   });
 
   it('returns workspace settings to the same workspace', () => {
@@ -113,9 +113,33 @@ describe('mobile settings Header', () => {
     ['service-model', 'setting:tab.serviceModel'],
     ['service-operations', '平台用户运营'],
   ])('resolves the workspace %s title', (tab, title) => {
-    const html = renderHeader(tab);
+    renderHeader(tab);
 
-    expect(html).toContain('<header>');
-    expect(html).toContain(`>${title}</span></header>`);
+    expect(within(screen.getByRole('banner')).getByText(title)).toBeInTheDocument();
+  });
+
+  it('recognizes a query-selected workspace provider and titles it', () => {
+    const router = createMemoryRouter(
+      [{ element: <Header />, path: '/:workspaceSlug/settings/:workspaceTab/*' }],
+      { initialEntries: ['/acme/settings/provider?active=provider&provider=openai'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    expect(within(screen.getByRole('banner')).getByText('openai')).toBeInTheDocument();
+  });
+
+  it('goes back to the workspace provider list from a query-selected provider', () => {
+    const router = createMemoryRouter(
+      [{ element: <Header />, path: '/:workspaceSlug/settings/:workspaceTab/*' }],
+      { initialEntries: ['/acme/settings/provider?active=provider&provider=openai'] },
+    );
+    navigate.mockClear();
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button'));
+
+    // Workspace-aware navigate without `escape` keeps the `/acme` prefix, so the
+    // user lands on the workspace provider list instead of personal settings.
+    expect(navigate).toHaveBeenCalledWith('/settings/provider');
   });
 });

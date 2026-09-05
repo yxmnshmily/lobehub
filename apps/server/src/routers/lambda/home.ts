@@ -7,6 +7,7 @@ import { AgentMigrationRepo } from '@/database/repositories/agentMigration';
 import { HomeRepository } from '@/database/repositories/home';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { createFtsSearchRepo } from '@/server/services/ftsSearch';
 import { type HomeBriefData, HomeService } from '@/server/services/home';
 import { type MyTravelGroupReadiness, UserService } from '@/server/services/user';
 import { assertDefaultTravelServiceMutationAllowed } from '@/server/services/user/travelServiceGroupMutationGuard';
@@ -55,6 +56,23 @@ const ensureMyTravelServiceReady = (
   travelServiceReadyPromises.set(userId, operation);
   return operation;
 };
+
+const homeSearchProcedure = homeProcedure.use(async (opts) => {
+  const { ctx } = opts;
+  const workspaceId = ctx.workspaceId ?? undefined;
+  const ftsSearchRepo = await createFtsSearchRepo({
+    db: ctx.serverDB,
+    userId: ctx.userId,
+    usage: 'home_search',
+    workspaceId,
+  });
+
+  return opts.next({
+    ctx: {
+      homeRepository: new HomeRepository(ctx.serverDB, ctx.userId, workspaceId, ftsSearchRepo),
+    },
+  });
+});
 
 export const homeRouter = router({
   ensureMyTravelServiceReady: homeProcedure
@@ -115,7 +133,7 @@ export const homeRouter = router({
       toPublicTravelGroupReadiness(await ctx.userService.checkTravelServiceReadiness(ctx.userId)),
     ),
 
-  searchAgents: homeProcedure
+  searchAgents: homeSearchProcedure
     .input(z.object({ keyword: z.string() }))
     .query(async ({ input, ctx }) => {
       return ctx.homeRepository.searchAgents(input.keyword);

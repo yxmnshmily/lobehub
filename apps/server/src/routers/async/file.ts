@@ -6,6 +6,7 @@ import pMap from 'p-map';
 import { z } from 'zod';
 
 import { checkEmbeddingUsage } from '@/business/server/trpc-middlewares/async';
+import { FILE_PARSE_SIZE_LIMIT_ERROR_MESSAGE, MAX_FILE_PARSE_SIZE } from '@/const/file';
 import { DEFAULT_FILE_EMBEDDING_MODEL_ITEM } from '@/const/settings/knowledge';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { ChunkModel } from '@/database/models/chunk';
@@ -207,6 +208,21 @@ export const fileRouter = router({
       const file = await fileModel.findById(input.fileId);
       if (!file) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'File not found' });
+      }
+
+      if (file.size > MAX_FILE_PARSE_SIZE) {
+        await asyncTaskModel.update(input.taskId, {
+          error: new AsyncTaskError(
+            AsyncTaskErrorType.FileTooLargeToParse,
+            FILE_PARSE_SIZE_LIMIT_ERROR_MESSAGE,
+          ),
+          status: AsyncTaskStatus.Error,
+        });
+
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: FILE_PARSE_SIZE_LIMIT_ERROR_MESSAGE,
+        });
       }
 
       // Inline documents (custom/document) keep a mirror file row whose url is the

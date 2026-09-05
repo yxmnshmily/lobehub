@@ -10,11 +10,11 @@ import {
   resolveAuthCallbackPath,
   withLobeHubMountPath,
 } from '@/features/Auth/utils/mountedPath';
-import { useAuthServerConfigStore } from '@/features/AuthShell';
+import { useAuthServerConfigStore } from '@/features/AuthShell/AuthServerConfigProvider';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 import { requestPasswordReset, signIn } from '@/libs/better-auth/auth-client';
 import { isBuiltinProvider, normalizeProviderId } from '@/libs/better-auth/utils/client';
-import { sanitizeRedirectPath } from '@/utils/onboardingRedirect';
+import { sanitizeRedirectPath, toAbsoluteAuthCallbackUrl } from '@/utils/onboardingRedirect';
 
 import { EMAIL_REGEX, USERNAME_REGEX } from './SignInEmailStep';
 
@@ -95,16 +95,20 @@ export const useSignIn = () => {
   const [email, setEmail] = useState('');
   const [sentInfo, setSentInfo] = useState<SentEmailInfo | null>(null);
   const [isSocialOnly, setIsSocialOnly] = useState(false);
-  const [lastAuthProvider] = useState(() => {
-    try {
-      return localStorage.getItem(LAST_AUTH_PROVIDER_KEY);
-    } catch {
-      return null;
-    }
-  });
+  // Read after mount, not during render: this page is prerendered, and a stored
+  // provider would make the first client render disagree with the document.
+  const [lastAuthProvider, setLastAuthProvider] = useState<string | null>(null);
   const serverConfigInit = useAuthServerConfigStore((s) => s.serverConfigInit);
   const oAuthSSOProviders = useAuthServerConfigStore((s) => s.serverConfig.oAuthSSOProviders) || [];
   const { getAdditionalData, preSocialSigninCheck, ssoProviders } = useBusinessSignin();
+
+  useEffect(() => {
+    try {
+      setLastAuthProvider(localStorage.getItem(LAST_AUTH_PROVIDER_KEY));
+    } catch {
+      // Private mode and blocked storage both just mean "no last provider".
+    }
+  }, []);
 
   useEffect(() => {
     const emailParam = searchParams.get('email');
@@ -127,11 +131,15 @@ export const useSignIn = () => {
 
       setSending(true);
       const callbackUrl = getCallbackUrl();
+      const authOrigin = window.location.origin;
       const { error } = await signIn.magicLink({
-        callbackURL: callbackUrl,
+        callbackURL: toAbsoluteAuthCallbackUrl(callbackUrl, authOrigin),
         email: emailValue,
         // First-time magic-link users are signups — land them on onboarding first
-        newUserCallbackURL: buildMountedOnboardingPath(searchParams.get('callbackUrl')),
+        newUserCallbackURL: toAbsoluteAuthCallbackUrl(
+          buildMountedOnboardingPath(searchParams.get('callbackUrl')),
+          authOrigin,
+        ),
       });
       if (error) {
         toast.error(t('betterAuth.signin.magicLinkError'));
@@ -220,7 +228,11 @@ export const useSignIn = () => {
       }
 
       const result = await signIn.email(
-        { callbackURL: callbackUrl, email, password: values.password },
+        {
+          callbackURL: toAbsoluteAuthCallbackUrl(callbackUrl, window.location.origin),
+          email,
+          password: values.password,
+        },
         {
           onError: (ctx) => {
             console.error('Email sign in failed', { status: ctx.error.status });
@@ -283,19 +295,24 @@ export const useSignIn = () => {
 
       const callbackUrl = getCallbackUrl();
       // First-time OAuth users are signups — land them on onboarding first
-      const newUserCallbackURL = buildMountedOnboardingPath(searchParams.get('callbackUrl'));
+      const authOrigin = window.location.origin;
+      const callbackURL = toAbsoluteAuthCallbackUrl(callbackUrl, authOrigin);
+      const newUserCallbackURL = toAbsoluteAuthCallbackUrl(
+        buildMountedOnboardingPath(searchParams.get('callbackUrl')),
+        authOrigin,
+      );
       const additionalData = await getAdditionalData();
       const signInWithAdditionalData = async () =>
         isBuiltinProvider(normalizedProvider)
           ? await signIn.social({
               additionalData,
-              callbackURL: callbackUrl,
+              callbackURL,
               newUserCallbackURL,
               provider: normalizedProvider,
             })
           : await signIn.oauth2({
               additionalData,
-              callbackURL: callbackUrl,
+              callbackURL,
               disableRedirect: isWechat,
               newUserCallbackURL,
               providerId: normalizedProvider,
@@ -355,8 +372,9 @@ export const useSignIn = () => {
       // throwing, so a failed send would otherwise land on the "email sent" screen.
       const { error } = await requestPasswordReset({
         email: targetEmail,
-        redirectTo: withLobeHubMountPath(
-          `/reset-password?email=${encodeURIComponent(targetEmail)}`,
+        redirectTo: toAbsoluteAuthCallbackUrl(
+          withLobeHubMountPath(`/reset-password?email=${encodeURIComponent(targetEmail)}`),
+          window.location.origin,
         ),
       });
       if (error) throw error;

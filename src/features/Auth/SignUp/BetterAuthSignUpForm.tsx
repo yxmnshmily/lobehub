@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { AuthCard } from '@/features/AuthCard';
-import { AuthAgreement, useAuthAgreement } from '@/features/AuthShell';
+import AuthAgreement, { useAuthAgreement } from '@/features/AuthShell/AuthAgreement';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 
 import { useSignUp } from './useSignUp';

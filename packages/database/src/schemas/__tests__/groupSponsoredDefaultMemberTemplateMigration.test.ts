@@ -34,11 +34,15 @@ describe('group-sponsored default member template migration metadata', () => {
     const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as {
       entries: Array<{ idx: number; tag: string }>;
     };
-    expect(journal.entries.at(-2)).toMatchObject({
+    const sponsoredEntryIndex = journal.entries.findIndex(
+      ({ idx, tag }) => idx === 162 && tag === '0162_platform_credit_sponsored_membership_purchase',
+    );
+    expect(sponsoredEntryIndex).toBeGreaterThanOrEqual(0);
+    expect(journal.entries[sponsoredEntryIndex]).toMatchObject({
       idx: 162,
       tag: '0162_platform_credit_sponsored_membership_purchase',
     });
-    expect(journal.entries.at(-1)).toMatchObject({
+    expect(journal.entries[sponsoredEntryIndex + 1]).toMatchObject({
       idx: 163,
       tag: '0163_group_sponsored_default_member_template',
     });

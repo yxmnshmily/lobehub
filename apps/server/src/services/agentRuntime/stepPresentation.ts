@@ -43,7 +43,14 @@ export function buildStepPresentation(
   let reasoning: string | undefined;
   let toolsCalling: Array<{ apiName: string; arguments?: string; identifier: string }> | undefined;
   let toolsResult:
-    | Array<{ apiName: string; identifier: string; isSuccess?: boolean; output?: string }>
+    | Array<{
+        apiName: string;
+        deviceExecutionTimeMs?: number;
+        executionTimeMs?: number;
+        identifier: string;
+        isSuccess?: boolean;
+        output?: string;
+      }>
     | undefined;
   let summary: string;
 
@@ -56,6 +63,8 @@ export function buildStepPresentation(
     toolsResult = [
       {
         apiName,
+        deviceExecutionTimeMs: toolPayload?.deviceExecutionTime,
+        executionTimeMs: toolPayload?.executionTime,
         identifier,
         isSuccess: toolPayload?.isSuccess !== false,
         output: serializeToolOutput(output),
@@ -68,6 +77,8 @@ export function buildStepPresentation(
     const rawToolResults = nextPayload?.toolResults || [];
     toolsResult = rawToolResults.map((r: any) => ({
       apiName: r.toolCall?.apiName || 'unknown',
+      deviceExecutionTimeMs: r.data?.deviceExecutionTime,
+      executionTimeMs: r.executionTime,
       identifier: r.toolCall?.identifier || 'unknown',
       isSuccess: r?.isSuccess !== false,
       output: serializeToolOutput(r.data),

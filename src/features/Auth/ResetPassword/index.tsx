@@ -7,7 +7,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import AuthCard from '@/features/AuthCard';
-import { useAuthServerConfigStore } from '@/features/AuthShell';
+import { useAuthServerConfigStore } from '@/features/AuthShell/AuthServerConfigProvider';
 
 import { ResetPasswordContent } from './ResetPasswordContent';
 

@@ -11,6 +11,7 @@ import {
 } from '@/features/AgentTransferMigration';
 import ChatMiniMap from '@/features/ChatMiniMap';
 import { ChatList, ConversationProvider } from '@/features/Conversation';
+import { useMessageDeepLink } from '@/features/Conversation/ChatList/hooks/useMessageDeepLink';
 import {
   ForwardMessageDispatcher,
   MessageForwardFooter,
@@ -40,6 +41,7 @@ interface ConversationAreaProps {
 const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
   const { t } = useTranslation('chat');
   const context = useGroupContext();
+  const messageDeepLink = useMessageDeepLink();
 
   // Get raw dbMessages from ChatStore for this context.
   // ConversationStore will parse them internally to generate displayMessages.
@@ -83,7 +85,7 @@ const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
         {topicPending ? (
           <TopicMigrationPlaceholder groupId={context.groupId} topicId={context.topicId} />
         ) : (
-          <ChatList welcome={<WelcomeChatItem />} />
+          <ChatList messageDeepLink={messageDeepLink} welcome={<WelcomeChatItem />} />
         )}
       </Flexbox>
       {topicPending ? (

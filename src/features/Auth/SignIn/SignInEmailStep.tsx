@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import AuthIcons from '@/components/AuthIcons';
 import AuthCard from '@/features/AuthCard';
-import { AuthAgreement, useAuthAgreement } from '@/features/AuthShell';
+import AuthAgreement, { useAuthAgreement } from '@/features/AuthShell/AuthAgreement';
 
 import { PhoneSignInForm } from './PhoneSignInForm';
 
