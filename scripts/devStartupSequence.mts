@@ -48,7 +48,9 @@ const findFreePort = async (startPort: number): Promise<number> => {
   for (let port = startPort; port < startPort + MAX_PORT_SCAN_ATTEMPTS; port++) {
     if (await isPortFree(port)) return port;
   }
-  throw new Error(`No free port found in range ${startPort}-${startPort + MAX_PORT_SCAN_ATTEMPTS - 1}`);
+  throw new Error(
+    `No free port found in range ${startPort}-${startPort + MAX_PORT_SCAN_ATTEMPTS - 1}`,
+  );
 };
 
 /**

@@ -1,4 +1,4 @@
-import  { type AiFullModelCard } from 'model-bank';
+import { type AiFullModelCard } from 'model-bank';
 import { describe, expect, it } from 'vitest';
 
 import { getModelMaxOutputs } from './getModelMaxOutputs';

@@ -7,6 +7,7 @@ import { zValidator } from '../common/validator';
 import { ApiKeyController } from '../controllers/api-key.controller';
 import { requireAuth } from '../middleware/auth';
 import { requireAnyPermission } from '../middleware/permission-check';
+import { requirePlatformAdmin } from '../middleware/platform-admin';
 import { requireWorkspaceRoleWhenScoped } from '../middleware/workspace';
 import {
   ApiKeyIdParamSchema,
@@ -26,6 +27,7 @@ app.get(
   '/',
   describeRoute({ summary: 'List API keys', tags: ['api-keys'] }),
   requireAuth,
+  requirePlatformAdmin,
   requireWorkspaceAdmin,
   requireAnyPermission(getAllScopePermissions('API_KEY_READ')),
   async (c) => new ApiKeyController().getApiKeys(c),
@@ -34,6 +36,7 @@ app.get(
 app.post(
   '/',
   requireAuth,
+  requirePlatformAdmin,
   requireWorkspaceAdmin,
   requireAnyPermission(getAllScopePermissions('API_KEY_CREATE')),
   zValidator('json', CreateApiKeyRequestSchema),
@@ -43,6 +46,7 @@ app.post(
 app.get(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireWorkspaceAdmin,
   requireAnyPermission(getAllScopePermissions('API_KEY_READ')),
   zValidator('param', ApiKeyIdParamSchema),
@@ -52,6 +56,7 @@ app.get(
 app.patch(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireWorkspaceAdmin,
   requireAnyPermission(getAllScopePermissions('API_KEY_UPDATE')),
   zValidator('param', ApiKeyIdParamSchema),
@@ -62,6 +67,7 @@ app.patch(
 app.delete(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireWorkspaceAdmin,
   requireAnyPermission(getAllScopePermissions('API_KEY_DELETE')),
   zValidator('param', ApiKeyIdParamSchema),

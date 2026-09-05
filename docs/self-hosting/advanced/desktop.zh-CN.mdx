@@ -50,7 +50,10 @@ LobeHub 桌面端可以与您自托管的 LobeHub 实例连接，以便您可以
 
 将生成的环境变量添加到您的部署配置中。
 
-<Callout>`OIDC_JWKS_KEY` 已改名为 `JWKS_KEY`。如果您的部署中仍配置的是 `OIDC_JWKS_KEY`，需要手动将其重命名为 `JWKS_KEY`—— 系统不会自动回退。</Callout>
+<Callout>
+  `OIDC_JWKS_KEY` 已改名为 `JWKS_KEY`。如果您的部署中仍配置的是
+  `OIDC_JWKS_KEY`，需要手动将其重命名为 `JWKS_KEY`—— 系统不会自动回退。
+</Callout>
 
 如果您使用一键部署方式（如 Vercel、Railway 等平台）部署 LobeHub，您需要：
 
@@ -85,9 +88,9 @@ proxy_buffers       8 16k;
 proxy_busy_buffers_size 32k;
 ```
 
-### invalid\_redirect\_uri 错误
+### invalid_redirect_uri 错误
 
-**问题：** 授权过程中遇到 "redirect\_uri did not match any of the client's registered redirect\_uris" 错误。
+**问题：** 授权过程中遇到 "redirect_uri did not match any of the client's registered redirect_uris" 错误。
 
 **解决方案：**
 

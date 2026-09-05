@@ -11,43 +11,39 @@ tags:
 
 # 目录架构
 
-LobeHub 采用 Monorepo 架构（`@lobechat/` 命名空间），
-顶层目录结构如下：
+LobeHub 采用 Monorepo 架构（`@lobechat/` 命名空间），顶层目录结构如下：
 
 ```bash
 lobehub/
 ├── apps/
-│   ├── cli/                   # LobeHub CLI
-│   ├── desktop/                # Electron 桌面应用
-│   └── server/                 # 独立服务端（tRPC routers、services、modules）
-├── packages/                  # 共享包（@lobechat/*）
-│   ├── agent-runtime/         # Agent 运行时
-│   ├── database/              # 数据库 schemas、models、repositories
-│   ├── model-runtime/         # 模型运行时（各 AI 提供商适配）
-│   ├── builtin-tool-*/        # 内置工具包
-│   ├── builtin-tools/         # 内置工具注册表（inspectors、interventions、renders 等）
-│   ├── business/              # Cloud 业务插槽 packages
-│   ├── context-engine/        # 上下文引擎
-│   ├── conversation-flow/     # 会话流程
-│   ├── editor-runtime/        # 编辑器运行时
-│   ├── file-loaders/          # 文件加载器
-│   ├── prompts/               # Prompt 模板
-│   ├── app-config/            # 应用配置（客户端与服务端环境变量）
-│   ├── env/                   # 环境变量定义和校验
-│   ├── locales/               # 国际化默认语言文件（英文）和 resources
-│   └── ...                    # 更多共享包
-├── src/                       # 主应用源码（见下方详细说明）
-├── locales/                   # i18n 翻译文件（zh-CN、en-US 等）
-├── e2e/                       # E2E 测试（Cucumber + Playwright）
-└── docs/                      # 文档
+│ ├── cli/               # LobeHub CLI
+│ ├── desktop/           # Electron 桌面应用
+│ └── server/            # 独立服务端（tRPC routers、services、modules）
+├── packages/            # 共享包（@lobechat/*）
+│ ├── agent-runtime/     # Agent 运行时
+│ ├── database/          # 数据库 schemas、models、repositories
+│ ├── model-runtime/     # 模型运行时（各 AI 提供商适配）
+│ ├── builtin-tool-*/    # 内置工具包
+│ ├── builtin-tools/     # 内置工具注册表（inspectors、interventions、renders 等）
+│ ├── business/          # Cloud 业务插槽 packages
+│ ├── context-engine/    # 上下文引擎
+│ ├── conversation-flow/ # 会话流程
+│ ├── editor-runtime/    # 编辑器运行时
+│ ├── file-loaders/      # 文件加载器
+│ ├── prompts/           # Prompt 模板
+│ ├── app-config/        # 应用配置（客户端与服务端环境变量）
+│ ├── env/               # 环境变量定义和校验
+│ ├── locales/           # 国际化默认语言文件（英文）和 resources
+│ └── ...                # 更多共享包
+├── src/                 # 主应用源码（见下方详细说明）
+├── locales/             # i18n 翻译文件（zh-CN、en-US 等）
+├── e2e/                 # E2E 测试（Cucumber + Playwright）
+└── docs/                # 文档
 ```
 
 ## src 目录
 
-`config/`、`envs/`、`locales/`、`tools/` 已从 `src/` 迁出，独立为 packages ——
-`packages/app-config`、`packages/env`、`packages/locales`、`packages/builtin-tools`。
-`@/config/*`、`@/envs/*`、`@/locales/*` 路径别名会优先解析到这些 packages（见 `tsconfig.json`），
-所以大部分 import 不需要改动。
+`config/`、`envs/`、`locales/`、`tools/` 已从 `src/` 迁出，独立为 packages —— `packages/app-config`、`packages/env`、`packages/locales`、`packages/builtin-tools`。 `@/config/*`、`@/envs/*`、`@/locales/*` 路径别名会优先解析到这些 packages（见 `tsconfig.json`），所以大部分 import 不需要改动。
 
 ```bash
 src/
@@ -91,14 +87,9 @@ src/
 
 页面路由现在拆分到三个目录中：
 
-- **`src/app/`** — Next.js App Router，仅负责后端 API 路由（`(backend)/`）以及两条负责渲染
-  SPA HTML 外壳的 Next.js 路由：`spa/[variants]/[[...path]]/route.ts`（主应用）
-  和 `spa-auth/[locale]/[[...path]]/route.ts`（认证页）。
-- **`src/routes/`** — SPA 页面片段，按平台路由组分组
-  （`(main)`、`(mobile)`、`(desktop)`、`(popup)`），以及 `auth/`、`onboarding/`、`share/`。
-  这些文件很薄，只负责委托给 `src/features/*` 中的实际 UI 和业务逻辑。
-- **`src/spa/`** — SPA 入口（`entry.web.tsx`、`entry.mobile.tsx`、`entry.desktop.tsx`、
-  `entry.popup.tsx`、`entry.auth.tsx`）和 `router/` 下的 React Router 配置。
+- **`src/app/`** — Next.js App Router，仅负责后端 API 路由（`(backend)/`）以及两条负责渲染 SPA HTML 外壳的 Next.js 路由：`spa/[variants]/[[...path]]/route.ts`（主应用）和 `spa-auth/[locale]/[[...path]]/route.ts`（认证页）。
+- **`src/routes/`** — SPA 页面片段，按平台路由组分组（`(main)`、`(mobile)`、`(desktop)`、`(popup)`），以及 `auth/`、`onboarding/`、`share/`。这些文件很薄，只负责委托给 `src/features/*` 中的实际 UI 和业务逻辑。
+- **`src/spa/`** — SPA 入口（`entry.web.tsx`、`entry.mobile.tsx`、`entry.desktop.tsx`、 `entry.popup.tsx`、`entry.auth.tsx`）和 `router/` 下的 React Router 配置。
 
 ```bash
 app/
@@ -136,17 +127,17 @@ src/routes/
 
 ```bash
 src/spa/
-├── entry.web.tsx           # 桌面 Web 入口
-├── entry.mobile.tsx        # 移动端入口
-├── entry.desktop.tsx       # Electron 桌面端入口
-├── entry.popup.tsx         # 弹出窗口入口
-├── entry.auth.tsx          # 认证页入口
+├── entry.web.tsx     # 桌面 Web 入口
+├── entry.mobile.tsx  # 移动端入口
+├── entry.desktop.tsx # Electron 桌面端入口
+├── entry.popup.tsx   # 弹出窗口入口
+├── entry.auth.tsx    # 认证页入口
 └── router/
-    ├── desktopRouter.config.tsx           # 桌面端 React Router 路由
-    ├── desktopRouter.config.desktop.tsx   # 桌面端（Electron）变体，需与上者保持同步
-    ├── mobileRouter.config.tsx            # 移动端 React Router 路由
-    ├── popupRouter.config.tsx             # 弹出窗口路由
-    └── authRouter.config.tsx              # 认证页路由
+├── desktopRouter.config.tsx         # 桌面端 React Router 路由
+├── desktopRouter.config.desktop.tsx # 桌面端（Electron）变体，需与上者保持同步
+├── mobileRouter.config.tsx          # 移动端 React Router 路由
+├── popupRouter.config.tsx           # 弹出窗口路由
+└── authRouter.config.tsx            # 认证页路由
 ```
 
 ### 架构说明
@@ -167,8 +158,7 @@ src/spa/
 
 - REST API：`(backend)/api/` 和 `(backend)/webapi/`
 - tRPC 端点（`apps/server/src/routers/`）：按运行时分组
-  - `lambda/` — 主要业务路由（agent、session、message、
-    topic、file、knowledge、settings 等）
+  - `lambda/` — 主要业务路由（agent、session、message、topic、file、knowledge、settings 等）
   - `async/` — 耗时异步操作（文件处理、图像生成、RAG 评估）
   - `tools/` — 工具调用（search、MCP、market、composio）
   - `mobile/` — 移动端专用路由
@@ -203,14 +193,9 @@ PostgreSQL
 
 ### 路由架构
 
-项目采用混合路由：
-Next.js App Router 负责渲染 SPA 的 HTML 外壳和静态 / 认证页面，
-React Router DOM 在浏览器中加载 bundle 后承载主应用 SPA。
+项目采用混合路由：Next.js App Router 负责渲染 SPA 的 HTML 外壳和静态 / 认证页面，React Router DOM 在浏览器中加载 bundle 后承载主应用 SPA。
 
-**入口**：Next.js 路由 `src/app/spa/[variants]/[[...path]]/route.ts`
-渲染 HTML 外壳（根据设备类型选择桌面端或移动端模板），
-随后加载 `src/spa/` 下对应的 Vite 入口（`entry.web.tsx`、`entry.mobile.tsx`
-或 `entry.desktop.tsx`）来挂载 React Router 应用。
+**入口**：Next.js 路由 `src/app/spa/[variants]/[[...path]]/route.ts` 渲染 HTML 外壳（根据设备类型选择桌面端或移动端模板），随后加载 `src/spa/` 下对应的 Vite 入口（`entry.web.tsx`、`entry.mobile.tsx` 或 `entry.desktop.tsx`）来挂载 React Router 应用。
 
 **关键配置文件：**
 
@@ -223,40 +208,40 @@ React Router DOM 在浏览器中加载 bundle 后承载主应用 SPA。
 **桌面端 SPA 路由（React Router DOM）：**
 
 ```bash
-/                          # 首页
-/agent/:aid                # Agent 会话
-/agent/:aid/profile        # Agent 详情
-/agent/:aid/cron/:cronId   # 定时任务详情
-/group/:gid                # 群组会话
-/group/:gid/profile        # 群组详情
-/community                 # 社区发现（agent、model、provider、mcp）
-/community/agent/:slug     # Agent 详情页
-/community/model/:slug     # 模型详情页
-/community/provider/:slug  # 提供商详情页
-/community/mcp/:slug       # MCP 详情页
-/resource                  # 资源管理
-/resource/library/:id      # 知识库详情
-/settings/:tab             # 设置（profile、provider 等）
-/settings/provider/:id     # 模型提供商配置
-/memory                    # 记忆管理
-/image                     # 图像生成
-/page/:id                  # 页面详情
-/share/t/:id               # 分享话题
-/onboarding                # 新用户引导
+/                         # 首页
+/agent/:aid               # Agent 会话
+/agent/:aid/profile       # Agent 详情
+/agent/:aid/cron/:cronId  # 定时任务详情
+/group/:gid               # 群组会话
+/group/:gid/profile       # 群组详情
+/community                # 社区发现（agent、model、provider、mcp）
+/community/agent/:slug    # Agent 详情页
+/community/model/:slug    # 模型详情页
+/community/provider/:slug # 提供商详情页
+/community/mcp/:slug      # MCP 详情页
+/resource                 # 资源管理
+/resource/library/:id     # 知识库详情
+/settings/:tab            # 设置（profile、provider 等）
+/settings/provider/:id    # 模型提供商配置
+/memory                   # 记忆管理
+/image                    # 图像生成
+/page/:id                 # 页面详情
+/share/t/:id              # 分享话题
+/onboarding               # 新用户引导
 ```
 
 **移动端 SPA 路由（React Router DOM）：**
 
 ```bash
-/                          # 首页
-/agent/:aid                # Agent 会话
-/community                 # 社区发现
-/settings                  # 设置首页
-/settings/:tab             # 设置详情
-/settings/provider/:id     # 模型提供商配置
-/me                        # 个人中心
-/me/profile                # 个人资料
-/me/settings               # 个人设置
-/share/t/:id               # 分享话题
-/onboarding                # 新用户引导
+/                      # 首页
+/agent/:aid            # Agent 会话
+/community             # 社区发现
+/settings              # 设置首页
+/settings/:tab         # 设置详情
+/settings/provider/:id # 模型提供商配置
+/me                    # 个人中心
+/me/profile            # 个人资料
+/me/settings           # 个人设置
+/share/t/:id           # 分享话题
+/onboarding            # 新用户引导
 ```

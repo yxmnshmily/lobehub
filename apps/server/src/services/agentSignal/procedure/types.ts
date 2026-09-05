@@ -1,13 +1,7 @@
 export type AgentSignalProcedureStatus = 'failed' | 'handled' | 'observed' | 'suppressed';
 export type AgentSignalProcedureMarkerType = 'accumulated' | 'handled' | 'suppressed';
 export type AgentSignalProcedureReceiptStatus =
-  | 'acknowledged'
-  | 'failed'
-  | 'handled'
-  | 'processing'
-  | 'queued'
-  | 'skipped'
-  | 'updated';
+  'acknowledged' | 'failed' | 'handled' | 'processing' | 'queued' | 'skipped' | 'updated';
 
 /**
  * Related object attached to a compact procedure fact.

@@ -14,6 +14,9 @@ vi.mock('@/business/server/aiProvider', () => ({
 vi.mock('@/database/models/aiModel');
 vi.mock('@/database/models/user');
 vi.mock('@/database/repositories/aiInfra');
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: vi.fn((opts: any) => opts.next({ ctx: opts.ctx })),
+}));
 vi.mock('@/server/globalConfig', () => ({
   getServerGlobalConfig: vi.fn().mockReturnValue({
     aiProvider: {},

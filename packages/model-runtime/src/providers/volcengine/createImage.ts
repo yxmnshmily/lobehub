@@ -3,7 +3,9 @@ import type { RuntimeImageGenParamsValue } from 'model-bank';
 import OpenAI from 'openai';
 
 import type { CreateImageOptions } from '../../core/openaiCompatibleFactory';
+import { computeImageCost } from '../../core/usageConverters';
 import type { CreateImagePayload, CreateImageResponse } from '../../types/image';
+import { getModelPricing } from '../../utils/getModelPricing';
 
 const log = createDebug('lobe-image:volcengine');
 
@@ -135,9 +137,13 @@ export async function createVolcengineImage(
     }
   }
 
+  const pricing = await getModelPricing(model, options.provider, options.pricingContext);
+  const imageCost = pricing ? computeImageCost(pricing, params, 1) : undefined;
+
   return {
     height,
     imageUrl,
+    ...(imageCost ? { modelUsage: { cost: imageCost.totalCost } } : {}),
     width,
   };
 }

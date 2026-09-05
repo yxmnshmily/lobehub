@@ -14,12 +14,17 @@ import { GITHUB, GITHUB_ISSUES } from '@/const/url';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { isOnServerSide } from '@/utils/env';
 
-const styles = createStaticStyles(
-  ({ css, cssVar }) => css`
+const styles = createStaticStyles(({ css, cssVar }) => ({
+  footer: css`
     font-size: 12px;
     color: ${cssVar.colorTextSecondary};
   `,
-);
+  link: css`
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  `,
+}));
 
 export const LayoutSettingsFooterClassName = 'settings-layout-footer';
 
@@ -70,11 +75,19 @@ const Footer = memo<PropsWithChildren>(() => {
 
   return hideGitHubEngagementFooter ? null : (
     <Flexbox className={LayoutSettingsFooterClassName} justify={'flex-end'}>
-      <Center horizontal as={'footer'} className={styles} flex={'none'} padding={16} width={'100%'}>
+      <Center
+        horizontal
+        as={'footer'}
+        className={styles.footer}
+        flex={'none'}
+        padding={16}
+        width={'100%'}
+      >
         <div style={{ textAlign: 'center' }}>
           <Icon icon={MessageSquareHeart} /> {`${t('footer.title')} `}
           <a
             aria-label={'star'}
+            className={styles.link}
             href={GITHUB}
             onClick={(e) => {
               e.preventDefault();
@@ -86,6 +99,7 @@ const Footer = memo<PropsWithChildren>(() => {
           {` ${t('footer.and')} `}
           <a
             aria-label={'feedback'}
+            className={styles.link}
             href={GITHUB_ISSUES}
             onClick={(e) => {
               e.preventDefault();

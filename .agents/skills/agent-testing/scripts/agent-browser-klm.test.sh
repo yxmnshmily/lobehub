@@ -80,8 +80,8 @@ if (result.interactionCost.totalSeconds !== 8.1) {
 JS
 
 grep -Fq -- "--session app click @e1" "$AGENT_BROWSER_STUB_LOG" || fail "wrapper did not forward click"
-grep -Fq -- "--engine chrome --args --no-proxy-server open about:blank" "$AGENT_BROWSER_STUB_LOG" ||
-  fail "wrapper did not forward global flags"
+grep -Fq -- "--engine chrome --args --no-proxy-server open about:blank" "$AGENT_BROWSER_STUB_LOG" \
+  || fail "wrapper did not forward global flags"
 
 node - "$trace_flags" << 'JS'
 const fs = require('fs');

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/favicon.ico" />
-    <link rel="shortcut icon" href="/favicon-32x32.ico" />
+    <link rel="icon" type="image/png" href="/lobehub/app-icons/travel-cloud-mascot.png" />
+    <link rel="shortcut icon" type="image/png" href="/lobehub/app-icons/travel-cloud-mascot.png" />
     <!--SEO_META-->
     <style>
       html body {
@@ -18,15 +18,17 @@
       window.__LOBE_BOOT_T_HTML__ = performance.now();
     </script>
     <script>
-      (function(){
-        var O=globalThis.Worker;
-        globalThis.Worker=function(u,o){
-          var h=typeof u==='string'?u:u instanceof URL?u.href:'';
-          if(h.startsWith('http')&&!h.startsWith(location.origin)){
-            var b=new Blob(['import "'+h+'";'],{type:'application/javascript'});
-            return new O(URL.createObjectURL(b),Object.assign({},o,{type:'module'}));
-          }return new O(u,o)};
-        globalThis.Worker.prototype=O.prototype;
+      (function () {
+        var O = globalThis.Worker;
+        globalThis.Worker = function (u, o) {
+          var h = typeof u === 'string' ? u : u instanceof URL ? u.href : '';
+          if (h.startsWith('http') && !h.startsWith(location.origin)) {
+            var b = new Blob(['import "' + h + '";'], { type: 'application/javascript' });
+            return new O(URL.createObjectURL(b), Object.assign({}, o, { type: 'module' }));
+          }
+          return new O(u, o);
+        };
+        globalThis.Worker.prototype = O.prototype;
       })();
     </script>
     <script>

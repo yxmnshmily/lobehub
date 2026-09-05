@@ -4,6 +4,7 @@ import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, InputNumber } from '@lobehub/ui';
 import { ActionIcon, SliderWithInput, Switch, Tabs, Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
+import { useResponsive } from 'antd-style';
 import { Clock3, Dices } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -182,7 +183,7 @@ const DurationItem = memo(() => {
 });
 
 const SeedItem = memo(() => {
-  const { t } = useTranslation('video');
+  const { t } = useTranslation(['video', 'common']);
   const { allowed: canCreate } = usePermission('create_content');
   const { value, setValue } = useVideoGenerationConfigParam('seed');
 
@@ -289,6 +290,7 @@ const PromptExtendItem = memo(() => {
 });
 
 const PromptInput = ({ showTitle = false }: PromptInputProps) => {
+  const { mobile = false } = useResponsive();
   const isDarkMode = useIsDark();
   const { t } = useTranslation('video');
   const { allowed: canCreate } = usePermission('create_content');
@@ -568,15 +570,16 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                 }}
               >
                 <ActionIcon
+                  aria-label={currentModel ?? t('config.model.label')}
                   icon={<ModelIcon model={currentModel ?? ''} size={22} />}
                   size={{
-                    blockSize: 36,
+                    blockSize: mobile ? 44 : 36,
                     size: 20,
                   }}
                 />
               </ModelSwitchPanel>
               <ConfigAction
-                title={t('config.title', { defaultValue: 'Config' })}
+                title={t('setting', { ns: 'common' })}
                 content={
                   <Flexbox gap={12}>
                     {isSupportAspectRatio && (

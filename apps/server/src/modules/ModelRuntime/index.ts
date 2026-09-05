@@ -489,9 +489,15 @@ export const initModelRuntimeFromDB = async (
   userId: string,
   provider: string,
   workspaceId?: string,
+  credentialOptions?: ModelRuntimeCredentialOptions,
 ): Promise<ModelRuntime> => {
+  const credentialOwnerId = credentialOptions?.credentialOwnerId ?? userId;
+  // Platform-managed credentials are deliberately personal to the configured
+  // owner. Customer workspace ids must never select or create owner rows.
+  const credentialWorkspaceId = credentialOptions?.credentialOwnerId ? undefined : workspaceId;
+
   // 1. Get user's provider configuration from database
-  const aiProviderModel = new AiProviderModel(db, userId, workspaceId);
+  const aiProviderModel = new AiProviderModel(db, credentialOwnerId, credentialWorkspaceId);
 
   // Use getAiProviderById with KeyVaultsGateKeeper.getUserKeyVaults as decryptor
   const providerConfig = await aiProviderModel.getAiProviderById(
@@ -521,8 +527,8 @@ export const initModelRuntimeFromDB = async (
       db,
       keyVaults,
       providerId: provider,
-      userId,
-      workspaceId,
+      userId: credentialOwnerId,
+      workspaceId: credentialWorkspaceId,
     });
     keyVaults = { ...keyVaults, ...freshKeyVaults } as ProviderKeyVaults;
   }
@@ -540,6 +546,15 @@ export const initModelRuntimeFromDB = async (
   // 6. Initialize ModelRuntime with the payload and hooks
   return initModelRuntimeWithUserPayload(provider, payload, { userId, workspaceId }, hooks);
 };
+
+/**
+ * Internal-only credential principal override. Callers must resolve this from
+ * trusted server configuration; it is intentionally absent from every tRPC
+ * input and browser-facing contract.
+ */
+export interface ModelRuntimeCredentialOptions {
+  credentialOwnerId?: string;
+}
 
 export const SERVER_DEFAULT_HETEROGENEOUS_AGENT_TYPES = ['claude-code', 'codex'] as const;
 export type ServerDefaultHeterogeneousAgentType =

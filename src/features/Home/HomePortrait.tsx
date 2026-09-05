@@ -43,7 +43,7 @@ const styles = createStaticStyles(({ css }) => ({
 const HomePortrait = memo(() => {
   // The portrait depicts whoever home is addressing, so it follows the same
   // selection the composer sends to — not the Inbox Agent it defaults to.
-  const { agentId } = useResolvedHomeAgentId();
+  const { agentId, isInbox } = useResolvedHomeAgentId();
   const useFetchAgentConfig = useAgentStore((s) => s.useFetchAgentConfig);
   // A freshly picked agent may not be in the store yet; without this the
   // portrait would silently stay on the previous one's artwork.
@@ -54,7 +54,7 @@ const HomePortrait = memo(() => {
   // the built-in catalog covers everyone else.
   const fullBodyArtwork = useAgentStore(agentSelectors.getAgentFullBodyArtworkById(agentId ?? ''));
   const artwork = resolveChiefAgentArtwork(meta.avatar || DEFAULT_INBOX_AVATAR);
-  const hero = fullBodyArtwork || artwork.hero;
+  const hero = isInbox ? DEFAULT_INBOX_AVATAR : fullBodyArtwork || artwork.hero;
 
   return (
     <div className={styles.root}>

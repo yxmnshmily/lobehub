@@ -7,7 +7,6 @@ export default defineConfig({
       '@/const': resolve(__dirname, '../const/src'),
       '@/utils': resolve(__dirname, './src'),
       '@': resolve(__dirname, '../../src'),
-
     },
     coverage: {
       all: false,

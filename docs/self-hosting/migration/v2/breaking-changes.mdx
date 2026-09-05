@@ -1,8 +1,7 @@
 ---
 title: LobeHub 2.0 Breaking Changes
 description: >-
-  A comprehensive guide to breaking changes in LobeHub 2.0 and how to migrate
-  from version 1.x.
+  A comprehensive guide to breaking changes in LobeHub 2.0 and how to migrate from version 1.x.
 tags:
   - LobeHub 2.0
   - Migration
@@ -18,18 +17,18 @@ This document outlines the breaking changes introduced in LobeHub 2.0 and provid
 
 The following environment variables have been removed in LobeHub 2.0:
 
-| Environment Variable                | Removal Reason                                               |
-| ----------------------------------- | ------------------------------------------------------------ |
-| `ACCESS_CODE`                       | No longer supported, use Better Auth authentication system   |
-| `NEXT_PUBLIC_SERVICE_MODE`          | 2.0 only supports Server DB mode, Client DB (PGlite) removed |
-| `NEXT_PUBLIC_ENABLE_BETTER_AUTH`    | Automatically detected via `AUTH_SECRET` presence            |
-| `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` | Automatically detected from request headers                  |
-| `NEXT_PUBLIC_ENABLE_NEXT_AUTH`      | NextAuth removed                                             |
-| `NEXT_AUTH_SECRET`                  | NextAuth removed                                             |
-| `NEXT_AUTH_SSO_PROVIDERS`           | NextAuth removed                                             |
-| `NEXTAUTH_URL`                      | NextAuth removed                                             |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk removed                                                |
-| `CLERK_SECRET_KEY`                  | Clerk removed                                                |
+| Environment Variable | Removal Reason |
+| --- | --- |
+| `ACCESS_CODE` | No longer supported, use Better Auth authentication system |
+| `NEXT_PUBLIC_SERVICE_MODE` | 2.0 only supports Server DB mode, Client DB (PGlite) removed |
+| `NEXT_PUBLIC_ENABLE_BETTER_AUTH` | Automatically detected via `AUTH_SECRET` presence |
+| `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` | Automatically detected from request headers |
+| `NEXT_PUBLIC_ENABLE_NEXT_AUTH` | NextAuth removed |
+| `NEXT_AUTH_SECRET` | NextAuth removed |
+| `NEXT_AUTH_SSO_PROVIDERS` | NextAuth removed |
+| `NEXTAUTH_URL` | NextAuth removed |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk removed |
+| `CLERK_SECRET_KEY` | Clerk removed |
 
 ## New Required Environment Variables
 
@@ -76,6 +75,6 @@ For deployment guides, see [Getting Started](/docs/self-hosting/start).
 
 LobeHub 2.0 recommends using **PostgreSQL 17** or higher.
 
-This is because LobeHub 2.0 uses the [pg\_search](https://github.com/paradedb/paradedb/tree/main/pg_search) extension for full-text search capabilities. If you use Serverless Postgres services like Neon, the pg\_search extension is only available on PostgreSQL 17.
+This is because LobeHub 2.0 uses the [pg_search](https://github.com/paradedb/paradedb/tree/main/pg_search) extension for full-text search capabilities. If you use Serverless Postgres services like Neon, the pg_search extension is only available on PostgreSQL 17.
 
 If you self-host your database with Docker, we recommend using the `paradedb/paradedb:latest-pg17` image.

@@ -88,10 +88,10 @@ mkdir apps/server/src/services/bot/platforms/<platform-name>
 
 需要创建四个文件：
 
-| 文件              | 用途                                    |
-| --------------- | ------------------------------------- |
-| `schema.ts`     | 凭据和设置的字段定义                            |
-| `api.ts`        | 用于出站消息的轻量 API 客户端                     |
+| 文件            | 用途                                    |
+| --------------- | --------------------------------------- |
+| `schema.ts`     | 凭据和设置的字段定义                    |
+| `api.ts`        | 用于出站消息的轻量 API 客户端           |
 | `client.ts`     | `ClientFactory` + `PlatformClient` 实现 |
 | `definition.ts` | `PlatformDefinition` 导出               |
 
@@ -185,7 +185,7 @@ export class PlatformApi {
     const response = await fetch(`${API_BASE}/${method}`, {
       body: JSON.stringify(body),
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        'Authorization': `Bearer ${this.token}`,
         'Content-Type': 'application/json',
       },
       method: 'POST',
@@ -252,7 +252,7 @@ class MyPlatformClient implements PlatformClient {
   createAdapter(): Record<string, any> {
     // 返回 Chat SDK adapter 实例用于入站消息处理
     return {
-      'platform': createPlatformAdapter({
+      platform: createPlatformAdapter({
         botToken: this.config.credentials.botToken,
         // ... adapter 特定配置
       }),
@@ -312,17 +312,17 @@ export class MyPlatformClientFactory extends ClientFactory {
 
 **需要实现的关键接口：**
 
-| 方法                    | 用途                           |
-| --------------------- | ---------------------------- |
-| `start()`             | 注册 webhook 或启动网关监听           |
-| `stop()`              | 关闭时清理资源                      |
-| `createAdapter()`     | 返回 Chat SDK adapter 用于入站事件处理 |
-| `getMessenger()`      | 返回指定会话的出站消息接口                |
-| `extractChatId()`     | 从复合会话 ID 中解析平台频道 ID          |
-| `parseMessageId()`    | 将复合消息 ID 转换为平台原生格式           |
-| `sanitizeUserInput()` | \*（可选）\* 去除用户输入中的 Bot 提及标记   |
-| `shouldSubscribe()`   | \*（可选）\* 控制会话自动订阅行为          |
-| `formatReply()`       | \*（可选）\* 在回复中追加平台特定的格式化内容    |
+| 方法                  | 用途                                          |
+| --------------------- | --------------------------------------------- |
+| `start()`             | 注册 webhook 或启动网关监听                   |
+| `stop()`              | 关闭时清理资源                                |
+| `createAdapter()`     | 返回 Chat SDK adapter 用于入站事件处理        |
+| `getMessenger()`      | 返回指定会话的出站消息接口                    |
+| `extractChatId()`     | 从复合会话 ID 中解析平台频道 ID               |
+| `parseMessageId()`    | 将复合消息 ID 转换为平台原生格式              |
+| `sanitizeUserInput()` | \*（可选）\* 去除用户输入中的 Bot 提及标记    |
+| `shouldSubscribe()`   | \*（可选）\* 控制会话自动订阅行为             |
+| `formatReply()`       | \*（可选）\* 在回复中追加平台特定的格式化内容 |
 
 ## 第五步：导出定义（`definition.ts`）
 

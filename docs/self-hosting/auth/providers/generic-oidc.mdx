@@ -1,8 +1,7 @@
 ---
 title: Configuring Generic OIDC Authentication for LobeHub
 description: >-
-  Learn how to configure any OpenID Connect provider for LobeHub using Generic
-  OIDC integration.
+  Learn how to configure any OpenID Connect provider for LobeHub using Generic OIDC integration.
 tags:
   - Generic OIDC
   - OpenID Connect
@@ -18,43 +17,44 @@ Use Generic OIDC to integrate LobeHub with any OpenID Connect compliant identity
 <Steps>
   ### Configure Your OIDC Provider
 
-  In your identity provider's admin console:
+In your identity provider's admin console:
 
-  1. Create a new OIDC/OAuth2 application
-  2. Set the application type to **Web Application** or **Confidential Client**
-  3. Enable required scopes: `openid`, `profile`, `email`
-  4. Note down **Client ID** and **Client Secret**
+1. Create a new OIDC/OAuth2 application
+2. Set the application type to **Web Application** or **Confidential Client**
+3. Enable required scopes: `openid`, `profile`, `email`
+4. Note down **Client ID** and **Client Secret**
 
-  ### Configure Redirect URI
+### Configure Redirect URI
 
-  Add the callback URL to your OIDC provider:
+Add the callback URL to your OIDC provider:
 
   <Callout type={'info'}>
     Callback URL format:
 
     - Local development: `http://localhost:3210/api/auth/callback/generic-oidc`
     - Production: `https://your-domain.com/api/auth/callback/generic-oidc`
+
   </Callout>
 
-  ### Find Your Issuer URL
+### Find Your Issuer URL
 
-  The issuer URL is typically found in your provider's OIDC discovery document:
+The issuer URL is typically found in your provider's OIDC discovery document:
 
-  ```
-  https://your-provider/.well-known/openid-configuration
-  ```
+```
+https://your-provider/.well-known/openid-configuration
+```
 
-  Look for the `issuer` field in the JSON response.
+Look for the `issuer` field in the JSON response.
 
-  ### Configure Environment Variables
+### Configure Environment Variables
 
-  | Environment Variable       | Type     | Description                                                     |
-  | -------------------------- | -------- | --------------------------------------------------------------- |
-  | `AUTH_SECRET`              | Required | Session encryption key, generate with `openssl rand -base64 32` |
-  | `AUTH_SSO_PROVIDERS`       | Required | Set to `generic-oidc`                                           |
-  | `AUTH_GENERIC_OIDC_ID`     | Required | Client ID                                                       |
-  | `AUTH_GENERIC_OIDC_SECRET` | Required | Client Secret                                                   |
-  | `AUTH_GENERIC_OIDC_ISSUER` | Required | OIDC issuer URL (e.g., `https://your-provider.com`)             |
+| Environment Variable | Type | Description |
+| --- | --- | --- |
+| `AUTH_SECRET` | Required | Session encryption key, generate with `openssl rand -base64 32` |
+| `AUTH_SSO_PROVIDERS` | Required | Set to `generic-oidc` |
+| `AUTH_GENERIC_OIDC_ID` | Required | Client ID |
+| `AUTH_GENERIC_OIDC_SECRET` | Required | Client Secret |
+| `AUTH_GENERIC_OIDC_ISSUER` | Required | OIDC issuer URL (e.g., `https://your-provider.com`) |
 
   <Callout type={'tip'}>
     Go to [📘 Environment Variables](/docs/self-hosting/environment-variables/auth#generic-oidc)
@@ -63,8 +63,8 @@ Use Generic OIDC to integrate LobeHub with any OpenID Connect compliant identity
 </Steps>
 
 <Callout type={'info'}>
-  After successful deployment, users will be able to authenticate with your OIDC
-  provider and use LobeHub.
+  After successful deployment, users will be able to authenticate with your OIDC provider and use
+  LobeHub.
 </Callout>
 
 ## Troubleshooting

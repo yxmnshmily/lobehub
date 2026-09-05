@@ -226,6 +226,24 @@ export class AiInfraRepos {
     Object.entries(result).forEach(([key, value]) => {
       runtimeConfig[key] = merge(this.providerConfigs[key] || {}, value);
     });
+
+    return this.buildAiProviderRuntimeState(runtimeConfig, enabledAiProviders, allModels);
+  };
+
+  getAiProviderCatalogState = async (): Promise<AiProviderRuntimeState> => {
+    const [enabledAiProviders, allModels] = await Promise.all([
+      this.getUserEnabledProviderList(),
+      this.getEnabledModels(false),
+    ]);
+
+    return this.buildAiProviderRuntimeState({}, enabledAiProviders, allModels);
+  };
+
+  private buildAiProviderRuntimeState = (
+    runtimeConfig: AiProviderRuntimeState['runtimeConfig'],
+    enabledAiProviders: AiProviderRuntimeState['enabledAiProviders'],
+    allModels: AiProviderRuntimeState['enabledAiModels'],
+  ): AiProviderRuntimeState => {
     const enabledAiModels = allModels.filter((model) => model.enabled);
     const enabledChatAiProviders = enabledAiProviders.filter((provider) => {
       return allModels.some((model) => model.providerId === provider.id && model.type === 'chat');

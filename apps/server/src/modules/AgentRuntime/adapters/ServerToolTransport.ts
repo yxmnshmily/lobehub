@@ -13,7 +13,7 @@ import {
   executeToolSpanName,
   tracer as agentRuntimeTracer,
 } from '@lobechat/observability-otel/modules/agent-runtime';
-import type { ChatToolPayload } from '@lobechat/types';
+import type { ChatToolPayload, OperationToolDispatchPolicy } from '@lobechat/types';
 
 import { AgentModel } from '@/database/models/agent';
 import { isDeviceCapablePlan, isLocalSandboxEnabled } from '@/helpers/executionTarget';
@@ -22,6 +22,8 @@ import {
   isDeviceToolIdentifier,
   logDeviceToolAudit,
 } from '@/server/services/aiAgent/deviceToolAudit';
+import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
+import { getPlatformUsageSharedBudgetForOperation } from '@/server/services/platformUsageBilling/sharedBudget';
 
 import type { RuntimeExecutorContext } from '../context';
 import { dispatchClientTool } from '../dispatchClientTool';
@@ -62,17 +64,18 @@ export class ServerToolTransport implements ToolTransport {
       state: registration.state,
       threadId: state.metadata?.threadId,
       topicId: state.metadata?.topicId,
-      userId: this.ctx.userId,
+      userId: this.ctx.resourceOwnerUserId ?? this.ctx.userId,
       workspaceId: state.metadata?.workspaceId ?? this.ctx.workspaceId,
     });
   }
 
   async handleError(
     chatToolPayload: ChatToolPayload,
-    error: unknown,
+    _error: unknown,
     context: ToolRunContext,
   ): Promise<void> {
-    const { hookDispatcher, operationId, stepIndex, userId } = this.ctx;
+    const { hookDispatcher, operationId, stepIndex } = this.ctx;
+    const errorKind = context.abortSignal?.aborted ? 'aborted' : 'runtime-error';
 
     if (hookDispatcher) {
       hookDispatcher
@@ -81,28 +84,48 @@ export class ServerToolTransport implements ToolTransport {
           'onToolCallError',
           {
             apiName: chatToolPayload.apiName,
-            args: context.parsedArgs,
             callIndex: context.callIndex,
-            error: error instanceof Error ? error.message : String(error),
-            identifier: chatToolPayload.identifier,
-            operationId,
+            error: errorKind,
             stepIndex,
-            userId,
-          },
+          } as any,
           context.state.metadata?._hooks,
         )
         .catch(() => {});
     }
 
-    console.error(
-      `[StreamingToolExecutor] Tool execution failed for operation ${operationId}:${stepIndex}:`,
-      error,
-    );
+    console.error('[StreamingToolExecutor] Tool execution failed', {
+      apiName: chatToolPayload.apiName,
+      callIndex: context.callIndex,
+      errorKind,
+      stepIndex,
+    });
   }
 
   async run(chatToolPayload: ChatToolPayload, context: ToolRunContext): Promise<ToolRunExecution> {
+    const dispatchPolicy = context.state.metadata?.toolDispatchPolicy as
+      OperationToolDispatchPolicy | undefined;
+    const dispatchCursor = dispatchPolicy?.cursor ?? 0;
+    const dispatchStep = dispatchPolicy?.steps[dispatchCursor];
+    const matchedDispatchStep =
+      dispatchStep?.identifier === chatToolPayload.identifier &&
+      dispatchStep.apiName === chatToolPayload.apiName
+        ? dispatchStep
+        : undefined;
+    if (matchedDispatchStep && dispatchPolicy) {
+      chatToolPayload.arguments = matchedDispatchStep.arguments;
+      (context as { parsedArgs: unknown }).parsedArgs = JSON.parse(matchedDispatchStep.arguments);
+      dispatchPolicy.cursor = dispatchCursor + 1;
+    }
+
     const { operationId, serverDB, stepIndex, streamManager, toolExecutionService, userId } =
       this.ctx;
+    const hasBillingActor = this.ctx.billingActorUserId !== undefined;
+    const hasResourceOwner = this.ctx.resourceOwnerUserId !== undefined;
+    if (hasBillingActor !== hasResourceOwner) {
+      throw new Error('Invalid server-derived hosted execution principal');
+    }
+    const billingActorUserId = this.ctx.billingActorUserId ?? userId;
+    const resourceOwnerUserId = this.ctx.resourceOwnerUserId ?? userId;
     const operationLogId = `${operationId}:${stepIndex}`;
     const executeToolSpan = agentRuntimeTracer.startSpan(executeToolSpanName(context.toolName), {
       attributes: buildExecuteToolAttributes({
@@ -193,72 +216,92 @@ export class ServerToolTransport implements ToolTransport {
         if (context.abortSignal?.aborted) return this.abortedBeforeLaunch();
 
         log(`[${operationLogId}] Executing tool ${context.toolName} ...`);
+        const platformUsageSharedBudget =
+          billingActorUserId &&
+          context.state.metadata?.agentConfig?.agencyConfig?.modelRuntimeMode === 'platform-managed'
+            ? getPlatformUsageSharedBudgetForOperation(operationId, {
+                actorUserId: billingActorUserId,
+                workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
+              })
+            : undefined;
+        const toolExecutionContext = {
+          activatedSkills: context.activatedSkills as any,
+          activeDeviceId: resolveRunActiveDeviceId(context.state.metadata),
+          activeDeviceScope: context.state.metadata?.activeDeviceScope,
+          agentId: context.state.metadata?.agentId,
+          agentMember: buildServerAgentMemberRunner(
+            this.ctx,
+            context.state,
+            chatToolPayload,
+            context.parentMessageId,
+            matchedDispatchStep?.memberToolDispatchPolicies,
+          ),
+          ...(agentVisibility !== undefined && { agentVisibility }),
+          // Assistant message owning this tool call (≠ source user message).
+          assistantMessageId: context.parentMessageId,
+          clientIp: context.state.metadata?.clientIp,
+          currentTodos: context.currentTodos,
+          deviceCapable: context.state.metadata?.executionPlan
+            ? isDeviceCapablePlan(context.state.metadata.executionPlan)
+            : undefined,
+          documentId: context.state.metadata?.documentId,
+          editingAgentId: context.state.metadata?.editingAgentId,
+          editingGroupId: context.state.metadata?.editingGroupId,
+          execSubAgent: this.ctx.execSubAgent,
+          executionTimeoutMs: timeoutMs,
+          groupId: context.state.metadata?.groupId,
+          isSubAgent: context.state.metadata?.isSubAgent === true,
+          // Sandboxing qualifies a `local` run, so it is gated on the plan's
+          // resolved target rather than the stored flag: a config that says
+          // `localSandbox` but landed on `sandbox`/`device` was never fenced,
+          // and telling the device otherwise would fence the wrong run.
+          localSandbox: context.state.metadata?.executionPlan
+            ? isLocalSandboxEnabled(
+                context.state.metadata?.agentConfig?.agencyConfig,
+                context.state.metadata.executionPlan.target,
+              )
+            : undefined,
+          localSandboxNetwork:
+            context.state.metadata?.agentConfig?.agencyConfig?.localSandboxNetwork === true,
+          memoryToolPermission:
+            context.state.metadata?.agentConfig?.chatConfig?.memory?.toolPermission,
+          modelRuntimeMode: platformUsageSharedBudget ? ('platform-managed' as const) : undefined,
+          messageId: context.state.metadata?.sourceMessageId,
+          operationId,
+          projectSkills: resolveRunProjectSkills(context.state.metadata),
+          rootOperationId: operationId,
+          scope: context.state.metadata?.scope,
+          serverDB,
+          skipResultTruncation: true,
+          subAgent: buildServerVirtualSubAgentRunner(
+            this.ctx,
+            context.state,
+            chatToolPayload,
+            context.parentMessageId,
+          ),
+          taskId: context.state.metadata?.taskId,
+          threadId: context.state.metadata?.threadId,
+          toolCallId: chatToolPayload.id,
+          toolManifestMap: context.effectiveManifestMap,
+          toolMessageId: context.toolMessageId,
+          toolResultMaxLength: context.toolResultMaxLength,
+          topicId: this.ctx.topicId,
+          userId: resourceOwnerUserId,
+          workingDirectory: context.state.metadata?.deviceSystemInfo?.workingDirectory,
+          workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
+        };
         execution = await executeToolWithRetry(
           () =>
-            toolExecutionService.executeTool(chatToolPayload, {
-              activatedSkills: context.activatedSkills as any,
-              activeDeviceId: resolveRunActiveDeviceId(context.state.metadata),
-              activeDeviceScope: context.state.metadata?.activeDeviceScope,
-              agentId: context.state.metadata?.agentId,
-              agentMember: buildServerAgentMemberRunner(
-                this.ctx,
-                context.state,
-                chatToolPayload,
-                context.parentMessageId,
-              ),
-              ...(agentVisibility !== undefined && { agentVisibility }),
-              // Assistant message owning this tool call (≠ source user message).
-              assistantMessageId: context.parentMessageId,
-              clientIp: context.state.metadata?.clientIp,
-              currentTodos: context.currentTodos,
-              deviceCapable: context.state.metadata?.executionPlan
-                ? isDeviceCapablePlan(context.state.metadata.executionPlan)
-                : undefined,
-              documentId: context.state.metadata?.documentId,
-              editingAgentId: context.state.metadata?.editingAgentId,
-              editingGroupId: context.state.metadata?.editingGroupId,
-              execSubAgent: this.ctx.execSubAgent,
-              executionTimeoutMs: timeoutMs,
-              groupId: context.state.metadata?.groupId,
-              isSubAgent: context.state.metadata?.isSubAgent === true,
-              // Sandboxing qualifies a `local` run, so it is gated on the plan's
-              // resolved target rather than the stored flag: a config that says
-              // `localSandbox` but landed on `sandbox`/`device` was never fenced,
-              // and telling the device otherwise would fence the wrong run.
-              localSandbox: context.state.metadata?.executionPlan
-                ? isLocalSandboxEnabled(
-                    context.state.metadata?.agentConfig?.agencyConfig,
-                    context.state.metadata.executionPlan.target,
-                  )
-                : undefined,
-              localSandboxNetwork:
-                context.state.metadata?.agentConfig?.agencyConfig?.localSandboxNetwork === true,
-              memoryToolPermission:
-                context.state.metadata?.agentConfig?.chatConfig?.memory?.toolPermission,
-              messageId: context.state.metadata?.sourceMessageId,
-              operationId,
-              projectSkills: resolveRunProjectSkills(context.state.metadata),
-              rootOperationId: operationId,
-              scope: context.state.metadata?.scope,
-              serverDB,
-              skipResultTruncation: true,
-              subAgent: buildServerVirtualSubAgentRunner(
-                this.ctx,
-                context.state,
-                chatToolPayload,
-                context.parentMessageId,
-              ),
-              taskId: context.state.metadata?.taskId,
-              threadId: context.state.metadata?.threadId,
-              toolCallId: chatToolPayload.id,
-              toolManifestMap: context.effectiveManifestMap,
-              toolMessageId: context.toolMessageId,
-              toolResultMaxLength: context.toolResultMaxLength,
-              topicId: this.ctx.topicId,
-              userId,
-              workingDirectory: context.state.metadata?.deviceSystemInfo?.workingDirectory,
-              workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
-            }),
+            toolExecutionService.executeTool(
+              chatToolPayload,
+              platformUsageSharedBudget
+                ? grantPlatformManagedExecution(toolExecutionContext, {
+                    actorUserId: billingActorUserId,
+                    resourceOwnerUserId,
+                    sharedBudget: platformUsageSharedBudget,
+                  })
+                : toolExecutionContext,
+            ),
           {
             isInterrupted: () => isOperationInterrupted(this.ctx),
             maxRetries: TOOL_MAX_RETRIES,
@@ -293,7 +336,7 @@ export class ServerToolTransport implements ToolTransport {
         serverDB,
         toolCallId: chatToolPayload.id,
         topicId: this.ctx.topicId ?? context.state.metadata?.topicId,
-        userId,
+        userId: resourceOwnerUserId,
         workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
       });
 
@@ -312,10 +355,9 @@ export class ServerToolTransport implements ToolTransport {
         result: executionResult,
       };
     } catch (error) {
-      executeToolSpan.recordException(error as Error);
       executeToolSpan.setStatus({
         code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
+        message: 'runtime-error',
       });
       executeToolSpan.setAttributes(buildExecuteToolResultAttributes({ success: false }));
       throw error;
@@ -418,10 +460,11 @@ export class ServerToolTransport implements ToolTransport {
     try {
       const agentModel = new AgentModel(this.ctx.serverDB, this.ctx.userId, workspaceId);
       return await agentModel.getAgentVisibility(agentId);
-    } catch (error) {
+    } catch {
       log(
-        `[${this.ctx.operationId}:${this.ctx.stepIndex}] Failed to resolve agent visibility: %O`,
-        error,
+        '[execute_tool] agent visibility lookup failed at step %d with kind=%s',
+        this.ctx.stepIndex,
+        'database-error',
       );
       return null;
     }

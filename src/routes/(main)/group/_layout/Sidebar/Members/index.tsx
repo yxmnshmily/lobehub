@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveAgentGroupManagementPolicy } from '@lobechat/types';
 import { AccordionItem, Flexbox } from '@lobehub/ui';
 import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { ArrowUpDown, Loader2Icon, UserPlus } from 'lucide-react';
@@ -10,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
 import { useInitGroupConfig } from '@/hooks/useInitGroupConfig';
 import { usePermission } from '@/hooks/usePermission';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
 
@@ -28,7 +30,12 @@ const Members = memo<MembersProps>(({ itemKey }) => {
 
   const activeGroupId = useAgentGroupStore(agentGroupSelectors.activeGroupId);
   const { canEditResource } = useResourceAccess('agentGroup', activeGroupId);
-  const canEdit = hasEditPermission && canEditResource;
+  const group = useAgentGroupStore(agentGroupSelectors.getGroupById(activeGroupId ?? ''));
+  const { data: isPlatformAdmin } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
+  const canManageGroup =
+    !!group &&
+    (resolveAgentGroupManagementPolicy(group.clientId) !== 'platform' || isPlatformAdmin === true);
+  const canEdit = hasEditPermission && canEditResource && canManageGroup;
   const membersCount = useAgentGroupStore(
     agentGroupSelectors.getGroupAgentCount(activeGroupId || ''),
   );
@@ -59,7 +66,7 @@ const Members = memo<MembersProps>(({ itemKey }) => {
       action={
         <>
           {isRevalidating && <ActionIcon loading icon={Loader2Icon} size={'small'} />}
-          {memberCount > 1 && (
+          {canManageGroup && memberCount > 1 && (
             <ActionIcon
               disabled={!canEdit}
               icon={ArrowUpDown}
@@ -68,13 +75,15 @@ const Members = memo<MembersProps>(({ itemKey }) => {
               onClick={handleSortMember}
             />
           )}
-          <ActionIcon
-            disabled={!canEdit}
-            icon={UserPlus}
-            size={'small'}
-            title={canEdit ? t('groupSidebar.members.addMember') : reason}
-            onClick={handleAddMember}
-          />
+          {canManageGroup && (
+            <ActionIcon
+              disabled={!canEdit}
+              icon={UserPlus}
+              size={'small'}
+              title={canEdit ? t('groupSidebar.members.addMember') : reason}
+              onClick={handleAddMember}
+            />
+          )}
         </>
       }
       title={
@@ -86,11 +95,12 @@ const Members = memo<MembersProps>(({ itemKey }) => {
       <Flexbox gap={1} paddingBlock={1}>
         <GroupMember
           addModalOpen={addModalOpen}
+          canManage={canManageGroup}
           groupId={activeGroupId}
           onAddModalOpenChange={setAddModalOpen}
         />
       </Flexbox>
-      {activeGroupId && (
+      {activeGroupId && canManageGroup && (
         <SortMembersModal
           groupId={activeGroupId}
           open={sortModalOpen}

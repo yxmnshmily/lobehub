@@ -3281,6 +3281,30 @@ table topic_comments {
   }
 }
 
+table travel_generation_tasks {
+  id text [pk, not null]
+  user_id text [not null]
+  workspace_id text
+  group_id text [not null]
+  type text [not null]
+  status text [not null]
+  input jsonb [not null]
+  artifacts jsonb
+  usage jsonb
+  provider text
+  code text
+  message text
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    user_id [name: 'travel_generation_tasks_user_id_idx']
+    group_id [name: 'travel_generation_tasks_group_id_idx']
+    workspace_id [name: 'travel_generation_tasks_workspace_id_idx']
+  }
+}
+
 table user_settings {
   id text [pk, not null]
   tts jsonb

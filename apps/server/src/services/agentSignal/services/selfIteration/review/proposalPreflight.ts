@@ -40,8 +40,7 @@ export interface SelfReviewProposalPreflightDenied {
 }
 
 export type SelfReviewProposalPreflightResult =
-  | SelfReviewProposalPreflightAllowed
-  | SelfReviewProposalPreflightDenied;
+  SelfReviewProposalPreflightAllowed | SelfReviewProposalPreflightDenied;
 
 /**
  * Creates approve-time preflight checks for frozen self-review proposal actions.

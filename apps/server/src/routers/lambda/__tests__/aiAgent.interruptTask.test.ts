@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { type LobeChatDatabase } from '@lobechat/database';
-import { agents, chatGroups, sessions, threads, topics } from '@lobechat/database/schemas';
+import {
+  agentOperations,
+  agents,
+  chatGroups,
+  sessions,
+  threads,
+  topics,
+} from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
 import { ThreadStatus, ThreadType } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
@@ -98,6 +105,13 @@ describe('aiAgentRouter.interruptTask', () => {
       })
       .returning()) as any[];
     testThreadId = thread.id;
+
+    await serverDB.delete(agentOperations).where(eq(agentOperations.id, 'op-direct-interrupt'));
+    await serverDB.delete(agentOperations).where(eq(agentOperations.id, 'op-override'));
+    await serverDB.insert(agentOperations).values([
+      { id: 'op-direct-interrupt', status: 'running', userId },
+      { id: 'op-override', status: 'running', userId },
+    ]);
   });
 
   afterEach(async () => {

@@ -1,9 +1,7 @@
 ---
 title: Messenger Overview
 description: >-
-  Connect your LobeHub account to the official LobeHub bot on Telegram, Slack,
-  and Discord. Link once, pick an active agent, and chat with your assistants
-  from the chat apps you already use — no bot setup required.
+  Connect your LobeHub account to the official LobeHub bot on Telegram, Slack, and Discord. Link once, pick an active agent, and chat with your assistants from the chat apps you already use — no bot setup required.
 tags:
   - Messenger
   - Telegram
@@ -24,21 +22,21 @@ You manage everything from **Settings → Messenger** in LobeHub.
 
 ## Messenger vs. Channels
 
-|               | **Messenger**                                 | **Channels**                                                          |
-| ------------- | --------------------------------------------- | --------------------------------------------------------------------- |
-| Bot identity  | Official **@LobeHub** bot, hosted by LobeHub  | Your own bot, you bring the token                                     |
-| Setup effort  | Tap **Connect**, send `/start`, pick an agent | Create the bot on the platform, paste credentials, configure policies |
-| Scope         | Personal — only you talk to the bot           | Public — anyone in the channel/server can talk to it                  |
-| Active agent  | One per platform link, switchable any time    | One agent per channel binding                                         |
-| Configured at | Settings → Messenger                          | Agent → Channels                                                      |
+|  | **Messenger** | **Channels** |
+| --- | --- | --- |
+| Bot identity | Official **@LobeHub** bot, hosted by LobeHub | Your own bot, you bring the token |
+| Setup effort | Tap **Connect**, send `/start`, pick an agent | Create the bot on the platform, paste credentials, configure policies |
+| Scope | Personal — only you talk to the bot | Public — anyone in the channel/server can talk to it |
+| Active agent | One per platform link, switchable any time | One agent per channel binding |
+| Configured at | Settings → Messenger | Agent → Channels |
 
 ## Supported Platforms
 
-| Platform     | Setup model                              | Guide                                                     |
-| ------------ | ---------------------------------------- | --------------------------------------------------------- |
+| Platform | Setup model | Guide |
+| --- | --- | --- |
 | **Telegram** | Global bot — any account can DM directly | [Use LobeHub on Telegram](/docs/usage/messenger/telegram) |
-| **Slack**    | Per-workspace install + per-member link  | [Use LobeHub on Slack](/docs/usage/messenger/slack)       |
-| **Discord**  | Per-server install + per-member link     | [Use LobeHub on Discord](/docs/usage/messenger/discord)   |
+| **Slack** | Per-workspace install + per-member link | [Use LobeHub on Slack](/docs/usage/messenger/slack) |
+| **Discord** | Per-server install + per-member link | [Use LobeHub on Discord](/docs/usage/messenger/discord) |
 
 If a platform card does not appear at **Settings → Messenger**, it has not been enabled on your deployment yet — check back later or ask your administrator.
 
@@ -66,10 +64,10 @@ Changes take effect immediately for the next message you send.
 
 There are two distinct disconnect actions per platform:
 
-| Action                                       | Effect                                                                                                                                                              |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Disconnect** on a *user* row               | Unlinks **your** LobeHub account from the platform account. Inbound messages stop until you `/start` again.                                                         |
-| **Disconnect** on a *workspace / server* row | Removes the install audit entry. On Slack, this also freezes the workspace bot for everyone. On Discord, the bot stays in the server until a server admin kicks it. |
+| Action | Effect |
+| --- | --- |
+| **Disconnect** on a _user_ row | Unlinks **your** LobeHub account from the platform account. Inbound messages stop until you `/start` again. |
+| **Disconnect** on a _workspace / server_ row | Removes the install audit entry. On Slack, this also freezes the workspace bot for everyone. On Discord, the bot stays in the server until a server admin kicks it. |
 
 You can re-link at any time by repeating the **Connect** flow.
 

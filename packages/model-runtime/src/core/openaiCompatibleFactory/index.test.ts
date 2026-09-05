@@ -2150,6 +2150,31 @@ describe('LobeOpenAICompatibleFactory', () => {
       );
     });
 
+    it('should forward pricing context to a custom image implementation', async () => {
+      const customCreateImage = vi.fn().mockResolvedValue({
+        imageUrl: 'https://example.com/generated-image.jpg',
+      });
+      const Runtime = createOpenAICompatibleRuntime({
+        createImage: customCreateImage,
+        provider: 'custom-image-provider',
+      });
+      const runtime = new Runtime({ apiKey: 'test-api-key' });
+      const pricingContext = { source: 'builtin' } as any;
+
+      await runtime.createImage(
+        {
+          model: 'custom-image-model',
+          params: { prompt: 'A beautiful sunset' },
+        },
+        { pricingContext },
+      );
+
+      expect(customCreateImage).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({ pricingContext }),
+      );
+    });
+
     describe('basic image generation', () => {
       it('should generate image successfully without imageUrls', async () => {
         const mockResponse = {

@@ -1,7 +1,9 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
 import { ChatHeader } from '@lobehub/ui/mobile';
+import { ChevronLeft } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -14,7 +16,6 @@ const Header = memo(() => {
   const navigate = useNavigate();
   return (
     <ChatHeader
-      showBackButton
       style={mobileHeaderSticky}
       center={
         <ChatHeader.Title
@@ -25,7 +26,14 @@ const Header = memo(() => {
           }
         />
       }
-      onBackClick={() => navigate('/me')}
+      left={
+        <ActionIcon
+          aria-label={t('back')}
+          icon={ChevronLeft}
+          title={t('back')}
+          onClick={() => navigate('/me')}
+        />
+      }
     />
   );
 });

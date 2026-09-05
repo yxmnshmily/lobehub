@@ -244,7 +244,12 @@ const TasksGroupConfig = memo<TasksHeaderProps>(({ options, setOptions }) => {
       trigger={['click']}
       onOpenChange={setIsViewConfigOpen}
     >
-      <ActionIcon icon={Settings2Icon} size={DESKTOP_HEADER_ICON_SMALL_SIZE} />
+      <ActionIcon
+        aria-label={`${t('taskList.view.list')} / ${t('taskList.view.board')}`}
+        icon={Settings2Icon}
+        size={DESKTOP_HEADER_ICON_SMALL_SIZE}
+        title={`${t('taskList.view.list')} / ${t('taskList.view.board')}`}
+      />
     </Popover>
   );
 });

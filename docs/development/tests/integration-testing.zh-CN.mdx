@@ -120,9 +120,7 @@ describe('Your Feature Integration Tests', () => {
     const caller = messageRouter.createCaller(createTestContext(userId));
 
     // 2. 执行操作
-    const result = await caller.someMethod({
-      /* params */
-    });
+    const result = await caller.someMethod({/* params */});
 
     // 3. 验证结果
     expect(result).toBeDefined();
@@ -169,9 +167,7 @@ it('should cascade delete messages when session is deleted', async () => {
   const messageCaller = messageRouter.createCaller(createTestContext(userId));
 
   // 创建 session 和 messages
-  const sessionId = await sessionCaller.createSession({
-    /* ... */
-  });
+  const sessionId = await sessionCaller.createSession({/* ... */});
   await messageCaller.createMessage({ sessionId /* ... */ });
 
   // 删除 session
@@ -196,9 +192,7 @@ it('should handle complete chat flow', async () => {
   const messageCaller = messageRouter.createCaller(createTestContext(userId));
 
   // 1. 创建 session
-  const sessionId = await sessionCaller.createSession({
-    /* ... */
-  });
+  const sessionId = await sessionCaller.createSession({/* ... */});
 
   // 2. 创建 topic
   const topicId = await topicCaller.createTopic({ sessionId /* ... */ });
@@ -223,9 +217,9 @@ it('should handle complete chat flow', async () => {
 ```typescript
 it('should prevent cross-user access', async () => {
   // 用户 A 创建 session
-  const sessionId = await sessionRouter.createCaller(createTestContext(userA)).createSession({
-    /* ... */
-  });
+  const sessionId = await sessionRouter
+    .createCaller(createTestContext(userA))
+    .createSession({/* ... */});
 
   // 用户 B 尝试访问
   const callerB = messageRouter.createCaller(createTestContext(userB));
@@ -296,14 +290,14 @@ it('test delete');
 
 ## 与单元测试的区别
 
-| 维度      | 单元测试      | 集成测试    |
-| ------- | --------- | ------- |
-| **范围**  | 单个函数 / 类  | 多个模块协作  |
-| **依赖**  | Mock 外部依赖 | 使用真实依赖  |
-| **数据库** | Mock      | 真实测试数据库 |
-| **速度**  | 快（毫秒级）    | 慢（秒级）   |
-| **数量**  | 多（60%）    | 少（30%）  |
-| **目的**  | 验证逻辑正确性   | 验证集成正确性 |
+| 维度       | 单元测试       | 集成测试       |
+| ---------- | -------------- | -------------- |
+| **范围**   | 单个函数 / 类  | 多个模块协作   |
+| **依赖**   | Mock 外部依赖  | 使用真实依赖   |
+| **数据库** | Mock           | 真实测试数据库 |
+| **速度**   | 快（毫秒级）   | 慢（秒级）     |
+| **数量**   | 多（60%）      | 少（30%）      |
+| **目的**   | 验证逻辑正确性 | 验证集成正确性 |
 
 ## 测试金字塔
 
@@ -346,9 +340,7 @@ it('test delete');
 ```typescript
 it('debug test', async () => {
   // 执行操作
-  await caller.createMessage({
-    /* ... */
-  });
+  await caller.createMessage({/* ... */});
 
   // 打印数据库状态
   const allMessages = await serverDB.select().from(messages);

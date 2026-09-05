@@ -47,14 +47,15 @@ const currentAgentTitle = (s: AgentStoreState) => currentAgentData(s)?.title;
  */
 const currentAgentDisplayName = (s: AgentStoreState) => agentDisplayName(currentAgentData(s));
 
-const getDefaultAvatarByAgentId = (s: AgentStoreState, agentId?: string) => {
+const getDisplayAvatarByAgentId = (s: AgentStoreState, agentId?: string) => {
   const inboxAgentId = builtinAgentSelectors.inboxAgentId(s);
 
-  return agentId && inboxAgentId === agentId ? DEFAULT_INBOX_AVATAR : DEFAULT_AVATAR;
+  if (agentId && inboxAgentId === agentId) return DEFAULT_INBOX_AVATAR;
+
+  return (agentId ? s.agentMap[agentId]?.avatar : undefined) || DEFAULT_AVATAR;
 };
 
-const currentAgentAvatar = (s: AgentStoreState) =>
-  currentAgentData(s)?.avatar || getDefaultAvatarByAgentId(s, s.activeAgentId);
+const currentAgentAvatar = (s: AgentStoreState) => getDisplayAvatarByAgentId(s, s.activeAgentId);
 
 const currentAgentDescription = (s: AgentStoreState) => currentAgentData(s)?.description;
 
@@ -76,7 +77,7 @@ const currentAgentVisibility = (s: AgentStoreState) => currentAgentData(s)?.visi
 const currentAgentMeta = (s: AgentStoreState): MetaData => {
   const data = currentAgentData(s);
   return {
-    avatar: data?.avatar || getDefaultAvatarByAgentId(s, s.activeAgentId),
+    avatar: getDisplayAvatarByAgentId(s, s.activeAgentId),
     backgroundColor: data?.backgroundColor || DEFAULT_BACKGROUND_COLOR,
     description: data?.description || undefined,
     marketIdentifier: data?.marketIdentifier || undefined,
@@ -97,7 +98,7 @@ const getAgentMetaById =
     if (!data) return {};
 
     return {
-      avatar: data.avatar || getDefaultAvatarByAgentId(s, agentId),
+      avatar: getDisplayAvatarByAgentId(s, agentId),
       backgroundColor: data.backgroundColor || DEFAULT_BACKGROUND_COLOR,
       description: data.description || undefined,
       marketIdentifier: data.marketIdentifier || undefined,

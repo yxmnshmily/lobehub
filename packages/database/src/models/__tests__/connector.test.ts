@@ -232,6 +232,48 @@ describe('ConnectorModel', () => {
       expect(found).not.toHaveProperty('oidcConfig');
       expect(gateKeeper.decrypt).not.toHaveBeenCalled();
     });
+
+    it('keeps agent list projections credential-free', async () => {
+      const model = new ConnectorModel(serverDB, userId, undefined, gateKeeper);
+      await serverDB.insert(agents).values({ id: 'public-agent', userId });
+      await model.create({
+        agentId: 'public-agent',
+        credentials: JSON.stringify(apikeyCredentials),
+        identifier: 'agent-mcp',
+        metadata: {
+          composio: {
+            appSlug: 'gmail',
+            authConfigId: 'auth-config-1',
+            connectedAccountId: 'account-1',
+            linkedByUserId: otherUserId,
+            status: 'ACTIVE',
+          },
+          customHeaders: { Authorization: 'must-not-leak' },
+          description: 'Agent connector',
+        },
+        name: 'Agent MCP',
+        oidcConfig: { clientSecret: 'must-not-leak', scheme: 'pre_registration' },
+        sourceType: 'custom',
+        status: 'connected',
+      });
+      gateKeeper.decrypt.mockClear();
+
+      const [byAgent, aggregate] = await Promise.all([
+        model.queryByAgentPublic('public-agent'),
+        model.queryAllAgentScopedPublic(),
+      ]);
+
+      expect(byAgent).toEqual(aggregate);
+      expect(byAgent[0]).toMatchObject({
+        authorizedByUserId: otherUserId,
+        description: 'Agent connector',
+        hasCredentials: true,
+      });
+      expect(JSON.stringify(byAgent)).not.toMatch(
+        /must-not-leak|credentials|customHeaders|oidcConfig/,
+      );
+      expect(gateKeeper.decrypt).not.toHaveBeenCalled();
+    });
   });
 
   describe('queryByIdentifiers', () => {
@@ -409,6 +451,60 @@ describe('ConnectorModel', () => {
       expect(JSON.stringify(rows)).not.toMatch(
         /credentials|secret-auth-config|redirectUrl|ca-other/,
       );
+      expect(gateKeeper.decrypt).not.toHaveBeenCalled();
+    });
+
+    it('finds a connected account only inside the model scope', async () => {
+      const model = new ConnectorModel(serverDB, userId, undefined, gateKeeper);
+      const created = await model.create({
+        credentials: JSON.stringify(apikeyCredentials),
+        identifier: 'gmail',
+        metadata: {
+          composio: {
+            appSlug: 'gmail',
+            authConfigId: 'must-not-leak',
+            connectedAccountId: 'account-owned',
+            status: 'ACTIVE',
+          },
+        },
+        name: 'Gmail',
+        sourceType: 'marketplace',
+        status: 'connected',
+      });
+      await new ConnectorModel(serverDB, otherUserId).create({
+        identifier: 'notion',
+        metadata: {
+          composio: {
+            appSlug: 'notion',
+            authConfigId: 'other-secret',
+            connectedAccountId: 'account-other',
+            status: 'ACTIVE',
+          },
+        },
+        name: 'Notion',
+        sourceType: 'marketplace',
+        status: 'connected',
+      });
+      gateKeeper.decrypt.mockClear();
+
+      const [owned, other] = await Promise.all([
+        model.findComposioReferenceByConnectedAccountId('account-owned'),
+        model.findComposioReferenceByConnectedAccountId('account-other'),
+      ]);
+
+      expect(owned).toEqual({
+        composio: {
+          appSlug: 'gmail',
+          connectedAccountId: 'account-owned',
+          ownerUserId: userId,
+          status: 'ACTIVE',
+        },
+        id: created.id,
+        isEnabled: true,
+        status: 'connected',
+      });
+      expect(other).toBeNull();
+      expect(JSON.stringify(owned)).not.toMatch(/credentials|must-not-leak/);
       expect(gateKeeper.decrypt).not.toHaveBeenCalled();
     });
   });

@@ -5,7 +5,7 @@ import { createStaticStyles } from 'antd-style';
 import { memo, useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { PRIVACY_URL, TERMS_URL } from '@/const/url';
+import { AUTH_PRIVACY_URL, AUTH_TERMS_URL } from './policyLinks';
 
 /**
  * Remembers that the user already accepted the terms & privacy policy on this
@@ -78,12 +78,22 @@ const AgreementText = memo<AgreementTextProps>(({ i18nKey }) => {
       ns={'auth'}
       components={{
         privacy: (
-          <a className={styles.link} href={PRIVACY_URL} rel="noopener noreferrer" target="_blank">
+          <a
+            className={styles.link}
+            href={AUTH_PRIVACY_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             {translate('footer.privacy')}
           </a>
         ),
         terms: (
-          <a className={styles.link} href={TERMS_URL} rel="noopener noreferrer" target="_blank">
+          <a
+            className={styles.link}
+            href={AUTH_TERMS_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             {translate('footer.terms')}
           </a>
         ),
@@ -92,9 +102,14 @@ const AgreementText = memo<AgreementTextProps>(({ i18nKey }) => {
   );
 });
 
-export const useAuthAgreement = (requestConfirmation?: RequestAgreementConfirmation) => {
+export const useAuthAgreement = (
+  requestConfirmation?: RequestAgreementConfirmation,
+  defaultChecked = false,
+) => {
   const { t } = useTranslation(['auth', 'common']);
-  const [agreementChecked, setAgreementCheckedState] = useState(readStoredAgreement);
+  const [agreementChecked, setAgreementCheckedState] = useState(
+    () => defaultChecked || readStoredAgreement(),
+  );
 
   const setAgreementChecked = useCallback((checked: boolean) => {
     setAgreementCheckedState(checked);
@@ -139,6 +154,8 @@ export const useAuthAgreement = (requestConfirmation?: RequestAgreementConfirmat
 };
 
 const AuthAgreement = memo<AuthAgreementProps>(({ checked, onChange }) => {
+  const { t } = useTranslation('auth');
+
   if (checked === undefined || onChange === undefined) {
     return (
       <Text fontSize={13} style={{ display: 'block', marginBlockStart: 8 }} type={'secondary'}>
@@ -149,9 +166,10 @@ const AuthAgreement = memo<AuthAgreementProps>(({ checked, onChange }) => {
 
   return (
     <Checkbox
+      aria-label={t('agreement.confirm.title', { ns: 'auth' })}
       checked={checked}
       size={16}
-      style={{ alignItems: 'flex-start', marginBlockEnd: 12, width: '100%' }}
+      style={{ alignItems: 'center', marginBlockEnd: 12, minHeight: 44, width: '100%' }}
       styles={{ checkbox: { marginBlockStart: 2 } }}
       textProps={{ fontSize: 13, type: 'secondary' }}
       onChange={onChange}

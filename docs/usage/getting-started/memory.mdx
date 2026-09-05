@@ -1,8 +1,7 @@
 ---
 title: Memory
 description: >-
-  Agents that remember who you are and how you work — transparent, structured,
-  and fully under your control.
+  Agents that remember who you are and how you work — transparent, structured, and fully under your control.
 tags:
   - LobeHub
   - Memory
@@ -35,19 +34,20 @@ Memory follows a four-step cycle:
 <Steps>
   ### Conversation Analysis
 
-  As you interact, the Memory Agent analyzes conversations for insights: explicit preferences, implicit patterns, project context, and communication style.
+As you interact, the Memory Agent analyzes conversations for insights: explicit preferences, implicit patterns, project context, and communication style.
 
-  ### Memory Extraction
+### Memory Extraction
 
-  Key insights are extracted, categorized by type (preference, fact, context), and tagged with relevance and confidence. Each memory becomes a behavioral rule the Agent follows going forward.
+Key insights are extracted, categorized by type (preference, fact, context), and tagged with relevance and confidence. Each memory becomes a behavioral rule the Agent follows going forward.
 
-  ### Storage and Indexing
+### Storage and Indexing
 
-  Memories are stored in a structured, searchable format. When new information conflicts with existing Memory, it updates automatically.
+Memories are stored in a structured, searchable format. When new information conflicts with existing Memory, it updates automatically.
 
-  ### Contextual Recall
+### Contextual Recall
 
-  When relevant, Agents retrieve and apply the right memories — so responses fit your situation without you needing to re-explain.
+When relevant, Agents retrieve and apply the right memories — so responses fit your situation without you needing to re-explain.
+
 </Steps>
 
 ### White-Box Transparency
@@ -192,6 +192,7 @@ Each memory has a confidence score that affects how agents use it:
     **Example**: "I always need data to back up product decisions"
 
     **Usage**: Agents apply these memories automatically
+
   </Accordion>
 
   <Accordion title="Medium Confidence (60–89%)">
@@ -200,6 +201,7 @@ Each memory has a confidence score that affects how agents use it:
     **Example**: User often asks for competitive analysis
 
     **Usage**: Agents consider but may verify
+
   </Accordion>
 
   <Accordion title="Low Confidence (0–59%)">
@@ -208,6 +210,7 @@ Each memory has a confidence score that affects how agents use it:
     **Example**: User mentioned interest in a topic once
 
     **Usage**: Agents note but don't heavily rely on
+
   </Accordion>
 </AccordionGroup>
 
@@ -234,18 +237,19 @@ When you first use LobeHub, help Agents learn about you quickly:
 <Steps>
   ### Share Professional Context
 
-  Tell agents about your role, team, organization, and current projects.
+Tell agents about your role, team, organization, and current projects.
 
-  ### State Preferences Explicitly
+### State Preferences Explicitly
 
-  Be clear about how you like to communicate, what level of detail you need, and your preferred formats.
+Be clear about how you like to communicate, what level of detail you need, and your preferred formats.
 
-  - ✅ "I always want PRDs to include a competitive analysis section"
-  - ❌ "Add competitive analysis" (too vague to memorize)
+- ✅ "I always want PRDs to include a competitive analysis section"
+- ❌ "Add competitive analysis" (too vague to memorize)
 
-  ### Add Manual Memories
+### Add Manual Memories
 
-  Create memories for important facts agents should always know, recurring contexts, and guidelines for agent behavior.
+Create memories for important facts agents should always know, recurring contexts, and guidelines for agent behavior.
+
 </Steps>
 
 ### Natural Conversation with Memory
@@ -288,17 +292,19 @@ You can disable Memory extraction for specific conversations, mark sensitive top
     Have a conversation with the Memory Agent when you first start: "Let me tell you about myself and how I work." Cover your role, priorities, communication preferences, and common workflows.
   </Accordion>
 
-  <Accordion title="Be Explicit About Preferences">
-    "I always want PRDs to include a competitive analysis section" is memorable. "Add competitive analysis" is too vague.
-  </Accordion>
+<Accordion title="Be Explicit About Preferences">
+  "I always want PRDs to include a competitive analysis section" is memorable. "Add competitive
+  analysis" is too vague.
+</Accordion>
 
-  <Accordion title="Correct Mistakes Immediately">
-    When an Agent misremembers, say: "That's not right. I prefer X instead of Y." The Memory Agent updates right away.
-  </Accordion>
+<Accordion title="Correct Mistakes Immediately">
+  When an Agent misremembers, say: "That's not right. I prefer X instead of Y." The Memory Agent
+  updates right away.
+</Accordion>
 
-  <Accordion title="Review Monthly">
-    Remove outdated context, update changed preferences, add new important information.
-  </Accordion>
+<Accordion title="Review Monthly">
+  Remove outdated context, update changed preferences, add new important information.
+</Accordion>
 
   <Accordion title="Don't Store Sensitive Data">
     Avoid passwords, financial details, or highly personal information. Memory works best for work preferences, professional context, and general patterns.
@@ -312,15 +318,17 @@ You can disable Memory extraction for specific conversations, mark sensitive top
     **Possible causes**: Memory not relevant to current context, confidence level too low, memory disabled for this conversation.
 
     **Solutions**: Make preference more explicit, manually add high-confidence memory, check memory settings.
+
   </Accordion>
 
-  <Accordion title="Incorrect Memories">
-    **Solutions**: Edit the memory directly, tell agent "That's not correct, actually...", or delete and recreate the memory.
-  </Accordion>
+<Accordion title="Incorrect Memories">
+  **Solutions**: Edit the memory directly, tell agent "That's not correct, actually...", or delete
+  and recreate the memory.
+</Accordion>
 
-  <Accordion title="Too Many Irrelevant Memories">
-    **Solutions**: Delete low-value memories, be more specific in conversations to avoid ambiguity.
-  </Accordion>
+<Accordion title="Too Many Irrelevant Memories">
+  **Solutions**: Delete low-value memories, be more specific in conversations to avoid ambiguity.
+</Accordion>
 
   <Accordion title="Memory Not Extracting">
     **Solutions**: Be more explicit in stating preferences, manually add important memories, check if memory extraction is enabled.
@@ -330,7 +338,7 @@ You can disable Memory extraction for specific conversations, mark sensitive top
 <Cards>
   <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 
-  <Card href={'/docs/usage/getting-started/resource'} title={'Resource Library'} />
+<Card href={'/docs/usage/getting-started/resource'} title={'Resource Library'} />
 
   <Card href={'/docs/usage/agent/chain-of-thought'} title={'Chain of Thought'} />
 </Cards>

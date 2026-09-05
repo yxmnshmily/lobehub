@@ -1,4 +1,4 @@
-import { DEFAULT_AVATAR, DEFAULT_INBOX_AVATAR } from '@lobechat/const';
+import { DEFAULT_AVATAR, DEFAULT_INBOX_AVATAR, DEFAULT_INBOX_TITLE } from '@lobechat/const';
 import { describe, expect, it } from 'vitest';
 
 import { resolveOverlayAgentOptions, resolveOverlayDefaultAgentId } from './overlaySnapshot';
@@ -16,11 +16,12 @@ describe('overlaySnapshot', () => {
         avatar: DEFAULT_INBOX_AVATAR,
         backgroundColor: undefined,
         id: 'inbox-agent',
-        title: 'Lobe AI',
+        title: DEFAULT_INBOX_TITLE,
       },
       {
         avatar: 'A',
         backgroundColor: undefined,
+        heterogeneousType: undefined,
         id: 'agent-1',
         title: 'Agent 1',
       },

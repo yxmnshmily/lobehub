@@ -31,7 +31,8 @@ cleanup() {
 trap cleanup EXIT
 export HOME="$tmp_dir/home"
 
-port="$(python3 - << 'PY'
+port="$(
+  python3 - << 'PY'
 import socket
 
 sock = socket.socket()

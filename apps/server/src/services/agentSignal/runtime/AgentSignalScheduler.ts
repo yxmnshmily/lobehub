@@ -166,9 +166,7 @@ const resolveRuntimeNodeType = (node: RuntimeNode) => {
 
 const resolveTerminalReason = (
   result:
-    | RuntimeConcludeProcessorResult
-    | RuntimeScheduleProcessorResult
-    | RuntimeWaitProcessorResult,
+    RuntimeConcludeProcessorResult | RuntimeScheduleProcessorResult | RuntimeWaitProcessorResult,
 ) => {
   if (result.status === 'wait') {
     return typeof result.pending?.reason === 'string' ? result.pending.reason : 'wait';
@@ -184,9 +182,7 @@ const resolveTerminalReason = (
 const recordTerminalResultMetric = (
   node: RuntimeNode,
   result:
-    | RuntimeConcludeProcessorResult
-    | RuntimeScheduleProcessorResult
-    | RuntimeWaitProcessorResult,
+    RuntimeConcludeProcessorResult | RuntimeScheduleProcessorResult | RuntimeWaitProcessorResult,
 ) => {
   terminalResultCounter.add(1, {
     'agent.signal.node_kind': resolveRuntimeNodeKind(node),

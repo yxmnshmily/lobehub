@@ -1,56 +1,54 @@
-// @vitest-environment node
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { buildAnalyticsConfig, renderSpaHtml } from '.';
+import { resolveViteBrowserOrigin, resolveViteSpaTemplatePath } from './index';
 
-describe('renderSpaHtml', () => {
-  it('injects server config, seo meta and strips the analytics placeholder', async () => {
-    const template = [
-      '<html><head>',
-      '<!--SEO_META-->',
-      '<script>window.__SERVER_CONFIG__ = undefined; /* SERVER_CONFIG */</script>',
-      '</head><body><!--ANALYTICS_SCRIPTS--></body></html>',
-    ].join('\n');
-
-    const res = renderSpaHtml(template, {
-      seoMeta: '<title>Hi</title>',
-      serverConfig: { enableOIDC: true },
-    });
-    const html = await res.text();
-
-    expect(html).toContain('window.__SERVER_CONFIG__ = {"enableOIDC":true};');
-    expect(html).toContain('<title>Hi</title>');
-    expect(html).not.toContain('SEO_META');
-    expect(html).not.toContain('ANALYTICS_SCRIPTS');
-    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
-    expect(res.headers.get('Cache-Control')).toBe('no-cache');
+describe('resolveViteSpaTemplatePath', () => {
+  it('selects the mobile Vite entry for mobile requests', () => {
+    expect(resolveViteSpaTemplatePath(true)).toBe('/index.mobile.html');
   });
 
-  it('escapes script-breaking sequences in the server config', async () => {
-    const template = 'window.__SERVER_CONFIG__ = undefined; /* SERVER_CONFIG */';
-    const res = renderSpaHtml(template, {
-      seoMeta: '',
-      serverConfig: { html: '</script><script>alert(1)</script>' },
-    });
-
-    expect(await res.text()).not.toContain('</script>');
+  it('keeps the default Vite entry for desktop requests', () => {
+    expect(resolveViteSpaTemplatePath(false)).toBe('/');
   });
 });
 
-describe('buildAnalyticsConfig', () => {
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_DESKTOP_PROJECT_ID;
-    delete process.env.NEXT_PUBLIC_DESKTOP_UMAMI_BASE_URL;
+describe('resolveViteBrowserOrigin', () => {
+  it('keeps localhost assets local for a localhost request', () => {
+    expect(
+      resolveViteBrowserOrigin(
+        'http://localhost:3010/lobehub/signin',
+        'http://localhost:9876',
+      ),
+    ).toBe('http://localhost:9876');
   });
 
-  it('includes desktop analytics only when opted in', () => {
-    process.env.NEXT_PUBLIC_DESKTOP_PROJECT_ID = 'pid';
-    process.env.NEXT_PUBLIC_DESKTOP_UMAMI_BASE_URL = 'https://umami.example.com';
+  it('uses the LAN request host for browser-loaded Vite assets', () => {
+    expect(
+      resolveViteBrowserOrigin(
+        'http://127.0.0.1:3011/signin',
+        'http://localhost:9876',
+        '192.168.31.29:3010',
+      ),
+    ).toBe('http://192.168.31.29:9876');
+  });
 
-    expect(buildAnalyticsConfig().desktop).toBeUndefined();
-    expect(buildAnalyticsConfig({ desktop: true }).desktop).toEqual({
-      baseUrl: 'https://umami.example.com',
-      projectId: 'pid',
-    });
+  it('does not reflect an arbitrary public host into a Vite asset URL', () => {
+    expect(
+      resolveViteBrowserOrigin(
+        'http://127.0.0.1:3011/signin',
+        'http://localhost:9876',
+        'attacker.example',
+      ),
+    ).toBe('http://localhost:9876');
+  });
+
+  it('falls back safely when a forwarded host is malformed', () => {
+    expect(
+      resolveViteBrowserOrigin(
+        'http://127.0.0.1:3011/signin',
+        'http://localhost:9876',
+        '[invalid',
+      ),
+    ).toBe('http://localhost:9876');
   });
 });

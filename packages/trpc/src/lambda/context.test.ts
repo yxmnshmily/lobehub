@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiKeyModel } from '@/database/models/apiKey';
 
 import { createContextInner, createLambdaContext } from './context';
+import { authedProcedure, router } from './index';
 
 const {
   mockAssertOIDCUserActive,
@@ -87,6 +88,11 @@ const mockHasActiveWorkspaceMembership = vi.hoisted(() => vi.fn(async () => true
 vi.mock('@/database/models/workspace', () => ({
   hasActiveWorkspaceMembership: mockHasActiveWorkspaceMembership,
 }));
+
+const workspaceScopedContentRouter = router({
+  createAgent: authedProcedure.mutation(() => ({ created: true })),
+  createGroup: authedProcedure.mutation(() => ({ created: true })),
+});
 
 describe('createContextInner', () => {
   it('should create context with default values when no params provided', async () => {
@@ -205,6 +211,7 @@ describe('createLambdaContext', () => {
     vi.clearAllMocks();
     mockExtractTraceContext.mockReturnValue(undefined);
     mockGetSession.mockResolvedValue({ user: { id: 'session-user' } });
+    mockAssertOIDCUserActive.mockReset();
     mockAssertOIDCUserActive.mockResolvedValue(undefined);
     mockIsOIDCUserInactiveError.mockReturnValue(false);
     mockValidateOIDCJWT.mockResolvedValue({
@@ -260,6 +267,41 @@ describe('createLambdaContext', () => {
     expect(context.userId).toBe('api-user');
     expect(mockGetSession).not.toHaveBeenCalled();
     expect(mockValidateOIDCJWT).not.toHaveBeenCalled();
+  });
+
+  it('should reject a banned full-access API key issuer without exposing account state', async () => {
+    const apiKeyRecord = {
+      accessedAt: new Date(),
+      createdAt: new Date(),
+      enabled: true,
+      expiresAt: null,
+      id: 'key-1',
+      key: 'encrypted-key',
+      keyHash: 'hashed-key',
+      lastUsedAt: null,
+      name: 'Full Access Admin Key',
+      scopes: null,
+      updatedAt: new Date(),
+      userId: 'banned-super-admin',
+      workspaceId: null,
+    } satisfies NonNullable<Awaited<ReturnType<typeof ApiKeyModel.findByKey>>>;
+    vi.mocked(ApiKeyModel.findByKey).mockResolvedValue(apiKeyRecord);
+    mockIsOIDCUserInactiveError.mockReturnValueOnce(true);
+    mockAssertOIDCUserActive.mockRejectedValueOnce(
+      Object.assign(new Error('private ban reason must not escape'), { code: 'UNAUTHORIZED' }),
+    );
+
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-API-Key': `${API_KEY_PREFIX}aaaaaaaaaaaaaaaa` },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.apiKeyScopes).toBeUndefined();
+    expect(context).not.toHaveProperty('banned');
+    expect(context).not.toHaveProperty('banReason');
+    expect(mockGetSession).not.toHaveBeenCalled();
   });
 
   const makeApiKeyRecord = (workspaceId: string | null) =>
@@ -405,7 +447,119 @@ describe('createLambdaContext', () => {
     const context = await createLambdaContext(request);
 
     expect(context.userId).toBe('session-user');
+    expect(context.workspaceId).toBeUndefined();
+    expect(mockHasActiveWorkspaceMembership).not.toHaveBeenCalled();
     expect(mockGetSession).toHaveBeenCalledOnce();
+  });
+
+  it('should keep an active session inside a workspace where it is an active member', async () => {
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-Workspace-Id': 'workspace-member' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBe('session-user');
+    expect(context.workspaceId).toBe('workspace-member');
+    expect(mockHasActiveWorkspaceMembership).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'session-user',
+      workspaceId: 'workspace-member',
+    });
+  });
+
+  it('should fail closed when a session requests a workspace without active membership', async () => {
+    mockHasActiveWorkspaceMembership.mockResolvedValueOnce(false);
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-Workspace-Id': 'foreign-workspace' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context).not.toHaveProperty('workspaceRole');
+  });
+
+  it('should keep forged session workspace scope out of agent and group procedures', async () => {
+    mockHasActiveWorkspaceMembership.mockResolvedValueOnce(false);
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-Workspace-Id': 'foreign-workspace' },
+    });
+    const context = await createLambdaContext(request);
+    const caller = workspaceScopedContentRouter.createCaller(context);
+
+    await expect(caller.createAgent()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(caller.createGroup()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('should fail closed when session workspace membership cannot be verified', async () => {
+    mockHasActiveWorkspaceMembership.mockRejectedValueOnce(
+      new Error('private database endpoint must not escape'),
+    );
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-Workspace-Id': 'unknown-workspace' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+  });
+
+  it('should not expose an unverified workspace header to unauthenticated procedures', async () => {
+    mockGetSession.mockResolvedValueOnce(null);
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'X-Workspace-Id': 'foreign-workspace' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(mockHasActiveWorkspaceMembership).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['cookie session', { cookie: 'better-auth.session_token=signed-session' }],
+    ['Bearer session token', { authorization: 'Bearer signed-session-token' }],
+  ])(
+    'should reject a currently banned %s without exposing account state',
+    async (_label, headers) => {
+      mockAssertOIDCUserActive.mockRejectedValueOnce(
+        Object.assign(new Error('private ban reason must not escape'), { code: 'UNAUTHORIZED' }),
+      );
+      const request = new NextRequest('https://example.com/trpc/lambda', { headers });
+
+      const context = await createLambdaContext(request);
+
+      expect(context.userId).toBeNull();
+      expect(context).not.toHaveProperty('banned');
+      expect(context).not.toHaveProperty('banReason');
+    },
+  );
+
+  it('should accept another active session user while a different account is banned', async () => {
+    mockGetSession.mockResolvedValueOnce({ user: { id: 'active-neighbor' } });
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { cookie: 'better-auth.session_token=neighbor-session' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBe('active-neighbor');
+    expect(mockAssertOIDCUserActive).toHaveBeenCalledWith(expect.any(Object), 'active-neighbor');
+  });
+
+  it('should allow a session whose temporary ban has expired', async () => {
+    mockGetSession.mockResolvedValueOnce({ user: { id: 'expired-ban-user' } });
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { authorization: 'Bearer expired-ban-session' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBe('expired-ban-user');
+    expect(mockAssertOIDCUserActive).toHaveBeenCalledWith(expect.any(Object), 'expired-ban-user');
   });
 
   it('should authenticate with active OIDC auth and skip session fallback', async () => {
@@ -418,6 +572,52 @@ describe('createLambdaContext', () => {
     expect(context.userId).toBe('oidc-user');
     expect(context.oidcAuth?.sub).toBe('oidc-user');
     expect(mockAssertOIDCUserActive).toHaveBeenCalledWith(expect.any(Object), 'oidc-user');
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  it('should keep OIDC auth inside a workspace where the subject is an active member', async () => {
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'Oidc-Auth': 'oidc-token', 'X-Workspace-Id': 'workspace-member' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBe('oidc-user');
+    expect(context.workspaceId).toBe('workspace-member');
+    expect(mockHasActiveWorkspaceMembership).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'oidc-user',
+      workspaceId: 'workspace-member',
+    });
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  it('should fail closed without session fallback when OIDC requests a foreign workspace', async () => {
+    mockHasActiveWorkspaceMembership.mockResolvedValueOnce(false);
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'Oidc-Auth': 'oidc-token', 'X-Workspace-Id': 'foreign-workspace' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context.oidcAuth).toBeUndefined();
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  it('should fail closed without session fallback when OIDC workspace membership cannot be verified', async () => {
+    mockHasActiveWorkspaceMembership.mockRejectedValueOnce(
+      new Error('private database endpoint must not escape'),
+    );
+    const request = new NextRequest('https://example.com/trpc/lambda', {
+      headers: { 'Oidc-Auth': 'oidc-token', 'X-Workspace-Id': 'unknown-workspace' },
+    });
+
+    const context = await createLambdaContext(request);
+
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context.oidcAuth).toBeUndefined();
     expect(mockGetSession).not.toHaveBeenCalled();
   });
 

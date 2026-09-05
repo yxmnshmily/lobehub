@@ -211,7 +211,7 @@ const ProxyForm = () => {
   const enableProxyGroup: FormGroupItemType = {
     children: [
       {
-        children: <Switch />,
+        children: <Switch title={t('proxy.enable')} />,
         desc: t('proxy.enableDesc'),
         label: <SettingsSearchAnchor id={'proxy-enable'}>{t('proxy.enable')}</SettingsSearchAnchor>,
         layout: 'horizontal',
@@ -258,7 +258,7 @@ const ProxyForm = () => {
   const authGroup: FormGroupItemType = {
     children: [
       {
-        children: <Switch disabled={!isEnableProxy} />,
+        children: <Switch disabled={!isEnableProxy} title={t('proxy.auth')} />,
         desc: t('proxy.authDesc'),
         label: <SettingsSearchAnchor id={'proxy-auth'}>{t('proxy.auth')}</SettingsSearchAnchor>,
         layout: 'horizontal',

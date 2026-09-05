@@ -10,6 +10,7 @@ const prefixCls = 'ant';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     .${prefixCls}-collapse-header {
+      min-height: 44px;
       padding-inline: 16px 10px !important;
       border-radius: ${cssVar.borderRadius} !important;
       color: ${cssVar.colorTextDescription} !important;
@@ -21,13 +22,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       &:hover {
         color: ${cssVar.colorText} !important;
         background: ${cssVar.colorFillTertiary};
-        .${prefixCls}-collapse-extra {
-          display: block;
-        }
       }
     }
     .${prefixCls}-collapse-extra {
-      display: none;
+      display: block;
     }
     .${prefixCls}-collapse-content {
       border-radius: 0 !important;

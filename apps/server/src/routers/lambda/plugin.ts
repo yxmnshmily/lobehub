@@ -9,6 +9,7 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 const pluginProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -19,8 +20,10 @@ const pluginProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
   });
 });
 
+const pluginWriteProcedure = pluginProcedure.use(requirePlatformAdmin);
+
 export const pluginRouter = router({
-  createOrInstallPlugin: pluginProcedure
+  createOrInstallPlugin: pluginWriteProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -53,7 +56,7 @@ export const pluginRouter = router({
       await ctx.pluginModel.update(input.identifier, { manifest: input.manifest });
     }),
 
-  createPlugin: pluginProcedure
+  createPlugin: pluginWriteProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -74,13 +77,11 @@ export const pluginRouter = router({
       return data.identifier;
     }),
 
-  getPlugins: wsCompatProcedure.use(serverDatabase).query(async ({ ctx }): Promise<LobeTool[]> => {
-    const pluginModel = new PluginModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
-
-    return pluginModel.query();
+  getPlugins: pluginProcedure.query(async ({ ctx }): Promise<LobeTool[]> => {
+    return ctx.pluginModel.query();
   }),
 
-  removePlugin: pluginProcedure
+  removePlugin: pluginWriteProcedure
     .use(withScopedPermission('agent:update'))
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -91,7 +92,7 @@ export const pluginRouter = router({
       return ctx.pluginModel.delete(input.id);
     }),
 
-  updatePlugin: pluginProcedure
+  updatePlugin: pluginWriteProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({

@@ -5,7 +5,7 @@ import { Center, Empty, Flexbox, Skeleton } from '@lobehub/ui';
 import { Avatar, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { PackageOpenIcon, TriangleAlertIcon } from 'lucide-react';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAgentDisplayMeta } from '@/features/AgentTasks/shared/useAgentDisplayMeta';
@@ -237,14 +237,37 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
   }, [filteredItems, i18n.language, t]);
 
   const handleOpen = useOpenWork();
+  const retryPendingRef = useRef(false);
+  const handleReload = useCallback(async () => {
+    if (retryPendingRef.current) return;
+    retryPendingRef.current = true;
+    try {
+      await reload();
+    } finally {
+      retryPendingRef.current = false;
+    }
+  }, [reload]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadMorePendingRef = useRef(false);
+  useEffect(() => {
+    if (!isLoadingMore) loadMorePendingRef.current = false;
+  }, [error, isLoadingMore, items.length]);
+
   useEffect(() => {
     const element = sentinelRef.current;
     if (!element || !hasMore) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) loadMore();
+        if (
+          entries[0]?.isIntersecting &&
+          hasMore &&
+          !isLoadingMore &&
+          !loadMorePendingRef.current
+        ) {
+          loadMorePendingRef.current = true;
+          loadMore();
+        }
       },
       { rootMargin: '240px' },
     );
@@ -261,7 +284,7 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
             icon={TriangleAlertIcon}
             title={t('work.loadErrorTitle')}
           />
-          <button className={styles.retry} type={'button'} onClick={() => reload()}>
+          <button className={styles.retry} type={'button'} onClick={handleReload}>
             {t('work.retry')}
           </button>
         </Center>
@@ -319,7 +342,7 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
         ) : error ? (
           <div className={styles.loadMoreError}>
             <span>{t('work.loadMoreError')}</span>
-            <button className={styles.retry} type={'button'} onClick={() => reload()}>
+            <button className={styles.retry} type={'button'} onClick={handleReload}>
               {t('work.retry')}
             </button>
           </div>

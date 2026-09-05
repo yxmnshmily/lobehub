@@ -26,14 +26,20 @@ vi.mock('@lobehub/ui', () => ({
 describe('FormSliderWithInput', () => {
   it('commits the latest input value when the numeric input loses focus', async () => {
     const onChange = vi.fn();
-    render(<FormSliderWithInput value={2} onChange={onChange} />);
+    render(<FormSliderWithInput ariaLabel="slider-input" value={2} onChange={onChange} />);
 
-    const input = screen.getByRole('spinbutton', { name: 'slider-input' });
+    const input = screen.getByRole('textbox', { name: 'slider-input数值' });
     fireEvent.change(input, { target: { value: '3' } });
 
-    await waitFor(() => expect(input).toHaveValue(3));
+    await waitFor(() => expect(input).toHaveValue('3'));
     fireEvent.blur(input);
 
     expect(onChange).toHaveBeenCalledWith(3);
+  });
+
+  it('gives the rendered numeric control an accessible name', async () => {
+    render(<FormSliderWithInput ariaLabel="默认出图数量" value={2} />);
+
+    expect(await screen.findByRole('textbox', { name: '默认出图数量数值' })).toBeTruthy();
   });
 });

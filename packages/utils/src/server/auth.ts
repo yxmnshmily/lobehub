@@ -1,14 +1,12 @@
 import { headers } from 'next/headers';
 
-import { auth } from '@/auth';
+import { getActiveSession } from '@/libs/better-auth/getActiveSession';
 
 export const getUserAuth = async () => {
   const currentHeaders = await headers();
   const requestHeaders = Object.fromEntries(currentHeaders.entries());
 
-  const session = await auth.api.getSession({
-    headers: requestHeaders,
-  });
+  const session = await getActiveSession(requestHeaders);
 
   const userId = session?.user?.id;
 

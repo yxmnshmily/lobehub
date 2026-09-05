@@ -34,10 +34,7 @@ interface ManifestOAuthAuth extends BaseManifestAuth {
 }
 
 type ManifestAuth =
-  | ManifestNoAuth
-  | ManifestServiceHttpAuth
-  | ManifestUserHttpAuth
-  | ManifestOAuthAuth;
+  ManifestNoAuth | ManifestServiceHttpAuth | ManifestUserHttpAuth | ManifestOAuthAuth;
 
 export interface OpenAIPluginManifest {
   api: {

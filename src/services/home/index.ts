@@ -10,7 +10,21 @@ export interface HomeDailyBriefResponse {
   pairs: HomeDailyBriefPair[];
 }
 
+export type MyTravelGroupReadiness =
+  | { status: 'preparing' }
+  | { status: 'retryable_error' }
+  | { status: 'review_required' }
+  | { groupId: string; status: 'ready' };
+
 export class HomeService {
+  ensureMyTravelServiceReady = (): Promise<MyTravelGroupReadiness> => {
+    return lambdaClient.home.ensureMyTravelServiceReady.mutate();
+  };
+
+  getMyTravelGroupReadiness = (): Promise<MyTravelGroupReadiness> => {
+    return lambdaClient.home.getMyTravelGroupReadiness.query();
+  };
+
   /**
    * Get sidebar agent list with pinned, grouped, and ungrouped items
    */

@@ -6,9 +6,17 @@ import { Result } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { persistMarketAuthResult } from '@/layout/AuthProvider/MarketAuth/handoff';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
+
+const closeOrReturnToApp = () => {
+  window.close();
+  window.setTimeout(() => {
+    if (!window.closed) window.location.assign(withLobeHubMountPath('/'));
+  }, 50);
+};
 
 const MarketAuthCallbackPage = () => {
   const { t } = useTranslation('marketAuth');
@@ -83,7 +91,7 @@ const MarketAuthCallbackPage = () => {
 
         if (timeLeft <= 0) {
           clearInterval(countdownTimer);
-          window.close();
+          closeOrReturnToApp();
         }
       }, 1000);
     } else {
@@ -165,7 +173,7 @@ const MarketAuthCallbackPage = () => {
   const getExtra = () => {
     if (status === 'error') {
       return (
-        <Button block size={'large'} style={{ minWidth: 240 }} onClick={() => window.close()}>
+        <Button block size={'large'} style={{ minWidth: 240 }} onClick={closeOrReturnToApp}>
           {t('callback.buttons.close')}
         </Button>
       );

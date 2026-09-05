@@ -82,17 +82,15 @@ export class KagiImpl implements SearchServiceImpl {
 
       log('Parsed Kagi response: %o', kagiResponse);
 
-      const mappedResults = (kagiResponse.data || []).map(
-        (result): UniformSearchResult => ({
-          category: 'general', // Default category
-          content: result.snippet || '', // Prioritize content
-          engines: ['kagi'], // Use 'kagi' as the engine name
-          parsedUrl: result.url ? new URL(result.url).hostname : '', // Basic URL parsing
-          score: 1, // Default score to 1
-          title: result.title || '',
-          url: result.url,
-        }),
-      );
+      const mappedResults = (kagiResponse.data || []).map((result): UniformSearchResult => ({
+        category: 'general', // Default category
+        content: result.snippet || '', // Prioritize content
+        engines: ['kagi'], // Use 'kagi' as the engine name
+        parsedUrl: result.url ? new URL(result.url).hostname : '', // Basic URL parsing
+        score: 1, // Default score to 1
+        title: result.title || '',
+        url: result.url,
+      }));
 
       log('Mapped %d results to SearchResult format', mappedResults.length);
 

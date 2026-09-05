@@ -159,7 +159,7 @@ const Version = memo<{ mobile?: boolean }>(({ mobile }) => {
       width={'100%'}
     >
       <Flexbox horizontal align={'center'} flex={'none'} gap={16}>
-        <a href={OFFICIAL_SITE} rel="noreferrer" target="_blank">
+        <a aria-label={BRANDING_NAME} href={OFFICIAL_SITE} rel="noreferrer" target="_blank">
           <Block
             clickable
             align={'center'}

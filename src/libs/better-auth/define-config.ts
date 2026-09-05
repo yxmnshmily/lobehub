@@ -1,5 +1,8 @@
+import { createHash } from 'node:crypto';
+
 import { expo } from '@better-auth/expo';
 import { passkey } from '@better-auth/passkey';
+import { BRANDING_NAME } from '@lobechat/business-const';
 import { createNanoId, idGenerator, serverDB } from '@lobechat/database';
 import * as schema from '@lobechat/database/schemas';
 import bcrypt from 'bcryptjs';
@@ -7,19 +10,28 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { verifyPassword as defaultVerifyPassword } from 'better-auth/crypto';
 import { type BetterAuthOptions } from 'better-auth/minimal';
 import { betterAuth } from 'better-auth/minimal';
-import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
+import { admin, emailOTP, genericOAuth, magicLink, phoneNumber } from 'better-auth/plugins';
 import { type BetterAuthPlugin } from 'better-auth/types';
 import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 
 import { appEnv } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
+import { emailEnv } from '@/envs/email';
+import { createBetterAuthRateLimitStorage } from '@/libs/better-auth/auth-abuse-control';
 import {
+  getAuthEmailSender,
   getChangeEmailVerificationTemplate,
   getMagicLinkEmailTemplate,
+  getMountedAuthEmailUrl,
   getResetPasswordEmailTemplate,
   getVerificationEmailTemplate,
   getVerificationOTPEmailTemplate,
 } from '@/libs/better-auth/email-templates';
+import {
+  oneTimeEmailVerificationToken,
+  prepareEmailVerificationToken,
+} from '@/libs/better-auth/email-verification-token';
+import { accountInputHardening } from '@/libs/better-auth/plugins/account-input-hardening';
 import { emailWhitelist } from '@/libs/better-auth/plugins/email-whitelist';
 import { initBetterAuthSSOProviders } from '@/libs/better-auth/sso';
 import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/utils/config';
@@ -27,9 +39,42 @@ import { expireLegacyHostOnlyCookies } from '@/libs/better-auth/utils/host-only-
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
 import { clearMismatchedOIDCSession } from '@/libs/oidc-provider/session-cleanup';
 import { EmailService } from '@/server/services/email';
+import {
+  isSmsAuthenticationEnabled,
+  sendAuthenticationCode,
+  validateChinesePhoneNumber,
+} from '@/server/services/sms';
 import { UserService } from '@/server/services/user';
 
 const LOCAL_NO_PROXY_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+const UNKNOWN_PASSWORD_RESET_LOG = 'Reset Password: User not found';
+const phoneAccountAlias = (phone: string) =>
+  createHash('sha256').update(phone).digest('hex').slice(0, 24);
+
+const redactAuthLogArgument = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object' || value instanceof Error) return value;
+  if (Array.isArray(value)) return value.map(redactAuthLogArgument);
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      /phone|otp|code/i.test(key) ? '[REDACTED]' : redactAuthLogArgument(entry),
+    ]),
+  );
+};
+
+const authLogger = {
+  log(level, message, ...args) {
+    // Better Auth already returns the same neutral 200 response for unknown accounts.
+    // Treat this expected branch as a no-op so the submitted address is not retained in logs.
+    if (level === 'error' && message === UNKNOWN_PASSWORD_RESET_LOG) return;
+
+    const formattedMessage = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`;
+    const safeArgs = args.map(redactAuthLogArgument);
+    if (level === 'error') return console.error(formattedMessage, ...safeArgs);
+    if (level === 'warn') return console.warn(formattedMessage, ...safeArgs);
+    console.info(formattedMessage, ...safeArgs);
+  },
+} satisfies NonNullable<BetterAuthOptions['logger']>;
 
 export const mergeLocalNoProxy = (noProxy?: string): string => {
   const entries = new Set(
@@ -135,6 +180,19 @@ interface CustomBetterAuthOptions {
 
 export function defineConfig(customOptions: CustomBetterAuthOptions) {
   const cookieDomain = resolveCookieDomain(customOptions.cookieDomain);
+  const authEmailSender = getAuthEmailSender(
+    emailEnv.RESEND_FROM || emailEnv.SMTP_FROM || emailEnv.SMTP_USER,
+  );
+  const instanceRef: { current?: ReturnType<typeof betterAuth> } = {};
+  const prepareVerificationToken = async (email: string, token: string) => {
+    if (!instanceRef.current) throw new Error('Better Auth is not initialized');
+    const context = await instanceRef.current.$context;
+    return prepareEmailVerificationToken(context.internalAdapter, {
+      email,
+      expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
+      token,
+    });
+  };
 
   const options = {
     account: {
@@ -149,6 +207,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
     baseURL: new URL(appEnv.APP_URL).origin,
     secret: authEnv.AUTH_SECRET,
     trustedOrigins: getTrustedOrigins(enabledSSOProviders),
+    logger: authLogger,
 
     emailAndPassword: {
       autoSignIn: true,
@@ -156,7 +215,9 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       enabled: !authEnv.AUTH_DISABLE_EMAIL_PASSWORD,
       maxPasswordLength: 64,
       minPasswordLength: 8,
-      requireEmailVerification: authEnv.AUTH_EMAIL_VERIFICATION,
+      // Registration owns the one-time mailbox verification flow. A valid
+      // password must not be challenged again on every later sign-in.
+      requireEmailVerification: false,
       revokeSessionsOnPasswordReset: true,
 
       // Compatible with bcrypt password hashes migrated from Clerk; after login, you can re-hash in the backend using BetterAuth's default scrypt.
@@ -176,10 +237,13 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
 
       sendResetPassword: async ({ user, url }) => {
-        const template = getResetPasswordEmailTemplate({ url });
+        const template = getResetPasswordEmailTemplate({
+          url: getMountedAuthEmailUrl(url, appEnv.APP_URL),
+        });
 
         const emailService = new EmailService();
         await emailService.sendMail({
+          ...(authEmailSender && { from: authEmailSender }),
           to: user.email,
           ...template,
         });
@@ -188,7 +252,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
     emailVerification: {
       autoSignInAfterVerification: true,
       expiresIn: VERIFICATION_LINK_EXPIRES_IN,
-      sendVerificationEmail: async ({ user, url }, request) => {
+      sendVerificationEmail: async ({ token, user, url }, request) => {
         // Skip sending verification link email for mobile clients (Expo/React Native)
         // Mobile clients use OTP verification instead, triggered manually via emailOTP plugin
         if (request?.headers?.get?.('x-client-type') === 'mobile') {
@@ -197,32 +261,47 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
 
         // Use different template for change-email vs signup verification
         const isChangeEmail = request?.url?.includes('/change-email');
+        const mountedUrl = getMountedAuthEmailUrl(url, appEnv.APP_URL);
+        const preparedToken = await prepareVerificationToken(user.email, token);
         const template = isChangeEmail
           ? getChangeEmailVerificationTemplate({
               expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
-              url,
+              url: mountedUrl,
               userName: user.name,
             })
           : getVerificationEmailTemplate({
               expiresInSeconds: VERIFICATION_LINK_EXPIRES_IN,
-              url,
+              url: mountedUrl,
               userName: user.name,
             });
 
         const emailService = new EmailService();
-        await emailService.sendMail({
-          to: user.email,
-          ...template,
-        });
+        try {
+          await emailService.sendMail({
+            ...(authEmailSender && { from: authEmailSender }),
+            to: user.email,
+            ...template,
+          });
+          await preparedToken.commit();
+        } catch (error) {
+          try {
+            await preparedToken.rollback();
+          } catch {
+            // Preserve the delivery/commit error; unreferenced rows expire naturally.
+          }
+          throw error;
+        }
       },
     },
     onAPIError: {
       errorURL: '/auth-error',
     },
     session: {
+      // Account bans and canonical session revocation must take effect on the
+      // next request. A signed session_data snapshot can otherwise bypass the
+      // current database state for its cache lifetime.
       cookieCache: {
-        enabled: true,
-        maxAge: 2 * 60, // Cache duration in seconds
+        enabled: false,
       },
       // Keep a DB-backed fallback when Redis secondary storage entries are unexpectedly missing.
       storeSessionInDatabase: true,
@@ -258,6 +337,14 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
                */
               console.error('[Better Auth] Failed to clear a stale OIDC session:', error);
             }
+            try {
+              await new UserService(serverDB).ensureTravelServiceReady(session.userId);
+            } catch (error) {
+              // Session creation is also the retry boundary for accounts whose initial
+              // registration bootstrap was interrupted. Keep login available so a later
+              // session can retry the same idempotent repair.
+              console.error('[Better Auth] Failed to repair travel service bootstrap:', error);
+            }
           },
         },
       },
@@ -268,9 +355,9 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
             await userService.initUser({
               email: user.email,
               id: user.id,
+              phone: (user.phoneNumber as string | null | undefined) ?? null,
               username: user.username as string | null,
               createdAt: user.createdAt,
-              // TODO: if add phone plugin, we should fill phone here
             });
           },
         },
@@ -318,13 +405,36 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
     },
     rateLimit: {
+      customStorage: createBetterAuthRateLimitStorage(),
       customRules: {
-        '/request-password-reset': { max: 3, window: 60 },
-        '/send-verification-email': { max: 3, window: 60 },
+        // The auth route applies an atomic IP + normalized-email limiter for these paths.
+        '/change-email': () => false,
+        '/email-otp/change-email': () => false,
+        '/email-otp/check-verification-otp': () => false,
+        '/email-otp/request-email-change': () => false,
+        '/email-otp/request-password-reset': () => false,
+        '/email-otp/reset-password': () => false,
+        '/email-otp/send-verification-otp': () => false,
+        '/email-otp/verify-email': () => false,
+        '/forget-password/email-otp': () => false,
+        '/phone-number/request-password-reset': () => false,
+        '/phone-number/reset-password': () => false,
+        '/phone-number/send-otp': () => false,
+        '/phone-number/verify': () => false,
+        '/request-password-reset': () => false,
+        '/send-verification-email': () => false,
+        '/sign-in/email': () => false,
+        '/sign-in/email-otp': () => false,
+        '/sign-in/magic-link': () => false,
+        '/sign-in/phone-number': () => false,
+        '/sign-up/email': () => false,
+        '/verify-email': () => false,
       },
     },
     plugins: [
       ...customOptions.plugins,
+      oneTimeEmailVerificationToken(),
+      accountInputHardening(),
       emailWhitelist(),
       expo(),
       admin(),
@@ -333,9 +443,17 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
         expiresIn: OTP_EXPIRES_IN,
         otpLength: 6,
         allowedAttempts: 3,
-        // Don't automatically send OTP on sign up - let mobile client manually trigger it
+        // Keep signup link-first until the selected mode is also available to the Web UI.
+        overrideDefaultEmailVerification: false,
+        // The verification page requests OTP explicitly when the user switches modes.
         sendVerificationOnSignUp: false,
-        async sendVerificationOTP({ email, otp }) {
+        storeOTP: 'hashed',
+        async sendVerificationOTP({ email, otp, type }, context) {
+          if (type === 'email-verification') {
+            const user = await context.context.internalAdapter.findUserByEmail(email);
+            if (user?.user.emailVerified) return;
+          }
+
           const emailService = new EmailService();
 
           // For all OTP types, use the same template
@@ -347,13 +465,39 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
           });
 
           await emailService.sendMail({
+            ...(authEmailSender && { from: authEmailSender }),
             to: email,
             ...template,
           });
         },
       }),
+      ...(isSmsAuthenticationEnabled()
+        ? [
+            phoneNumber({
+              allowedAttempts: 3,
+              expiresIn: 300,
+              otpLength: 6,
+              phoneNumberValidator: validateChinesePhoneNumber,
+              requireVerification: true,
+              schema: {
+                user: {
+                  fields: {
+                    phoneNumber: 'phone',
+                  },
+                },
+              },
+              sendOTP: ({ code, phoneNumber: targetPhone }) =>
+                sendAuthenticationCode(targetPhone, code),
+              signUpOnVerification: {
+                getTempEmail: (targetPhone) => `${phoneAccountAlias(targetPhone)}@phone.invalid`,
+                getTempName: (targetPhone) =>
+                  `旅游群网用户-${phoneAccountAlias(targetPhone).slice(0, 6)}`,
+              },
+            }),
+          ]
+        : []),
       passkey({
-        rpName: 'LobeHub',
+        rpName: BRANDING_NAME,
         // Extract rpID from auth URL (e.g., 'lobehub.com' from 'https://lobehub.com')
         // Returns undefined if AUTH_URL is not set (e.g., in e2e tests)
         rpID: getPasskeyRpID(),
@@ -376,11 +520,12 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
               sendMagicLink: async ({ email, url }) => {
                 const template = getMagicLinkEmailTemplate({
                   expiresInSeconds: MAGIC_LINK_EXPIRES_IN,
-                  url,
+                  url: getMountedAuthEmailUrl(url, appEnv.APP_URL),
                 });
 
                 const emailService = new EmailService();
                 await emailService.sendMail({
+                  ...(authEmailSender && { from: authEmailSender }),
                   to: email,
                   ...template,
                 });
@@ -392,6 +537,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
   } satisfies BetterAuthOptions;
 
   const instance = betterAuth(options);
+  instanceRef.current = instance;
   if (!cookieDomain) return instance;
 
   const handleRequest = instance.handler;

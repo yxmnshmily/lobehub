@@ -49,10 +49,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 interface InboxItemProps {
   className?: string;
+  fallbackTitle?: string;
   style?: CSSProperties;
 }
 
-const InboxItem = memo<InboxItemProps>(({ className, style }) => {
+const InboxItem = memo<InboxItemProps>(({ className, fallbackTitle = '旅游群主AI', style }) => {
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const inboxRouteAgentId = resolveInboxAgentRouteId(inboxAgentId);
   const inboxMeta = useAgentStore(agentSelectors.getAgentMetaById(inboxRouteAgentId));
@@ -61,7 +62,7 @@ const InboxItem = memo<InboxItemProps>(({ className, style }) => {
     inboxAgentId ? operationSelectors.isAgentVisiblyRunning(inboxAgentId) : () => false,
   );
   const prefetchAgent = usePrefetchAgent();
-  const inboxAgentTitle = agentDisplayName(inboxMeta, 'Lobe AI');
+  const inboxAgentTitle = agentDisplayName(inboxMeta, fallbackTitle);
   const inboxAgentAvatar = inboxMeta.avatar || DEFAULT_INBOX_AVATAR;
   const inboxUrl = usePreservedAgentUrl(inboxRouteAgentId);
 

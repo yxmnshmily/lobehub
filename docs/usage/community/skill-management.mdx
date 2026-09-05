@@ -1,8 +1,7 @@
 ---
 title: Skill Management
 description: >-
-  Discover, install, configure, and organize Skills — the tools and integrations
-  that extend what your Agents can do.
+  Discover, install, configure, and organize Skills — the tools and integrations that extend what your Agents can do.
 tags:
   - Skills
   - LobeHub
@@ -26,13 +25,13 @@ Every skill exposes one or more **tools**. The Agent decides when to call a tool
 
 ## Types of Skills
 
-| Type                     | Description                          | Examples                                  |
-| ------------------------ | ------------------------------------ | ----------------------------------------- |
-| **Built-in tools**       | Capabilities built into LobeHub      | Artifacts, Sandbox, GTD, Notebook, Memory |
-| **LobeHub Integrations** | OAuth-connected third-party services | Linear, Microsoft, Twitter                |
-| **Composio**             | Composio-powered integrations        | Gmail, Notion, Slack, and more            |
-| **Community MCP**        | MCP servers from the MCP Marketplace | GitHub, PostgreSQL, Brave Search          |
-| **Custom MCP**           | MCP servers you add manually         | Your own APIs, private tools              |
+| Type | Description | Examples |
+| --- | --- | --- |
+| **Built-in tools** | Capabilities built into LobeHub | Artifacts, Sandbox, GTD, Notebook, Memory |
+| **LobeHub Integrations** | OAuth-connected third-party services | Linear, Microsoft, Twitter |
+| **Composio** | Composio-powered integrations | Gmail, Notion, Slack, and more |
+| **Community MCP** | MCP servers from the MCP Marketplace | GitHub, PostgreSQL, Brave Search |
+| **Custom MCP** | MCP servers you add manually | Your own APIs, private tools |
 
 ## The Skill Store
 
@@ -131,7 +130,10 @@ After installation, you may need to update an MCP's connection details — for e
 3. Edit the command, arguments, or environment variables
 4. Click **Save**
 
-<Callout type={'info'}>For STDIO MCPs, environment variables are the standard way to pass API keys and secrets without exposing them in the command line.</Callout>
+<Callout type={'info'}>
+  For STDIO MCPs, environment variables are the standard way to pass API keys and secrets without
+  exposing them in the command line.
+</Callout>
 
 ## Web Search
 
@@ -140,7 +142,7 @@ Web search is a special built-in capability. Unlike other skills, it is controll
 <Cards>
   <Card href={'/docs/usage/community/custom-mcp'} title={'Custom MCP'} />
 
-  <Card href={'/docs/usage/community/mcp-market'} title={'MCP Marketplace'} />
+<Card href={'/docs/usage/community/mcp-market'} title={'MCP Marketplace'} />
 
   <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 </Cards>

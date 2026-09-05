@@ -100,10 +100,7 @@ describe('buildConnectorMcpParams', () => {
   it('merges metadata.customHeaders alongside bearer auth', () => {
     expect(
       buildConnectorMcpParams(
-        httpConnector(
-          { token: 'tok', type: 'bearer' },
-          { customHeaders: { 'X-Tenant': 't1' } },
-        ),
+        httpConnector({ token: 'tok', type: 'bearer' }, { customHeaders: { 'X-Tenant': 't1' } }),
       ),
     ).toEqual({
       auth: { token: 'tok', type: 'bearer' },
@@ -116,9 +113,7 @@ describe('buildConnectorMcpParams', () => {
 
   it('applies metadata.customHeaders with no auth credential', () => {
     expect(
-      buildConnectorMcpParams(
-        httpConnector(null, { customHeaders: { 'X-Api-Key': 'abc' } }),
-      ),
+      buildConnectorMcpParams(httpConnector(null, { customHeaders: { 'X-Api-Key': 'abc' } })),
     ).toEqual({
       auth: undefined,
       headers: { 'X-Api-Key': 'abc' },

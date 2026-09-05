@@ -44,8 +44,7 @@ interface ContentBlocksScrollFromMessages extends ContentBlocksScrollBaseProps {
 }
 
 export type ContentBlocksScrollProps =
-  | ContentBlocksScrollFromBlocks
-  | ContentBlocksScrollFromMessages;
+  ContentBlocksScrollFromBlocks | ContentBlocksScrollFromMessages;
 
 const ContentBlocksScroll = memo<ContentBlocksScrollProps>((props) => {
   const { disableEditing, onScroll, scroll = true, scrollRef, variant } = props;

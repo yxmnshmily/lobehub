@@ -133,10 +133,7 @@ export interface DeclareSelfFeedbackIntentResult {
 }
 
 export type DeclareSelfFeedbackIntentStateReason =
-  | DeclareSelfFeedbackIntentRejectionReason
-  | 'missing_context'
-  | 'runtime_error'
-  | null;
+  DeclareSelfFeedbackIntentRejectionReason | 'missing_context' | 'runtime_error' | null;
 
 /** State persisted for inspector display after one self-feedback declaration. */
 export interface DeclareSelfFeedbackIntentState {

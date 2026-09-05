@@ -5,6 +5,7 @@ import { Button } from '@lobehub/ui/base-ui';
 import type { Key } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 
 import { MAX_WIDTH } from '@/const/layoutTokens';
 
@@ -18,6 +19,7 @@ interface ErrorCaptureProps {
 
 const ErrorCapture = ({ error, resetPath = '/' }: ErrorCaptureProps) => {
   const { t } = useTranslation('error');
+  const navigate = useNavigate();
   const hasStack = !!error?.stack;
   const defaultExpandedKeys: Key[] = typeof __CI__ !== 'undefined' && __CI__ ? ['stack'] : [];
   const [expandedKeys, setExpandedKeys] = useState<Key[]>(defaultExpandedKeys);
@@ -45,7 +47,7 @@ const ErrorCapture = ({ error, resetPath = '/' }: ErrorCaptureProps) => {
       <p style={{ marginBottom: '2em' }}>{t('error.desc')}</p>
       <Flexbox horizontal gap={12} style={{ marginBottom: '2em' }}>
         <Button onClick={() => window.location.reload()}>{t('error.retry')}</Button>
-        <Button type={'primary'} onClick={() => (window.location.href = resetPath)}>
+        <Button type={'primary'} onClick={() => navigate(resetPath)}>
           {t('error.backHome')}
         </Button>
       </Flexbox>

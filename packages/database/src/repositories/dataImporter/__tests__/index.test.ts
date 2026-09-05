@@ -73,6 +73,36 @@ describe('DataImporter', () => {
   });
 
   describe('import agents and sessions', () => {
+    it('should strip platform-managed runtime mode from PostgreSQL agent imports', async () => {
+      const data: ImportPgDataStructure = {
+        data: {
+          agents: [
+            {
+              agencyConfig: {
+                executionTarget: 'none',
+                modelRuntimeMode: 'platform-managed',
+                modelSelectionPolicy: 'fixed',
+              },
+              id: 'agt_managed_import',
+              slug: 'managed-import',
+            },
+          ],
+        },
+        mode: 'pglite',
+        schemaHash: 'test',
+      } as ImportPgDataStructure;
+
+      await importer.importPgData(data);
+
+      const [agent] = await clientDB.query.agents.findMany({
+        where: eq(Schema.agents.userId, userId),
+      });
+      expect(agent.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('should import return correct result', async () => {
       const data = agentsData as ImportPgDataStructure;
       const result = await importer.importPgData(data);

@@ -8,13 +8,13 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { isDesktop } from '@/const/version';
 import NavItem from '@/features/NavPanel/components/NavItem';
-import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
 import { useElectronStore } from '@/store/electron';
 import { pageSelectors, usePageStore } from '@/store/page';
 
 import Actions from './Actions';
 import Editing from './Editing';
 import { useDropdownMenu } from './useDropdownMenu';
+import { usePageHref } from './usePageHref';
 
 interface DocumentItemProps {
   className?: string;
@@ -32,6 +32,7 @@ const PageListItem = memo<DocumentItemProps>(({ pageId, className }) => {
   const setRenamingPageId = usePageStore((s) => s.setRenamingPageId);
   const addTab = useElectronStore((s) => s.addTab);
   const activeWorkspaceSlug = useActiveWorkspaceSlug();
+  const pageHref = usePageHref(pageId, activeWorkspaceSlug);
 
   const active = selectedPageId === pageId;
   const title = document?.title || t('pageList.untitled');
@@ -70,9 +71,9 @@ const PageListItem = memo<DocumentItemProps>(({ pageId, className }) => {
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
     }
-    addTab(buildWorkspaceAwarePath(`/page/${pageId}`, activeWorkspaceSlug));
+    addTab(pageHref);
     selectPage(pageId);
-  }, [pageId, activeWorkspaceSlug, addTab, selectPage]);
+  }, [pageId, pageHref, addTab, selectPage]);
 
   // Icon with emoji support
   const icon = useMemo(() => {
@@ -92,7 +93,7 @@ const PageListItem = memo<DocumentItemProps>(({ pageId, className }) => {
         className={className}
         contextMenuItems={dropdownMenu}
         disabled={editing}
-        href={`/page/${pageId}`}
+        href={pageHref}
         icon={icon}
         key={pageId}
         title={title}

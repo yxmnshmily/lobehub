@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiAgentService } from '../index';
 
+const { mockDebugLog } = vi.hoisted(() => ({ mockDebugLog: vi.fn() }));
+
+vi.mock('debug', () => ({ default: () => mockDebugLog }));
+
 // Mock trusted client to avoid server-side env access
 vi.mock('@/libs/trusted-client', () => ({
   generateTrustedClientToken: vi.fn().mockReturnValue(undefined),
@@ -124,6 +128,118 @@ describe('AiAgentService.execSubAgent', () => {
     mockThreadModel.update.mockResolvedValue({});
 
     service = new AiAgentService(mockDb, userId);
+  });
+
+  it('does not log sub-agent instruction content or caller-controlled identifiers', async () => {
+    const secret = 'traveler@example.com sk-private-subagent-key';
+    mockThreadModel.create.mockRejectedValueOnce(new Error('stop after request logging'));
+
+    await expect(
+      service.execSubAgent({
+        agentId: 'agent-private-subagent',
+        groupId: 'group-private-subagent',
+        instruction: secret,
+        parentMessageId: 'message-private-parent',
+        topicId: 'topic-private-subagent',
+      }),
+    ).rejects.toThrow('stop after request logging');
+
+    const logged = JSON.stringify(mockDebugLog.mock.calls);
+    expect(logged).not.toContain(secret);
+    expect(logged).not.toContain('traveler@example.com');
+    expect(logged).not.toContain('sk-private-subagent-key');
+    expect(logged).not.toContain('agent-private-subagent');
+    expect(logged).not.toContain('group-private-subagent');
+    expect(logged).not.toContain('topic-private-subagent');
+  });
+
+  it('stores only an error kind and emits no raw failure from completion hooks', async () => {
+    const maliciousError =
+      'provider=private-provider passenger@example.com api_key=private-completion-token';
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const execAgentSpy = vi.spyOn(service, 'execAgent').mockResolvedValue({
+      agentId: 'agent-1',
+      assistantMessageId: 'assistant-msg-1',
+      autoStarted: true,
+      createdAt: new Date().toISOString(),
+      message: 'Agent operation created successfully',
+      messageId: 'queue-msg-1',
+      operationId: 'op-123',
+      status: 'created',
+      success: true,
+      timestamp: new Date().toISOString(),
+      topicId: 'topic-1',
+      userMessageId: 'user-msg-1',
+    });
+
+    try {
+      await service.execSubAgent({
+        agentId: 'agent-1',
+        instruction: 'safe instruction',
+        parentMessageId: 'parent-msg-1',
+        topicId: 'topic-1',
+      });
+
+      const hooks = execAgentSpy.mock.calls[0][0].hooks!;
+      const completionHook = hooks.find((hook) => hook.id === 'thread-completion')!;
+      await completionHook.handler!({
+        finalState: {
+          error: new Error(maliciousError),
+          messages: [],
+          operationId: 'operation-private-completion',
+        },
+        operationId: 'operation-private-completion',
+        reason: 'error',
+      } as any);
+
+      const emitted = JSON.stringify([
+        mockDebugLog.mock.calls,
+        consoleError.mock.calls,
+        consoleWarn.mock.calls,
+        mockThreadModel.update.mock.calls,
+      ]);
+      expect(emitted).not.toContain(maliciousError);
+      expect(emitted).not.toContain('passenger@example.com');
+      expect(emitted).not.toContain('private-completion-token');
+      expect(mockThreadModel.update).toHaveBeenCalledWith(
+        'thread-123',
+        expect.objectContaining({
+          metadata: expect.objectContaining({ error: { kind: 'runtime' } }),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('does not persist a raw startup failure in isolation thread metadata', async () => {
+    const maliciousError =
+      'database=private-db traveler@example.com password=private-database-password';
+    vi.spyOn(service, 'execAgent').mockResolvedValue({
+      error: maliciousError,
+      operationId: 'op-123',
+      success: false,
+    } as any);
+
+    await service.execSubAgent({
+      agentId: 'agent-1',
+      instruction: 'safe instruction',
+      parentMessageId: 'parent-msg-1',
+      topicId: 'topic-1',
+    });
+
+    const persisted = JSON.stringify(mockThreadModel.update.mock.calls);
+    expect(persisted).not.toContain(maliciousError);
+    expect(persisted).not.toContain('traveler@example.com');
+    expect(persisted).not.toContain('private-database-password');
+    expect(mockThreadModel.update).toHaveBeenCalledWith(
+      'thread-123',
+      expect.objectContaining({
+        metadata: expect.objectContaining({ error: { kind: 'runtime' } }),
+      }),
+    );
   });
 
   describe('successful isolated execution', () => {
@@ -372,7 +488,7 @@ describe('AiAgentService.execSubAgent', () => {
         metadata: expect.objectContaining({
           completedAt: expect.any(String),
           duration: expect.any(Number),
-          error: 'Agent execution failed',
+          error: { kind: 'runtime' },
           operationId: 'op-123',
           startedAt: expect.any(String),
         }),
@@ -380,7 +496,7 @@ describe('AiAgentService.execSubAgent', () => {
       });
     });
 
-    it('should store error info with duration in Thread metadata when execAgent fails', async () => {
+    it('should store a safe error kind with duration when execAgent fails', async () => {
       vi.spyOn(service, 'execAgent').mockResolvedValue({
         agentId: 'agent-1',
         assistantMessageId: 'assistant-msg-1',
@@ -412,7 +528,7 @@ describe('AiAgentService.execSubAgent', () => {
       expect(lastUpdateCall![1].metadata).toMatchObject({
         completedAt: expect.any(String),
         duration: expect.any(Number),
-        error: 'QStash service unavailable',
+        error: { kind: 'runtime' },
         operationId: 'op-123',
         startedAt: expect.any(String),
       });

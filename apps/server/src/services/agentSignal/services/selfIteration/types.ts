@@ -138,12 +138,7 @@ export enum ReviewRunStatus {
 }
 
 export type ActionType =
-  | 'write_memory'
-  | 'create_skill'
-  | 'refine_skill'
-  | 'consolidate_skill'
-  | 'noop'
-  | 'proposal_only';
+  'write_memory' | 'create_skill' | 'refine_skill' | 'consolidate_skill' | 'noop' | 'proposal_only';
 
 export enum ApplyMode {
   AutoApply = 'auto_apply',
@@ -184,10 +179,7 @@ export type SkillConsolidateOperation = DomainOperationCase<
 >;
 
 export type DomainOperation =
-  | MemoryWriteOperation
-  | SkillConsolidateOperation
-  | SkillCreateOperation
-  | SkillRefineOperation;
+  MemoryWriteOperation | SkillConsolidateOperation | SkillCreateOperation | SkillRefineOperation;
 
 export interface ActionTarget {
   memoryId?: string;

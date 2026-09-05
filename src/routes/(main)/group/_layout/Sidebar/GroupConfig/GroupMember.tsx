@@ -5,7 +5,7 @@ import { Flexbox } from '@lobehub/ui';
 import { ActionIcon } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { UserMinus } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_AVATAR } from '@/const/meta';
@@ -23,6 +23,7 @@ import { userProfileSelectors } from '@/store/user/slices/auth/selectors';
 
 import AddGroupMemberModal from '../AddGroupMemberModal';
 import GroupMemberItem from './GroupMemberItem';
+import { useRemoveGroupMember } from './useRemoveGroupMember';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   memberTrigger: css`
@@ -38,6 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 interface GroupMemberProps {
   addModalOpen: boolean;
+  canManage: boolean;
   groupId?: string;
   onAddModalOpenChange: (open: boolean) => void;
 }
@@ -45,117 +47,113 @@ interface GroupMemberProps {
 /**
  * Group member info in Sidebar
  */
-const GroupMember = memo<GroupMemberProps>(({ addModalOpen, onAddModalOpenChange, groupId }) => {
-  const { t } = useTranslation('chat');
-  const { allowed: hasEditPermission, reason } = usePermission('edit_own_content');
-  const { canEditResource } = useResourceAccess('agentGroup', groupId);
-  const canEdit = hasEditPermission && canEditResource;
-  const router = useQueryRoute();
-  const location = useActiveLocation();
-  const [nickname, username] = useUserStore((s) => [
-    userProfileSelectors.nickName(s),
-    userProfileSelectors.username(s),
-  ]);
-  const addAgentsToGroup = useAgentGroupStore((s) => s.addAgentsToGroup);
-  const removeAgentFromGroup = useAgentGroupStore((s) => s.removeAgentFromGroup);
+const GroupMember = memo<GroupMemberProps>(
+  ({ addModalOpen, canManage, onAddModalOpenChange, groupId }) => {
+    const { t } = useTranslation('chat');
+    const { allowed: hasEditPermission, reason } = usePermission('edit_own_content');
+    const { canEditResource } = useResourceAccess('agentGroup', groupId);
+    const canEdit = canManage && hasEditPermission && canEditResource;
+    const router = useQueryRoute();
+    const location = useActiveLocation();
+    const [nickname, username] = useUserStore((s) => [
+      userProfileSelectors.nickName(s),
+      userProfileSelectors.username(s),
+    ]);
+    const addAgentsToGroup = useAgentGroupStore((s) => s.addAgentsToGroup);
+    const removeAgentFromGroup = useAgentGroupStore((s) => s.removeAgentFromGroup);
+    const { confirmRemoveMember, removingMemberIds } = useRemoveGroupMember({
+      canEdit,
+      groupId,
+      removeAgentFromGroup,
+      t,
+    });
 
-  const groupMembers = useAgentGroupStore(agentGroupSelectors.getGroupMembers(groupId || ''));
+    const groupMembers = useAgentGroupStore(agentGroupSelectors.getGroupMembers(groupId || ''));
 
-  const activeTab = useMemo(
-    () => new URLSearchParams(location.search).get('tab'),
-    [location.search],
-  );
-  const isProfileRoute = useMemo(() => {
-    if (!groupId) return false;
-    return location.pathname === `/group/${groupId}/profile`;
-  }, [groupId, location.pathname]);
+    const activeTab = useMemo(
+      () => new URLSearchParams(location.search).get('tab'),
+      [location.search],
+    );
+    const isProfileRoute = useMemo(() => {
+      if (!groupId) return false;
+      return location.pathname === `/group/${groupId}/profile`;
+    }, [groupId, location.pathname]);
 
-  const handleAddMembers = async (selectedAgents: string[]) => {
-    if (!canEdit) return;
-    if (!groupId) {
-      console.error('No active group to add members to');
-      return;
-    }
+    const handleAddMembers = async (selectedAgents: string[]) => {
+      if (!canEdit) return;
+      if (!groupId) {
+        console.error('No active group to add members to');
+        return;
+      }
 
-    if (selectedAgents.length > 0) {
-      await addAgentsToGroup(groupId, selectedAgents);
-    }
+      if (selectedAgents.length > 0) {
+        await addAgentsToGroup(groupId, selectedAgents);
+      }
 
-    onAddModalOpenChange(false);
-  };
+      onAddModalOpenChange(false);
+    };
 
-  const [removingMemberIds, setRemovingMemberIds] = useState<string[]>([]);
+    const handleMemberDoubleClick = (agentId: string) => {
+      if (!groupId || !canEdit) return;
+      router.push(`/group/${groupId}/profile`, { query: { tab: agentId }, replace: true });
+    };
 
-  const withRemovingFlag = async (id: string, task: () => Promise<void>) => {
-    setRemovingMemberIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    try {
-      await task();
-    } finally {
-      setRemovingMemberIds((prev) => prev.filter((memberId) => memberId !== id));
-    }
-  };
+    return (
+      <>
+        <Flexbox gap={2}>
+          {/* User */}
+          <NavItem icon={<UserAvatar size={24} />} title={nickname || username || 'User'} />
+          {groupId &&
+            groupMembers.map((item) => {
+              const memberTitle = agentDisplayName(item, t('defaultSession', { ns: 'common' }));
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!canEdit) return;
-    if (!groupId) return;
-
-    await withRemovingFlag(memberId, () => removeAgentFromGroup(groupId, memberId));
-  };
-
-  const handleMemberDoubleClick = (agentId: string) => {
-    if (!groupId || !canEdit) return;
-    router.push(`/group/${groupId}/profile`, { query: { tab: agentId }, replace: true });
-  };
-
-  return (
-    <>
-      <Flexbox gap={2}>
-        {/* User */}
-        <NavItem icon={<UserAvatar size={24} />} title={nickname || username || 'User'} />
-        {groupId &&
-          groupMembers.map((item) => (
-            <AgentProfilePopup agent={item} agentId={item.id} groupId={groupId} key={item.id}>
-              <div
-                className={styles.memberTrigger}
-                data-active={isProfileRoute && activeTab === item.id ? 'true' : undefined}
-                onDoubleClick={() => handleMemberDoubleClick(item.id)}
-              >
-                <GroupMemberItem
-                  avatar={item.avatar || DEFAULT_AVATAR}
-                  background={item.backgroundColor ?? undefined}
-                  isExternal={!item.virtual}
-                  title={agentDisplayName(item, t('defaultSession', { ns: 'common' }))}
-                  actions={
-                    <ActionIcon
-                      danger
-                      disabled={!canEdit}
-                      icon={UserMinus}
-                      loading={removingMemberIds.includes(item.id)}
-                      size={'small'}
-                      title={canEdit ? t('groupSidebar.members.removeMember') : reason}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveMember(item.id);
-                      }}
+              return (
+                <AgentProfilePopup agent={item} agentId={item.id} groupId={groupId} key={item.id}>
+                  <div
+                    className={styles.memberTrigger}
+                    data-active={isProfileRoute && activeTab === item.id ? 'true' : undefined}
+                    onDoubleClick={() => handleMemberDoubleClick(item.id)}
+                  >
+                    <GroupMemberItem
+                      avatar={item.avatar || DEFAULT_AVATAR}
+                      background={item.backgroundColor ?? undefined}
+                      isExternal={!item.virtual}
+                      title={memberTitle}
+                      actions={
+                        canManage ? (
+                          <ActionIcon
+                            danger
+                            disabled={!canEdit}
+                            icon={UserMinus}
+                            loading={removingMemberIds.includes(item.id)}
+                            size={'small'}
+                            title={canEdit ? t('groupSidebar.members.removeMember') : reason}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmRemoveMember(item.id, memberTitle);
+                            }}
+                          />
+                        ) : undefined
+                      }
                     />
-                  }
-                />
-              </div>
-            </AgentProfilePopup>
-          ))}
-      </Flexbox>
+                  </div>
+                </AgentProfilePopup>
+              );
+            })}
+        </Flexbox>
 
-      {groupId && (
-        <AddGroupMemberModal
-          existingMembers={groupMembers.map((member) => member.id)}
-          groupId={groupId}
-          open={addModalOpen}
-          onCancel={() => onAddModalOpenChange(false)}
-          onConfirm={handleAddMembers}
-        />
-      )}
-    </>
-  );
-});
+        {groupId && canManage && (
+          <AddGroupMemberModal
+            existingMembers={groupMembers.map((member) => member.id)}
+            groupId={groupId}
+            open={addModalOpen}
+            onCancel={() => onAddModalOpenChange(false)}
+            onConfirm={handleAddMembers}
+          />
+        )}
+      </>
+    );
+  },
+);
 
 export default GroupMember;

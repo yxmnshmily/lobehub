@@ -203,6 +203,28 @@ describe('OpenAPI auth middleware', () => {
     expect(response.status).toBe(200);
   });
 
+  it('should reject an API Key whose current database user is banned', async () => {
+    mockExtractBearerToken.mockReturnValueOnce(`${API_KEY_PREFIX}banneduserkey01`);
+    mockValidateApiKeyFormat.mockReturnValueOnce(true);
+    mockApiKeyFindByKey.mockResolvedValueOnce({
+      enabled: true,
+      expiresAt: null,
+      id: 'api-key-banned',
+      name: 'Full access key',
+      scopes: null,
+      userId: 'banned-super-admin',
+      workspaceId: null,
+    });
+    mockAssertOIDCUserActive.mockRejectedValueOnce(new Error('inactive user'));
+
+    const response = await createApp().request('/protected', {
+      headers: { Authorization: `Bearer ${API_KEY_PREFIX}banneduserkey01` },
+    });
+
+    expect(response.status).toBe(401);
+    expect(mockApiKeyUpdateLastUsed).not.toHaveBeenCalled();
+  });
+
   it('should re-read API Key authorization changes on every request', async () => {
     mockExtractBearerToken.mockReturnValue(`${API_KEY_PREFIX}workspacekey01`);
     mockValidateApiKeyFormat.mockReturnValue(true);

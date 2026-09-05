@@ -4,7 +4,12 @@ import { getServerFeatureFlagsValue } from '@/config/featureFlags';
 import { appEnv } from '@/envs/app';
 import { fileEnv } from '@/envs/file';
 import { pythonEnv } from '@/envs/python';
-import { buildAnalyticsConfig, fetchViteDevTemplate, renderSpaHtml } from '@/libs/spaHtml';
+import {
+  buildAnalyticsConfig,
+  fetchViteDevTemplate,
+  renderSpaHtml,
+  resolveViteBrowserOrigin,
+} from '@/libs/spaHtml';
 import { type Locales, normalizeLocale } from '@/locales/resources';
 import { getServerGlobalConfig } from '@/server/globalConfig';
 import { type SPAClientEnv, type SPAServerConfig } from '@/types/spaServerConfig';
@@ -17,8 +22,16 @@ export function generateStaticParams() {
 
 const isDev = process.env.NODE_ENV === 'development';
 
-async function getTemplate(): Promise<string> {
-  if (isDev) return fetchViteDevTemplate('/index.workbench.html');
+async function getTemplate(request: Request): Promise<string> {
+  if (isDev)
+    return fetchViteDevTemplate(
+      '/index.workbench.html',
+      resolveViteBrowserOrigin(
+        request.url,
+        undefined,
+        request.headers.get('x-forwarded-host'),
+      ),
+    );
 
   const { workbenchHtmlTemplate } = await import('../../workbenchHtmlTemplate');
 
@@ -42,7 +55,7 @@ const buildSeoMeta = (locale: string) =>
   ].join('\n    ');
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ locale: string; path?: string[] }> },
 ) {
   const { locale: rawLocale } = await params;
@@ -56,7 +69,7 @@ export async function GET(
     isMobile: true,
   };
 
-  const template = await getTemplate();
+  const template = await getTemplate(request);
 
   return renderSpaHtml(template, { seoMeta: buildSeoMeta(locale), serverConfig: spaConfig });
 }

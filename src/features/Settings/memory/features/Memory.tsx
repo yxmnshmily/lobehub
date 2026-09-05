@@ -29,7 +29,9 @@ const MemorySetting = memo(() => {
 
   if (!isUserStateInit) return <Skeleton active paragraph={{ rows: 3 }} title={false} />;
 
-  const memoryEnabledSwitch = <Switch disabled={!canManageMemory} />;
+  const memoryEnabledSwitch = (
+    <Switch disabled={!canManageMemory} title={t('memory.enabled.title')} />
+  );
 
   const memorySettings: FormGroupItemType = {
     children: [

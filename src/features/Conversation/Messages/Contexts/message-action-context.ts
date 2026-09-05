@@ -31,9 +31,7 @@ type AssistantGroupMessageActionType = {
   type: 'assistantGroup';
 };
 export type MessageActionType =
-  | AssistantMessageActionType
-  | UserMessageActionType
-  | AssistantGroupMessageActionType;
+  AssistantMessageActionType | UserMessageActionType | AssistantGroupMessageActionType;
 
 export const MessageItemActionTypeContext = createContext<MessageActionType | null>(null);
 

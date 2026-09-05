@@ -32,7 +32,7 @@ fi
 
 # Install deps (bun is fast, skips if lock unchanged)
 cd "$CACHE_DIR"
-bun install --frozen-lockfile --silent 2>/dev/null || bun install --silent
+bun install --frozen-lockfile --silent 2> /dev/null || bun install --silent
 
 # Build default args from env vars (can be overridden by explicit flags)
 DEFAULT_ARGS=()

@@ -50,6 +50,8 @@ import type { UserMemoryEmbeddingRuntime } from '@/server/services/memory/userMe
 import { embedUserMemoryTexts } from '@/server/services/memory/userMemory/embedding';
 import { normalizeSearchMemoryParams } from '@/server/services/memory/userMemory/searchParams';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
   activities: [],
   contexts: [],
@@ -256,7 +258,9 @@ const memoryProcedure = authedProcedure.use(serverDatabase).use(async (opts) => 
     },
   });
 });
-const memoryWriteProcedure = memoryProcedure.use(withScopedPermission('message:create'));
+const memoryWriteProcedure = memoryProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('message:create'));
 
 export const userMemoriesRouter = router({
   getMemoryDetail: memoryProcedure

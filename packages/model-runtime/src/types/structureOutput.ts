@@ -59,3 +59,41 @@ export interface GenerateObjectOptions {
    */
   user?: string;
 }
+
+/** Exact, non-secret route provenance for a bounded provider call. */
+export interface GenerateObjectRouteIdentity {
+  apiType: string;
+  channelId: string;
+  model: string;
+  providerId: string;
+  routerId: string;
+}
+
+export interface GenerateObjectBoundedOptions extends GenerateObjectOptions {
+  /** Provider-enforced ceiling covering every generated token, including reasoning. */
+  maxOutputTokens: number;
+  /** Server-selected route. Implementations must reject rather than remap it. */
+  route: GenerateObjectRouteIdentity;
+}
+
+export interface GenerateObjectBoundedEnvelope {
+  inputTokens: number;
+  /** Integer platform Credits reserved for the worst allowed input/output usage. */
+  maximumCredits: number;
+  maxOutputTokens: number;
+  route: Readonly<GenerateObjectRouteIdentity>;
+}
+
+export interface GenerateObjectBoundedResult<T = unknown> {
+  output: T;
+  usage: ModelUsage;
+}
+
+/**
+ * A prepared provider request. Execution is deliberately closure-based so callers cannot
+ * rebuild or substitute the request after the authoritative token count is obtained.
+ */
+export interface PreparedGenerateObjectBounded<T = unknown> {
+  readonly envelope: Readonly<GenerateObjectBoundedEnvelope>;
+  execute: () => Promise<GenerateObjectBoundedResult<T>>;
+}

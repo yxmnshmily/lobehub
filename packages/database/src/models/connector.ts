@@ -22,6 +22,8 @@ export interface ConnectorReference {
 
 export interface PublicConnectorRecord {
   agentId: string | null;
+  /** Effective authorizer id for server-side display attribution; never returned by API routes. */
+  authorizedByUserId: string;
   avatar: string | null;
   createdAt: Date;
   description: string | null;
@@ -82,6 +84,7 @@ export class ConnectorModel {
 
   private publicSelection = {
     agentId: userConnectors.agentId,
+    authorizedByUserId: sql<string>`COALESCE(${userConnectors.metadata} -> 'composio' ->> 'linkedByUserId', ${userConnectors.userId})`,
     avatar: sql<string | null>`${userConnectors.metadata} ->> 'avatar'`,
     createdAt: userConnectors.createdAt,
     description: sql<string | null>`${userConnectors.metadata} ->> 'description'`,
@@ -237,6 +240,28 @@ export class ConnectorModel {
    */
   queryPublic = async (): Promise<PublicConnectorRecord[]> => {
     return this.db.select(this.publicSelection).from(userConnectors).where(this.baseScope());
+  };
+
+  queryByAgentPublic = async (agentId: string): Promise<PublicConnectorRecord[]> => {
+    return this.db
+      .select(this.publicSelection)
+      .from(userConnectors)
+      .where(
+        and(
+          this.ownership(),
+          or(
+            eq(userConnectors.agentId, agentId),
+            sql`${userConnectors.metadata} ->> 'mountedByAgentId' = ${agentId}`,
+          ),
+        ),
+      );
+  };
+
+  queryAllAgentScopedPublic = async (): Promise<PublicConnectorRecord[]> => {
+    return this.db
+      .select(this.publicSelection)
+      .from(userConnectors)
+      .where(and(this.ownership(), isNotNull(userConnectors.agentId)));
   };
 
   /**
@@ -436,6 +461,29 @@ export class ConnectorModel {
       .limit(1);
 
     return row ?? null;
+  };
+
+  findComposioReferenceByConnectedAccountId = async (
+    connectedAccountId: string,
+  ): Promise<ComposioConnectorReference | null> => {
+    const [row] = await this.db
+      .select({
+        id: userConnectors.id,
+        isEnabled: userConnectors.isEnabled,
+        metadata: userConnectors.metadata,
+        status: userConnectors.status,
+        userId: userConnectors.userId,
+      })
+      .from(userConnectors)
+      .where(
+        and(
+          this.ownership(),
+          sql`${userConnectors.metadata} -> 'composio' ->> 'connectedAccountId' = ${connectedAccountId}`,
+        ),
+      )
+      .limit(1);
+
+    return row ? toComposioConnectorReference(row) : null;
   };
 
   update = async (

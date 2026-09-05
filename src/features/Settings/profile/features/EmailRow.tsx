@@ -6,6 +6,8 @@ import { AnimatePresence, m } from 'motion/react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
+import { getEmailChangeErrorKey } from '@/features/Auth/utils/userFacingError';
 import { changeEmail } from '@/libs/better-auth/auth-client';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
@@ -46,16 +48,19 @@ const EmailRow = () => {
     try {
       setSaving(true);
       setError('');
-      const res = await changeEmail({ callbackURL: '/settings/profile', newEmail: trimmed });
+      const res = await changeEmail({
+        callbackURL: withLobeHubMountPath('/settings/profile'),
+        newEmail: trimmed,
+      });
       if (res.error) {
-        setError(res.error.message ?? res.error.statusText ?? 'Failed to change email');
+        setError(t(getEmailChangeErrorKey(res.error)));
         return;
       }
       setIsEditing(false);
       toast.success(t('profile.emailChangeSuccess'));
-    } catch (err) {
-      console.error('Failed to change email:', err);
-      setError(err instanceof Error ? err.message : String(err));
+    } catch {
+      console.error('Email change failed');
+      setError(t('profile.emailChangeError'));
     } finally {
       setSaving(false);
     }

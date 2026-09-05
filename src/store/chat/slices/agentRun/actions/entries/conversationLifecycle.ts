@@ -274,6 +274,7 @@ export class ConversationLifecycleActionImpl {
   };
 
   sendMessage = async ({
+    billing,
     message,
     editorData: inputEditorData,
     files,
@@ -1636,6 +1637,7 @@ export class ConversationLifecycleActionImpl {
         // input loading state would drop during the execAgentTask round-trip
         // and the send button would flicker back to "send".
         const result = await this.#get().executeGatewayAgent({
+          billing,
           // The ids this send's optimistic rows already render under. The
           // server honours them, so the gateway path converges on the same ids
           // instead of minting its own — same contract as sendMessageInServer.

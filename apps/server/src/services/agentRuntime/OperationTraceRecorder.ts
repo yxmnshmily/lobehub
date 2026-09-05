@@ -293,7 +293,12 @@ export class OperationTraceRecorder {
               // activatedStepTools is kept since it's the cumulative record
               ...restState
             } = e.finalState;
-            return { ...e, finalState: restState };
+            if (!restState.metadata || typeof restState.metadata !== 'object') {
+              return { ...e, finalState: restState };
+            }
+            const { platformManagedMaxCredits: _platformManagedMaxCredits, ...safeMetadata } =
+              restState.metadata;
+            return { ...e, finalState: { ...restState, metadata: safeMetadata } };
           }
           return e;
         }),

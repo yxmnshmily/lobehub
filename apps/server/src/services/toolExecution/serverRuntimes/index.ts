@@ -8,6 +8,7 @@
  */
 import { GoalIdentifier } from '@lobechat/builtin-tool-goal';
 
+import { travelProductionRuntime } from '../../travelProductionTool/serverRuntime';
 import type { ToolExecutionContext } from '../types';
 import { acceptanceEvidenceRuntime } from './acceptanceEvidence';
 import { activatorRuntime } from './activator';
@@ -90,6 +91,7 @@ registerRuntimes([
   briefRuntime,
   taskRuntime,
   topicReferenceRuntime,
+  travelProductionRuntime,
   userInteractionRuntime,
   credsRuntime,
   groupAgentBuilderRuntime,

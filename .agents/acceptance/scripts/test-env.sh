@@ -135,13 +135,34 @@ set_value() {
   local source="$3"
 
   case "$key" in
-    APP_URL) VALUE_APP_URL="$value"; SOURCE_APP_URL="$source" ;;
-    PORT) VALUE_PORT="$value"; SOURCE_PORT="$source" ;;
-    SERVER_URL) VALUE_SERVER_URL="$value"; SOURCE_SERVER_URL="$source" ;;
-    AUTH_TRUSTED_ORIGINS) VALUE_AUTH_TRUSTED_ORIGINS="$value"; SOURCE_AUTH_TRUSTED_ORIGINS="$source" ;;
-    SPA_PORT) VALUE_SPA_PORT="$value"; SOURCE_SPA_PORT="$source" ;;
-    MOBILE_SPA_PORT) VALUE_MOBILE_SPA_PORT="$value"; SOURCE_MOBILE_SPA_PORT="$source" ;;
-    DESKTOP_PORT) VALUE_DESKTOP_PORT="$value"; SOURCE_DESKTOP_PORT="$source" ;;
+    APP_URL)
+      VALUE_APP_URL="$value"
+      SOURCE_APP_URL="$source"
+      ;;
+    PORT)
+      VALUE_PORT="$value"
+      SOURCE_PORT="$source"
+      ;;
+    SERVER_URL)
+      VALUE_SERVER_URL="$value"
+      SOURCE_SERVER_URL="$source"
+      ;;
+    AUTH_TRUSTED_ORIGINS)
+      VALUE_AUTH_TRUSTED_ORIGINS="$value"
+      SOURCE_AUTH_TRUSTED_ORIGINS="$source"
+      ;;
+    SPA_PORT)
+      VALUE_SPA_PORT="$value"
+      SOURCE_SPA_PORT="$source"
+      ;;
+    MOBILE_SPA_PORT)
+      VALUE_MOBILE_SPA_PORT="$value"
+      SOURCE_MOBILE_SPA_PORT="$source"
+      ;;
+    DESKTOP_PORT)
+      VALUE_DESKTOP_PORT="$value"
+      SOURCE_DESKTOP_PORT="$source"
+      ;;
   esac
 }
 
@@ -171,7 +192,7 @@ source_for() {
 
 is_tracked_key() {
   case "$1" in
-    APP_URL|PORT|SERVER_URL|AUTH_TRUSTED_ORIGINS|SPA_PORT|MOBILE_SPA_PORT|DESKTOP_PORT) return 0 ;;
+    APP_URL | PORT | SERVER_URL | AUTH_TRUSTED_ORIGINS | SPA_PORT | MOBILE_SPA_PORT | DESKTOP_PORT) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -386,7 +407,7 @@ case "${1:-}" in
   --value)
     print_value "${2:-}"
     ;;
-  -h|--help)
+  -h | --help)
     usage
     ;;
   *)

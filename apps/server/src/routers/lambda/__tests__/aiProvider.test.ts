@@ -5,6 +5,7 @@ import { RequestTrigger } from '@lobechat/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiProviderModel } from '@/database/models/aiProvider';
+import { RbacModel } from '@/database/models/rbac';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
 import { getServerGlobalConfig } from '@/server/globalConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
@@ -12,6 +13,10 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { type AiProviderDetailItem, type AiProviderRuntimeState } from '@/types/aiProvider';
 
 import { aiProviderRouter } from '../aiProvider';
+
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: vi.fn((opts: any) => opts.next({ ctx: opts.ctx })),
+}));
 
 const mockGetHiddenBuiltinModelsForUser = vi.hoisted(() => vi.fn());
 
@@ -23,6 +28,7 @@ vi.mock('@/server/globalConfig');
 vi.mock('@/server/modules/KeyVaultsEncrypt');
 vi.mock('@/database/repositories/aiInfra');
 vi.mock('@/database/models/aiProvider');
+vi.mock('@/database/models/rbac');
 vi.mock('@/database/models/user');
 vi.mock('@/server/modules/ModelRuntime', () => ({
   initModelRuntimeFromDB: vi.fn(),
@@ -76,6 +82,7 @@ describe('aiProviderRouter', () => {
     } as any);
 
     vi.mocked(KeyVaultsGateKeeper.initWithEnvKey).mockResolvedValue(mockGateKeeper as any);
+    vi.mocked(RbacModel).prototype.hasGlobalRole = vi.fn().mockResolvedValue(true);
   });
 
   const createMockContext = () => ({
@@ -164,20 +171,36 @@ describe('aiProviderRouter', () => {
   });
 
   describe('getAiProviderRuntimeState', () => {
-    it('should get AI provider runtime state', async () => {
-      const mockGetState = vi.fn().mockResolvedValue(mockRuntimeState);
+    it('keeps the credential-bearing runtime path for a platform administrator', async () => {
+      const adminRuntimeState: AiProviderRuntimeState = {
+        ...mockRuntimeState,
+        runtimeConfig: {
+          openai: {
+            config: {},
+            keyVaults: { apiKey: 'admin-runtime-secret' },
+            settings: { sdkType: 'openai' },
+          },
+        },
+      };
+      const mockGetState = vi.fn().mockResolvedValue(adminRuntimeState);
+      const mockGetCatalogState = vi.fn();
       vi.mocked(AiInfraRepos).prototype.getAiProviderRuntimeState = mockGetState;
+      vi.mocked(AiInfraRepos).prototype.getAiProviderCatalogState = mockGetCatalogState;
 
       const caller = aiProviderRouter.createCaller(createMockContext());
       const result = await caller.getAiProviderRuntimeState({});
 
       expect(result).toEqual({
-        ...mockRuntimeState,
+        ...adminRuntimeState,
         hiddenBuiltinModels: [],
         modelRedirects: {},
         providerBindingAgentTypes: {},
       });
       expect(mockGetState).toHaveBeenCalledWith(KeyVaultsGateKeeper.getUserKeyVaults);
+      expect(mockGetCatalogState).not.toHaveBeenCalled();
+      expect(result.runtimeConfig.openai?.keyVaults).toEqual({
+        apiKey: 'admin-runtime-secret',
+      });
     });
 
     it('should append user-scoped hidden builtin models without changing runtime state loading', async () => {
@@ -231,6 +254,39 @@ describe('aiProviderRouter', () => {
       });
       expect(JSON.stringify(result.providerBindingAgentTypes)).not.toContain('secret');
       expect(JSON.stringify(result.providerBindingAgentTypes)).not.toContain('example.com');
+    });
+
+    it('loads only the secret-free catalog for an ordinary customer', async () => {
+      vi.mocked(RbacModel).prototype.hasGlobalRole = vi.fn().mockResolvedValue(false);
+      const getAiProviderRuntimeState = vi.fn();
+      const catalogModel = {
+        abilities: {},
+        enabled: true,
+        id: 'gpt-4o-mini',
+        providerId: 'openai',
+        type: 'chat' as const,
+      };
+      const getAiProviderCatalogState = vi.fn().mockResolvedValue({
+        ...mockRuntimeState,
+        enabledAiModels: [catalogModel],
+        enabledAiProviders: [{ id: 'openai', source: 'builtin' }],
+        runtimeConfig: {},
+      });
+      vi.mocked(AiInfraRepos).prototype.getAiProviderRuntimeState = getAiProviderRuntimeState;
+      vi.mocked(AiInfraRepos).prototype.getAiProviderCatalogState = getAiProviderCatalogState;
+
+      const result = await aiProviderRouter
+        .createCaller(createMockContext())
+        .getAiProviderRuntimeState({});
+
+      expect(getAiProviderCatalogState).toHaveBeenCalledOnce();
+      expect(getAiProviderRuntimeState).not.toHaveBeenCalled();
+      expect(KeyVaultsGateKeeper.initWithEnvKey).not.toHaveBeenCalled();
+      expect(KeyVaultsGateKeeper.getUserKeyVaults).not.toHaveBeenCalled();
+      expect(result.runtimeConfig).toEqual({});
+      expect(JSON.stringify(result)).not.toContain('keyVaults');
+      expect(result.enabledAiModels).toEqual([catalogModel]);
+      expect(result.enabledAiProviders).toEqual([{ id: 'openai', source: 'builtin' }]);
     });
 
     it('should remove hidden models and providers from the runtime state', async () => {

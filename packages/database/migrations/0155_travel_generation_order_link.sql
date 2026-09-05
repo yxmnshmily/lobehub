@@ -1,0 +1,3 @@
+ALTER TABLE "travel_generation_tasks" ADD COLUMN "order_id" uuid;--> statement-breakpoint
+ALTER TABLE "travel_generation_tasks" ADD CONSTRAINT "travel_generation_tasks_order_id_travel_service_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."travel_service_orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "travel_generation_tasks_order_id_idx" ON "travel_generation_tasks" USING btree ("order_id");

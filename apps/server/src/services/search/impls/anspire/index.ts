@@ -106,17 +106,15 @@ export class AnspireImpl implements SearchServiceImpl {
 
       log('Parsed Anspire response: %o', anspireResponse);
 
-      const mappedResults = (anspireResponse.results || []).map(
-        (result): UniformSearchResult => ({
-          category: 'general', // Default category
-          content: result.content || '', // Prioritize content
-          engines: ['anspire'], // Use 'anspire' as the engine name
-          parsedUrl: result.url ? new URL(result.url).hostname : '', // Basic URL parsing
-          score: result.score || 0, // Default score to 0 if undefined
-          title: result.title || '',
-          url: result.url,
-        }),
-      );
+      const mappedResults = (anspireResponse.results || []).map((result): UniformSearchResult => ({
+        category: 'general', // Default category
+        content: result.content || '', // Prioritize content
+        engines: ['anspire'], // Use 'anspire' as the engine name
+        parsedUrl: result.url ? new URL(result.url).hostname : '', // Basic URL parsing
+        score: result.score || 0, // Default score to 0 if undefined
+        title: result.title || '',
+        url: result.url,
+      }));
 
       log('Mapped %d results to SearchResult format', mappedResults.length);
 

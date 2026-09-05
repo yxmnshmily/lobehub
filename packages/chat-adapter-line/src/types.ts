@@ -50,13 +50,7 @@ export interface LineSource {
 }
 
 export type LineMessageContentType =
-  | 'audio'
-  | 'file'
-  | 'image'
-  | 'location'
-  | 'sticker'
-  | 'text'
-  | 'video';
+  'audio' | 'file' | 'image' | 'location' | 'sticker' | 'text' | 'video';
 
 export interface LineTextMessage {
   id: string;
@@ -101,10 +95,7 @@ export interface LineLocationMessage {
 }
 
 export type LineMessage =
-  | LineLocationMessage
-  | LineMediaMessage
-  | LineStickerMessage
-  | LineTextMessage;
+  LineLocationMessage | LineMediaMessage | LineStickerMessage | LineTextMessage;
 
 export interface LineMessageEvent {
   deliveryContext?: { isRedelivery: boolean };

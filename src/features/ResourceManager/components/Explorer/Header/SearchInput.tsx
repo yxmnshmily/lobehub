@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
 
-const SearchInput = memo(() => {
+const SearchInput = memo<{ mobile?: boolean }>(({ mobile = false }) => {
   const { t } = useTranslation('components');
   const [expanded, setExpanded] = useState(false);
   const [showIcon, setShowIcon] = useState(true);
@@ -63,17 +63,18 @@ const SearchInput = memo(() => {
         style={{
           opacity: expanded ? 1 : 0,
           overflow: 'hidden',
-          transition: 'width 240ms ease-out, opacity 200ms ease-out',
+          transition: 'opacity 200ms ease-out',
           width: expanded ? 200 : 0,
         }}
         onTransitionEnd={handleTransitionEnd}
       >
         <Input
+          aria-label={t('FileManager.search.placeholder')}
           placeholder={t('FileManager.search.placeholder')}
           prefix={<SearchIcon size={14} />}
           ref={inputRef}
-          size="small"
-          style={{ width: 200 }}
+          size={mobile ? 'middle' : 'small'}
+          style={{ height: mobile ? 44 : undefined, width: 200 }}
           value={localQuery}
           suffix={
             localQuery ? (
@@ -86,7 +87,17 @@ const SearchInput = memo(() => {
         />
       </div>
       {showIcon && (
-        <ActionIcon icon={SearchIcon} style={{ marginRight: 4 }} onClick={handleExpand} />
+        <ActionIcon
+          aria-label={t('FileManager.search.placeholder')}
+          icon={SearchIcon}
+          title={t('FileManager.search.placeholder')}
+          style={{
+            marginRight: 4,
+            minHeight: mobile ? 44 : undefined,
+            minWidth: mobile ? 44 : undefined,
+          }}
+          onClick={handleExpand}
+        />
       )}
     </>
   );

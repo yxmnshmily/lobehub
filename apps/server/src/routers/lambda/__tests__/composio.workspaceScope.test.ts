@@ -36,6 +36,9 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
   serverDatabase: async (opts: any) =>
     opts.next({ ctx: { ...opts.ctx, serverDB: opts.ctx.serverDB ?? {} } }),
 }));
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => opts.next(),
+}));
 
 describe('composioRouter — workspace scoping (workspace-agent connector bug)', () => {
   // Regression for the bug where a Composio connection bound to a WORKSPACE agent

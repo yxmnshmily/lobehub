@@ -11,7 +11,9 @@ import { AgentSkillModel } from '../agentSkill';
 const serverDB: LobeChatDatabase = await getTestDB();
 
 const userId = 'agent-skill-model-test-user-id';
+const otherUserId = 'agent-skill-model-test-user-id-2';
 const agentSkillModel = new AgentSkillModel(serverDB, userId);
+const otherUserSkillModel = new AgentSkillModel(serverDB, otherUserId);
 
 // Helper to create valid manifest for tests
 const createManifest = (overrides?: Partial<SkillManifest>): SkillManifest => ({
@@ -22,7 +24,7 @@ const createManifest = (overrides?: Partial<SkillManifest>): SkillManifest => ({
 
 beforeEach(async () => {
   await serverDB.delete(users);
-  await serverDB.insert(users).values([{ id: userId }]);
+  await serverDB.insert(users).values([{ id: userId }, { id: otherUserId }]);
 });
 
 afterEach(async () => {
@@ -45,6 +47,87 @@ describe('AgentSkillModel', () => {
 
       expect(skill).toMatchObject(params);
       expect(skill.id).toBeDefined();
+    });
+
+    it('should idempotently create and upgrade a product skill without replacing resources', async () => {
+      const first = await agentSkillModel.ensureByIdentifier({
+        content: 'old content',
+        description: 'old description',
+        identifier: 'tourism-copywriting',
+        manifest: createManifest({ name: '旅游文案技能' }),
+        name: '旅游文案技能',
+        source: 'builtin',
+      });
+      await serverDB
+        .update(agentSkills)
+        .set({ resources: { 'reference.md': { hash: 'abc' } as any } })
+        .where(eq(agentSkills.id, first.id));
+
+      const upgraded = await agentSkillModel.ensureByIdentifier({
+        content: 'new content',
+        description: 'new description',
+        identifier: 'tourism-copywriting',
+        manifest: createManifest({ name: '旅游文案技能', version: '1.0.0' }),
+        name: '旅游文案技能',
+        source: 'builtin',
+      });
+
+      expect(upgraded).toMatchObject({
+        content: 'new content',
+        description: 'new description',
+        id: first.id,
+        identifier: 'tourism-copywriting',
+        resources: { 'reference.md': { hash: 'abc' } },
+      });
+      expect((await agentSkillModel.findAll()).total).toBe(1);
+    });
+
+    it('should rename an existing product skill by identifier without creating a second row', async () => {
+      const first = await agentSkillModel.ensureByIdentifier({
+        content: 'old content',
+        description: 'old description',
+        identifier: 'tourism-document-production',
+        manifest: createManifest({ name: '旧行程技能' }),
+        name: '旧行程技能',
+        source: 'builtin',
+      });
+
+      const renamed = await agentSkillModel.ensureByIdentifier({
+        content: 'new content',
+        description: 'new description',
+        identifier: 'tourism-document-production',
+        manifest: createManifest({ name: '行程文档助理', version: '1.0.0' }),
+        name: '行程文档助理',
+        source: 'builtin',
+      });
+
+      expect(renamed).toMatchObject({
+        content: 'new content',
+        id: first.id,
+        name: '行程文档助理',
+      });
+      expect((await agentSkillModel.findAll()).total).toBe(1);
+    });
+
+    it('should isolate the same product skill identifier by user', async () => {
+      const input = {
+        content: 'content',
+        description: 'description',
+        identifier: 'tourism-video-production',
+        manifest: createManifest({ name: '旅游视频技能' }),
+        name: '旅游视频技能',
+        source: 'builtin' as const,
+      };
+      const mine = await agentSkillModel.ensureByIdentifier(input);
+      const theirs = await otherUserSkillModel.ensureByIdentifier(input);
+
+      expect(theirs.id).not.toBe(mine.id);
+      expect(await agentSkillModel.findByIdentifier(input.identifier)).toMatchObject({
+        id: mine.id,
+      });
+      expect(await otherUserSkillModel.findByIdentifier(input.identifier)).toMatchObject({
+        id: theirs.id,
+      });
     });
   });
 

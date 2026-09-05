@@ -7,6 +7,8 @@ import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
+import { createRuntimeExecutors } from '@/server/modules/AgentRuntime/RuntimeExecutors';
+import { createHostedGroupRunBinding } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
 
 import { AgentRuntimeService, createEvalToolForwardingHook } from './AgentRuntimeService';
 import { hookDispatcher } from './hooks';
@@ -104,6 +106,10 @@ vi.mock('@/server/modules/AgentRuntime', async (importOriginal) => {
     createRuntimeExecutors: vi.fn(),
   };
 });
+
+vi.mock('@/server/modules/AgentRuntime/RuntimeExecutors', () => ({
+  createRuntimeExecutors: vi.fn(() => ({})),
+}));
 
 // Spread the real module and override only `AgentRuntime` (to stub `.step()`).
 // Keeps the real status predicates + package-hosted executors (e.g. `finish`),
@@ -474,6 +480,63 @@ describe('AgentRuntimeService', () => {
       expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
     });
 
+    it('durably persists the opaque hosted member run binding before dispatch', async () => {
+      const binding = createHostedGroupRunBinding({
+        actorUserId: 'invited-member',
+        groupId: 'private-travel-group',
+        membershipVersion: 3,
+        ownerUserId: 'group-owner',
+      });
+      const recordStart = vi
+        .spyOn((service as any).completionLifecycle, 'recordStart')
+        .mockResolvedValue(true);
+      mockQueueService.scheduleMessage.mockResolvedValueOnce('message-123');
+
+      await service.createOperation({
+        ...mockParams,
+        appContext: {
+          billingActorUserId: 'invited-member',
+          groupId: 'private-travel-group',
+          hostedGroupRun: binding.snapshot,
+          resourceOwnerUserId: 'group-owner',
+        } as any,
+        userId: 'invited-member',
+      });
+
+      expect(recordStart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chatGroupId: 'private-travel-group',
+          metadata: { hostedGroupRun: binding.snapshot },
+        }),
+      );
+      expect(mockQueueService.scheduleMessage).toHaveBeenCalledOnce();
+    });
+
+    it('fails closed before dispatch when the hosted member run binding is not persisted', async () => {
+      const binding = createHostedGroupRunBinding({
+        actorUserId: 'invited-member',
+        groupId: 'private-travel-group',
+        membershipVersion: 3,
+        ownerUserId: 'group-owner',
+      });
+      vi.spyOn((service as any).completionLifecycle, 'recordStart').mockResolvedValue(false);
+
+      await expect(
+        service.createOperation({
+          ...mockParams,
+          appContext: {
+            billingActorUserId: 'invited-member',
+            groupId: 'private-travel-group',
+            hostedGroupRun: binding.snapshot,
+            resourceOwnerUserId: 'group-owner',
+          } as any,
+          userId: 'invited-member',
+        }),
+      ).rejects.toThrow('Failed to durably persist hosted group run binding');
+
+      expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
+    });
+
     it('should handle errors during operation creation', async () => {
       mockCoordinator.saveAgentState.mockRejectedValueOnce(new Error('Database error'));
 
@@ -768,6 +831,31 @@ describe('AgentRuntimeService', () => {
             enabled: true,
             maxWindowToken: undefined,
           }),
+        }),
+      );
+    });
+
+    it('builds hosted runtime resources as the owner while retaining the member billing actor', async () => {
+      const serviceWithFactory = new AgentRuntimeService(mockDb, 'group-owner', {
+        agentFactory: () => ({ runner: vi.fn() }) as any,
+      });
+
+      await (serviceWithFactory as any).createAgentRuntime({
+        metadata: {
+          agentConfig: { chatConfig: {} },
+          billingActorUserId: 'invited-member',
+          resourceOwnerUserId: 'group-owner',
+          userId: 'invited-member',
+        },
+        operationId: 'hosted-member-operation',
+        stepIndex: 1,
+      });
+
+      expect(vi.mocked(createRuntimeExecutors)).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          billingActorUserId: 'invited-member',
+          resourceOwnerUserId: 'group-owner',
+          userId: 'group-owner',
         }),
       );
     });

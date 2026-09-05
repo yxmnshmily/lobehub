@@ -80,6 +80,39 @@ describe('DataImporter', () => {
   });
 
   describe('import sessions', () => {
+    it('should strip platform-managed runtime mode from imported legacy agents', async () => {
+      const data: ImporterEntryData = {
+        sessions: [
+          {
+            config: {
+              agencyConfig: {
+                executionTarget: 'none',
+                modelRuntimeMode: 'platform-managed',
+                modelSelectionPolicy: 'fixed',
+              },
+              model: 'abc',
+            },
+            createdAt: '2022-05-14T18:18:10.494Z',
+            id: 'managed-session',
+            meta: { title: 'Imported managed agent' },
+            type: 'agent',
+            updatedAt: '2023-01-01',
+          },
+        ],
+        version: CURRENT_CONFIG_VERSION,
+      } as ImporterEntryData;
+
+      await importer.importData(data);
+
+      const [agent] = await serverDB.query.agents.findMany({
+        where: eq(agents.userId, userId),
+      });
+      expect(agent.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('should import sessions and return correct result', async () => {
       const data: ImporterEntryData = {
         version: CURRENT_CONFIG_VERSION,

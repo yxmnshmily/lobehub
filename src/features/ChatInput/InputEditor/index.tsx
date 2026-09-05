@@ -13,7 +13,7 @@ import { Editor, useEditorState } from '@lobehub/editor/react';
 import { combineKeys } from '@lobehub/ui';
 import { css, cx } from 'antd-style';
 import Fuse from 'fuse.js';
-import { KEY_ESCAPE_COMMAND } from 'lexical';
+import { INSERT_LINE_BREAK_COMMAND, KEY_ESCAPE_COMMAND } from 'lexical';
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +59,8 @@ import { useMentionCategories } from './useMentionCategories';
 
 const className = cx(
   css`
+    display: block;
+
     p {
       margin-block-end: 0;
     }
@@ -616,6 +618,20 @@ const InputEditor = memo<{
         }}
         onKeyDown={({ event }) => {
           if (inputHistory.handleKeyDown(event)) return true;
+          if (
+            event.key === 'Tab' &&
+            !event.defaultPrevented &&
+            !event.isComposing &&
+            !isComposingRef.current &&
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.shiftKey
+          ) {
+            event.preventDefault();
+            editor?.dispatchCommand(INSERT_LINE_BREAK_COMMAND, undefined);
+            return true;
+          }
         }}
         onPressEnter={({ event: e }) => {
           // While the history popup is open, Enter confirms the highlighted entry

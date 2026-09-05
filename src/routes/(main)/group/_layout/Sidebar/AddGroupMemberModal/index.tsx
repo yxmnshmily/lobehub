@@ -1,6 +1,7 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
+import { toast } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import { memo, useEffect, useMemo, useState } from 'react';
@@ -15,6 +16,7 @@ import { type AgentItemData } from './AgentItem';
 import AvailableAgentList from './AvailableAgentList';
 import SelectedAgentList from './SelectedAgentList';
 import { useAgentSelectionStore } from './store';
+import { submitSelectedAgents } from './submitSelectedAgents';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
@@ -42,10 +44,11 @@ export interface AddGroupMemberModalProps {
 }
 
 const AddGroupMemberModal = memo<AddGroupMemberModalProps>(
-  ({ existingMembers = [], onCancel, onConfirm, open }) => {
+  ({ existingMembers = [], groupId, onCancel, onConfirm, open }) => {
     const { t } = useTranslation(['chat', 'common']);
 
     const selectedAgentIds = useAgentSelectionStore((s) => s.selectedAgentIds);
+    const beginSelection = useAgentSelectionStore((s) => s.beginSelection);
     const clearSelection = useAgentSelectionStore((s) => s.clearSelection);
 
     // Fetch agents from the new API (non-virtual agents only)
@@ -59,22 +62,25 @@ const AddGroupMemberModal = memo<AddGroupMemberModalProps>(
       return allAgents.filter((agent) => !existingMembers.includes(agent.id));
     }, [allAgents, existingMembers]);
 
-    // Clear selection when modal closes
+    // Selection is modal- and group-scoped. Reusing the open modal for another
+    // group must never carry the first group's candidates into the new target.
     useEffect(() => {
-      if (!open) {
-        clearSelection();
-      }
-    }, [open, clearSelection]);
+      if (open) beginSelection(groupId);
+      else clearSelection();
+    }, [beginSelection, clearSelection, groupId, open]);
 
     const [isAdding, setIsAdding] = useState(false);
 
     const handleConfirm = async () => {
       try {
         setIsAdding(true);
-        await onConfirm(selectedAgentIds);
-        clearSelection();
-      } catch (error) {
-        console.error('Failed to add members:', error);
+        await submitSelectedAgents({
+          clearSelection,
+          errorMessage: t('operationFailed', { ns: 'common' }),
+          notifyError: toast.error,
+          onConfirm,
+          selectedAgentIds,
+        });
       } finally {
         setIsAdding(false);
       }

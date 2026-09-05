@@ -84,7 +84,9 @@ describe('createNotionTaskRecommendationProvider', () => {
       expect(result.recommendationLimit).toBe(1);
       expect(result.promptPrinciples).toEqual(
         expect.arrayContaining([
-          expect.stringContaining('2 of 2 Notion items returned by the current bounded connector scan'),
+          expect.stringContaining(
+            '2 of 2 Notion items returned by the current bounded connector scan',
+          ),
           expect.stringContaining('Do not turn old TODOs'),
           expect.stringContaining('workspace, account, integration, page, and Teamspace access'),
         ]),

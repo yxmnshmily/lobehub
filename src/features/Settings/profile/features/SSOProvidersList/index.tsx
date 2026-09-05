@@ -8,6 +8,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AuthIcons from '@/components/AuthIcons';
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { isBuiltinProvider, normalizeProviderId } from '@/libs/better-auth/utils/client';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { serverConfigSelectors } from '@/store/serverConfig/selectors';
@@ -73,14 +74,14 @@ export const SSOProvidersList = memo(() => {
     if (isBuiltinProvider(normalizedProvider)) {
       // Use better-auth native linkSocial API for built-in providers
       await linkSocial({
-        callbackURL: '/profile',
+        callbackURL: withLobeHubMountPath('/settings/profile'),
         provider: normalizedProvider as any,
       });
       return;
     }
 
     await oauth2.link({
-      callbackURL: '/profile',
+      callbackURL: withLobeHubMountPath('/settings/profile'),
       providerId: normalizedProvider,
     });
   };

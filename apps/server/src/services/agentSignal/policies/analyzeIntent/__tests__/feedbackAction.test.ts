@@ -54,10 +54,7 @@ type DomainSignalInput<TTarget extends SupportedTask4DomainTarget> = {
   skillActionIntent?: 'consolidate' | 'create' | 'maintain' | 'noop' | 'refine';
   skillIntentConfidence?: number;
   skillIntentExplicitness?:
-    | 'explicit_action'
-    | 'implicit_strong_learning'
-    | 'non_skill_preference'
-    | 'weak_positive';
+    'explicit_action' | 'implicit_strong_learning' | 'non_skill_preference' | 'weak_positive';
   skillIntentReason?: string;
   skillRoute?: 'accumulate' | 'direct_decision' | 'non_skill';
   signalId: string;

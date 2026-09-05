@@ -4,6 +4,7 @@ import { ModelIcon } from '@lobehub/icons';
 import { Flexbox } from '@lobehub/ui';
 import { ActionIcon, Switch, Tabs, Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
+import { useResponsive } from 'antd-style';
 import { Images } from 'lucide-react';
 import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -135,6 +136,7 @@ const PromptExtendItem = memo(() => {
 });
 
 const PromptInput = ({ showTitle = false }: PromptInputProps) => {
+  const { mobile = false } = useResponsive();
   const isDarkMode = useIsDark();
   const { t } = useTranslation('image');
   const { allowed: canCreate } = usePermission('create_content');
@@ -325,9 +327,10 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
               }}
             >
               <ActionIcon
+                aria-label={currentModel ?? t('config.model.label')}
                 icon={<ModelIcon model={currentModel ?? ''} size={22} />}
                 size={{
-                  blockSize: 36,
+                  blockSize: mobile ? 44 : 36,
                   size: 20,
                 }}
               />

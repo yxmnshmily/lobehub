@@ -2,7 +2,7 @@
 
 import { HotkeyGroupEnum } from '@lobechat/const/hotkeys';
 import { type FormGroupItemType } from '@lobehub/ui';
-import { Form, HotkeyInput, Skeleton } from '@lobehub/ui';
+import { Form, Skeleton } from '@lobehub/ui';
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,10 +16,11 @@ import { useUserStore } from '@/store/user';
 import { settingsSelectors } from '@/store/user/selectors';
 import { type HotkeyItem } from '@/types/hotkey';
 
+import AccessibleHotkeyInput from './AccessibleHotkeyInput';
 import { hotkeyFormStyles } from './styles';
 
 const HotkeySetting = memo(() => {
-  const { t } = useTranslation(['setting', 'hotkey']);
+  const { t } = useTranslation(['setting', 'hotkey', 'common']);
   const [form] = Form.useForm();
 
   const { hotkey } = useUserStore(settingsSelectors.currentSettings, isEqual);
@@ -45,13 +46,14 @@ const HotkeySetting = memo(() => {
 
     return {
       children: (
-        <HotkeyInput
+        <AccessibleHotkeyInput
           allowClear={!item.nonEditable}
+          clearLabel={t('hotkey.clearBinding')}
           disabled={item.nonEditable}
           hotkeyConflicts={hotkeyConflicts}
           placeholder={t('hotkey.record')}
+          resetLabel={t('reset', { ns: 'common' })}
           resetValue={item.keys}
-          texts={{ clear: t('hotkey.clearBinding') }}
           onClear={() => void clearHotkeyBinding(item.id)}
         />
       ),

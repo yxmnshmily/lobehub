@@ -18,10 +18,12 @@ vi.mock('@lobehub/charts', () => ({
 vi.mock('@lobehub/ui', () => ({
   Flexbox: ({ children }: React.ComponentProps<'div'>) => <div>{children}</div>,
   Icon: () => <span />,
-  Tag: ({ children }: React.ComponentProps<'span'>) => <span>{children}</span>,
 }));
 
-vi.mock('@lobehub/ui/base-ui', () => ({ Tabs: () => <div /> }));
+vi.mock('@lobehub/ui/base-ui', () => ({
+  Tabs: () => <div />,
+  Tag: ({ children }: React.ComponentProps<'span'>) => <span>{children}</span>,
+}));
 vi.mock('antd-style', () => ({ cssVar: { colorTextDescription: 'gray' } }));
 
 vi.mock('react-i18next', () => ({

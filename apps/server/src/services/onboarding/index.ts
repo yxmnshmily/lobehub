@@ -482,7 +482,7 @@ export class OnboardingService {
         : await this.saveState({ ...state, activeTopicId: topicId });
 
     const topic = await this.topicModel.findById(topicId);
-    const context = await this.getState();
+    const context = await this.prepareStateForMessageContext();
 
     return {
       agentId: builtinAgent.id,
@@ -495,9 +495,9 @@ export class OnboardingService {
 
   // Read-only bootstrap. Unlike getOrCreateState, this never creates a topic and
   // never writes the discoveryStartUserMessageCount baseline. The baseline write
-  // is deferred to the next mutation path (e.g. getOnboardingAgentContext or
-  // a message-send context resolution), which is acceptable because the baseline
-  // is only consulted once the user is past pre-discovery anyway.
+  // is deferred to the explicit message-send preparation mutation, which is
+  // acceptable because the baseline is only consulted once the user is past
+  // pre-discovery anyway.
   getBootstrapState = async () => {
     const builtinAgent = await this.agentService.getBuiltinAgent(BUILTIN_AGENT_SLUGS.webOnboarding);
 
@@ -632,14 +632,14 @@ export class OnboardingService {
     return { messages, topicId };
   };
 
-  getState = async (): Promise<UserAgentOnboardingContext> => {
+  private resolveState = async (persistProgress: boolean): Promise<UserAgentOnboardingContext> => {
     const userState = await this.getUserState();
     const state = this.ensureState(userState.agentOnboarding);
     const missingStructuredFields = await this.getMissingStructuredFields();
     const topicId = state.activeTopicId;
 
     if (state.finishedAt) {
-      if (topicId) {
+      if (persistProgress && topicId) {
         const topic = await this.topicModel.findById(topicId);
         await this.syncTopicOnboardingSession(topicId, 'summary', {
           finishedAt: state.finishedAt,
@@ -670,7 +670,7 @@ export class OnboardingService {
         currentUserMessageCount = await this.countTopicUserMessages(topicId);
 
         // Capture baseline on first entry into discovery
-        if (state.discoveryStartUserMessageCount === undefined) {
+        if (state.discoveryStartUserMessageCount === undefined && persistProgress) {
           const updatedState = {
             ...state,
             discoveryStartUserMessageCount: currentUserMessageCount,
@@ -681,13 +681,13 @@ export class OnboardingService {
 
         discoveryContext = {
           currentUserMessageCount,
-          startUserMessageCount: state.discoveryStartUserMessageCount,
+          startUserMessageCount: state.discoveryStartUserMessageCount ?? currentUserMessageCount,
         };
       }
     }
 
     const phase = await this.derivePhase(missingStructuredFields, discoveryContext);
-    if (topicId) {
+    if (persistProgress && topicId) {
       const topic = await this.topicModel.findById(topicId);
       await this.syncTopicOnboardingSession(topicId, phase, { metadata: topic?.metadata });
     }
@@ -715,6 +715,11 @@ export class OnboardingService {
       version: state.version,
     };
   };
+
+  getState = async (): Promise<UserAgentOnboardingContext> => this.resolveState(false);
+
+  prepareStateForMessageContext = async (): Promise<UserAgentOnboardingContext> =>
+    this.resolveState(true);
 
   saveUserQuestion = async (input: SaveUserQuestionInput): Promise<SaveUserQuestionResult> => {
     const rawInput = isRecord(input) ? input : {};

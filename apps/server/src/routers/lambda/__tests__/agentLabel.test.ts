@@ -1,5 +1,8 @@
 // @vitest-environment node
+import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
 
 // serverDatabase middleware calls getServerDB(); stub it (the model mock
 // ignores the db handle anyway).
@@ -9,6 +12,10 @@ vi.mock('@/database/core/db-adaptor', () => ({
 
 vi.mock('@/business/server/trpc-middlewares/rbacPermission', () => ({
   withScopedPermission: vi.fn(() => (opts: any) => opts.next({ ctx: opts.ctx })),
+}));
+
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
 }));
 
 const mockCreate = vi.fn();
@@ -37,7 +44,19 @@ describe('agentLabelRouter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
     mockSetAgentLabels.mockResolvedValue(['label-1']);
+  });
+
+  it('rejects label writes from an ordinary customer', async () => {
+    mockCreate.mockResolvedValue({ id: 'label-1' });
+    mockPlatformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    await expect(
+      agentLabelRouter.createCaller(ctx).createLabel({ name: 'Design' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   describe('setAgentLabels', () => {

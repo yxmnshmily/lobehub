@@ -12,11 +12,13 @@ import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useFetchAgentLabels } from '@/hooks/useFetchAgentLabels';
 import { useFetchAgentList } from '@/hooks/useFetchAgentList';
+import { useMyTravelGroupReadiness } from '@/hooks/useMyTravelGroupReadiness';
 
 import { useCreateMenuItems } from '../../hooks';
 import Actions from './Actions';
 import List from './List';
 import { useAgentModal } from './ModalProvider';
+import TravelGroupReadiness from './TravelGroupReadiness';
 import { useAgentActionsDropdownMenu } from './useDropdownMenu';
 
 interface AgentProps {
@@ -25,7 +27,8 @@ interface AgentProps {
 
 const Agent = memo<AgentProps>(({ itemKey }) => {
   const { t } = useTranslation('common');
-  const { isRevalidating } = useFetchAgentList();
+  const { error, isRevalidating, mutate } = useFetchAgentList();
+  const travelGroupReadiness = useMyTravelGroupReadiness();
   // Keep the label registry warm so the per-item "Labels" submenu opens populated.
   useFetchAgentLabels();
   // In workspace mode the section pairs with the "Private" bucket, so the
@@ -92,7 +95,16 @@ const Agent = memo<AgentProps>(({ itemKey }) => {
     >
       <Suspense fallback={<SkeletonList rows={6} />}>
         <Flexbox gap={1} paddingBlock={1}>
-          <List />
+          <TravelGroupReadiness
+            isRetrying={travelGroupReadiness.isRetrying}
+            status={travelGroupReadiness.status}
+            onRetry={travelGroupReadiness.retry}
+          />
+          <List
+            error={error}
+            travelGroupStatus={travelGroupReadiness.status}
+            onRetry={() => mutate()}
+          />
         </Flexbox>
       </Suspense>
     </AccordionItem>

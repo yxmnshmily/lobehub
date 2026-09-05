@@ -21,6 +21,7 @@ import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { VideoGenerationService } from '@/server/services/generation/video';
 import { buildVideoGenerationFilePayload } from '@/server/services/generation/videoFile';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import { FileSource } from '@/types/files';
 
 const log = debug('lobe-video:async');
@@ -156,12 +157,14 @@ export const videoRouter = router({
     try {
       const pollingPromise = async (signal: AbortSignal) => {
         log('Initializing agent runtime for provider: %s', provider);
-        const modelRuntime = await initModelRuntimeFromDB(
-          ctx.serverDB,
-          ctx.userId,
-          provider,
-          workspaceId,
-        );
+        const modelRuntime =
+          ctx.modelRuntimeMode === 'platform-managed'
+            ? await new PlatformAiRuntime(ctx.serverDB).init({
+                actorUserId: ctx.userId,
+                provider,
+                workspaceId,
+              })
+            : await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider, workspaceId);
 
         checkAbortSignal(signal);
 

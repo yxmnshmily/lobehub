@@ -1,8 +1,7 @@
 ---
 title: Configuring Authelia Authentication for LobeHub
 description: >-
-  Learn how to configure Authelia SSO for LobeHub, including setting up OIDC
-  client and environment variables.
+  Learn how to configure Authelia SSO for LobeHub, including setting up OIDC client and environment variables.
 tags:
   - Authelia
   - Authentication
@@ -18,38 +17,38 @@ tags:
 <Steps>
   ### Configure OIDC Client in Authelia
 
-  Add a new OIDC client in your Authelia configuration file:
+Add a new OIDC client in your Authelia configuration file:
 
-  ```yaml
-  identity_providers:
-    oidc:
-      clients:
-        - client_id: 'lobechat'
-          client_name: 'LobeHub'
-          client_secret: 'your-client-secret'
-          redirect_uris:
-            - 'https://your-domain.com/api/auth/callback/authelia'
-          scopes:
-            - 'openid'
-            - 'profile'
-            - 'email'
-  ```
+```yaml
+identity_providers:
+  oidc:
+    clients:
+      - client_id: 'lobechat'
+        client_name: 'LobeHub'
+        client_secret: 'your-client-secret'
+        redirect_uris:
+          - 'https://your-domain.com/api/auth/callback/authelia'
+        scopes:
+          - 'openid'
+          - 'profile'
+          - 'email'
+```
 
-  <Callout type={'info'}>
-    **Callback URL Format**: `https://your-domain.com/api/auth/callback/authelia`
-  </Callout>
+<Callout type={'info'}>
+  **Callback URL Format**: `https://your-domain.com/api/auth/callback/authelia`
+</Callout>
 
-  ### Configure Environment Variables
+### Configure Environment Variables
 
-  When deploying LobeHub, you need to configure the following environment variables:
+When deploying LobeHub, you need to configure the following environment variables:
 
-  | Environment Variable   | Type     | Description                                                                   |
-  | ---------------------- | -------- | ----------------------------------------------------------------------------- |
-  | `AUTH_SECRET`          | Required | Key used to encrypt session tokens. Generate using: `openssl rand -base64 32` |
-  | `AUTH_SSO_PROVIDERS`   | Required | SSO provider for LobeHub. Use `authelia` for Authelia                         |
-  | `AUTH_AUTHELIA_ID`     | Required | Client ID configured in Authelia                                              |
-  | `AUTH_AUTHELIA_SECRET` | Required | Client Secret configured in Authelia                                          |
-  | `AUTH_AUTHELIA_ISSUER` | Required | Authelia issuer URL (e.g., `https://auth.your-domain.com`)                    |
+| Environment Variable | Type | Description |
+| --- | --- | --- |
+| `AUTH_SECRET` | Required | Key used to encrypt session tokens. Generate using: `openssl rand -base64 32` |
+| `AUTH_SSO_PROVIDERS` | Required | SSO provider for LobeHub. Use `authelia` for Authelia |
+| `AUTH_AUTHELIA_ID` | Required | Client ID configured in Authelia |
+| `AUTH_AUTHELIA_SECRET` | Required | Client Secret configured in Authelia |
+| `AUTH_AUTHELIA_ISSUER` | Required | Authelia issuer URL (e.g., `https://auth.your-domain.com`) |
 
   <Callout type={'tip'}>
     Go to [📘 Environment Variables](/docs/self-hosting/environment-variables/auth#authelia) for detailed information on these variables.

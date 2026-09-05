@@ -123,7 +123,12 @@ describe('useSignIn', () => {
     mockBusinessSignin.preSocialSigninCheck.mockResolvedValue(true);
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...originalLocation, href: '' },
+      value: {
+        ...originalLocation,
+        href: '',
+        origin: originalLocation.origin,
+        pathname: '/lobehub/signin',
+      },
       writable: true,
     });
   });
@@ -142,6 +147,7 @@ describe('useSignIn', () => {
       const { result } = renderHook(() => useSignIn());
 
       expect(result.current.step).toBe('email');
+      expect(result.current.authMode).toBe('phone');
       expect(result.current.email).toBe('');
       expect(result.current.loading).toBe(false);
       expect(result.current.socialLoading).toBeNull();
@@ -151,29 +157,21 @@ describe('useSignIn', () => {
   });
 
   describe('handleCheckUser', () => {
-    it('should redirect to signup when user does not exist', async () => {
-      mockFetch.mockResolvedValueOnce({
-        json: async () => ({ exists: false }),
-        ok: true,
-      });
-
+    it('should give unknown and existing emails the same password step', async () => {
       const { result } = renderHook(() => useSignIn());
 
       await act(async () => {
         await result.current.handleCheckUser({ email: 'new@example.com' });
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringContaining('/signup?email=new%40example.com'),
-      );
+      expect(result.current.step).toBe('password');
+      expect(result.current.authMode).toBe('email');
+      expect(result.current.email).toBe('new@example.com');
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it('should go to password step when user exists with password', async () => {
-      mockFetch.mockResolvedValueOnce({
-        json: async () => ({ exists: true, hasPassword: true }),
-        ok: true,
-      });
-
+    it('should go to the same password step without probing account state', async () => {
       const { result } = renderHook(() => useSignIn());
 
       await act(async () => {
@@ -182,46 +180,32 @@ describe('useSignIn', () => {
 
       expect(result.current.step).toBe('password');
       expect(result.current.email).toBe('user@example.com');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should resolve username to email before checking', async () => {
-      // First call: resolve-username
-      mockFetch
-        .mockResolvedValueOnce({
-          json: async () => ({ email: 'resolved@example.com', exists: true }),
-          ok: true,
-        })
-        // Second call: check-user
-        .mockResolvedValueOnce({
-          json: async () => ({ exists: true, hasPassword: true }),
-          ok: true,
-        });
-
+    it('should defer username resolution until password submission', async () => {
       const { result } = renderHook(() => useSignIn());
 
       await act(async () => {
         await result.current.handleCheckUser({ email: 'myusername' });
       });
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/auth/resolve-username', expect.any(Object));
       expect(result.current.step).toBe('password');
-      expect(result.current.email).toBe('resolved@example.com');
+      expect(result.current.email).toBe('myusername');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should show error for unregistered username', async () => {
-      mockFetch.mockResolvedValueOnce({
-        json: async () => ({ exists: false }),
-        ok: true,
-      });
-
+    it('should not reveal whether a username is registered', async () => {
       const { result } = renderHook(() => useSignIn());
 
       await act(async () => {
         await result.current.handleCheckUser({ email: 'unknownuser' });
       });
 
-      expect(mockMessageError).toHaveBeenCalled();
-      expect(result.current.step).toBe('email');
+      expect(mockMessageError).not.toHaveBeenCalled();
+      expect(result.current.step).toBe('password');
+      expect(result.current.email).toBe('unknownuser');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('should show error for invalid identifier', async () => {
@@ -243,11 +227,6 @@ describe('useSignIn', () => {
         return { error: null };
       });
 
-      mockFetch.mockResolvedValueOnce({
-        json: async () => ({ exists: true, hasPassword: true }),
-        ok: true,
-      });
-
       const { result } = renderHook(() => useSignIn());
 
       // Set email first via handleCheckUser
@@ -261,12 +240,62 @@ describe('useSignIn', () => {
 
       expect(mockSignInEmail).toHaveBeenCalledWith(
         expect.objectContaining({
+          callbackURL: '/lobehub/',
           email: 'user@example.com',
           password: 'password123',
         }),
         expect.any(Object),
       );
-      expect(window.location.href).toBe('/');
+      expect(window.location.href).toBe('/lobehub/');
+    });
+
+    it('should sign in a username without exposing its resolved email to the client', async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: async () => ({ authenticated: true }),
+        ok: true,
+        status: 200,
+      });
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'myusername' });
+      });
+      await act(async () => {
+        await result.current.handleSignIn({ password: 'password123' });
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/resolve-username', {
+        body: JSON.stringify({
+          callbackURL: '/lobehub/',
+          password: 'password123',
+          username: 'myusername',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+      expect(mockSignInEmail).not.toHaveBeenCalled();
+      expect(window.location.href).toBe('/lobehub/');
+    });
+
+    it('should show the same generic field error for a failed username login', async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: async () => ({ code: 'INVALID_CREDENTIALS' }),
+        ok: false,
+        status: 401,
+      });
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'unknownuser' });
+      });
+      await act(async () => {
+        await result.current.handleSignIn({ password: 'wrong-password' });
+      });
+
+      expect(mockSetFields).toHaveBeenCalledWith([
+        { errors: [expect.any(String)], name: 'password' },
+      ]);
+      expect(mockMessageError).not.toHaveBeenCalled();
     });
 
     it.each(['javascript:alert(1)', 'https://evil.com', '//evil.com'])(
@@ -294,7 +323,11 @@ describe('useSignIn', () => {
           await result.current.handleSignIn({ password: 'password123' });
         });
 
-        expect(window.location.href).toBe('/');
+        expect(mockSignInEmail).toHaveBeenCalledWith(
+          expect.objectContaining({ callbackURL: '/lobehub/' }),
+          expect.any(Object),
+        );
+        expect(window.location.href).toBe('/lobehub/');
       },
     );
 
@@ -320,15 +353,20 @@ describe('useSignIn', () => {
 
       // Error is pinned inline on the password field, not shown as a toast
       expect(mockSetFields).toHaveBeenCalledWith([
-        { errors: ['Invalid credentials'], name: 'password' },
+        { errors: ['betterAuth.signin.error'], name: 'password' },
       ]);
+      expect(mockSetFields).not.toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ errors: ['Invalid credentials'] })]),
+      );
       expect(mockMessageError).not.toHaveBeenCalled();
     });
 
-    it('should redirect to verify-email on 403', async () => {
+    it('should redirect to verify-email only for an explicit unverified-email error', async () => {
       mockSignInEmail.mockImplementation(async (_data: any, opts: any) => {
-        opts.onError({ error: { status: 403 } });
-        return { error: { message: 'Email not verified', status: 403 } };
+        opts.onError({ error: { code: 'EMAIL_NOT_VERIFIED', status: 403 } });
+        return {
+          error: { code: 'EMAIL_NOT_VERIFIED', message: 'Email not verified', status: 403 },
+        };
       });
 
       mockFetch.mockResolvedValueOnce({
@@ -350,9 +388,139 @@ describe('useSignIn', () => {
         expect.stringContaining('/verify-email?email=user%40example.com'),
       );
     });
+
+    it('should keep a non-verification 403 on the password step', async () => {
+      mockSignInEmail.mockImplementation(async (_data: any, opts: any) => {
+        opts.onError({ error: { code: 'INVALID_ORIGIN', status: 403 } });
+        return { error: { code: 'INVALID_ORIGIN', message: 'Forbidden', status: 403 } };
+      });
+
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'user@example.com' });
+      });
+      await act(async () => {
+        await result.current.handleSignIn({ password: 'password' });
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockSetFields).toHaveBeenCalledWith([
+        { errors: ['betterAuth.signin.error'], name: 'password' },
+      ]);
+    });
+
+    it('should coalesce rapid password sign-in submissions into one request', async () => {
+      let resolveSignIn: ((value: { error: null }) => void) | undefined;
+      mockSignInEmail.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSignIn = resolve;
+          }),
+      );
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'user@example.com' });
+      });
+
+      let firstRequest: Promise<void>;
+      let secondRequest: Promise<void>;
+      act(() => {
+        firstRequest = result.current.handleSignIn({ password: 'password123' });
+        secondRequest = result.current.handleSignIn({ password: 'password123' });
+      });
+
+      await vi.waitFor(() => expect(mockSignInEmail).toHaveBeenCalled());
+      expect(mockSignInEmail).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSignIn?.({ error: null });
+        await Promise.all([firstRequest!, secondRequest!]);
+      });
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   describe('handleSocialSignIn', () => {
+    it('does not reopen the WeChat dialog after it was closed while authorization was loading', async () => {
+      let resolveWechat: ((value: any) => void) | undefined;
+      mockSignInOauth2.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveWechat = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() => useSignIn());
+      let request: Promise<void> | undefined;
+
+      act(() => {
+        request = result.current.handleSocialSignIn('wechat');
+      });
+      await vi.waitFor(() => expect(resolveWechat).toBeTypeOf('function'));
+
+      act(() => result.current.closeWechatAuth());
+      await act(async () => {
+        resolveWechat?.({
+          data: {
+            redirect: false,
+            url: 'https://open.weixin.qq.com/connect/qrconnect?scope=snsapi_login',
+          },
+          error: null,
+        });
+        await request;
+      });
+
+      expect(result.current.wechatAuthUrl).toBeNull();
+    });
+
+    it('rewrites a loopback WeChat callback to the current page origin', async () => {
+      const authorizationUrl = new URL('https://open.weixin.qq.com/connect/qrconnect');
+      authorizationUrl.searchParams.set(
+        'redirect_uri',
+        'http://127.0.0.1:3010/lobehub/api/auth/callback/wechat',
+      );
+      mockSignInOauth2.mockResolvedValue({
+        data: { redirect: false, url: authorizationUrl.toString() },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleSocialSignIn('wechat');
+      });
+
+      const mobileAuthorizationUrl = new URL(result.current.wechatAuthUrl!);
+      expect(mobileAuthorizationUrl.searchParams.get('redirect_uri')).toBe(
+        `${originalLocation.origin}/lobehub/api/auth/callback/wechat`,
+      );
+    });
+
+    it('returns the WeChat authorization URL for an in-page dialog', async () => {
+      const open = vi.spyOn(window, 'open');
+      mockSignInOauth2.mockResolvedValue({
+        data: {
+          redirect: false,
+          url: 'https://open.weixin.qq.com/connect/qrconnect?scope=snsapi_login',
+        },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleSocialSignIn('wechat');
+      });
+
+      expect(mockSignInOauth2).toHaveBeenCalledWith(
+        expect.objectContaining({ disableRedirect: true, providerId: 'wechat' }),
+      );
+      expect(result.current.wechatAuthUrl).toContain('open.weixin.qq.com/connect/qrconnect');
+      expect(open).not.toHaveBeenCalled();
+    });
+
     it('should call signIn.social for builtin providers', async () => {
       mockSignInSocial.mockResolvedValue({ url: 'https://google.com/auth' });
 
@@ -363,7 +531,10 @@ describe('useSignIn', () => {
       });
 
       expect(mockSignInSocial).toHaveBeenCalledWith(
-        expect.objectContaining({ newUserCallbackURL: '/onboarding', provider: 'google' }),
+        expect.objectContaining({
+          newUserCallbackURL: '/lobehub/onboarding',
+          provider: 'google',
+        }),
       );
       expect(mockMessageError).not.toHaveBeenCalled();
     });
@@ -378,7 +549,10 @@ describe('useSignIn', () => {
       });
 
       expect(mockSignInOauth2).toHaveBeenCalledWith(
-        expect.objectContaining({ newUserCallbackURL: '/onboarding', providerId: 'custom-oidc' }),
+        expect.objectContaining({
+          newUserCallbackURL: '/lobehub/onboarding',
+          providerId: 'custom-oidc',
+        }),
       );
     });
 
@@ -475,6 +649,7 @@ describe('useSignIn', () => {
       });
 
       expect(result.current.step).toBe('email');
+      expect(result.current.authMode).toBe('email');
       expect(result.current.email).toBe('');
       expect(result.current.isSocialOnly).toBe(false);
       // The shared form's password (+ any inline error) must be cleared so the
@@ -504,13 +679,37 @@ describe('useSignIn', () => {
       });
 
       expect(mockRequestPasswordReset).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'user@example.com' }),
+        expect.objectContaining({
+          email: 'user@example.com',
+          redirectTo: '/lobehub/reset-password?email=user%40example.com',
+        }),
       );
       // Success is a persistent landing state, not a fleeting toast
       expect(result.current.step).toBe('emailSent');
       expect(result.current.sentInfo).toEqual(
         expect.objectContaining({ email: 'user@example.com', type: 'resetPassword' }),
       );
+    });
+
+    it('keeps a username opaque while requesting a reset and shows the same sent state', async () => {
+      mockRequestPasswordReset.mockResolvedValue({ data: { status: true }, error: null });
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'traveler_name' });
+      });
+      await act(async () => {
+        await result.current.handleForgotPassword();
+      });
+
+      expect(mockRequestPasswordReset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'traveler_name',
+          redirectTo: '/lobehub/reset-password?email=traveler_name',
+        }),
+      );
+      expect(result.current.step).toBe('emailSent');
+      expect(result.current.sentInfo).toEqual({ email: 'traveler_name', type: 'resetPassword' });
     });
 
     it('should no-op when no email has been resolved yet', async () => {
@@ -592,6 +791,12 @@ describe('useSignIn', () => {
       });
 
       expect(mockSignInMagicLink).toHaveBeenCalledTimes(1);
+      expect(mockSignInMagicLink).toHaveBeenCalledWith(
+        expect.objectContaining({
+          callbackURL: '/lobehub/',
+          newUserCallbackURL: '/lobehub/onboarding',
+        }),
+      );
       expect(result.current.step).toBe('emailSent');
       expect(result.current.sentInfo).toEqual(
         expect.objectContaining({ email: 'user@example.com', type: 'magicLink' }),

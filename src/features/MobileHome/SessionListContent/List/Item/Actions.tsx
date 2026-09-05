@@ -17,6 +17,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { isDesktop } from '@/const/index';
+import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { usePermission } from '@/hooks/usePermission';
 import { useGlobalStore } from '@/store/global';
 import { useHomeStore } from '@/store/home';
@@ -220,11 +221,10 @@ const Actions = memo<ActionProps>(({ group, id, openCreateGroupModal, parentType
   return (
     <DropdownMenu items={items} onOpenChange={setOpen}>
       <ActionIcon
+        aria-label={t('more', { ns: 'common' })}
         icon={MoreVertical}
-        size={{
-          blockSize: 28,
-          size: 16,
-        }}
+        size={MOBILE_HEADER_ICON_SIZE}
+        title={t('more', { ns: 'common' })}
       />
     </DropdownMenu>
   );

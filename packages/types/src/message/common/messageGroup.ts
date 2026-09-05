@@ -1,4 +1,3 @@
-
 /**
  * Message group type
  * - parallel: multi-model parallel conversations

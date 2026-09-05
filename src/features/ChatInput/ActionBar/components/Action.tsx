@@ -2,6 +2,7 @@
 
 import type { PopoverTrigger } from '@lobehub/ui';
 import { ActionIcon, type ActionIconProps } from '@lobehub/ui/base-ui';
+import { useResponsive } from 'antd-style';
 import { isUndefined } from 'es-toolkit/compat';
 import { memo } from 'react';
 import useMergeState from 'use-merge-value';
@@ -10,6 +11,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { useServerConfigStore } from '@/store/serverConfig';
 
 import { useActionBarContext } from '../context';
+import { resolveActionAccessibleLabel } from './actionAccessibility';
 import type { ActionDropdownProps } from './ActionDropdown';
 import ActionDropdown from './ActionDropdown';
 import type { ActionPopoverProps } from './ActionPopover';
@@ -44,11 +46,14 @@ const Action = memo<ActionProps>(
       onChange: onOpenChange,
       value: open,
     });
-    const mobile = useServerConfigStore((s) => s.isMobile);
+    const { mobile = false } = useResponsive();
+    const serverMobile = useServerConfigStore((s) => s.isMobile);
+    const isMobile = mobile || serverMobile;
     const { actionSize, dropdownPlacement } = useActionBarContext();
     const { allowed: canUseChatInputAction, reason } = usePermission('create_content');
     const blocked = disabled || !canUseChatInputAction;
     const tooltipTitle = canUseChatInputAction ? title : reason;
+    const accessibleLabel = resolveActionAccessibleLabel(rest['aria-label'], title);
     const iconNode = (
       <ActionIcon
         disabled={blocked}
@@ -56,7 +61,7 @@ const Action = memo<ActionProps>(
         loading={loading}
         title={
           isUndefined(showTooltip)
-            ? mobile
+            ? isMobile
               ? undefined
               : tooltipTitle
             : showTooltip
@@ -72,10 +77,11 @@ const Action = memo<ActionProps>(
           setShow(true);
         }}
         {...rest}
+        aria-label={accessibleLabel}
         size={
           actionSize ??
           size ?? {
-            blockSize: 32,
+            blockSize: isMobile ? 44 : 32,
             size: 18,
           }
         }
@@ -91,8 +97,8 @@ const Action = memo<ActionProps>(
           trigger={trigger}
           onOpenChange={setShow}
           {...dropdown}
-          minWidth={mobile ? '100%' : dropdown.minWidth}
-          placement={mobile ? 'top' : (dropdownPlacement ?? dropdown.placement)}
+          minWidth={isMobile ? '100%' : dropdown.minWidth}
+          placement={isMobile ? 'top' : (dropdownPlacement ?? dropdown.placement)}
         >
           {iconNode}
         </ActionDropdown>
@@ -105,8 +111,8 @@ const Action = memo<ActionProps>(
           trigger={trigger}
           onOpenChange={setShow}
           {...popover}
-          minWidth={mobile ? '100%' : popover.minWidth}
-          placement={mobile ? 'top' : (dropdownPlacement ?? popover.placement)}
+          minWidth={isMobile ? '100%' : popover.minWidth}
+          placement={isMobile ? 'top' : (dropdownPlacement ?? popover.placement)}
         >
           {iconNode}
         </ActionPopover>

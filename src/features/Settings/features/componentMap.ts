@@ -78,6 +78,10 @@ export const componentMap = {
   [SettingsTabs.Security]: dynamic(() => import('../security'), {
     loading: loading('Settings > Security'),
   }),
+  [SettingsTabs.ServiceOperations]: dynamic(
+    () => import('@/business/client/BusinessSettingPages/ServiceOperations'),
+    { loading: loading('Settings > ServiceOperations') },
+  ),
   [SettingsTabs.Skill]: dynamic(() => import('../skill'), {
     loading: loading('Settings > Skill'),
   }),

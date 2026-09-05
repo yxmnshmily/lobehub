@@ -64,25 +64,25 @@ export interface UpdateUserRequest {
   lastName?: string;
   phone?: string;
   preference?: any;
-  roleIds?: string[];
   username?: string;
 }
 
 /**
  * Update user request validation schema
  */
-export const UpdateUserRequestSchema = z.object({
-  avatar: z.string().nullish(),
-  email: z.string().email('Invalid email format').nullish(),
-  firstName: z.string().nullish(),
-  fullName: z.string().nullish(),
-  isOnboarded: z.boolean().nullish(),
-  lastName: z.string().nullish(),
-  phone: z.string().nullish(),
-  preference: z.any().nullish(),
-  roleIds: z.array(z.string().min(1, 'Role ID cannot be empty')).nullish(),
-  username: z.string().min(1, 'Username cannot be empty').nullish(),
-});
+export const UpdateUserRequestSchema = z
+  .object({
+    avatar: z.string().nullish(),
+    email: z.string().email('Invalid email format').nullish(),
+    firstName: z.string().nullish(),
+    fullName: z.string().nullish(),
+    isOnboarded: z.boolean().nullish(),
+    lastName: z.string().nullish(),
+    phone: z.string().nullish(),
+    preference: z.any().nullish(),
+    username: z.string().min(1, 'Username cannot be empty').nullish(),
+  })
+  .strict();
 
 // ==================== User Search Types ====================
 

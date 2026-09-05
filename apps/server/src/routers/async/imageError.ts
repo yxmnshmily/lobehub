@@ -40,6 +40,23 @@ interface CategorizedImageGenerationError {
   errorType: AsyncTaskErrorType;
 }
 
+const publicError = (
+  errorType: AsyncTaskErrorType,
+  errorMessage: string = errorType,
+): CategorizedImageGenerationError => ({ errorMessage, errorType });
+
+const isAsyncTaskErrorType = (value: unknown): value is AsyncTaskErrorType =>
+  typeof value === 'string' &&
+  Object.values(AsyncTaskErrorType).includes(value as AsyncTaskErrorType);
+
+const publicAsyncTaskError = (errorType: AsyncTaskErrorType): CategorizedImageGenerationError =>
+  publicError(
+    errorType,
+    errorType === AsyncTaskErrorType.ProviderContentModeration
+      ? CONTENT_POLICY_ERROR_MESSAGE
+      : errorType,
+  );
+
 export const categorizeImageGenerationError = ({
   error,
   isAborted,
@@ -48,83 +65,47 @@ export const categorizeImageGenerationError = ({
 }: CategorizeImageGenerationErrorOptions): CategorizedImageGenerationError => {
   // Handle Comfy UI errors
   if (error.errorType === AgentRuntimeErrorType.ComfyUIServiceUnavailable) {
-    return {
-      errorMessage:
-        error.error?.message || error.message || AgentRuntimeErrorType.ComfyUIServiceUnavailable,
-      errorType: AsyncTaskErrorType.InvalidProviderAPIKey,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.InvalidProviderAPIKey);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ComfyUIBizError) {
-    return {
-      errorMessage: error.error?.message || error.message || AgentRuntimeErrorType.ComfyUIBizError,
-      errorType: AsyncTaskErrorType.ServerError,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ComfyUIWorkflowError) {
-    return {
-      errorMessage:
-        error.error?.message || error.message || AgentRuntimeErrorType.ComfyUIWorkflowError,
-      errorType: AsyncTaskErrorType.ServerError,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ComfyUIModelError) {
-    return {
-      errorMessage:
-        error.error?.message || error.message || AgentRuntimeErrorType.ComfyUIModelError,
-      errorType: AsyncTaskErrorType.ModelNotFound,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ModelNotFound);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ConnectionCheckFailed) {
-    return {
-      errorMessage: error.message || AgentRuntimeErrorType.ConnectionCheckFailed,
-      errorType: AsyncTaskErrorType.ServerError,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
   }
 
   if (error.errorType === AgentRuntimeErrorType.PermissionDenied) {
-    return {
-      errorMessage: error.error?.message || error.message || AgentRuntimeErrorType.PermissionDenied,
-      errorType: AsyncTaskErrorType.InvalidProviderAPIKey,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.InvalidProviderAPIKey);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ModelNotFound) {
-    return {
-      errorMessage: error.error?.message || error.message || AgentRuntimeErrorType.ModelNotFound,
-      errorType: AsyncTaskErrorType.ModelNotFound,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ModelNotFound);
   }
 
   if (providerContentPolicyMessage) {
-    return {
-      errorMessage: providerContentPolicyMessage,
-      errorType: AsyncTaskErrorType.ProviderContentModeration,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ProviderContentModeration);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ProviderContentPolicyViolation) {
-    return {
-      errorMessage: CONTENT_POLICY_ERROR_MESSAGE,
-      errorType: AsyncTaskErrorType.ProviderContentModeration,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ProviderContentModeration);
   }
 
   if (error.errorType === AgentRuntimeErrorType.ProviderNoImageGenerated) {
-    const providerErrorMessage = error.error?.message || error.message;
-
     if (
-      (error.error?.reasonCode === 'google_image_text_only_response' ||
-        error.error?.reasonCode === 'google_image_generation_refused') &&
-      typeof providerErrorMessage === 'string'
+      error.error?.reasonCode === 'google_image_text_only_response' ||
+      error.error?.reasonCode === 'google_image_generation_refused'
     ) {
-      return {
-        errorMessage: providerErrorMessage,
-        errorType: AsyncTaskErrorType.ServerError,
-      };
+      return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
     }
 
     return {
@@ -137,11 +118,7 @@ export const categorizeImageGenerationError = ({
 
   // FIXME: 401 errors should be handled in agentRuntime for better practice
   if (error.errorType === AgentRuntimeErrorType.InvalidProviderAPIKey || error?.status === 401) {
-    return {
-      errorMessage:
-        error.error?.message || error.message || AgentRuntimeErrorType.InvalidProviderAPIKey,
-      errorType: AsyncTaskErrorType.InvalidProviderAPIKey,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.InvalidProviderAPIKey);
   }
 
   const fallbackContentPolicyMessage = getContentPolicyErrorMessage(error);
@@ -153,10 +130,9 @@ export const categorizeImageGenerationError = ({
   }
 
   if (error instanceof AsyncTaskError) {
-    return {
-      errorMessage: typeof error.body === 'string' ? error.body : error.body.detail,
-      errorType: error.name as AsyncTaskErrorType,
-    };
+    return publicAsyncTaskError(
+      isAsyncTaskErrorType(error.name) ? error.name : AsyncTaskErrorType.ServerError,
+    );
   }
 
   if (isAborted || error.message?.includes('aborted')) {
@@ -174,14 +150,8 @@ export const categorizeImageGenerationError = ({
   }
 
   if (error.message?.includes('network') || error.name === 'NetworkError') {
-    return {
-      errorMessage: error.message || AsyncTaskErrorType.ServerError,
-      errorType: AsyncTaskErrorType.ServerError,
-    };
+    return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
   }
 
-  return {
-    errorMessage: error.message || error.error?.message || AsyncTaskErrorType.ServerError,
-    errorType: AsyncTaskErrorType.ServerError,
-  };
+  return publicAsyncTaskError(AsyncTaskErrorType.ServerError);
 };

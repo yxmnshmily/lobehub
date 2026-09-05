@@ -65,12 +65,29 @@ export class GenerationTopicActionImpl {
 
     this.#get().internal_updateGenerationTopicLoading(tmpId, true);
 
-    const topicId = await generationTopicService.createTopic('video', newGenerationTopicVisibility);
+    let topicId: string;
+    try {
+      topicId = await generationTopicService.createTopic('video', newGenerationTopicVisibility);
+    } catch (error) {
+      this.#get().internal_updateGenerationTopicLoading(tmpId, false);
+      this.#get().internal_dispatchGenerationTopic(
+        { id: tmpId, type: 'deleteTopic' },
+        'internal_createGenerationTopic/rollback',
+      );
+      throw error;
+    }
     this.#get().internal_updateGenerationTopicLoading(tmpId, false);
 
     this.#get().internal_updateGenerationTopicLoading(topicId, true);
-    await this.#get().refreshGenerationTopics();
-    this.#get().internal_updateGenerationTopicLoading(topicId, false);
+    try {
+      await this.#get().refreshGenerationTopics();
+    } finally {
+      this.#get().internal_updateGenerationTopicLoading(topicId, false);
+      this.#get().internal_dispatchGenerationTopic(
+        { id: tmpId, type: 'deleteTopic' },
+        'internal_createGenerationTopic/cleanup',
+      );
+    }
 
     return topicId;
   };

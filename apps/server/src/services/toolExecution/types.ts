@@ -4,6 +4,7 @@ import {
   type ChatToolPayload,
   type ClientSecretPayload,
   type ExecSubAgentParams,
+  type OperationToolDispatchPolicy,
   type StepActivatedSkill,
   type StepContextTodoItem,
   type WorkRegistrationIntent,
@@ -76,6 +77,8 @@ export interface ServerAgentMemberRunItem {
   agentId: string;
   /** Optional supervisor instruction to guide the member's response. */
   instruction?: string;
+  /** Server-owned deterministic tool policy for this member run. */
+  toolDispatchPolicy?: OperationToolDispatchPolicy;
 }
 
 export interface ServerAgentMemberRunParams {
@@ -245,6 +248,8 @@ export interface ToolExecutionContext {
   memoryToolPermission?: 'read-only' | 'read-write';
   /** Source user message ID used by Agent Signal procedure suppression. */
   messageId?: string;
+  /** Trusted model credential mode copied from persisted agent configuration. */
+  modelRuntimeMode?: 'actor' | 'platform-managed';
   /**
    * Sink for a Work-registration intent produced as a side-effect inside a tool
    * runtime (e.g. the agentDocuments runtime, whose registration is decoupled

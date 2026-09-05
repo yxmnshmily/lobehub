@@ -6,6 +6,7 @@ import { zValidator } from '../common/validator';
 import { ProviderController } from '../controllers/provider.controller';
 import { requireAuth } from '../middleware/auth';
 import { requireAnyPermission } from '../middleware/permission-check';
+import { requirePlatformAdmin } from '../middleware/platform-admin';
 import {
   CreateProviderRequestSchema,
   ProviderIdParamSchema,
@@ -18,6 +19,7 @@ const ProviderRoutes = new Hono();
 ProviderRoutes.get(
   '/',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_PROVIDER_READ'),
     'You do not have permission to view provider list',
@@ -32,6 +34,7 @@ ProviderRoutes.get(
 ProviderRoutes.get(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_PROVIDER_READ'),
     'You do not have permission to view provider details',
@@ -46,6 +49,7 @@ ProviderRoutes.get(
 ProviderRoutes.post(
   '/',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_PROVIDER_CREATE'),
     'You do not have permission to create a provider',
@@ -60,6 +64,7 @@ ProviderRoutes.post(
 ProviderRoutes.patch(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_PROVIDER_UPDATE'),
     'You do not have permission to update a provider',
@@ -75,6 +80,7 @@ ProviderRoutes.patch(
 ProviderRoutes.delete(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_PROVIDER_DELETE'),
     'You do not have permission to delete a provider',

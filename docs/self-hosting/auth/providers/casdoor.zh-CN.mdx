@@ -16,64 +16,64 @@ tags:
 <Steps>
   ### 在 Casdoor 中创建应用
 
-  1. 登录 Casdoor 管理控制台
-  2. 前往 **Applications**，点击 **Add**
-  3. 配置应用：
-     - Name: `LobeHub`
-     - Organization: 选择你的组织
-     - Redirect URLs: 添加回调 URL
+1. 登录 Casdoor 管理控制台
+2. 前往 **Applications**，点击 **Add**
+3. 配置应用：
+   - Name: `LobeHub`
+   - Organization: 选择你的组织
+   - Redirect URLs: 添加回调 URL
 
-  <Callout type={'info'}>
-    **回调 URL 格式**: `https://your-domain.com/api/auth/callback/casdoor`
-  </Callout>
+<Callout type={'info'}>
+  **回调 URL 格式**: `https://your-domain.com/api/auth/callback/casdoor`
+</Callout>
 
-  4. 保存并记下 **Client ID** 和 **Client Secret**
+4. 保存并记下 **Client ID** 和 **Client Secret**
 
-  ### 获取 Issuer URL
+### 获取 Issuer URL
 
-  Issuer URL 是 Casdoor 服务器 URL，通常为：`https://your-casdoor-domain`
+Issuer URL 是 Casdoor 服务器 URL，通常为：`https://your-casdoor-domain`
 
-  ### 配置环境变量
+### 配置环境变量
 
-  在部署 LobeHub 时，你需要配置以下环境变量：
+在部署 LobeHub 时，你需要配置以下环境变量：
 
-  | 环境变量                     | 类型 | 描述                                                |
-  | ------------------------ | -- | ------------------------------------------------- |
-  | `AUTH_SECRET`            | 必选 | 用于加密会话令牌的密钥。使用以下命令生成：`openssl rand -base64 32`    |
-  | `AUTH_SSO_PROVIDERS`     | 必选 | SSO 提供商。使用 Casdoor 请填写 `casdoor`                  |
-  | `AUTH_CASDOOR_ID`        | 必选 | Casdoor 应用的 Client ID                             |
-  | `AUTH_CASDOOR_SECRET`    | 必选 | Casdoor 应用的 Client Secret                         |
-  | `AUTH_CASDOOR_ISSUER`    | 必选 | Casdoor 服务器 URL（例如 `https://your-casdoor-domain`） |
-  | `CASDOOR_WEBHOOK_SECRET` | 可选 | 用于验证 Casdoor 发送的 Webhook 请求是否合法的密钥                |
+| 环境变量 | 类型 | 描述 |
+| --- | --- | --- |
+| `AUTH_SECRET` | 必选 | 用于加密会话令牌的密钥。使用以下命令生成：`openssl rand -base64 32` |
+| `AUTH_SSO_PROVIDERS` | 必选 | SSO 提供商。使用 Casdoor 请填写 `casdoor` |
+| `AUTH_CASDOOR_ID` | 必选 | Casdoor 应用的 Client ID |
+| `AUTH_CASDOOR_SECRET` | 必选 | Casdoor 应用的 Client Secret |
+| `AUTH_CASDOOR_ISSUER` | 必选 | Casdoor 服务器 URL（例如 `https://your-casdoor-domain`） |
+| `CASDOOR_WEBHOOK_SECRET` | 可选 | 用于验证 Casdoor 发送的 Webhook 请求是否合法的密钥 |
 
-  <Callout type={'tip'}>
-    前往 [📘 环境变量](/zh/docs/self-hosting/environment-variables/auth#casdoor) 可查阅相关变量详情。
-  </Callout>
+<Callout type={'tip'}>
+  前往 [📘 环境变量](/zh/docs/self-hosting/environment-variables/auth#casdoor) 可查阅相关变量详情。
+</Callout>
 
-  ### 配置 Webhook（可选）
+### 配置 Webhook（可选）
 
-  > 在 Casdoor `>=1.843.0` 上可用。
+> 在 Casdoor `>=1.843.0` 上可用。
 
-  配置 Casdoor 的 [Webhook](https://www.casdoor.org/docs/webhooks/overview#setting-up-a-webhook) 以便在用户信息更新时同步到 LobeHub。
+配置 Casdoor 的 [Webhook](https://www.casdoor.org/docs/webhooks/overview#setting-up-a-webhook) 以便在用户信息更新时同步到 LobeHub。
 
-  **同步的数据字段**：
+**同步的数据字段**：
 
-  - 头像 (`avatar`)
-  - 邮箱 (`email`)
-  - 显示名称 (`displayName`)
+- 头像 (`avatar`)
+- 邮箱 (`email`)
+- 显示名称 (`displayName`)
 
-  **配置步骤**：
+**配置步骤**：
 
-  1. 前往 `管理工具` -> `Webhooks`，创建一个 Webhook
-  2. 填写以下字段：
-     - 链接：`https://your-domain.com/api/webhooks/casdoor`
-     - 方法：`POST`
-     - 内容类型：`application/json`
-     - 协议头：`casdoor-secret`: `你的Webhook密钥`
-     - 事件：`update-user`
-  3. 密钥可前往 [generate-secret.vercel.app/10](https://generate-secret.vercel.app/10) 生成
-  4. 将密钥填写到环境变量 `CASDOOR_WEBHOOK_SECRET`
-</Steps>
+1. 前往 `管理工具` -> `Webhooks`，创建一个 Webhook
+2. 填写以下字段：
+   - 链接：`https://your-domain.com/api/webhooks/casdoor`
+   - 方法：`POST`
+   - 内容类型：`application/json`
+   - 协议头：`casdoor-secret`: `你的Webhook密钥`
+   - 事件：`update-user`
+3. 密钥可前往 [generate-secret.vercel.app/10](https://generate-secret.vercel.app/10) 生成
+4. 将密钥填写到环境变量 `CASDOOR_WEBHOOK_SECRET`
+   </Steps>
 
 <Callout type={'info'}>部署成功后，用户将可以通过 Casdoor 身份认证并使用 LobeHub。</Callout>
 
@@ -85,27 +85,27 @@ tags:
 
 在域名模式中，你需要完成反向代理配置，并确保局域网 / 公网能访问到 Casdoor 服务：
 
-| 域名                 | 反代端口   | 说明         |
-| ------------------ | ------ | ---------- |
-| `auth.example.com` | `8000` | Casdoor 服务 |
+| 域名               | 反代端口 | 说明         |
+| ------------------ | -------- | ------------ |
+| `auth.example.com` | `8000`   | Casdoor 服务 |
 
 <Callout type="important">
   如果你使用如 [宝塔面板](https://www.bt.cn/) 等面板软件进行反向代理配置，
   你需要确保其对 `.well-known` 路径的请求不进行拦截，以确保 Casdoor 的 OAuth2 配置能够正常工作。
   这里提供一份针对 Casdoor 服务的 Nginx server 块的路径白名单配置：
 
-  ```nginx
-  location /.well-known/openid-configuration {
-    proxy_pass http://localhost:8000;  # 转发到 localhost:8000
-    proxy_set_header Host $host;  # 保留原始主机头
-    proxy_set_header X-Real-IP $remote_addr;  # 保留客户端真实IP
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;  # 保留转发的IP
-    proxy_set_header X-Forwarded-Proto $scheme;  # 保留请求协议
-  }
-  ```
+```nginx
+location /.well-known/openid-configuration {
+  proxy_pass http://localhost:8000;  # 转发到 localhost:8000
+  proxy_set_header Host $host;  # 保留原始主机头
+  proxy_set_header X-Real-IP $remote_addr;  # 保留客户端真实IP
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;  # 保留转发的IP
+  proxy_set_header X-Forwarded-Proto $scheme;  # 保留请求协议
+}
+```
 
-  ⚠️ 请不要在此类面板软件的反向代理设置中开启任何形式的缓存，以免影响服务的正常运行。
-  详情请见 [https://github.com/lobehub/lobehub/discussions/5986](https://github.com/lobehub/lobehub/discussions/5986)
+⚠️ 请不要在此类面板软件的反向代理设置中开启任何形式的缓存，以免影响服务的正常运行。详情请见 [https://github.com/lobehub/lobehub/discussions/5986](https://github.com/lobehub/lobehub/discussions/5986)
+
 </Callout>
 
 ### 必要配置

@@ -109,5 +109,36 @@ describe('VideoGenerationTopicAction', () => {
 
       expect(generationTopicService.createTopic).toHaveBeenCalledWith('video', 'public');
     });
+
+    it('should remove the temporary topic and loading state when creation fails', async () => {
+      const { result } = renderHook(() => useVideoStore());
+      vi.mocked(generationTopicService.createTopic).mockRejectedValueOnce(
+        new Error('Create topic failed'),
+      );
+
+      await act(async () => {
+        await expect(result.current.internal_createGenerationTopic()).rejects.toThrow(
+          'Create topic failed',
+        );
+      });
+
+      expect(useVideoStore.getState().generationTopics).toEqual([]);
+      expect(useVideoStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
+
+    it('should remove the temporary topic and loading state when refresh fails', async () => {
+      const { result } = renderHook(() => useVideoStore());
+      vi.mocked(generationTopicService.createTopic).mockResolvedValueOnce('video-topic-new');
+      vi.mocked(mutate).mockRejectedValueOnce(new Error('Refresh failed'));
+
+      await act(async () => {
+        await expect(result.current.internal_createGenerationTopic()).rejects.toThrow(
+          'Refresh failed',
+        );
+      });
+
+      expect(useVideoStore.getState().generationTopics).toEqual([]);
+      expect(useVideoStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
   });
 });

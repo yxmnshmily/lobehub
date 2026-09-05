@@ -1,51 +1,28 @@
 'use client';
 
-import { DropdownMenu, type DropdownMenuProps, Icon } from '@lobehub/ui';
 import { ActionIcon } from '@lobehub/ui/base-ui';
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { useTheme as useNextThemesTheme } from 'next-themes';
-import { memo, useMemo } from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { useAuthTheme } from './useAuthTheme';
 
 const themeIcons = {
   dark: Moon,
   light: Sun,
-  system: Monitor,
 } as const;
 
 const AuthThemeButton = memo<{ size?: number }>((props) => {
-  const { setTheme, theme } = useNextThemesTheme();
-
-  const items = useMemo<DropdownMenuProps['items']>(
-    () => [
-      {
-        icon: <Icon icon={themeIcons.system} />,
-        key: 'system',
-        label: 'Auto',
-        onClick: () => setTheme('system'),
-      },
-      {
-        icon: <Icon icon={themeIcons.light} />,
-        key: 'light',
-        label: 'Light',
-        onClick: () => setTheme('light'),
-      },
-      {
-        icon: <Icon icon={themeIcons.dark} />,
-        key: 'dark',
-        label: 'Dark',
-        onClick: () => setTheme('dark'),
-      },
-    ],
-    [setTheme],
-  );
+  const { t } = useTranslation('common');
+  const { theme, updateTheme } = useAuthTheme();
 
   return (
-    <DropdownMenu items={items}>
-      <ActionIcon
-        icon={themeIcons[(theme as 'dark' | 'light' | 'system') || 'system']}
-        size={props.size || { blockSize: 32, size: 16 }}
-      />
-    </DropdownMenu>
+    <ActionIcon
+      aria-label={t('cmdk.theme')}
+      icon={theme === 'dark' ? themeIcons.dark : themeIcons.light}
+      size={props.size || { blockSize: 44, size: 20 }}
+      onClick={() => updateTheme(theme === 'dark' ? 'light' : 'dark')}
+    />
   );
 });
 

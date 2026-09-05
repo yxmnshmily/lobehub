@@ -264,7 +264,28 @@ export class UserService extends BaseService {
         throw this.createAuthorizationError(permissionResult.message || '没有权限更新该用户');
       }
 
-      const { roleIds, ...rest } = userData;
+      const {
+        avatar,
+        email,
+        firstName,
+        fullName,
+        isOnboarded,
+        lastName,
+        phone,
+        preference,
+        username,
+      } = userData;
+      const profileUpdates: UpdateUserRequest = {
+        avatar,
+        email,
+        firstName,
+        fullName,
+        isOnboarded,
+        lastName,
+        phone,
+        preference,
+        username,
+      };
 
       // Check if the user exists
       const existingUser = await this.db.query.users.findFirst({
@@ -276,9 +297,9 @@ export class UserService extends BaseService {
       }
 
       // Check if the username or email is already used by another user
-      if (rest.username && rest.username !== existingUser.username) {
+      if (profileUpdates.username && profileUpdates.username !== existingUser.username) {
         const existingUserByUsername = await this.db.query.users.findFirst({
-          where: and(eq(users.username, rest.username), ne(users.id, userId)),
+          where: and(eq(users.username, profileUpdates.username), ne(users.id, userId)),
         });
 
         if (existingUserByUsername) {
@@ -286,25 +307,20 @@ export class UserService extends BaseService {
         }
       }
 
-      if (rest.email && rest.email !== existingUser.email) {
+      if (profileUpdates.email && profileUpdates.email !== existingUser.email) {
         const existingUserByEmail = await this.db.query.users.findFirst({
-          where: and(eq(users.email, rest.email), ne(users.id, userId)),
+          where: and(eq(users.email, profileUpdates.email), ne(users.id, userId)),
         });
         if (existingUserByEmail) {
           throw this.createBusinessError('邮箱已被其他用户使用');
         }
       }
 
-      if (roleIds !== undefined) {
-        const rbacModel = new RbacModel(this.db, userId);
-        await rbacModel.updateUserRoles(userId, roleIds);
-      }
-
       // Update user info
       await this.db
         .update(users)
         .set({
-          ...rest,
+          ...profileUpdates,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));

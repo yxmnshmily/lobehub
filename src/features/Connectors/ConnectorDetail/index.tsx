@@ -1,6 +1,7 @@
 import { getComposioAppByIdentifier, getLobehubSkillProviderById } from '@lobechat/const';
 import { Tooltip } from '@lobehub/ui';
 import { Button, confirmModal, toast } from '@lobehub/ui/base-ui';
+import { useResponsive } from 'antd-style';
 import { PencilIcon, RefreshCwIcon, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useState } from 'react';
@@ -52,6 +53,7 @@ const ConnectorDetail = memo<ConnectorDetailProps>(
   ({ agentTitle, connectorId, lifecycleActions, middleSlot, onDelete }) => {
     const { t } = useTranslation('tool');
     const { t: ts } = useTranslation('setting');
+    const { mobile = false } = useResponsive();
 
     const [customModalOpen, setCustomModalOpen] = useState(false);
 
@@ -215,18 +217,22 @@ const ConnectorDetail = memo<ConnectorDetailProps>(
         {/* Header — full-bleed bar with bottom border, aligned with the left pane's header */}
         <div
           style={{
-            alignItems: 'center',
+            alignItems: mobile ? 'stretch' : 'center',
             borderBlockEnd: '1px solid var(--ant-color-border-secondary)',
             display: 'flex',
+            flexDirection: mobile ? 'column' : 'row',
             flexShrink: 0,
             gap: 8,
-            height: 42,
+            minHeight: 42,
             justifyContent: 'space-between',
-            paddingInline: 16,
+            paddingBlock: mobile ? 12 : 0,
+            paddingInline: mobile ? 12 : 16,
           }}
         >
-          <div style={{ fontSize: 14, fontWeight: 500 }}>{connectorName}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, overflowWrap: 'anywhere' }}>
+            {connectorName}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {/* Reset permissions: restore all tools to auto (fully open) */}
             <ManageTooltip title={manageTooltip}>
               <Button
@@ -344,7 +350,7 @@ const ConnectorDetail = memo<ConnectorDetailProps>(
             flex: 1,
             flexDirection: 'column',
             minHeight: 0,
-            padding: 16,
+            padding: mobile ? 12 : 16,
           }}
         >
           {/* Description */}

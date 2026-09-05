@@ -19,36 +19,37 @@ tags:
 <Steps>
   ### 在微信开放平台创建网站应用
 
-  1. 前往 [微信开放平台](https://open.weixin.qq.com/)
-  2. 注册并验证开发者账号
-  3. 前往 **管理中心** > **网站应用**
-  4. 点击 **创建网站应用**
-  5. 填写应用信息并提交审核
+1. 前往 [微信开放平台](https://open.weixin.qq.com/)
+2. 注册并验证开发者账号
+3. 前往 **管理中心** > **网站应用**
+4. 点击 **创建网站应用**
+5. 填写应用信息并提交审核
 
-  ### 配置 OAuth 设置
+### 配置 OAuth 设置
 
-  应用审核通过后：
+应用审核通过后：
 
-  1. 进入应用设置
-  2. 在 **网站信息** 中配置回调域名
+1. 进入应用设置
+2. 在 **网站信息** 中配置回调域名
 
   <Callout type={'info'}>
     回调域名格式：
 
     - **回调域名**: `your-domain.com`（不含协议和路径）
     - **完整回调 URL**: `https://your-domain.com/api/auth/callback/wechat`
+
   </Callout>
 
-  3. 记下 **AppID** 和 **AppSecret**
+3. 记下 **AppID** 和 **AppSecret**
 
-  ### 配置环境变量
+### 配置环境变量
 
-  | 环境变量                 | 类型 | 描述                                     |
-  | -------------------- | -- | -------------------------------------- |
-  | `AUTH_SECRET`        | 必选 | 会话加密密钥，使用 `openssl rand -base64 32` 生成 |
-  | `AUTH_SSO_PROVIDERS` | 必选 | 填写 `wechat`                            |
-  | `AUTH_WECHAT_ID`     | 必选 | 微信开放平台的 AppID                          |
-  | `AUTH_WECHAT_SECRET` | 必选 | 微信开放平台的 AppSecret                      |
+| 环境变量             | 类型 | 描述                                              |
+| -------------------- | ---- | ------------------------------------------------- |
+| `AUTH_SECRET`        | 必选 | 会话加密密钥，使用 `openssl rand -base64 32` 生成 |
+| `AUTH_SSO_PROVIDERS` | 必选 | 填写 `wechat`                                     |
+| `AUTH_WECHAT_ID`     | 必选 | 微信开放平台的 AppID                              |
+| `AUTH_WECHAT_SECRET` | 必选 | 微信开放平台的 AppSecret                          |
 
   <Callout type={'tip'}>
     前往 [📘 环境变量](/zh/docs/self-hosting/environment-variables/auth#wechat)
@@ -56,9 +57,7 @@ tags:
   </Callout>
 </Steps>
 
-<Callout type={'info'}>
-  部署成功后，用户将可以通过微信身份认证并使用 LobeHub。
-</Callout>
+<Callout type={'info'}>部署成功后，用户将可以通过微信身份认证并使用 LobeHub。</Callout>
 
 ## 注意事项
 

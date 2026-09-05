@@ -20,4 +20,15 @@ describe('resolveAgentListContentState', () => {
       'ready',
     );
   });
+
+  it('settles a failed authenticated request to an error instead of a permanent skeleton', () => {
+    expect(
+      resolveAgentListContentState({
+        authLoaded: true,
+        hasError: true,
+        isInit: false,
+        isLogin: true,
+      }),
+    ).toBe('error');
+  });
 });

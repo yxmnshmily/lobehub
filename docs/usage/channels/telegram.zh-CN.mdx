@@ -1,8 +1,7 @@
 ---
 title: 将 LobeHub 连接到 Telegram
 description: >-
-  学习如何创建一个 Telegram 机器人并将其连接到 LobeHub 代理作为消息渠道，使您的 AI 助手能够在 Telegram
-  私聊和群组对话中与用户互动。
+  学习如何创建一个 Telegram 机器人并将其连接到 LobeHub 代理作为消息渠道，使您的 AI 助手能够在 Telegram 私聊和群组对话中与用户互动。
 tags:
   - Telegram
   - 消息渠道
@@ -24,20 +23,21 @@ tags:
 <Steps>
   ### 打开 BotFather
 
-  打开 Telegram 并搜索 **@BotFather** —— 这是用于管理机器人的官方 Telegram 机器人。开始对话并发送 `/newbot` 命令。
+打开 Telegram 并搜索 **@BotFather** —— 这是用于管理机器人的官方 Telegram 机器人。开始对话并发送 `/newbot` 命令。
 
-  ### 设置机器人名称和用户名
+### 设置机器人名称和用户名
 
-  BotFather 会要求您：
+BotFather 会要求您：
 
-  1. 为您的机器人选择一个 **显示名称**（例如，“LobeHub 助手”）
-  2. 选择一个 **用户名** —— 必须以 `bot` 结尾（例如，`lobehub_assistant_bot`）
+1. 为您的机器人选择一个 **显示名称**（例如，“LobeHub 助手”）
+2. 选择一个 **用户名** —— 必须以 `bot` 结尾（例如，`lobehub_assistant_bot`）
 
-  ### 复制机器人令牌
+### 复制机器人令牌
 
-  创建机器人后，BotFather 会发送给您一个 **API 令牌**（格式：`123456789:ABCdefGhIjKlmNoPQRsTuVwXyZ`）。复制并保存此令牌。
+创建机器人后，BotFather 会发送给您一个 **API 令牌**（格式：`123456789:ABCdefGhIjKlmNoPQRsTuVwXyZ`）。复制并保存此令牌。
 
-  > **重要提示：** 您的机器人令牌是一个机密凭证，请勿公开分享。
+> **重要提示：** 您的机器人令牌是一个机密凭证，请勿公开分享。
+
 </Steps>
 
 ## 第二步：在 LobeHub 中配置 Telegram
@@ -45,21 +45,22 @@ tags:
 <Steps>
   ### 打开渠道设置
 
-  在 LobeHub 中，导航到您的代理设置，然后选择 **渠道** 标签页。从平台列表中点击 **Telegram**。
+在 LobeHub 中，导航到您的代理设置，然后选择 **渠道** 标签页。从平台列表中点击 **Telegram**。
 
-  ### 输入机器人令牌
+### 输入机器人令牌
 
-  将您从 BotFather 收到的机器人令牌粘贴到 **机器人令牌** 字段中。
+将您从 BotFather 收到的机器人令牌粘贴到 **机器人令牌** 字段中。
 
-  ### 可选：设置 Webhook 密钥
+### 可选：设置 Webhook 密钥
 
-  您可以选择输入一个 **Webhook 密钥令牌** 以增加安全性。此密钥用于验证来自 Telegram 的入站 Webhook 请求。
+您可以选择输入一个 **Webhook 密钥令牌** 以增加安全性。此密钥用于验证来自 Telegram 的入站 Webhook 请求。
 
-  ### 保存配置
+### 保存配置
 
-  点击 **保存配置**。LobeHub 将自动向 Telegram 注册 Webhook URL，无需手动复制 URL。
+点击 **保存配置**。LobeHub 将自动向 Telegram 注册 Webhook URL，无需手动复制 URL。
 
-  您的令牌将被加密并安全存储。
+您的令牌将被加密并安全存储。
+
 </Steps>
 
 ## 第三步：测试连接
@@ -91,7 +92,9 @@ tags:
 3. 发送一条提及机器人的消息以开始互动
 
 <Callout type={'warning'}>
-  **关于隐私模式（Group Privacy）：** Telegram 机器人默认启用隐私模式，仅接收群组中 @提及、回复机器人的消息以及 / 命令。如果您在创建机器人后更改了隐私模式设置，**必须将机器人从群组中移除后重新加入**，新的设置才会对该群组生效。
+  **关于隐私模式（Group Privacy）：** Telegram 机器人默认启用隐私模式，仅接收群组中
+  @提及、回复机器人的消息以及 /
+  命令。如果您在创建机器人后更改了隐私模式设置，**必须将机器人从群组中移除后重新加入**，新的设置才会对该群组生效。
 </Callout>
 
 ## 接入策略
@@ -121,14 +124,14 @@ tags:
 
 ## 配置参考
 
-| 字段               | 是否必需 | 描述                                                         |
-| ---------------- | ---- | ---------------------------------------------------------- |
-| **机器人令牌**        | 是    | 来自 BotFather 的 API 令牌                                      |
-| **Webhook 密钥令牌** | 否    | 用于验证 Webhook 请求的可选密钥                                       |
-| **允许的用户 ID**     | 否    | 逗号或空格分隔的 Telegram 数字用户 ID。全局闸门 — 私信和群聊 @ 都受其约束             |
-| **私信策略**         | 否    | `open`（默认）、`allowlist`、`pairing` 或 `disabled` — 控制谁可以私信机器人 |
-| **群组策略**         | 否    | `open`（默认）、`allowlist` 或 `disabled` — 控制机器人在哪些群组中响应        |
-| **允许的频道 ID**     | 否    | 逗号或空格分隔的 Telegram chat ID（群组为负数）。仅在群组策略为白名单时使用             |
+| 字段 | 是否必需 | 描述 |
+| --- | --- | --- |
+| **机器人令牌** | 是 | 来自 BotFather 的 API 令牌 |
+| **Webhook 密钥令牌** | 否 | 用于验证 Webhook 请求的可选密钥 |
+| **允许的用户 ID** | 否 | 逗号或空格分隔的 Telegram 数字用户 ID。全局闸门 — 私信和群聊 @ 都受其约束 |
+| **私信策略** | 否 | `open`（默认）、`allowlist`、`pairing` 或 `disabled` — 控制谁可以私信机器人 |
+| **群组策略** | 否 | `open`（默认）、`allowlist` 或 `disabled` — 控制机器人在哪些群组中响应 |
+| **允许的频道 ID** | 否 | 逗号或空格分隔的 Telegram chat ID（群组为负数）。仅在群组策略为白名单时使用 |
 
 ## 故障排除
 

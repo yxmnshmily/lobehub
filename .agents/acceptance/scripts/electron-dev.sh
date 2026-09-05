@@ -90,9 +90,9 @@ derive_instance() {
   if [ -z "$id" ]; then
     POOL_MODE=0
     CDP_PORT="${ENV_CDP_PORT:-$CDP_BASE}"
-    VITE_PORT="" # legacy: no override, config default applies
+    VITE_PORT=""     # legacy: no override, config default applies
     USER_DATA_DIR="" # legacy: default userData
-    IPC_ID="" # legacy: default IPC id
+    IPC_ID=""        # legacy: default IPC id
     ELECTRON_LOG="${ENV_ELECTRON_LOG:-/tmp/electron-dev.log}"
     PIDFILE="/tmp/electron-dev-cdp-${CDP_PORT}.pid"
   else
@@ -117,7 +117,7 @@ expand_descendants() {
   local pid="$1"
   echo "$pid"
   local children
-  children=$(pgrep -P "$pid" 2>/dev/null || true)
+  children=$(pgrep -P "$pid" 2> /dev/null || true)
   for c in $children; do
     expand_descendants "$c"
   done
@@ -134,28 +134,28 @@ find_instance_pids() {
   # 1. Launcher subshell saved by a previous `start`
   if [ -f "$PIDFILE" ]; then
     local saved_pid
-    saved_pid=$(cat "$PIDFILE" 2>/dev/null || true)
-    if [ -n "$saved_pid" ] && kill -0 "$saved_pid" 2>/dev/null; then
+    saved_pid=$(cat "$PIDFILE" 2> /dev/null || true)
+    if [ -n "$saved_pid" ] && kill -0 "$saved_pid" 2> /dev/null; then
       pids="$pids $saved_pid"
     fi
   fi
 
   # 2. Whatever is bound to this instance's CDP port
   local port_pid
-  port_pid=$(lsof -ti tcp:"$CDP_PORT" -sTCP:LISTEN 2>/dev/null || true)
+  port_pid=$(lsof -ti tcp:"$CDP_PORT" -sTCP:LISTEN 2> /dev/null || true)
   pids="$pids $port_pid"
 
   # 3. Whatever is bound to this instance's Vite port (pool mode)
   if [ -n "$VITE_PORT" ]; then
     local vite_pid
-    vite_pid=$(lsof -ti tcp:"$VITE_PORT" -sTCP:LISTEN 2>/dev/null || true)
+    vite_pid=$(lsof -ti tcp:"$VITE_PORT" -sTCP:LISTEN 2> /dev/null || true)
     pids="$pids $vite_pid"
   fi
 
   # 4. Legacy only: broad project matching (would cross pool instances)
   if [ "$POOL_MODE" = "0" ]; then
-    pids="$pids $(pgrep -f "$PROJECT_ELECTRON_PATH" 2>/dev/null || true)"
-    pids="$pids $(pgrep -f "scripts/dev\\.mjs" 2>/dev/null || true)"
+    pids="$pids $(pgrep -f "$PROJECT_ELECTRON_PATH" 2> /dev/null || true)"
+    pids="$pids $(pgrep -f "scripts/dev\\.mjs" 2> /dev/null || true)"
   fi
 
   # `|| true` because `grep -v '^$'` exits 1 on all-empty input, which with
@@ -167,17 +167,17 @@ wait_for_cdp() {
   local deadline=$(($(date +%s) + ELECTRON_WAIT_S))
   echo "[electron-dev] Waiting for CDP on port ${CDP_PORT} (up to ${ELECTRON_WAIT_S}s)..."
   while [ "$(date +%s)" -lt "$deadline" ]; do
-    if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" >/dev/null 2>&1; then
+    if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" > /dev/null 2>&1; then
       echo "[electron-dev] CDP is reachable."
       return 0
     fi
     if [ -f "$PIDFILE" ]; then
       local saved_pid
-      saved_pid=$(cat "$PIDFILE" 2>/dev/null || true)
-      if [ -n "$saved_pid" ] && ! kill -0 "$saved_pid" 2>/dev/null; then
+      saved_pid=$(cat "$PIDFILE" 2> /dev/null || true)
+      if [ -n "$saved_pid" ] && ! kill -0 "$saved_pid" 2> /dev/null; then
         echo "[electron-dev] Launcher PID $saved_pid is gone before CDP came up."
         echo "[electron-dev] Last 30 lines of $ELECTRON_LOG:"
-        tail -30 "$ELECTRON_LOG" 2>/dev/null || true
+        tail -30 "$ELECTRON_LOG" 2> /dev/null || true
         return 1
       fi
     fi
@@ -185,7 +185,7 @@ wait_for_cdp() {
   done
   echo "[electron-dev] ERROR: CDP did not respond within ${ELECTRON_WAIT_S}s"
   echo "[electron-dev] Last 30 lines of $ELECTRON_LOG:"
-  tail -30 "$ELECTRON_LOG" 2>/dev/null || true
+  tail -30 "$ELECTRON_LOG" 2> /dev/null || true
   return 1
 }
 
@@ -219,7 +219,7 @@ copy_login_items() {
   local src="$1" dst="$2" f
   mkdir -p "$dst"
   for f in "${LOGIN_ITEMS[@]}"; do
-    [ -e "$src/$f" ] && cp -R "$src/$f" "$dst/" 2>/dev/null || true
+    [ -e "$src/$f" ] && cp -R "$src/$f" "$dst/" 2> /dev/null || true
   done
 }
 
@@ -233,7 +233,7 @@ copy_login_items() {
 # (clearTokens) the moment a refresh fails non-retryably (`invalid_grant` &co), and
 # keeps it on transient failures. So a present refreshToken means "can still re-auth".
 read_token_state() {
-  python3 - "$1/lobehub-settings.json" 2>/dev/null <<'PY' || echo "0 ?"
+  python3 - "$1/lobehub-settings.json" 2> /dev/null << 'PY' || echo "0 ?"
 import json, pathlib, sys, time
 
 path = pathlib.Path(sys.argv[1])
@@ -275,9 +275,9 @@ describe_login() {
   state=$(read_token_state "$profile")
   ms="${state##* }"
   if [[ "$ms" =~ ^-?[0-9]+$ ]]; then
-    [ "$ms" -gt 0 ] &&
-      access="access token fresh for $((ms / 3600000))h" ||
-      access="access token stale $(( -ms / 3600000 ))h (harmless — it gets refreshed)"
+    [ "$ms" -gt 0 ] \
+      && access="access token fresh for $((ms / 3600000))h" \
+      || access="access token stale $((-ms / 3600000))h (harmless — it gets refreshed)"
   else
     access="no access-token expiry recorded"
   fi
@@ -292,14 +292,14 @@ describe_login() {
 # is not the only way the app holds a session (a better-auth cookie outlives it),
 # so an expired token does NOT mean the instance is signed out — ask the app.
 probe_renderer_authed() {
-  if ! curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" >/dev/null 2>&1; then
+  if ! curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" > /dev/null 2>&1; then
     echo 0
     return
   fi
   local out
   out=$(agent-browser --session "edev$CDP_PORT" --cdp "$CDP_PORT" eval \
     '(function(){try{var u=window.__LOBE_STORES.user();return (u.user&&u.user.id)?"AUTHED":"ANON";}catch(e){return "ERR";}})()' \
-    2>/dev/null | tail -1 || true)
+    2> /dev/null | tail -1 || true)
   case "$out" in
     *AUTHED*) echo 1 ;;
     *) echo 0 ;;
@@ -354,8 +354,8 @@ seed_userdata() {
   fi
 
   echo "[electron-dev] Seeding userData from $label → $dst"
-  profile_can_reauth "$src" ||
-    echo "[electron-dev]   note: no refresh token on disk — a cookie session may still carry it; otherwise sign in once and 'stop' will capture it."
+  profile_can_reauth "$src" \
+    || echo "[electron-dev]   note: no refresh token on disk — a cookie session may still carry it; otherwise sign in once and 'stop' will capture it."
   copy_login_items "$src" "$dst"
 }
 
@@ -389,13 +389,13 @@ do_stop() {
     local count
     count=$(echo "$all_pids" | tr ' ' '\n' | grep -c .)
     echo "[electron-dev] Sending SIGTERM to $count process(es): $all_pids"
-    for pid in $all_pids; do kill "$pid" 2>/dev/null || true; done
+    for pid in $all_pids; do kill "$pid" 2> /dev/null || true; done
 
     local waited=0
     while [ $waited -lt 5 ]; do
       local any_alive=0
       for pid in $all_pids; do
-        if kill -0 "$pid" 2>/dev/null; then
+        if kill -0 "$pid" 2> /dev/null; then
           any_alive=1
           break
         fi
@@ -406,33 +406,33 @@ do_stop() {
     done
 
     for pid in $all_pids; do
-      if kill -0 "$pid" 2>/dev/null; then
+      if kill -0 "$pid" 2> /dev/null; then
         echo "[electron-dev] Force-killing PID $pid"
-        kill -9 "$pid" 2>/dev/null || true
+        kill -9 "$pid" 2> /dev/null || true
       fi
     done
   fi
 
   # Belt-and-suspenders: free this instance's CDP port.
   local port_pid
-  port_pid=$(lsof -ti tcp:"$CDP_PORT" -sTCP:LISTEN 2>/dev/null || true)
+  port_pid=$(lsof -ti tcp:"$CDP_PORT" -sTCP:LISTEN 2> /dev/null || true)
   if [ -n "$port_pid" ]; then
     echo "[electron-dev] CDP port $CDP_PORT still bound by $port_pid; force-killing"
     # shellcheck disable=SC2086
-    kill -9 $port_pid 2>/dev/null || true
+    kill -9 $port_pid 2> /dev/null || true
   fi
 
   # Legacy only: re-sweep stray project electron (pool mode must NOT — sibling-safe).
   if [ "$POOL_MODE" = "0" ]; then
     local stragglers
-    stragglers=$(pgrep -f "$PROJECT_ELECTRON_PATH" 2>/dev/null || true)
+    stragglers=$(pgrep -f "$PROJECT_ELECTRON_PATH" 2> /dev/null || true)
     if [ -n "$stragglers" ]; then
       echo "[electron-dev] Cleaning up stragglers: $stragglers"
-      for pid in $stragglers; do kill -9 "$pid" 2>/dev/null || true; done
+      for pid in $stragglers; do kill -9 "$pid" 2> /dev/null || true; done
     fi
   fi
 
-  agent-browser --session "edev$CDP_PORT" --cdp "$CDP_PORT" close --all 2>/dev/null || true
+  agent-browser --session "edev$CDP_PORT" --cdp "$CDP_PORT" close --all 2> /dev/null || true
   rm -f "$PIDFILE"
 
   # Pool mode: capture the (freshly rotated) login before touching the userData,
@@ -451,7 +451,7 @@ do_stop() {
 }
 
 do_status() {
-  if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" >/dev/null 2>&1; then
+  if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" > /dev/null 2>&1; then
     local url
     url=$(agent-browser --session "edev$CDP_PORT" --cdp "$CDP_PORT" get url 2>&1 | tail -1 || echo "?")
     echo "[electron-dev] CDP $CDP_PORT reachable. URL: $url"
@@ -462,7 +462,7 @@ do_status() {
 }
 
 do_start() {
-  if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" >/dev/null 2>&1; then
+  if curl -sf --max-time 2 "http://localhost:${CDP_PORT}/json/version" > /dev/null 2>&1; then
     echo "[electron-dev] CDP already reachable on $CDP_PORT. Skipping start (use 'restart')."
     return 0
   fi
@@ -474,8 +474,8 @@ do_start() {
   local waited=0
   while [ $waited -lt 10 ]; do
     local busy=0
-    lsof -i tcp:"$CDP_PORT" >/dev/null 2>&1 && busy=1
-    [ -n "$VITE_PORT" ] && lsof -i tcp:"$VITE_PORT" >/dev/null 2>&1 && busy=1
+    lsof -i tcp:"$CDP_PORT" > /dev/null 2>&1 && busy=1
+    [ -n "$VITE_PORT" ] && lsof -i tcp:"$VITE_PORT" > /dev/null 2>&1 && busy=1
     [ "$busy" = "0" ] && break
     [ $waited -eq 0 ] && echo "[electron-dev] Waiting for ports to release..."
     sleep 1
@@ -499,19 +499,19 @@ do_start() {
   echo "[electron-dev]   Log:       $ELECTRON_LOG"
 
   mkdir -p "$(dirname "$ELECTRON_LOG")"
-  : >"$ELECTRON_LOG"
+  : > "$ELECTRON_LOG"
 
   local launch_cmd="
     cd '$PROJECT_ROOT/apps/desktop'
     exec env $env_assignments LOBE_DESKTOP_CDP_PORT=$CDP_PORT pnpm dev
   "
-  if command -v setsid >/dev/null 2>&1; then
-    setsid bash -c "$launch_cmd" >>"$ELECTRON_LOG" 2>&1 </dev/null &
+  if command -v setsid > /dev/null 2>&1; then
+    setsid bash -c "$launch_cmd" >> "$ELECTRON_LOG" 2>&1 < /dev/null &
   else
-    bash -c "$launch_cmd" >>"$ELECTRON_LOG" 2>&1 </dev/null &
+    bash -c "$launch_cmd" >> "$ELECTRON_LOG" 2>&1 < /dev/null &
   fi
   local launcher_pid=$!
-  echo "$launcher_pid" >"$PIDFILE"
+  echo "$launcher_pid" > "$PIDFILE"
   echo "[electron-dev] Launcher PID (session leader): $launcher_pid"
 
   if ! wait_for_cdp; then
@@ -534,7 +534,7 @@ do_start() {
 # snapshots: a leftover userData can carry a token that a LATER run has already
 # rotated away, which still looks unexpired but would overwrite a good snapshot.
 do_stop_quiet_for_start() {
-  KEEP_DATA=1 SKIP_LOGIN_SAVE=1 do_stop >/dev/null 2>&1 || true
+  KEEP_DATA=1 SKIP_LOGIN_SAVE=1 do_stop > /dev/null 2>&1 || true
 }
 
 do_restart() {
@@ -553,7 +553,7 @@ do_list() {
       found=1
       id=$(basename "$pf" | sed -E 's/instance-([0-9]+)\.pid/\1/')
       port=$((CDP_BASE + id))
-      if curl -sf --max-time 2 "http://localhost:${port}/json/version" >/dev/null 2>&1; then
+      if curl -sf --max-time 2 "http://localhost:${port}/json/version" > /dev/null 2>&1; then
         reach="UP"
       else
         reach="down"

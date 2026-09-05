@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { MarketAPIError } from '@lobehub/market-sdk';
+import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface MockOrgCredRow {
@@ -11,6 +12,7 @@ interface MockOrgCredRow {
 const {
   mockOrgCredsList,
   mockPersonalCredsList,
+  mockPersonalCredsCreateKV,
   mockPersonalCredsShare,
   mockPersonalCredsPublish,
   mockPersonalCredsUnshare,
@@ -19,9 +21,15 @@ const {
     data: [{ id: 1, key: 'ORG_SECRET' }],
   })),
   mockPersonalCredsList: vi.fn(async () => ({ data: [{ id: 2, key: 'PERSONAL_SECRET' }] })),
+  mockPersonalCredsCreateKV: vi.fn(async () => ({ id: 3, key: 'NEW_SECRET' })),
   mockPersonalCredsPublish: vi.fn(async (id: number) => ({ id, visibility: 'public' })),
   mockPersonalCredsShare: vi.fn(async (id: number) => ({ id, visibility: 'private' })),
   mockPersonalCredsUnshare: vi.fn(async (id: number) => ({ id, visibility: 'private' })),
+}));
+const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
+
+vi.mock('@/server/routers/lambda/_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
 }));
 
 vi.mock('@/business/server/trpc-middlewares/rbacPermission', () => ({
@@ -58,6 +66,7 @@ vi.mock('@/server/services/market', () => ({
   MarketService: vi.fn(() => ({
     market: {
       creds: {
+        createKV: mockPersonalCredsCreateKV,
         list: mockPersonalCredsList,
         publish: mockPersonalCredsPublish,
         share: mockPersonalCredsShare,
@@ -70,9 +79,22 @@ vi.mock('@/server/services/market', () => ({
   })),
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
+});
+
 describe('credsRouter is always personal-scoped', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('rejects credential writes from an ordinary customer', async () => {
+    mockPlatformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+    const { credsRouter } = await import('./creds');
+    const caller = credsRouter.createCaller({ userId: 'user-1' } as any);
+
+    await expect(
+      caller.createKV({ key: 'NEW_SECRET', name: 'New secret', type: 'kv-env', values: {} }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   // `market.creds` is the personal-creds router used directly by the browser

@@ -145,6 +145,29 @@ describe('requiredApiKeyScopeForTrpc', () => {
     expect(requiredApiKeyScopeForTrpc('topUp.createCheckout', 'mutation')).toEqual({
       blocked: true,
     });
+
+    const interactivePlatformNamespaces = [
+      'customerCenter',
+      'groupConversation',
+      'groupMembership',
+      'groupSponsoredCredit',
+      'platformAccess',
+      'platformCredit',
+      'platformCreditPurchase',
+      'platformModeration',
+      'platformOperations',
+      'travelGeneration',
+      'travelServiceLedger',
+      'userSessionManagement',
+    ];
+    for (const namespace of interactivePlatformNamespaces) {
+      expect(requiredApiKeyScopeForTrpc(`${namespace}.anyProcedure`, 'query')).toEqual({
+        blocked: true,
+      });
+      expect(requiredApiKeyScopeForTrpc(`${namespace}.anyProcedure`, 'mutation')).toEqual({
+        blocked: true,
+      });
+    }
   });
 
   it('blocks the write half when only read is granted to the namespace', () => {

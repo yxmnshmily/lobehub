@@ -70,6 +70,8 @@ import { understandingProviders } from '@/server/services/understanding/provider
 import { createUnderstandingService } from '@/server/services/understanding/service';
 import { after } from '@/server/utils/scheduleAfterResponse';
 
+import { assertPlatformAdmin } from './_helpers/platformAdminGuard';
+
 const usernameSchema = z
   .string()
   .trim()
@@ -169,6 +171,8 @@ const createOnboardingTasksInputSchema = z
 const AVATAR_WEBAPI_PREFIX = '/webapi/';
 const OWNER_SETTING_KEYS = ['defaultAgent', 'image', 'memory', 'systemAgent', 'tts'] as const;
 const MEMBER_SETTING_KEYS = ['tool'] as const;
+const PERSONAL_CENTER_SETTING_KEYS = ['general', 'hotkey', 'notification'] as const;
+const getEmptyUserKeyVaults = async () => ({});
 const WORKSPACE_UPDATE_PERMISSION = 'workspace:update:all';
 const WORKSPACE_CONTENT_PERMISSIONS = ['agent:update:all', 'agent:update:owner'] as const;
 
@@ -200,6 +204,31 @@ const hasOwnerSettingChange = (input: Partial<UserSettings>) =>
 const hasMemberSettingChange = (input: Partial<UserSettings>) =>
   MEMBER_SETTING_KEYS.some((key) => input[key] !== undefined);
 
+const projectPersonalCenterSettings = (
+  settings: UserInitializationState['settings'],
+): UserInitializationState['settings'] => {
+  const result: Record<string, unknown> = {};
+  for (const key of PERSONAL_CENTER_SETTING_KEYS) {
+    if (settings[key] !== undefined) result[key] = settings[key];
+  }
+  return result as UserInitializationState['settings'];
+};
+
+const PLATFORM_MANAGED_SETTING_KEYS = [
+  'defaultAgent',
+  'image',
+  'keyVaults',
+  'languageModel',
+  'market',
+  'memory',
+  'systemAgent',
+  'tool',
+  'tts',
+] as const satisfies readonly (keyof UserSettings)[];
+
+const hasPlatformManagedSettingChange = (input: Partial<UserSettings>) =>
+  PLATFORM_MANAGED_SETTING_KEYS.some((key) => key in input);
+
 const userProcedure = authedProcedure.use(serverDatabase).use(async ({ ctx, next }) => {
   return next({
     ctx: {
@@ -214,7 +243,6 @@ const userProcedure = authedProcedure.use(serverDatabase).use(async ({ ctx, next
     },
   });
 });
-
 const personalOnboardingProcedure = userProcedure.use(async ({ ctx, next }) => {
   if (ctx.workspaceId) {
     throw new TRPCError({
@@ -454,10 +482,18 @@ export const userRouter = router({
       await UserModel.makeSureUserExist(ctx.serverDB, ctx.userId);
     }
 
+    // API keys, including legacy full-access keys, are never an administrator UI session.
+    // Resolve this before loading state so ordinary callers never decrypt stored key vaults.
+    const canReadPlatformSettings =
+      ctx.apiKeyScopes === undefined &&
+      (await new RbacModel(ctx.serverDB, ctx.userId).hasGlobalRole('super_admin'));
+
     // Run user state fetch and count queries in parallel
     const [state, messageCount, hasExtraSession, referralStatus, subscriptionPlan] =
       await Promise.all([
-        ctx.userModel.getUserState(KeyVaultsGateKeeper.getUserKeyVaults),
+        ctx.userModel.getUserState(
+          canReadPlatformSettings ? KeyVaultsGateKeeper.getUserKeyVaults : getEmptyUserKeyVaults,
+        ),
         ctx.messageModel.countUpTo(5),
         ctx.sessionModel.hasMoreThanN(1),
         getReferralStatus(ctx.userId),
@@ -485,12 +521,9 @@ export const userRouter = router({
       lastName: state.lastName,
       onboarding: state.onboarding,
       preference: state.preference as UserPreference,
-      // restricted API keys must not read decrypted provider/tool credentials
-      // or Marketplace OAuth tokens
-      settings:
-        ctx.apiKeyScopes !== undefined && !isFullAccessApiKey(ctx.apiKeyScopes)
-          ? { ...state.settings, keyVaults: undefined, market: undefined }
-          : state.settings,
+      settings: canReadPlatformSettings
+        ? state.settings
+        : projectPersonalCenterSettings(state.settings),
       userId: ctx.userId,
       username: state.username,
 
@@ -506,7 +539,11 @@ export const userRouter = router({
   }),
 
   resetSettings: userProcedure.mutation(async ({ ctx }) => {
-    return ctx.userModel.deleteSetting();
+    return ctx.userModel.updateSetting({
+      general: null,
+      hotkey: null,
+      notification: null,
+    });
   }),
 
   reviseOnboardingUnderstanding: understandingServiceProcedure
@@ -554,8 +591,7 @@ export const userRouter = router({
 
         // Use UUID to generate unique filename to prevent caching issues
         // Get old avatar URL for later deletion
-        const userState = await ctx.userModel.getUserState(KeyVaultsGateKeeper.getUserKeyVaults);
-        const oldAvatarUrl = userState.avatar;
+        const oldAvatarUrl = await ctx.userModel.getAvatar();
 
         const fileName = `${uuidv4()}.${fileType}`;
         const filePath = `user/avatar/${ctx.userId}/${fileName}`;
@@ -606,7 +642,7 @@ export const userRouter = router({
     return ctx.userModel.updateUser({ interests: input });
   }),
 
-  getOrCreateOnboardingState: userProcedure.query(async ({ ctx }) => {
+  getOrCreateOnboardingState: userProcedure.mutation(async ({ ctx }) => {
     const onboardingService = new OnboardingService(ctx.serverDB, ctx.userId);
 
     return onboardingService.getOrCreateState();
@@ -637,6 +673,35 @@ export const userRouter = router({
 
     const [state, soulDoc, persona, userInfo] = await Promise.all([
       onboardingService.getState(),
+      onboardingService
+        .getInboxAgentId()
+        .then((inboxAgentId) => docService.getDocumentByFilename(inboxAgentId, 'SOUL.md'))
+        .catch(() => null),
+      personaModel.getLatestPersonaDocument().catch(() => null),
+      onboardingService.getInitialUserInfo().catch(() => undefined),
+    ]);
+
+    return {
+      discoveryUserMessageCount: state.discoveryUserMessageCount,
+      personaContent: persona?.persona || null,
+      phaseGuidance: formatWebOnboardingStateMessage(state),
+      remainingDiscoveryExchanges: state.remainingDiscoveryExchanges,
+      soulContent: soulDoc?.content || null,
+      userInfo,
+    };
+  }),
+
+  prepareOnboardingAgentContext: userProcedure.mutation(async ({ ctx }) => {
+    const onboardingService = new OnboardingService(ctx.serverDB, ctx.userId);
+    const docService = new AgentDocumentsService(
+      ctx.serverDB,
+      ctx.userId,
+      ctx.workspaceId ?? undefined,
+    );
+    const personaModel = new UserPersonaModel(ctx.serverDB, ctx.userId);
+
+    const [state, soulDoc, persona, userInfo] = await Promise.all([
+      onboardingService.prepareStateForMessageContext(),
       onboardingService
         .getInboxAgentId()
         .then((inboxAgentId) => docService.getDocumentByFilename(inboxAgentId, 'SOUL.md'))
@@ -844,6 +909,9 @@ export const userRouter = router({
   }),
 
   updateSettings: userProcedure.input(UserSettingsSchema).mutation(async ({ ctx, input }) => {
+    if (hasPlatformManagedSettingChange(input)) {
+      await assertPlatformAdmin(new RbacModel(ctx.serverDB, ctx.userId));
+    }
     const { keyVaults, ...res } = input as Partial<UserSettings>;
     // presence, not truthiness: `keyVaults: null` is an explicit credential clear
     const hasKeyVaultsUpdate = 'keyVaults' in (input as Partial<UserSettings>);

@@ -45,16 +45,18 @@ vi.mock('@lobehub/ui/base-ui', () => ({
     </button>
   ),
   ActionIcon: ({
+    'aria-label': ariaLabel,
     onClick,
     style,
     title,
   }: {
+    'aria-label'?: string;
     onClick?: () => void;
     style?: CSSProperties;
     title?: string;
   }) => (
     <div
-      aria-label={title}
+      aria-label={ariaLabel}
       role="button"
       style={{ height: 24, width: 24, ...style }}
       onClick={onClick}
@@ -184,6 +186,7 @@ describe('CreateTaskInlineEntry', () => {
 
     const attachmentAction = container.querySelector<HTMLElement>('[role="button"]');
     expect(attachmentAction).toHaveStyle({ height: '24px', width: '24px' });
+    expect(attachmentAction).toHaveAttribute('aria-label', 'upload.action.tooltip');
     expect(attachmentAction?.parentElement?.style.getPropertyValue('--lobe-flex-align')).toBe(
       'center',
     );

@@ -28,6 +28,12 @@ vi.mock('@/database/models/message', () => ({
   })),
 }));
 
+vi.mock('@/database/models/agentOperation', () => ({
+  AgentOperationModel: vi.fn().mockImplementation(() => ({
+    findById: vi.fn().mockResolvedValue({ trigger: 'website-ai' }),
+  })),
+}));
+
 // Mock AgentModel
 vi.mock('@/database/models/agent', () => ({
   AgentModel: vi.fn().mockImplementation(() => ({
@@ -355,6 +361,43 @@ describe('AiAgentService.execAgent - threadId handling', () => {
       for (const call of mockMessageCreate.mock.calls) {
         expect(call[0].threadId).toBeUndefined();
       }
+    });
+  });
+
+  describe('in-group member reply attribution', () => {
+    it('persists only a member assistant under the supervisor assistant message', async () => {
+      const result = await service.execGroupMember({
+        agentId: 'agent-1',
+        anchorMessageId: 'member-anchor',
+        expectedMembers: 1,
+        groupId: 'group-1',
+        groupToolMessageId: 'group-tool-message',
+        instruction: '规划川西路线',
+        mode: 'in_group',
+        onComplete: 'resume',
+        parentOperationId: 'supervisor-operation',
+        supervisorMessageId: 'supervisor-message',
+        topicId: 'topic-1',
+      });
+
+      expect(result.started).toBe(true);
+      expect(mockMessageCreate).toHaveBeenCalledTimes(1);
+      expect(mockMessageCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: 'agent-1',
+          groupId: 'group-1',
+          metadata: { orchestrationRole: 'member' },
+          parentId: 'supervisor-message',
+          role: 'assistant',
+          topicId: 'topic-1',
+        }),
+        undefined,
+      );
+      expect(
+        mockMessageCreate.mock.calls.some(
+          ([message]) => message.role === 'user' || message.content.includes('规划川西路线'),
+        ),
+      ).toBe(false);
     });
   });
 

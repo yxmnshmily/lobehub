@@ -678,13 +678,14 @@ export const contextEngineering = async ({
     )) ?? [];
 
   // Build onboarding context if this is the web-onboarding agent.
-  // Single combined trpc call — server runs state/soul/persona DB queries in parallel.
+  // The explicit mutation persists onboarding progress before a real message send.
+  // Read-only prefetches use getOnboardingAgentContext and remain side-effect free.
   let onboardingContext: OnboardingContext | undefined;
   const isOnboardingAgent = tools?.includes(WebOnboardingIdentifier);
   if (isOnboardingAgent) {
     try {
       const { userService } = await import('@/services/user');
-      onboardingContext = await userService.getOnboardingAgentContext();
+      onboardingContext = await userService.prepareOnboardingAgentContext();
       log('Built onboarding context');
     } catch (error) {
       log('Failed to build onboarding context: %O', error);

@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useElectronStore } from '@/store/electron';
 
+import { isSettingsCategoryItemActive } from './index';
+
 // The settings sidebar is portal'd into the shell (frozen root router on
 // desktop). This binds `@/hooks/useActiveLocation` to the real desktop variant,
 // which mirrors the active tab's url from the electron store, and asserts the
@@ -47,7 +49,13 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('@lobehub/ui', () => ({
-  Accordion: ({ children }: { children?: ReactNode }) => h('div', null, children),
+  Accordion: ({
+    children,
+    defaultExpandedKeys,
+  }: {
+    children?: ReactNode;
+    defaultExpandedKeys?: string[];
+  }) => h('div', { 'data-expanded-keys': defaultExpandedKeys?.join(',') }, children),
   AccordionItem: ({ children, title }: { children?: ReactNode; title?: ReactNode }) =>
     h('div', null, title, children),
   Flexbox: ({ children }: { children?: ReactNode }) => h('div', null, children),
@@ -64,6 +72,30 @@ afterEach(() => {
 });
 
 describe('settings sidebar active tab (desktop)', () => {
+  it('prefers a matching section link over the shared credits pathname', () => {
+    const location = {
+      pathname: '/settings/credits',
+      search: '?section=my-creations&generationId=task-1',
+    };
+
+    expect(
+      isSettingsCategoryItemActive({
+        activeTab: 'credits',
+        currentLocation: location,
+        hasCustomHrefMatch: true,
+        item: { href: '/settings/credits?section=my-creations', key: 'works' },
+      }),
+    ).toBe(true);
+    expect(
+      isSettingsCategoryItemActive({
+        activeTab: 'credits',
+        currentLocation: location,
+        hasCustomHrefMatch: true,
+        item: { key: 'credits' },
+      }),
+    ).toBe(false);
+  });
+
   it('follows the active tab url via the electron store mirror', async () => {
     useElectronStore.setState({
       activeTabId: 't1',
@@ -75,6 +107,12 @@ describe('settings sidebar active tab (desktop)', () => {
 
     expect(activeStateOf('Profile')).toBe('true');
     expect(activeStateOf('Appearance')).toBe('false');
+    expect(
+      screen
+        .getByText('General')
+        .closest('[data-expanded-keys]')
+        ?.getAttribute('data-expanded-keys'),
+    ).toBe('general');
 
     act(() => useElectronStore.setState({ activeTabId: 't2' }));
 

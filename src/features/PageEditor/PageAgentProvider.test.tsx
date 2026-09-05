@@ -227,4 +227,33 @@ describe('PageAgentProvider', () => {
     expect(context.documentId).toBe('doc-1');
     expect(context.scope).toBe('page');
   });
+
+  it('resets the page topic when the open document changes', async () => {
+    const view = render(
+      <PageAgentProvider pageId="doc-1">
+        <div>child</div>
+      </PageAgentProvider>,
+    );
+
+    await waitFor(() => {
+      expect(chatState.switchTopic).toHaveBeenCalledTimes(1);
+    });
+
+    chatState.activeAgentId = 'page-agent';
+    chatState.activeTopicId = 'doc-1-topic';
+
+    view.rerender(
+      <PageAgentProvider pageId="doc-2">
+        <div>child</div>
+      </PageAgentProvider>,
+    );
+
+    await waitFor(() => {
+      expect(chatState.switchTopic).toHaveBeenCalledTimes(2);
+    });
+    expect(chatState.switchTopic).toHaveBeenLastCalledWith(null, {
+      scope: 'page',
+      skipRefreshMessage: true,
+    });
+  });
 });

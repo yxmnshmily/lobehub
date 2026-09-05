@@ -30,6 +30,7 @@ const ImageSettings = memo(() => {
 
   const defaultImageCountSlider = (
     <FormSliderWithInput
+      ariaLabel={t('settingImage.defaultCount.label')}
       disabled={isUpdating || !canManageServiceModel}
       max={MAX_DEFAULT_IMAGE_NUM}
       min={MIN_DEFAULT_IMAGE_NUM}

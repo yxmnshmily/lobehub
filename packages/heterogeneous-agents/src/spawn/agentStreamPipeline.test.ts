@@ -179,9 +179,7 @@ describe('AgentStreamPipeline', () => {
 
   describe('tool_result image upload ()', () => {
     it('rewrites base64 pluginState.images into uploaded references', async () => {
-      const uploadImage = vi
-        .fn()
-        .mockResolvedValue({ fileId: 'file_1', url: 'https://cdn/x.png' });
+      const uploadImage = vi.fn().mockResolvedValue({ fileId: 'file_1', url: 'https://cdn/x.png' });
       const pipeline = new AgentStreamPipeline({
         agentType: 'claude-code',
         operationId: 'op-1',
@@ -225,7 +223,9 @@ describe('AgentStreamPipeline', () => {
       expect(uploadImage).toHaveBeenCalledTimes(1);
       expect(imagesOf(events)).toBeUndefined();
       // The `[Image: …]` placeholder is still the content fallback.
-      expect(events.find((e) => e.type === 'tool_result')?.data?.content).toBe('[Image: image/png]');
+      expect(events.find((e) => e.type === 'tool_result')?.data?.content).toBe(
+        '[Image: image/png]',
+      );
     });
 
     it('drops the image when the uploader declines (returns undefined)', async () => {

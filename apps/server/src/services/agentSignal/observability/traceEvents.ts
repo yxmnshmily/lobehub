@@ -10,10 +10,7 @@ export interface AgentSignalTraceEvent {
   data: Record<string, unknown>;
   timestamp: number;
   type:
-    | 'agent_signal.action'
-    | 'agent_signal.result'
-    | 'agent_signal.signal'
-    | 'agent_signal.source';
+    'agent_signal.action' | 'agent_signal.result' | 'agent_signal.signal' | 'agent_signal.source';
 }
 
 const readRecord = (value: unknown): Record<string, unknown> | undefined => {

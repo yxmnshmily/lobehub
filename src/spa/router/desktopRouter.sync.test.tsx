@@ -18,6 +18,9 @@ import RouteSegmentSkeleton from '@/components/Skeleton/RouteSegment';
 import SettingsPageSkeleton from '@/components/Skeleton/Settings/Page';
 import TasksSkeleton from '@/components/Skeleton/Tasks';
 import TopicsSkeleton from '@/components/Skeleton/Topics';
+import PlatformAdminRouteGuard, {
+  CustomerMainRouteGuard,
+} from '@/features/PlatformAdminRouteGuard';
 import { WORKSPACE_SETTINGS_TABS } from '@/features/Workspace/workspaceAwarePath';
 import AppShellSkeleton from '@/spa/BootShell/AppShellSkeleton';
 import { createTabRouter } from '@/spa/router/tabRouter';
@@ -74,6 +77,18 @@ async function readRouterSources() {
 }
 
 describe('desktop router shared definition', () => {
+  it('guards the desktop main shell, including direct URLs', () => {
+    for (const routes of [webDesktopRoutes, electronDesktopRoutes]) {
+      const root = routes.find((route) => route.path === '/');
+      expect((root?.element as ReactElement | undefined)?.type).toBe(CustomerMainRouteGuard);
+    }
+
+    const tabRouter = createTabRouter('/agent/default-travel-copywriter');
+    expect((tabRouter.routes[0]?.element as ReactElement | undefined)?.type).toBe(
+      CustomerMainRouteGuard,
+    );
+  });
+
   it('defers platform route factories until React renders their route elements', () => {
     const createHomeElement = vi.fn(() => <div>Home</div>);
     const createWorkspaceSettingsIndexElement = vi.fn(() => <div>Workspace settings</div>);
@@ -222,6 +237,68 @@ describe('desktop router shared definition', () => {
     },
   );
 
+  it.each(mainAreaVariants)('%s guards direct platform-settings URLs', (_, factory) => {
+    for (const pathname of [
+      '/settings/provider/all',
+      '/settings/skill',
+      '/settings/apikey',
+      '/settings/oauth-apps/client-1',
+      '/settings/service-model',
+      '/settings/credential',
+      '/settings/memory',
+      '/settings/appearance',
+      '/settings/advanced',
+      '/settings/labs',
+      '/settings/connector',
+      '/settings/notification',
+      '/settings/service-operations',
+      '/acme/settings/provider',
+      '/acme/settings/skill',
+      '/acme/settings/apikey',
+      '/acme/settings/oauth-apps/client-1',
+      '/acme/settings/service-model',
+      '/acme/settings/credential',
+    ]) {
+      const matches = matchRoutes(createMainAreaRoutes(factory), pathname);
+      const hasPlatformGuard = matches?.some(
+        ({ route }) =>
+          (route.element as ReactElement | undefined)?.type === PlatformAdminRouteGuard,
+      );
+
+      expect(matches, `${pathname} must match a route`).toBeTruthy();
+      expect(hasPlatformGuard, `${pathname} must require a platform administrator`).toBe(true);
+    }
+  });
+
+  it.each(mainAreaVariants)(
+    '%s keeps customer settings URLs outside the platform guard',
+    (_, factory) => {
+      for (const pathname of [
+        '/settings/profile',
+        '/settings/security',
+        '/settings/credits',
+        '/settings/billing',
+        '/settings/works',
+      ]) {
+        const matches = matchRoutes(createMainAreaRoutes(factory), pathname);
+        const hasPlatformGuard = matches?.some(
+          ({ route }) =>
+            (route.element as ReactElement | undefined)?.type === PlatformAdminRouteGuard,
+        );
+
+        expect(matches, `${pathname} must match a route`).toBeTruthy();
+        expect(hasPlatformGuard, `${pathname} must stay customer-accessible`).toBe(false);
+      }
+    },
+  );
+
+  it.each(mainAreaVariants)('%s redirects the legacy works settings URL to /page', (_, factory) => {
+    const matches = matchRoutes(createMainAreaRoutes(factory), '/settings/works');
+    const element = matches?.at(-1)?.route.element as ReactElement<{ to: string }> | undefined;
+
+    expect(element?.props.to).toBe('/page');
+  });
+
   it('generates identical main-area path and nesting behavior for Web and Electron', () => {
     expect(routeShape(createElectronMainAreaChildren())).toEqual(
       routeShape(createWebMainAreaChildren()),
@@ -297,7 +374,9 @@ describe('desktop router shared definition', () => {
     ['Electron', electronDesktopRoutes],
   ])('%s hands the boot shell over to the same skeleton, not the brand logo', (_, routes) => {
     const root = routes.find((route) => route.path === '/');
-    const { fallback } = (root?.element as ReactElement<{ fallback: ReactElement }>).props;
+    const guardedLayout = (root?.element as ReactElement<{ children: ReactElement }>).props
+      .children;
+    const { fallback } = guardedLayout.props as { fallback: ReactElement };
 
     expect(fallback.type).toBe(AppShellSkeleton);
   });

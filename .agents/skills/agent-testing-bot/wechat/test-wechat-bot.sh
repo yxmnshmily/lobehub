@@ -34,9 +34,9 @@ SCREENSHOT="${4:-/tmp/wechat-bot-test.png}"
 
 # Detect app name — "微信" or "WeChat"
 APP=""
-if osascript -e 'tell application "微信" to name' &>/dev/null; then
+if osascript -e 'tell application "微信" to name' &> /dev/null; then
   APP="微信"
-elif osascript -e 'tell application "WeChat" to name' &>/dev/null; then
+elif osascript -e 'tell application "WeChat" to name' &> /dev/null; then
   APP="WeChat"
 else
   echo "[error] WeChat app not found. Install 微信 (WeChat)."

@@ -7,6 +7,7 @@ import { type ToolType } from '@lobechat/observability-otel/modules/agent-runtim
 import {
   type ChatToolPayload,
   type LobeAgentConfig,
+  type OperationToolDispatchPolicy,
   type WorkRegistrationIntent,
 } from '@lobechat/types';
 import debug from 'debug';
@@ -337,6 +338,7 @@ export const buildServerAgentMemberRunner = (
   state: AgentState,
   chatToolPayload: ChatToolPayload,
   parentMessageId: string,
+  memberToolDispatchPolicies?: Record<string, OperationToolDispatchPolicy>,
 ): ServerAgentMemberRunner | undefined => {
   const execGroupMember = ctx.execGroupMember;
   if (!execGroupMember) return undefined;
@@ -348,12 +350,17 @@ export const buildServerAgentMemberRunner = (
 
   return {
     run: async ({ members, mode, onComplete, disableTools, timeout }) => {
-      const agentMap = (state.metadata?.agentGroup as { agentMap?: Record<string, { name: string }> }
-        | undefined)?.agentMap;
-      const resolvedMembers = members.map((member) => ({
-        ...member,
-        agentId: resolveGroupMemberId(member.agentId, agentMap),
-      }));
+      const agentMap = (
+        state.metadata?.agentGroup as { agentMap?: Record<string, { name: string }> } | undefined
+      )?.agentMap;
+      const resolvedMembers = members.map((member) => {
+        const resolvedAgentId = resolveGroupMemberId(member.agentId, agentMap);
+        return {
+          ...member,
+          agentId: resolvedAgentId,
+          toolDispatchPolicy: memberToolDispatchPolicies?.[resolvedAgentId],
+        };
+      });
       const expectedMembers = resolvedMembers.length;
       if (expectedMembers === 0) return { started: false, startedCount: 0 };
 
@@ -431,6 +438,7 @@ export const buildServerAgentMemberRunner = (
               // members parent their response here (siblings of the council tool).
               supervisorMessageId: parentMessageId,
               timeout,
+              toolDispatchPolicy: member.toolDispatchPolicy,
               topicId,
             });
             if (result?.started) {

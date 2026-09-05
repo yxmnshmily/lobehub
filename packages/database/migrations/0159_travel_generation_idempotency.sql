@@ -1,0 +1,4 @@
+ALTER TABLE "travel_generation_tasks" ADD COLUMN "idempotency_key" text;--> statement-breakpoint
+ALTER TABLE "travel_generation_tasks" ADD COLUMN "request_hash" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "travel_generation_tasks_personal_idempotency_unique" ON "travel_generation_tasks" USING btree ("user_id","group_id","type","idempotency_key") WHERE "travel_generation_tasks"."workspace_id" IS NULL AND "travel_generation_tasks"."idempotency_key" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "travel_generation_tasks_workspace_idempotency_unique" ON "travel_generation_tasks" USING btree ("user_id","workspace_id","group_id","type","idempotency_key") WHERE "travel_generation_tasks"."workspace_id" IS NOT NULL AND "travel_generation_tasks"."idempotency_key" IS NOT NULL;

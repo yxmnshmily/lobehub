@@ -242,6 +242,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
             {!isScheduledCollection && !agentId && !projectId && <TaskListVisibilityFilter />}
             {!isScheduledCollection && (inlineCollapsed || viewMode === 'kanban') && (
               <ActionIcon
+                aria-label={t('createTask.submit')}
                 disabled={createActionBehavior.disabled}
                 icon={Plus}
                 size={DESKTOP_HEADER_ICON_SMALL_SIZE}

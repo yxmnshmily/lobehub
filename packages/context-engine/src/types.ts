@@ -136,11 +136,7 @@ export enum ProcessorType {
 
 /** Legacy processor type - kept for backward compatibility */
 export type ProcessorTypeLegacy =
-  | 'injector'
-  | 'transformer'
-  | 'validator'
-  | 'optimizer'
-  | 'processor';
+  'injector' | 'transformer' | 'validator' | 'optimizer' | 'processor';
 
 /**
  * Token counter interface

@@ -6,6 +6,7 @@ export interface EmailPayload {
    * Email attachments
    */
   attachments?: Array<{
+    cid?: string;
     content?: Buffer | string;
     filename?: string;
     path?: string;

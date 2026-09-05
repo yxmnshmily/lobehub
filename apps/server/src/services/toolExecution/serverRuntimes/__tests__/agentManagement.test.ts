@@ -13,7 +13,10 @@ const {
   mockUpdateConfig,
   mockFindById,
   mockCreatePlugin,
+  mockAssertTravelMutationAllowed,
+  mockUpdateAgent,
 } = vi.hoisted(() => ({
+  mockAssertTravelMutationAllowed: vi.fn(),
   mockCountAgents: vi.fn(),
   mockCreatePlugin: vi.fn(),
   mockFindById: vi.fn(),
@@ -21,6 +24,12 @@ const {
   mockGetAssistantList: vi.fn(),
   mockQueryAgents: vi.fn(),
   mockUpdateConfig: vi.fn(),
+  mockUpdateAgent: vi.fn(),
+}));
+
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: mockAssertTravelMutationAllowed,
+  assertNoReservedTravelServiceIdentity: vi.fn(),
 }));
 
 vi.mock('@/database/models/agent', () => ({
@@ -28,6 +37,7 @@ vi.mock('@/database/models/agent', () => ({
     countAgents: mockCountAgents,
     getAgentConfigById: mockGetAgentConfigById,
     queryAgents: mockQueryAgents,
+    update: mockUpdateAgent,
     updateConfig: mockUpdateConfig,
   })),
 }));
@@ -72,6 +82,7 @@ const makeAgents = (count: number, startIndex = 0) =>
 describe('agentManagementRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertTravelMutationAllowed.mockResolvedValue(undefined);
   });
 
   it('declares the agent management runtime identifier', () => {
@@ -89,6 +100,18 @@ describe('agentManagementRuntime', () => {
 
     expect(AgentModel).toHaveBeenCalledWith(expect.anything(), 'user-1', 'workspace-1');
     expect(PluginModel).toHaveBeenCalledWith(expect.anything(), 'user-1', 'workspace-1');
+  });
+
+  it('blocks a protected agent tool mutation before the model write', async () => {
+    mockAssertTravelMutationAllowed.mockRejectedValue(
+      new Error('This platform-managed travel resource cannot be changed'),
+    );
+
+    const result = await createRuntime().updatePrompt({ agentId: 'protected-1', prompt: 'change' });
+
+    expect(result).toMatchObject({ success: false });
+    expect(result.content).toContain('This platform-managed travel resource cannot be changed');
+    expect(mockUpdateAgent).not.toHaveBeenCalled();
   });
 
   describe('callAgent', () => {

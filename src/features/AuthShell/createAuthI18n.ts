@@ -10,6 +10,8 @@ import defaultError from '@/locales/default/error';
 import defaultMarketAuth from '@/locales/default/marketAuth';
 import defaultOauth from '@/locales/default/oauth';
 import { normalizeLocale } from '@/locales/resources';
+import { unwrapESMModule } from '@/utils/esm/unwrapESMModule';
+import { loadI18nNamespaceModule } from '@/utils/i18n/loadI18nNamespaceModule';
 
 const defaultResources = {
   auth: defaultAuth,
@@ -24,43 +26,17 @@ type AuthI18nNamespace = keyof typeof defaultResources;
 
 const isAllowedNamespace = (ns: string): ns is AuthI18nNamespace => ns in defaultResources;
 
-const loadZhNamespace = async (ns: AuthI18nNamespace) => {
-  switch (ns) {
-    case 'auth': {
-      return import('@/../locales/zh-CN/auth.json');
-    }
-    case 'authError': {
-      return import('@/../locales/zh-CN/authError.json');
-    }
-    case 'common': {
-      return import('@/../locales/zh-CN/common.json');
-    }
-    case 'error': {
-      return import('@/../locales/zh-CN/error.json');
-    }
-    case 'marketAuth': {
-      return import('@/../locales/zh-CN/marketAuth.json');
-    }
-    case 'oauth': {
-      return import('@/../locales/zh-CN/oauth.json');
-    }
-  }
-};
-
 const loadAuthNamespace = async (lng: string, ns: string) => {
   const safeNamespace = isAllowedNamespace(ns) ? ns : 'auth';
-  const normalizedLocale = normalizeLocale(lng);
 
-  if (normalizedLocale === 'zh-CN') {
-    try {
-      const mod = await loadZhNamespace(safeNamespace);
-      return (mod as any).default ?? mod;
-    } catch {
-      // fall through to bundled default namespace
-    }
-  }
-
-  return defaultResources[safeNamespace];
+  return unwrapESMModule(
+    await loadI18nNamespaceModule({
+      defaultLang: DEFAULT_LANG,
+      lng,
+      normalizeLocale,
+      ns: safeNamespace,
+    }),
+  );
 };
 
 export const createAuthI18n = (lang?: string) => {

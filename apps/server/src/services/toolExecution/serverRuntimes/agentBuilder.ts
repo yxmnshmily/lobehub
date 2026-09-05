@@ -17,6 +17,10 @@ import { AgentModel } from '@/database/models/agent';
 import { PluginModel } from '@/database/models/plugin';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
 import { DiscoverService } from '@/server/services/discover';
+import {
+  assertDefaultTravelServiceMutationAllowed,
+  assertNoReservedTravelServiceIdentity,
+} from '@/server/services/user/travelServiceGroupMutationGuard';
 import { filterHiddenProviderModels } from '@/utils/aiProvider';
 
 import { type ToolExecutionContext, type ToolExecutionResult } from '../types';
@@ -35,10 +39,11 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
       throw new Error('userId and serverDB are required for Agent Builder execution');
     }
     const userId = context.userId;
+    const serverDB = context.serverDB;
 
-    const agentModel = new AgentModel(context.serverDB, userId, context.workspaceId);
-    const pluginModel = new PluginModel(context.serverDB, userId, context.workspaceId);
-    const aiInfraRepos = new AiInfraRepos(context.serverDB, userId, {}, context.workspaceId);
+    const agentModel = new AgentModel(serverDB, userId, context.workspaceId);
+    const pluginModel = new PluginModel(serverDB, userId, context.workspaceId);
+    const aiInfraRepos = new AiInfraRepos(serverDB, userId, {}, context.workspaceId);
     const discoverService = new DiscoverService();
 
     return {
@@ -181,12 +186,24 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
         }
 
         try {
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           const agent = await agentModel.getAgentConfigById(agentId);
           if (!agent) {
             return { content: `Agent "${agentId}" not found.`, success: false };
           }
 
           const { config: rawConfig, meta: rawMeta } = normalizeUpdateConfigParams(params);
+          assertNoReservedTravelServiceIdentity({
+            agentClientId: (rawMeta as Record<string, unknown> | undefined)?.clientId as
+              string | null | undefined,
+            agentSlug: (rawMeta as Record<string, unknown> | undefined)?.slug as
+              string | null | undefined,
+          });
 
           let finalConfig = rawConfig ? { ...rawConfig } : {};
           const updatedParts: string[] = [];
@@ -216,6 +233,12 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
           if (Object.keys(finalConfig).length > 0) {
             // Domain tool plugins support structured entries, while the DB
             // model's JSONB column still carries its legacy string[] annotation.
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.updateConfig(
               agentId,
               finalConfig as unknown as Parameters<typeof agentModel.updateConfig>[1],
@@ -227,6 +250,12 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
           }
 
           if (rawMeta && Object.keys(rawMeta).length > 0) {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.update(agentId, rawMeta as Record<string, unknown>);
             updatedParts.push(`meta fields: ${Object.keys(rawMeta).join(', ')}`);
           }
@@ -264,6 +293,12 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
         }
 
         try {
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           await agentModel.update(agentId, {
             editorData: null,
             systemRole: params.prompt,
@@ -297,6 +332,17 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
 
         const { identifier, source } = params;
 
+        try {
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
+        } catch (error) {
+          return handleError(error, 'Failed to install plugin');
+        }
+
         if (source === 'official') {
           if (builtinTools.some((t) => t.identifier === identifier)) {
             // Builtin tools (lobe-web-browsing, lobe-image-generation, etc.) need no OAuth
@@ -305,6 +351,12 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
               if (!agent) return { content: `Agent "${agentId}" not found.`, success: false };
 
               if (getPluginMode(agent.plugins ?? undefined, identifier) !== 'pinned') {
+                await assertDefaultTravelServiceMutationAllowed(serverDB, {
+                  actorUserId: userId,
+                  agentIds: [agentId],
+                  kind: 'agent',
+                  workspaceId: context.workspaceId,
+                });
                 await agentModel.updateConfig(agentId, {
                   plugins: upsertPluginMode(
                     agent.plugins ?? undefined,
@@ -357,6 +409,12 @@ export const agentBuilderRuntime: ServerRuntimeRegistration = {
           }
 
           if (getPluginMode(agent.plugins ?? undefined, identifier) !== 'pinned') {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.updateConfig(agentId, {
               plugins: upsertPluginMode(
                 agent.plugins ?? undefined,

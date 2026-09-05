@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   connectedAccountsList: vi.fn(),
   connectorCreate: vi.fn(),
   connectorDelete: vi.fn(),
+  connectorFindByConnectedAccountId: vi.fn(),
   connectorFindScopedByIdentifier: vi.fn(),
   connectorToolDeleteToolsNotIn: vi.fn(),
   connectorToolUpsertMany: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('@/database/models/connector', () => ({
   ConnectorModel: vi.fn().mockImplementation(() => ({
     create: mocks.connectorCreate,
     delete: mocks.connectorDelete,
+    findComposioReferenceByConnectedAccountId: mocks.connectorFindByConnectedAccountId,
     findScopedByIdentifier: mocks.connectorFindScopedByIdentifier,
     update: mocks.connectorUpdate,
   })),
@@ -70,11 +72,25 @@ vi.mock('@/libs/composio', () => ({
     tools: { getRawComposioTools: mocks.getRawComposioTools },
   }),
 }));
+vi.mock('./_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => opts.next(),
+}));
 
 const caller = () => composioRouter.createCaller({ userId: 'user-1' } as any);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.connectorFindByConnectedAccountId.mockResolvedValue({
+    composio: {
+      appSlug: 'gmail',
+      connectedAccountId: 'ca-1',
+      ownerUserId: 'user-1',
+      status: 'ACTIVE',
+    },
+    id: 'conn-existing',
+    isEnabled: true,
+    status: 'connected',
+  });
   mocks.connectorFindScopedByIdentifier.mockResolvedValue(null);
   mocks.connectorCreate.mockResolvedValue({ id: 'conn-new' });
   mocks.pluginFindById.mockResolvedValue(undefined);
@@ -225,7 +241,11 @@ describe('composioRouter delete paths clean up the connector projection', () => 
 
   it('deleteConnection deletes both plugin and connector', async () => {
     mocks.connectedAccountsDelete.mockResolvedValue(undefined);
-    mocks.connectorFindScopedByIdentifier.mockResolvedValue({ id: 'conn-existing' });
+    mocks.connectorFindScopedByIdentifier.mockResolvedValue({
+      id: 'conn-existing',
+      metadata: { composio: { connectedAccountId: 'ca-1' } },
+      userId: 'user-1',
+    });
 
     await caller().deleteConnection({ connectedAccountId: 'ca-1', identifier: 'gmail' });
 

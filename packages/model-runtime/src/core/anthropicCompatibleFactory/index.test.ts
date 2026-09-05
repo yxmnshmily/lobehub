@@ -20,14 +20,19 @@ vi.mock('@lobechat/const', () => ({
   CURRENT_VERSION: '1.0.0-test',
 }));
 
-vi.mock('@lobechat/business-model-bank/model-config', () => ({
+const modelConfigMocks = vi.hoisted(() => ({
   loadModels: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@lobechat/business-model-bank/model-config', () => ({
+  loadModels: modelConfigMocks.loadModels,
 }));
 
 const MockedAnthropic = vi.mocked(Anthropic);
 const originalAnthropicClientTimeout = process.env.ANTHROPIC_CLIENT_TIMEOUT;
 
 afterEach(() => {
+  modelConfigMocks.loadModels.mockReset().mockResolvedValue([]);
   if (originalAnthropicClientTimeout === undefined) {
     delete process.env.ANTHROPIC_CLIENT_TIMEOUT;
   } else {
@@ -581,4 +586,133 @@ describe('createAnthropicCompatibleRuntime', () => {
     );
     expect(result).toEqual({ ok: true });
   });
+
+  it('prepares bounded generation only for an exact immutable model id', async () => {
+    const countTokens = vi.fn().mockResolvedValue({ input_tokens: 10 });
+    const create = vi.fn();
+    modelConfigMocks.loadModels.mockResolvedValue([
+      {
+        id: 'claude-versioned',
+        pricing: {
+          units: [
+            { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+            { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+          ],
+        },
+        providerId: 'test-provider',
+      },
+    ]);
+    const Runtime = createAnthropicCompatibleRuntime({
+      chatCompletion: {
+        handlePayload: (payload) => ({
+          max_tokens: 1024,
+          messages: [],
+          model: payload.model,
+        }),
+      },
+      customClient: {
+        createClient: () =>
+          ({
+            baseURL: 'https://api.anthropic.com',
+            messages: { countTokens, create },
+          }) as unknown as Anthropic,
+      },
+      provider: 'test-provider',
+    });
+    const runtime = new Runtime({ apiKey: 'test-key' }) as any;
+    const route = {
+      apiType: 'anthropic',
+      channelId: 'test-provider',
+      model: 'claude-versioned',
+      providerId: 'test-provider',
+      routerId: 'test-provider',
+    };
+
+    const prepared = await runtime.prepareGenerateObjectBounded(
+      {
+        messages: [{ content: 'hi', role: 'user' }],
+        model: 'claude-versioned',
+        schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+      },
+      { maxOutputTokens: 64, route },
+    );
+
+    expect(prepared.envelope).toEqual({
+      inputTokens: 10,
+      maxOutputTokens: 64,
+      maximumCredits: 990,
+      route,
+    });
+    expect(countTokens).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalled();
+
+    const mappedRuntime = new Runtime({
+      apiKey: 'test-key',
+      modelIdMapping: { 'logical-model': 'claude-versioned' },
+    }) as any;
+    await expect(
+      mappedRuntime.prepareGenerateObjectBounded(
+        {
+          messages: [{ content: 'hi', role: 'user' }],
+          model: 'logical-model',
+          schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+        },
+        { maxOutputTokens: 64, route: { ...route, model: 'claude-versioned' } },
+      ),
+    ).rejects.toThrow('exact model id');
+    expect(countTokens).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['providerId', 'other-provider'],
+    ['channelId', 'other-channel'],
+    ['routerId', 'other-router'],
+    ['apiType', 'openai'],
+    ['model', 'other-model'],
+  ])(
+    'rejects bounded %s drift before token counting or provider creation',
+    async (field, value) => {
+      const countTokens = vi.fn();
+      const create = vi.fn();
+      const Runtime = createAnthropicCompatibleRuntime({
+        chatCompletion: {
+          handlePayload: (payload) => ({
+            max_tokens: 1024,
+            messages: [],
+            model: payload.model,
+          }),
+        },
+        customClient: {
+          createClient: () =>
+            ({
+              baseURL: 'https://api.anthropic.com',
+              messages: { countTokens, create },
+            }) as unknown as Anthropic,
+        },
+        provider: 'test-provider',
+      });
+      const runtime = new Runtime({ apiKey: 'test-key' }) as any;
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'test-provider',
+        model: 'claude-versioned',
+        providerId: 'test-provider',
+        routerId: 'test-provider',
+        [field]: value,
+      };
+
+      await expect(
+        runtime.prepareGenerateObjectBounded(
+          {
+            messages: [{ content: 'hi', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          },
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('route identity mismatch');
+      expect(countTokens).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -14,6 +14,8 @@ import {
   GithubCopilotOAuthService,
 } from '@/server/services/oauthDeviceFlow/providers/githubCopilot';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const oauthProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
   const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
@@ -25,7 +27,9 @@ const oauthProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
     },
   });
 });
-const oauthWriteProcedure = oauthProcedure.use(withScopedPermission('ai_provider:update'));
+const oauthWriteProcedure = oauthProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('ai_provider:update'));
 
 /**
  * Get OAuth Device Flow config for a provider
@@ -44,7 +48,7 @@ export const oauthDeviceFlowRouter = router({
   /**
    * Get current OAuth authentication status for a provider
    */
-  getAuthStatus: oauthProcedure
+  getAuthStatus: oauthWriteProcedure
     .input(z.object({ providerId: z.string() }))
     .query(async ({ input, ctx }) => {
       const providerDetail = await ctx.aiProviderModel.getAiProviderById(

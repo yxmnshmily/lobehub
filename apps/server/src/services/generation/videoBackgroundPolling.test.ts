@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { chargeAfterGenerate } from '@/business/server/video-generation/chargeAfterGenerate';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { GenerationModel } from '@/database/models/generation';
 import type { LobeChatDatabase } from '@/database/type';
@@ -8,6 +9,20 @@ import { VideoGenerationService } from '@/server/services/generation/video';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
 import { AsyncTaskError, AsyncTaskStatus } from '@/types/asyncTask';
 import { FileSource } from '@/types/files';
+
+const initPlatformRuntime = vi.hoisted(() => vi.fn());
+
+vi.mock('@lobechat/business-const', async (importOriginal) => ({
+  ...((await importOriginal()) as any),
+  ENABLE_BUSINESS_FEATURES: true,
+}));
+vi.mock('@lobechat/business-model-runtime', () => ({
+  buildMappedBusinessModelFields: vi.fn(() => ({ modelId: 'resolved-test-model' })),
+  resolveBusinessModelMapping: vi.fn(async () => ({ resolvedModelId: 'resolved-test-model' })),
+}));
+vi.mock('@/business/server/video-generation/chargeAfterGenerate', () => ({
+  chargeAfterGenerate: vi.fn(),
+}));
 
 vi.mock('@/database/models/asyncTask');
 vi.mock('@/database/models/generation');
@@ -22,6 +37,9 @@ vi.mock('debug', () => ({
 
 vi.mock('@/server/modules/ModelRuntime', () => ({
   initModelRuntimeFromDB: vi.fn(),
+}));
+vi.mock('@/server/services/platformAiRuntime', () => ({
+  PlatformAiRuntime: vi.fn().mockImplementation(() => ({ init: initPlatformRuntime })),
 }));
 
 describe('videoBackgroundPolling', () => {
@@ -73,6 +91,7 @@ describe('videoBackgroundPolling', () => {
     vi.mocked(GenerationModel).mockImplementation(() => mockGenerationModel as any);
     vi.mocked(VideoGenerationService).mockImplementation(() => mockVideoService as any);
     vi.mocked(initModelRuntimeFromDB).mockResolvedValue(mockModelRuntime as any);
+    initPlatformRuntime.mockResolvedValue(mockModelRuntime as any);
   });
 
   afterEach(() => {
@@ -143,6 +162,44 @@ describe('videoBackgroundPolling', () => {
         duration: expect.any(Number),
         status: AsyncTaskStatus.Success,
       });
+      expect(chargeAfterGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'resolved-test-model',
+          prechargeResult: { credits: 10 },
+        }),
+      );
+    });
+
+    it('polls with platform credentials but writes the asset as the customer', async () => {
+      mockModelRuntime.handlePollVideoStatus.mockResolvedValue({
+        status: 'success',
+        videoUrl: 'https://example.com/video.mp4',
+      });
+      mockVideoService.processVideoForGeneration.mockResolvedValue({
+        coverKey: 'cover-key',
+        duration: 10,
+        fileHash: 'hash',
+        fileSize: 1024,
+        height: 1080,
+        mimeType: 'video/mp4',
+        thumbnailKey: 'thumb-key',
+        videoKey: 'video-key',
+        width: 1920,
+      });
+
+      await processBackgroundVideoPolling(mockDb, {
+        ...mockParams,
+        modelRuntimeMode: 'platform-managed',
+      });
+
+      expect(initPlatformRuntime).toHaveBeenCalledWith({
+        actorUserId: 'user-xyz',
+        provider: 'test-provider',
+        workspaceId: undefined,
+      });
+      expect(initModelRuntimeFromDB).not.toHaveBeenCalled();
+      expect(GenerationModel).toHaveBeenCalledWith(mockDb, 'user-xyz', undefined);
+      expect(mockGenerationModel.createAssetAndFile).toHaveBeenCalled();
     });
   });
 
@@ -195,6 +252,13 @@ describe('videoBackgroundPolling', () => {
       const errorCall = mockAsyncTaskModel.update.mock.calls[0][1];
       expect(errorCall.error).toBeInstanceOf(AsyncTaskError);
       expect(errorCall.error?.name).toBe('ServerError');
+      expect(chargeAfterGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isError: true,
+          model: 'resolved-test-model',
+          prechargeResult: { credits: 10 },
+        }),
+      );
     });
 
     it('should handle model runtime initialization error', async () => {

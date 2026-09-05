@@ -42,9 +42,7 @@ jobs:
   e2e:
     needs: check-duplicate-run
     if: >-
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/canary' ||
-      needs.check-duplicate-run.outputs.should_skip != 'true'
+      github.ref == 'refs/heads/main' || github.ref == 'refs/heads/canary' || needs.check-duplicate-run.outputs.should_skip != 'true'
     name: Test Web App
     runs-on: ubuntu-latest
     services:

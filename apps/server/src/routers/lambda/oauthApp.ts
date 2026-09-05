@@ -1,12 +1,11 @@
 import { z } from 'zod';
 
-import {
-  requireWorkspaceRoleWhenScoped,
-  wsCompatProcedure,
-} from '@/business/server/trpc-middlewares/workspaceAuth';
+import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { OidcClientModel } from '@/database/models/oidcClient';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 const oauthAppProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -18,7 +17,7 @@ const oauthAppProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts)
   });
 });
 
-const oauthAppWriteProcedure = oauthAppProcedure.use(requireWorkspaceRoleWhenScoped('admin'));
+const oauthAppWriteProcedure = oauthAppProcedure.use(requirePlatformAdmin);
 
 const stripSecret = <T extends { clientSecret?: string | null }>(client: T) => {
   const { clientSecret: _clientSecret, ...rest } = client;
@@ -45,12 +44,14 @@ export const oauthAppRouter = router({
       return ctx.oidcClientModel.delete(input.id);
     }),
 
-  getById: oauthAppProcedure.input(z.object({ id: z.string() })).query(async ({ input, ctx }) => {
-    const client = await ctx.oidcClientModel.findById(input.id);
-    return client ? stripSecret(client) : undefined;
-  }),
+  getById: oauthAppWriteProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const client = await ctx.oidcClientModel.findById(input.id);
+      return client ? stripSecret(client) : undefined;
+    }),
 
-  list: oauthAppProcedure.query(async ({ ctx }) => {
+  list: oauthAppWriteProcedure.query(async ({ ctx }) => {
     const clients = await ctx.oidcClientModel.list();
     return clients.map(stripSecret);
   }),

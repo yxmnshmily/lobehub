@@ -7,6 +7,20 @@ import { initializeServerAnalytics } from '@/libs/analytics';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { FileS3 } from '@/server/modules/S3';
 
+import { initTravelServiceAccount } from './travelServiceAccount';
+import {
+  buildDefaultTravelServiceGroupRepairPlan,
+  checkDefaultTravelServiceGroup,
+  executeDefaultTravelServiceGroupRepairPlan,
+  getDefaultTravelServiceGroupHealthSummary,
+  initDefaultTravelServiceGroup,
+  SAFE_DEFAULT_TRAVEL_SERVICE_GROUP_REPAIR_ACTION_CODES,
+} from './travelServiceGroup';
+
+const safeTravelGroupRepairActionCodes = new Set<string>(
+  SAFE_DEFAULT_TRAVEL_SERVICE_GROUP_REPAIR_ACTION_CODES,
+);
+
 type CreatedUser = {
   createdAt?: Date | null;
   email?: string | null;
@@ -17,6 +31,12 @@ type CreatedUser = {
   username?: string | null;
 };
 
+export type MyTravelGroupReadiness =
+  | { status: 'preparing' }
+  | { status: 'retryable_error' }
+  | { status: 'review_required' }
+  | { groupId: string; status: 'ready' };
+
 export class UserService {
   private db: LobeChatDatabase;
 
@@ -25,6 +45,21 @@ export class UserService {
   }
 
   async initUser(user: CreatedUser) {
+    let travelAccountReady = false;
+    try {
+      await initTravelServiceAccount(this.db, user.id);
+      travelAccountReady = true;
+    } catch {
+      console.error('Failed to init travel service account');
+    }
+    if (travelAccountReady) {
+      try {
+        await initDefaultTravelServiceGroup(this.db, user.id);
+      } catch {
+        console.error('Failed to init travel service group');
+      }
+    }
+
     if (ENABLE_BUSINESS_FEATURES) {
       try {
         await initNewUserForBusiness(user.id, user.createdAt);
@@ -49,6 +84,56 @@ export class UserService {
       },
       userId: user.id,
     });
+  }
+
+  async ensureTravelServiceReady(userId: string) {
+    const current = await checkDefaultTravelServiceGroup(this.db, userId);
+    if (current.accessState && current.accessState !== 'active') return current;
+
+    if (current.ready) {
+      await initTravelServiceAccount(this.db, userId);
+      return current;
+    }
+
+    const expectedPlan = buildDefaultTravelServiceGroupRepairPlan(
+      await getDefaultTravelServiceGroupHealthSummary(this.db, { targetUserId: userId }),
+    );
+    if (
+      expectedPlan.reviewRequired ||
+      expectedPlan.actions.some(
+        ({ code, reviewRequired }) => reviewRequired || !safeTravelGroupRepairActionCodes.has(code),
+      )
+    ) {
+      return current;
+    }
+
+    await initTravelServiceAccount(this.db, userId);
+    await executeDefaultTravelServiceGroupRepairPlan(this.db, {
+      expectedPlan,
+      targetUserId: userId,
+    });
+    return checkDefaultTravelServiceGroup(this.db, userId);
+  }
+
+  async checkTravelServiceReadiness(userId: string): Promise<MyTravelGroupReadiness> {
+    const current = await checkDefaultTravelServiceGroup(this.db, userId);
+    if (current.ready && current.groupId) return { groupId: current.groupId, status: 'ready' };
+    if (current.accessState && current.accessState !== 'active')
+      return { status: 'review_required' };
+
+    const plan = buildDefaultTravelServiceGroupRepairPlan(
+      await getDefaultTravelServiceGroupHealthSummary(this.db, { targetUserId: userId }),
+    );
+    if (
+      plan.reviewRequired ||
+      plan.actions.some(
+        ({ code, reviewRequired }) => reviewRequired || !safeTravelGroupRepairActionCodes.has(code),
+      )
+    ) {
+      return { status: 'review_required' };
+    }
+
+    return { status: 'preparing' };
   }
 
   getUserApiKeys = async (id: string) => {

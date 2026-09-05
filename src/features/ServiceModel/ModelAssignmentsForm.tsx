@@ -262,6 +262,7 @@ const ModelAssignmentsForm = memo(() => {
                   checked={value.enabled}
                   disabled={!canManageServiceModel}
                   loading={loadingKey === key}
+                  title={t(`systemAgent.${key}.title`)}
                   onChange={(enabled) => updateSystemAgentModel(key, { enabled })}
                 />
               </Flexbox>

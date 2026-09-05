@@ -1,9 +1,11 @@
 import { Accordion, Flexbox } from '@lobehub/ui';
 
+import HumanMembers from './HumanMembers';
 import Members from './Members';
 import Topic from './Topic';
 
 export enum ChatSidebarKey {
+  HumanMembers = 'human-members',
   Members = 'members',
   Topic = 'topic',
 }
@@ -11,8 +13,16 @@ export enum ChatSidebarKey {
 const Body = () => {
   return (
     <Flexbox paddingInline={4}>
-      <Accordion defaultExpandedKeys={[ChatSidebarKey.Members, ChatSidebarKey.Topic]} gap={8}>
+      <Accordion
+        gap={8}
+        defaultExpandedKeys={[
+          ChatSidebarKey.Members,
+          ChatSidebarKey.HumanMembers,
+          ChatSidebarKey.Topic,
+        ]}
+      >
         <Members itemKey={ChatSidebarKey.Members} />
+        <HumanMembers itemKey={ChatSidebarKey.HumanMembers} />
         <Topic itemKey={ChatSidebarKey.Topic} />
       </Accordion>
     </Flexbox>

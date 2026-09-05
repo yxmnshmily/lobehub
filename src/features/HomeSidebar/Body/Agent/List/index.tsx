@@ -2,13 +2,21 @@
 
 import { memo } from 'react';
 
+import type { MyTravelGroupReadiness } from '@/services/home';
 import { useHomeStore } from '@/store/home';
 
 import AllAgentsDrawer from '../AllAgentsDrawer';
 import AgentListContent from './AgentListContent';
 
 // The Home sidebar owns the all-agents drawer; other surfaces should import AgentListContent directly.
-const AgentList = memo<{ onMoreClick?: () => void }>(({ onMoreClick }) => {
+interface AgentListProps {
+  error?: unknown;
+  onMoreClick?: () => void;
+  onRetry?: () => void;
+  travelGroupStatus?: MyTravelGroupReadiness['status'];
+}
+
+const AgentList = memo<AgentListProps>(({ error, onMoreClick, onRetry, travelGroupStatus }) => {
   const [allAgentsDrawerOpen, closeAllAgentsDrawer] = useHomeStore((s) => [
     s.allAgentsDrawerOpen,
     s.closeAllAgentsDrawer,
@@ -16,7 +24,12 @@ const AgentList = memo<{ onMoreClick?: () => void }>(({ onMoreClick }) => {
 
   return (
     <>
-      <AgentListContent onMoreClick={onMoreClick} />
+      <AgentListContent
+        error={error}
+        travelGroupStatus={travelGroupStatus}
+        onMoreClick={onMoreClick}
+        onRetry={onRetry}
+      />
       <AllAgentsDrawer open={allAgentsDrawerOpen} onClose={closeAllAgentsDrawer} />
     </>
   );

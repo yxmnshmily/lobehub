@@ -1,8 +1,7 @@
 ---
 title: Best Practices for State Management
 description: >-
-  Explore effective state management practices for LobeHub's complex data flow
-  architecture.
+  Explore effective state management practices for LobeHub's complex data flow architecture.
 tags:
   - State Management
   - LobeHub
@@ -16,14 +15,14 @@ LobeHub differs from traditional CRUD web applications in that it involves a lar
 
 ## Key Concepts
 
-| Concept  | Explanation                                                                                                                                                                                                                                                                                                                                                                      |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| store    | The store contains the application's state and actions. It allows access to and modification of the state during application rendering.                                                                                                                                                                                                                                          |
-| state    | State refers to the data of the application, storing the current state of the application. Any change in the state will **trigger a re-rendering** to reflect the new state.                                                                                                                                                                                                     |
-| action   | An action is an operation function that describes the interactive events occurring in the application. Actions are typically triggered by user interactions, network requests, or timers. Actions can be **synchronous** or **asynchronous**.                                                                                                                                    |
-| reducer  | A reducer is a pure function that takes the current state and action as parameters and returns a new state. It is used to update the application's state based on the action type. A reducer is a pure function with no side effects, therefore it is always a **synchronous** function.                                                                                         |
+| Concept | Explanation |
+| --- | --- |
+| store | The store contains the application's state and actions. It allows access to and modification of the state during application rendering. |
+| state | State refers to the data of the application, storing the current state of the application. Any change in the state will **trigger a re-rendering** to reflect the new state. |
+| action | An action is an operation function that describes the interactive events occurring in the application. Actions are typically triggered by user interactions, network requests, or timers. Actions can be **synchronous** or **asynchronous**. |
+| reducer | A reducer is a pure function that takes the current state and action as parameters and returns a new state. It is used to update the application's state based on the action type. A reducer is a pure function with no side effects, therefore it is always a **synchronous** function. |
 | selector | A selector is a function used to retrieve specific data from the application's state. It takes the application's state as a parameter and returns computed or transformed data. Selectors can combine parts of the state or multiple states to generate derived data. Selectors are commonly used to map the application's state to a component's props for the component's use. |
-| slice    | A slice is a concept used to express a part of the data model state. It specifies a state slice and its related state, action, reducer, and selector. Using slices, a large store can be divided into smaller, maintainable subtypes.                                                                                                                                            |
+| slice | A slice is a concept used to express a part of the data model state. It specifies a state slice and its related state, action, reducer, and selector. Using slices, a large store can be divided into smaller, maintainable subtypes. |
 
 ## Hierarchical Structure
 
@@ -125,32 +124,32 @@ In the LobeHub application, session management is a complex functional module, s
 
 ```bash
 src/store/session
-├── helpers.ts                         # Helper functions
-├── index.ts                           # Aggregated export file for SessionStore
-├── initialState.ts                    # Aggregated initialState for all slices
-├── selectors.ts                       # Selectors exported from various slices
-├── slices                             # Separated functional modules
-│   ├── session                        # State and operations related to sessions
-│   │   ├── action.test.ts             # Tests for session-related actions
-│   │   ├── action.ts                  # Action definitions related to sessions
-│   │   ├── helpers.ts                 # Helper functions related to sessions
-│   │   ├── initialState.ts            # Initial state for session slice
-│   │   ├── reducers.test.ts           # Tests for session reducers
-│   │   ├── reducers.ts                # Reducer definitions for session state
-│   │   └── selectors                  # Session-related selectors and their tests
-│   │       ├── index.ts               # Entry file for session selectors
-│   │       ├── list.test.ts           # Tests for list selectors
-│   │       ├── list.ts                # Definitions for list-related selectors
-│   │       ├── meta.test.ts           # Tests for meta selectors
-│   │       └── meta.ts                # Definitions for meta-related selectors
-│   └── sessionGroup                   # State and operations related to session groups
-│       ├── action.test.ts             # Tests for session group actions
-│       ├── action.ts                  # Action definitions related to session groups
-│       ├── initialState.ts            # Initial state for session group slice
-│       ├── reducer.test.ts            # Tests for the session group reducer
-│       ├── reducer.ts                 # Reducer definitions for session group state
-│       └── selectors.ts               # Selector definitions related to session groups
-└── store.ts                           # Creation and usage of SessionStore
+├── helpers.ts               # Helper functions
+├── index.ts                 # Aggregated export file for SessionStore
+├── initialState.ts          # Aggregated initialState for all slices
+├── selectors.ts             # Selectors exported from various slices
+├── slices                   # Separated functional modules
+│   ├── session              # State and operations related to sessions
+│   │   ├── action.test.ts   # Tests for session-related actions
+│   │   ├── action.ts        # Action definitions related to sessions
+│   │   ├── helpers.ts       # Helper functions related to sessions
+│   │   ├── initialState.ts  # Initial state for session slice
+│   │   ├── reducers.test.ts # Tests for session reducers
+│   │   ├── reducers.ts      # Reducer definitions for session state
+│   │   └── selectors        # Session-related selectors and their tests
+│   │   ├── index.ts         # Entry file for session selectors
+│   │   ├── list.test.ts     # Tests for list selectors
+│   │   ├── list.ts          # Definitions for list-related selectors
+│   │   ├── meta.test.ts     # Tests for meta selectors
+│   │   └── meta.ts          # Definitions for meta-related selectors
+│   └── sessionGroup         # State and operations related to session groups
+│   ├── action.test.ts       # Tests for session group actions
+│   ├── action.ts            # Action definitions related to session groups
+│   ├── initialState.ts      # Initial state for session group slice
+│   ├── reducer.test.ts      # Tests for the session group reducer
+│   ├── reducer.ts           # Reducer definitions for session group state
+│   └── selectors.ts         # Selector definitions related to session groups
+└── store.ts                 # Creation and usage of SessionStore
 ```
 
 ## Implementation of SessionStore

@@ -1,8 +1,7 @@
 ---
 title: Resource Library
 description: >-
-  Your personal knowledge hub — documents, AI-generated images, and drafts in
-  one place. Agents answer from your data.
+  Your personal knowledge hub — documents, AI-generated images, and drafts in one place. Agents answer from your data.
 tags:
   - LobeHub
   - Resource Library
@@ -41,28 +40,29 @@ graph LR
 <Steps>
   ### Upload Documents
 
-  Upload files to your Resource Library through direct upload, conversation uploads, or Notion import.
+Upload files to your Resource Library through direct upload, conversation uploads, or Notion import.
 
-  ### Embedding Process
+### Embedding Process
 
-  Documents are:
+Documents are:
 
-  1. Split into manageable chunks
-  2. Converted to vector embeddings
-  3. Stored in the vector database
-  4. Associated with metadata (filename, chunk position)
+1. Split into manageable chunks
+2. Converted to vector embeddings
+3. Stored in the vector database
+4. Associated with metadata (filename, chunk position)
 
-  ### Semantic Search
+### Semantic Search
 
-  When queried, the system:
+When queried, the system:
 
-  1. Converts your query to a vector embedding
-  2. Finds the most similar chunks via cosine similarity
-  3. Returns files and excerpts ranked by relevance
+1. Converts your query to a vector embedding
+2. Finds the most similar chunks via cosine similarity
+3. Returns files and excerpts ranked by relevance
 
-  ### Agent Response
+### Agent Response
 
-  The Agent reads the most relevant chunks and incorporates them into its response — finding content even when the exact words don't match. For example, searching "how to login" can find content about "authentication" or "sign in".
+The Agent reads the most relevant chunks and incorporates them into its response — finding content even when the exact words don't match. For example, searching "how to login" can find content about "authentication" or "sign in".
+
 </Steps>
 
 ## Where Resources Come From
@@ -112,6 +112,7 @@ Knowledge Base uses vector-based semantic search. Always resolve pronouns and re
 
     - "user authentication with OAuth 2.0" ✅
     - "login stuff" ❌
+
   </Accordion>
 
   <Accordion title="Include Context">
@@ -119,6 +120,7 @@ Knowledge Base uses vector-based semantic search. Always resolve pronouns and re
 
     - "React component testing with Jest" ✅
     - "testing" ❌
+
   </Accordion>
 
   <Accordion title="Use Full Names">
@@ -126,6 +128,7 @@ Knowledge Base uses vector-based semantic search. Always resolve pronouns and re
 
     - "JSON Web Token authentication" ✅
     - "JWT auth" (use after establishing context) ✅
+
   </Accordion>
 
   <Accordion title="Natural Language">
@@ -133,6 +136,7 @@ Knowledge Base uses vector-based semantic search. Always resolve pronouns and re
 
     - "How to implement password reset functionality" ✅
     - "password reset how" ❌
+
   </Accordion>
 </AccordionGroup>
 
@@ -254,6 +258,7 @@ When answering product questions:
     - Use broader, more general search terms
     - Check if topic is covered in uploaded docs
     - Resolve pronouns to concrete entity names
+
   </Accordion>
 
   <Accordion title="Poor Relevance">
@@ -264,6 +269,7 @@ When answering product questions:
     - Verify document quality and format
     - Check if chunking is appropriate
     - Use full entity names instead of pronouns
+
   </Accordion>
 
   <Accordion title="Slow Performance">
@@ -273,13 +279,14 @@ When answering product questions:
     - Remove outdated or irrelevant files
     - Use specific queries to reduce search scope
     - Read only the most relevant files instead of all results
+
   </Accordion>
 </AccordionGroup>
 
 <Cards>
   <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 
-  <Card href={'/docs/usage/getting-started/page'} title={'Pages'} />
+<Card href={'/docs/usage/getting-started/page'} title={'Pages'} />
 
   <Card href={'/docs/usage/getting-started/generation'} title={'Image & Video Generation'} />
 </Cards>

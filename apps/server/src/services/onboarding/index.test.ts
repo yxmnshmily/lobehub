@@ -639,7 +639,7 @@ describe('OnboardingService', () => {
     const service = new OnboardingService(mockDb, userId);
 
     vi.setSystemTime(new Date('2026-04-17T08:00:00.000Z'));
-    let context = await service.getState();
+    let context = await service.prepareStateForMessageContext();
     expect(context.phase).toBe('agent_identity');
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession).toEqual({
       lastActiveAt: '2026-04-17T08:00:00.000Z',
@@ -655,14 +655,14 @@ describe('OnboardingService', () => {
     });
 
     vi.setSystemTime(new Date('2026-04-17T09:00:00.000Z'));
-    context = await service.getState();
+    context = await service.prepareStateForMessageContext();
     expect(context.phase).toBe('user_identity');
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.agentIdentityCompletedAt).toBe(
       '2026-04-17T09:00:00.000Z',
     );
 
     vi.setSystemTime(new Date('2026-04-17T10:00:00.000Z'));
-    await service.getState();
+    await service.prepareStateForMessageContext();
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.agentIdentityCompletedAt).toBe(
       '2026-04-17T09:00:00.000Z',
     );
@@ -670,14 +670,14 @@ describe('OnboardingService', () => {
     persistedUserState.fullName = 'Ada Lovelace';
 
     vi.setSystemTime(new Date('2026-04-17T11:00:00.000Z'));
-    context = await service.getState();
+    context = await service.prepareStateForMessageContext();
     expect(context.phase).toBe('discovery');
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.userIdentityCompletedAt).toBe(
       '2026-04-17T11:00:00.000Z',
     );
 
     vi.setSystemTime(new Date('2026-04-17T12:00:00.000Z'));
-    await service.getState();
+    await service.prepareStateForMessageContext();
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.userIdentityCompletedAt).toBe(
       '2026-04-17T11:00:00.000Z',
     );
@@ -691,14 +691,14 @@ describe('OnboardingService', () => {
     });
 
     vi.setSystemTime(new Date('2026-04-17T13:00:00.000Z'));
-    context = await service.getState();
+    context = await service.prepareStateForMessageContext();
     expect(context.phase).toBe('summary');
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.discoveryCompletedAt).toBe(
       '2026-04-17T13:00:00.000Z',
     );
 
     vi.setSystemTime(new Date('2026-04-17T14:00:00.000Z'));
-    await service.getState();
+    await service.prepareStateForMessageContext();
     expect(persistedTopics['topic-1']?.metadata?.onboardingSession?.discoveryCompletedAt).toBe(
       '2026-04-17T13:00:00.000Z',
     );
@@ -760,7 +760,7 @@ describe('OnboardingService', () => {
     expect(context.phase).toBe('summary');
   });
 
-  it('captures discovery baseline on first entry to discovery phase', async () => {
+  it('keeps repeated getState reads free of baseline and topic metadata writes', async () => {
     mockAgentModel.getBuiltinAgent.mockResolvedValue({
       avatar: '⚡',
       id: 'inbox-agent-1',
@@ -782,9 +782,37 @@ describe('OnboardingService', () => {
 
     const service = new OnboardingService(mockDb, userId);
     await service.getState();
+    await service.getState();
 
-    // Baseline should be persisted
+    expect(persistedUserState.agentOnboarding.discoveryStartUserMessageCount).toBeUndefined();
+    expect(mockUserModel.updateUser).not.toHaveBeenCalled();
+    expect(mockTopicModel.updateMetadata).not.toHaveBeenCalled();
+  });
+
+  it('captures the discovery baseline in explicit message-context preparation', async () => {
+    mockAgentModel.getBuiltinAgent.mockResolvedValue({
+      avatar: '😀',
+      id: 'inbox-agent-1',
+      title: 'Inbox',
+    });
+    persistedUserState.fullName = 'Ada Lovelace';
+    persistedUserState.agentOnboarding = {
+      activeTopicId: 'topic-1',
+      version: CURRENT_ONBOARDING_VERSION,
+    };
+    persistedTopics['topic-1'] = { agentId: 'builtin-agent-1', id: 'topic-1', metadata: {} };
+    mockDb.select.mockReturnValue({
+      from: vi.fn(() => ({
+        where: vi.fn(async () => [{ count: 3 }]),
+      })),
+    });
+
+    const service = new OnboardingService(mockDb, userId);
+    await service.prepareStateForMessageContext();
+    await service.prepareStateForMessageContext();
+
     expect(persistedUserState.agentOnboarding.discoveryStartUserMessageCount).toBe(3);
+    expect(mockUserModel.updateUser).toHaveBeenCalledTimes(1);
   });
 
   it('does not overwrite discovery baseline on subsequent getState calls', async () => {

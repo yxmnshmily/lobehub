@@ -1,7 +1,6 @@
 import { Block, Flexbox, Skeleton } from '@lobehub/ui';
-import { Divider } from 'antd';
 import { cssVar } from 'antd-style';
-import { Fragment, memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useClientDataSWR } from '@/libs/swr';
@@ -88,23 +87,41 @@ const HeatmapStats = memo(() => {
 
   return (
     <Block paddingBlock={16} paddingInline={8} variant={'outlined'}>
-      <Flexbox horizontal align={'center'} width={'100%'}>
-        {items.map((item, index) => (
-          <Fragment key={item.label}>
-            {index > 0 && <Divider style={{ height: 32, margin: 0 }} type={'vertical'} />}
-            <Flexbox align={'center'} flex={1} gap={4}>
-              <div style={{ fontSize: 20, fontWeight: 'bold' }}>
-                {loading || item.loading ? (
-                  <Skeleton.Button active size={'small'} style={{ width: 56 }} />
-                ) : (
-                  item.value
-                )}
-              </div>
-              <div style={{ color: cssVar.colorTextDescription, fontSize: 12 }}>{item.label}</div>
-            </Flexbox>
-          </Fragment>
+      <div
+        style={{
+          display: 'grid',
+          gap: 8,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          width: '100%',
+        }}
+      >
+        {items.map((item) => (
+          <Flexbox
+            align={'center'}
+            gap={4}
+            key={item.label}
+            style={{ minWidth: 0, paddingBlock: 6, paddingInline: 4, textAlign: 'center' }}
+          >
+            <div style={{ fontSize: 20, fontWeight: 'bold' }}>
+              {loading || item.loading ? (
+                <Skeleton.Button active size={'small'} style={{ width: 56 }} />
+              ) : (
+                item.value
+              )}
+            </div>
+            <div
+              style={{
+                color: cssVar.colorTextDescription,
+                fontSize: 12,
+                lineHeight: 1.4,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {item.label}
+            </div>
+          </Flexbox>
         ))}
-      </Flexbox>
+      </div>
     </Block>
   );
 });

@@ -1,8 +1,7 @@
 ---
 title: MCP Marketplace
 description: >-
-  Connect Agents to 10,000+ tools — databases, APIs, file systems, and more. One
-  protocol, endless integrations.
+  Connect Agents to 10,000+ tools — databases, APIs, file systems, and more. One protocol, endless integrations.
 tags:
   - LobeHub
   - MCP
@@ -37,31 +36,31 @@ MCP transforms Agents from isolated chatbots into connected teammates that can a
 <Steps>
   ### MCP Server
 
-  An MCP server is a program that exposes tools and resources:
+An MCP server is a program that exposes tools and resources:
 
-  - Runs as a separate process
-  - Implements the MCP protocol
-  - Provides tools (functions agents can call)
-  - Offers resources (data agents can access)
+- Runs as a separate process
+- Implements the MCP protocol
+- Provides tools (functions agents can call)
+- Offers resources (data agents can access)
 
-  ### MCP Client (LobeHub)
+### MCP Client (LobeHub)
 
-  LobeHub acts as an MCP client:
+LobeHub acts as an MCP client:
 
-  - Discovers available MCP servers
-  - Manages connections
-  - Routes agent requests to appropriate servers
-  - Handles authentication and permissions
+- Discovers available MCP servers
+- Manages connections
+- Routes agent requests to appropriate servers
+- Handles authentication and permissions
 
-  ### Agent Interaction
+### Agent Interaction
 
-  When an agent needs external capabilities:
+When an agent needs external capabilities:
 
-  - Agent determines which MCP tool to use
-  - LobeHub sends request to MCP server
-  - Server executes and returns results
-  - Agent incorporates results into response
-</Steps>
+- Agent determines which MCP tool to use
+- LobeHub sends request to MCP server
+- Server executes and returns results
+- Agent incorporates results into response
+  </Steps>
 
 ### Connection Types
 
@@ -87,6 +86,7 @@ MCP supports two connection methods:
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/workspace"]
     }
     ```
+
   </Accordion>
 
   <Accordion title="HTTP/HTTPS">
@@ -110,6 +110,7 @@ MCP supports two connection methods:
       }
     }
     ```
+
   </Accordion>
 </AccordionGroup>
 
@@ -133,6 +134,7 @@ MCP supports multiple authentication methods:
       }
     }
     ```
+
   </Accordion>
 
   <Accordion title="OAuth 2.0">
@@ -146,6 +148,7 @@ MCP supports multiple authentication methods:
       }
     }
     ```
+
   </Accordion>
 
   <Accordion title="Custom Headers">
@@ -159,6 +162,7 @@ MCP supports multiple authentication methods:
       }
     }
     ```
+
   </Accordion>
 </AccordionGroup>
 
@@ -180,7 +184,10 @@ The marketplace is organized by category, making it easy to quickly find the typ
 
 ## Installing an MCP
 
-<Callout type={'info'}>Please exercise caution when using MCPs from unknown sources. LobeHub cannot guarantee the safety of all MCPs.</Callout>
+<Callout type={'info'}>
+  Please exercise caution when using MCPs from unknown sources. LobeHub cannot guarantee the safety
+  of all MCPs.
+</Callout>
 
 ### One-Click Installation (Desktop App)
 
@@ -189,27 +196,28 @@ The LobeHub Desktop application provides the easiest way to install MCP plugins:
 <Steps>
   ### Find Plugin in Marketplace
 
-  Browse or search for the plugin you need.
+Browse or search for the plugin you need.
 
-  ### Click Install
+### Click Install
 
-  LobeHub automatically checks system dependencies and identifies configuration requirements.
+LobeHub automatically checks system dependencies and identifies configuration requirements.
 
-  ### Install Dependencies (if needed)
+### Install Dependencies (if needed)
 
-  If system dependencies are missing, LobeHub provides installation commands for your OS.
+If system dependencies are missing, LobeHub provides installation commands for your OS.
 
-  ### Configure Connection
+### Configure Connection
 
-  Provide required settings: API keys or tokens, connection URLs, authentication credentials, and custom parameters.
+Provide required settings: API keys or tokens, connection URLs, authentication credentials, and custom parameters.
 
-  ### Test Connection
+### Test Connection
 
-  LobeHub verifies the server is reachable, authentication works, and tools are available.
+LobeHub verifies the server is reachable, authentication works, and tools are available.
 
-  ### Enable for Agents
+### Enable for Agents
 
-  Choose which agents can use the MCP plugin.
+Choose which agents can use the MCP plugin.
+
 </Steps>
 
 ### Manual Installation (Self-Hosted)
@@ -312,19 +320,20 @@ Combine multiple MCP tools in sequences:
 <Steps>
   ### User Request
 
-  "Analyze the GitHub issues from last week and create a summary document"
+"Analyze the GitHub issues from last week and create a summary document"
 
-  ### GitHub MCP
+### GitHub MCP
 
-  Fetches issues created in the past 7 days
+Fetches issues created in the past 7 days
 
-  ### Agent Processing
+### Agent Processing
 
-  Analyzes issues, categorizes, identifies patterns
+Analyzes issues, categorizes, identifies patterns
 
-  ### File System MCP
+### File System MCP
 
-  Creates summary document with findings
+Creates summary document with findings
+
 </Steps>
 
 ## Creating Custom MCP Servers
@@ -357,6 +366,7 @@ An MCP server provides:
       }
     }
     ```
+
   </Accordion>
 
   <Accordion title="Resources (Data)">
@@ -370,6 +380,7 @@ An MCP server provides:
       mimeType: "application/json"
     }
     ```
+
   </Accordion>
 
   <Accordion title="Prompts (Templates)">
@@ -382,6 +393,7 @@ An MCP server provides:
       arguments: [{ name: "ticket_id", required: true }]
     }
     ```
+
   </Accordion>
 </AccordionGroup>
 
@@ -395,13 +407,13 @@ Use environment variables for sensitive configuration:
 
 ```json
 {
-  "type": "stdio",
-  "command": "python",
   "args": ["mcp_server.py"],
+  "command": "python",
   "env": {
     "API_KEY": "${MCP_API_KEY}",
     "DATABASE_URL": "${MCP_DATABASE_URL}"
-  }
+  },
+  "type": "stdio"
 }
 ```
 
@@ -420,6 +432,7 @@ Agents can subscribe to resource changes — when new data appears, the agent is
     - Approved servers only
     - Review before first connection
     - Revoke access anytime
+
   </Accordion>
 
   <Accordion title="Tool-Level Permissions">
@@ -428,6 +441,7 @@ Agents can subscribe to resource changes — when new data appears, the agent is
     - Enable/disable specific tools
     - Read-only vs. read-write access
     - Require approval for destructive operations
+
   </Accordion>
 
   <Accordion title="Resource-Level Permissions">
@@ -436,6 +450,7 @@ Agents can subscribe to resource changes — when new data appears, the agent is
     - Limit to specific directories/databases
     - Restrict sensitive data
     - Audit access logs
+
   </Accordion>
 </AccordionGroup>
 
@@ -455,19 +470,20 @@ Agents can subscribe to resource changes — when new data appears, the agent is
 <Steps>
   ### GitHub MCP
 
-  "Show me open pull requests"
+"Show me open pull requests"
 
-  ### File System MCP
+### File System MCP
 
-  "Review the code in src/components/"
+"Review the code in src/components/"
 
-  ### Agent Analysis
+### Agent Analysis
 
-  Analyzes code quality, suggests improvements
+Analyzes code quality, suggests improvements
 
-  ### GitHub MCP
+### GitHub MCP
 
-  "Add review comments to PR #123"
+"Add review comments to PR #123"
+
 </Steps>
 
 ### Business Operations
@@ -475,15 +491,16 @@ Agents can subscribe to resource changes — when new data appears, the agent is
 <Steps>
   ### Database MCP
 
-  "How many support tickets are unresolved?"
+"How many support tickets are unresolved?"
 
-  ### Slack MCP
+### Slack MCP
 
-  "Send summary to #support channel"
+"Send summary to #support channel"
 
-  ### Notion MCP
+### Notion MCP
 
-  "Create a ticket analysis report"
+"Create a ticket analysis report"
+
 </Steps>
 
 ### Content Management
@@ -491,15 +508,16 @@ Agents can subscribe to resource changes — when new data appears, the agent is
 <Steps>
   ### Google Drive MCP
 
-  "Find all blog post drafts from last month"
+"Find all blog post drafts from last month"
 
-  ### Agent Processing
+### Agent Processing
 
-  Reviews drafts, suggests edits
+Reviews drafts, suggests edits
 
-  ### File System MCP
+### File System MCP
 
-  "Save edited versions locally"
+"Save edited versions locally"
+
 </Steps>
 
 ## Troubleshooting
@@ -517,21 +535,20 @@ Agents can subscribe to resource changes — when new data appears, the agent is
     - Verify URL is reachable
     - Check authentication credentials
     - Review CORS settings
+
   </Accordion>
 
-  <Accordion title="Tools Not Showing Up">
-    - Reconnect to the MCP server in Settings
-    - Confirm the agent has the plugin enabled in its Tools & Plugins settings
-    - Verify the server implements the MCP protocol correctly
-    - Check server logs for errors
-  </Accordion>
+<Accordion title="Tools Not Showing Up">
+  - Reconnect to the MCP server in Settings - Confirm the agent has the plugin enabled in its Tools
+  & Plugins settings - Verify the server implements the MCP protocol correctly - Check server logs
+  for errors
+</Accordion>
 
-  <Accordion title="Authentication Errors">
-    - Verify your API key or token is correct and hasn't expired
-    - Check that the authentication type matches what the server requires
-    - For HTTP servers, confirm the URL is reachable and CORS is configured
-    - Enable debug logging: `DEBUG_MCP=1` to see detailed MCP communication
-  </Accordion>
+<Accordion title="Authentication Errors">
+  - Verify your API key or token is correct and hasn't expired - Check that the authentication type
+  matches what the server requires - For HTTP servers, confirm the URL is reachable and CORS is
+  configured - Enable debug logging: `DEBUG_MCP=1` to see detailed MCP communication
+</Accordion>
 
   <Accordion title="Permission Denied">
     - Check file/database permissions
@@ -559,7 +576,7 @@ MCP_CONFIG=/path/to/mcp-config.json
 <Cards>
   <Card href={'/docs/usage/agent/web-search'} title={'Web Search'} />
 
-  <Card href={'/docs/usage/agent/chain-of-thought'} title={'Chain of Thought'} />
+<Card href={'/docs/usage/agent/chain-of-thought'} title={'Chain of Thought'} />
 
   <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 </Cards>

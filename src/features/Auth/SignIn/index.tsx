@@ -4,11 +4,16 @@ import { SignInEmailSentStep } from './SignInEmailSentStep';
 import { SignInEmailStep } from './SignInEmailStep';
 import { SignInPasswordStep } from './SignInPasswordStep';
 import { useSignIn } from './useSignIn';
+import { WechatSignInModal } from './WechatSignInModal';
 
 const SignIn = () => {
   const {
+    authMode,
+    callbackUrl,
+    closeWechatAuth,
     disableEmailPassword,
     email,
+    enablePhoneAuth,
     form,
     handleBackFromSent,
     handleBackToEmail,
@@ -26,8 +31,10 @@ const SignIn = () => {
     sessionExpired,
     sentInfo,
     serverConfigInit,
+    setAuthMode,
     socialLoading,
     step,
+    wechatAuthUrl,
   } = useSignIn();
 
   if (step === 'emailSent' && sentInfo)
@@ -55,22 +62,33 @@ const SignIn = () => {
     );
 
   return (
-    <SignInEmailStep
-      disableEmailPassword={disableEmailPassword}
-      form={form as any}
-      isSocialOnly={isSocialOnly}
-      lastAuthProvider={lastAuthProvider}
-      loading={loading}
-      oAuthSSOProviders={oAuthSSOProviders}
-      serverConfigInit={serverConfigInit}
-      sessionExpired={sessionExpired}
-      socialLoading={socialLoading}
-      onCheckUser={handleCheckUser}
-      onGoToSignup={handleGoToSignup}
-      onResetEmail={handleBackToEmail}
-      onSetPassword={handleForgotPassword}
-      onSocialSignIn={handleSocialSignIn}
-    />
+    <>
+      <SignInEmailStep
+        authMode={authMode}
+        callbackUrl={callbackUrl}
+        disableEmailPassword={disableEmailPassword}
+        enablePhoneAuth={enablePhoneAuth}
+        form={form as any}
+        isSocialOnly={isSocialOnly}
+        lastAuthProvider={lastAuthProvider}
+        loading={loading}
+        oAuthSSOProviders={oAuthSSOProviders}
+        serverConfigInit={serverConfigInit}
+        sessionExpired={sessionExpired}
+        setAuthMode={setAuthMode}
+        socialLoading={socialLoading}
+        onCheckUser={handleCheckUser}
+        onGoToSignup={handleGoToSignup}
+        onResetEmail={handleBackToEmail}
+        onSetPassword={handleForgotPassword}
+        onSocialSignIn={handleSocialSignIn}
+      />
+      <WechatSignInModal
+        authUrl={wechatAuthUrl}
+        callbackUrl={callbackUrl}
+        onClose={closeWechatAuth}
+      />
+    </>
   );
 };
 

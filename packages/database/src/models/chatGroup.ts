@@ -267,6 +267,145 @@ export class ChatGroupModel {
     return result;
   }
 
+  async ensureByClientId(
+    params: Omit<NewChatGroup, 'userId'> & { clientId: string },
+  ): Promise<ChatGroupItem> {
+    const [created] = await this.db
+      .insert(chatGroups)
+      .values(
+        buildWorkspacePayload(
+          { userId: this.userId, workspaceId: this.workspaceId },
+          { ...params },
+        ),
+      )
+      .onConflictDoNothing({ target: [chatGroups.clientId, chatGroups.userId] })
+      .returning();
+
+    if (created) return created;
+
+    const existing = await this.db.query.chatGroups.findFirst({
+      where: and(eq(chatGroups.clientId, params.clientId), this.ownership()),
+    });
+
+    if (!existing) throw new Error('Failed to ensure chat group by clientId');
+    if (!params.config) return existing;
+
+    const [updated] = await this.db
+      .update(chatGroups)
+      .set({
+        config: sql`COALESCE(${chatGroups.config}, '{}'::jsonb) || ${JSON.stringify(params.config)}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(chatGroups.id, existing.id), this.ownership()))
+      .returning();
+
+    return updated;
+  }
+
+  async findByClientId(clientId: string): Promise<ChatGroupItem | undefined> {
+    return this.db.query.chatGroups.findFirst({
+      where: and(eq(chatGroups.clientId, clientId), this.ownership()),
+    });
+  }
+
+  async ensureContentIfBlank(groupId: string, content: string): Promise<ChatGroupItem> {
+    const [updated] = await this.db
+      .update(chatGroups)
+      .set({ content, updatedAt: new Date() })
+      .where(
+        and(
+          eq(chatGroups.id, groupId),
+          this.ownership(),
+          sql`${chatGroups.content} IS NULL OR BTRIM(${chatGroups.content}) = ''`,
+        ),
+      )
+      .returning();
+    if (updated) return updated;
+
+    const existing = await this.findById(groupId);
+    if (!existing) throw new Error('Failed to ensure chat group content');
+    return existing;
+  }
+
+  async ensureSupervisorAgent(groupId: string, agentId: string): Promise<NewChatGroupAgent> {
+    const [group, agent] = await Promise.all([
+      this.db.query.chatGroups.findFirst({
+        columns: { id: true },
+        where: and(eq(chatGroups.id, groupId), this.ownership()),
+      }),
+      this.db.query.agents.findFirst({
+        columns: { id: true, slug: true, userId: true },
+        where: and(eq(agents.id, agentId), this.memberAgentVisibility()),
+      }),
+    ]);
+
+    if (!group || !agent || agent.userId !== this.userId) {
+      throw new Error('Supervisor membership requires an owned group and agent');
+    }
+    if (!agent.slug || !RESERVED_BUILTIN_AGENT_SLUGS.includes(agent.slug)) {
+      throw new Error('Supervisor membership requires a built-in agent');
+    }
+
+    const [membership] = await this.db
+      .insert(chatGroupsAgents)
+      .values({
+        agentId,
+        chatGroupId: groupId,
+        enabled: true,
+        order: 0,
+        role: GROUP_SUPERVISOR_ROLE,
+        userId: this.userId,
+        workspaceId: this.workspaceId ?? null,
+      })
+      .onConflictDoUpdate({
+        set: { enabled: true, role: GROUP_SUPERVISOR_ROLE },
+        target: [chatGroupsAgents.chatGroupId, chatGroupsAgents.agentId],
+      })
+      .returning();
+
+    return membership;
+  }
+
+  async ensureParticipantAgents(groupId: string, agentIds: string[]): Promise<void> {
+    if (agentIds.length === 0) return;
+    const [group, ownedAgents] = await Promise.all([
+      this.findById(groupId),
+      this.db.query.agents.findMany({
+        columns: { id: true, userId: true },
+        where: and(inArray(agents.id, agentIds), this.memberAgentVisibility()),
+      }),
+    ]);
+    if (
+      !group ||
+      ownedAgents.length !== agentIds.length ||
+      ownedAgents.some((agent) => agent.userId !== this.userId)
+    ) {
+      throw new Error('Participant membership requires an owned group and agents');
+    }
+
+    await this.db
+      .insert(chatGroupsAgents)
+      .values(
+        agentIds.map((agentId, order) => ({
+          agentId,
+          chatGroupId: groupId,
+          enabled: true,
+          order: order + 1,
+          role: 'participant',
+          userId: this.userId,
+          workspaceId: this.workspaceId ?? null,
+        })),
+      )
+      .onConflictDoUpdate({
+        set: {
+          enabled: true,
+          order: sql`excluded."order"`,
+          role: 'participant',
+        },
+        target: [chatGroupsAgents.chatGroupId, chatGroupsAgents.agentId],
+      });
+  }
+
   async createWithAgents(
     groupParams: Omit<NewChatGroup, 'userId'>,
     agentIds: string[],
@@ -1128,6 +1267,7 @@ export class ChatGroupModel {
   async getGroupAgentsWithMeta(groupId: string): Promise<
     Array<{
       agentId: string;
+      clientId: string | null;
       description: string | null;
       role: string | null;
       title: string | null;
@@ -1136,6 +1276,7 @@ export class ChatGroupModel {
     return this.db
       .select({
         agentId: chatGroupsAgents.agentId,
+        clientId: agents.clientId,
         description: agents.description,
         name: agents.name,
         role: chatGroupsAgents.role,

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import { DEFAULT_AVATAR, DEFAULT_INBOX_AVATAR } from '@/const/meta';
 import { useFetchAgentList } from '@/hooks/useFetchAgentList';
+import { useMyTravelGroupReadiness } from '@/hooks/useMyTravelGroupReadiness';
 import { agentService } from '@/services/agent';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
@@ -59,6 +60,7 @@ const AgentSelect = memo(() => {
   const { t } = useTranslation(['chat', 'common']);
   const [open, setOpen] = useState(false);
   const { error, mutate } = useFetchAgentList();
+  const travelGroupReadiness = useMyTravelGroupReadiness({ manageLifecycle: false });
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
   const { agentId: resolvedAgentId, isInbox } = useResolvedHomeAgentId();
@@ -68,10 +70,13 @@ const AgentSelect = memo(() => {
   const agentMapMeta = useAgentStore(agentSelectors.getAgentMetaById(displayAgentId));
   const showInboxFallback = isInbox || !resolvedAgentId;
   const displayMeta = showInboxFallback ? inboxMeta : (sidebarItem ?? agentMapMeta);
-  const displayTitle = agentDisplayName(
-    displayMeta,
-    showInboxFallback ? 'Lobe AI' : t('defaultSession', { ns: 'common' }),
-  );
+  const defaultTitle = t('defaultSession', { ns: 'common' });
+  const displayTitle =
+    showInboxFallback &&
+    travelGroupReadiness.isEnabled &&
+    travelGroupReadiness.status !== 'ready'
+      ? defaultTitle
+      : agentDisplayName(displayMeta, showInboxFallback ? '旅游群主AI' : defaultTitle);
   const displayAvatar =
     (typeof displayMeta?.avatar === 'string' ? displayMeta.avatar : undefined) ||
     (showInboxFallback ? DEFAULT_INBOX_AVATAR : DEFAULT_AVATAR);

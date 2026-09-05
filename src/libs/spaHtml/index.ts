@@ -7,6 +7,44 @@ import { type AnalyticsConfig } from '@/types/spaServerConfig';
 export const resolveViteDevOrigin = () =>
   `http://localhost:${Number(process.env.VITE_DEV_PORT) || 9876}`;
 
+export const resolveViteSpaTemplatePath = (isMobile: boolean) =>
+  isMobile ? '/index.mobile.html' : '/';
+
+const isPrivateIpv4 = (hostname: string) => {
+  const parts = hostname.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255))
+    return false;
+
+  return (
+    parts[0] === 10 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168)
+  );
+};
+
+/**
+ * Vite runs on the host machine, while the browser may be another device on the LAN.
+ * Only reflect RFC1918 request hosts; arbitrary Host headers must not become asset origins.
+ */
+export const resolveViteBrowserOrigin = (
+  requestUrl: string,
+  viteOrigin = resolveViteDevOrigin(),
+  forwardedHost?: string | null,
+) => {
+  let publicRequest: URL;
+  try {
+    const request = new URL(requestUrl);
+    publicRequest = forwardedHost ? new URL(`http://${forwardedHost}`) : request;
+  } catch {
+    return viteOrigin;
+  }
+
+  if (!isPrivateIpv4(publicRequest.hostname)) return viteOrigin;
+
+  const vite = new URL(viteOrigin);
+  return `${publicRequest.protocol}//${publicRequest.hostname}:${vite.port}`;
+};
+
 const SERVER_CONFIG_PLACEHOLDER =
   /window\.__SERVER_CONFIG__\s*=\s*undefined;\s*\/\*\s*SERVER_CONFIG\s*\*\//;
 
@@ -62,12 +100,12 @@ globalThis.Worker.prototype=O.prototype;
 
 export async function fetchViteDevTemplate(
   pathname = '/',
-  origin = resolveViteDevOrigin(),
+  browserOrigin = resolveViteDevOrigin(),
 ): Promise<string> {
-  const res = await fetch(`${origin}${pathname}`);
+  const res = await fetch(`${resolveViteDevOrigin()}${pathname}`);
   const html = await res.text();
 
-  return rewriteViteAssetUrls(html, origin);
+  return rewriteViteAssetUrls(html, browserOrigin);
 }
 
 export function buildAnalyticsConfig(options: { desktop?: boolean } = {}): AnalyticsConfig {

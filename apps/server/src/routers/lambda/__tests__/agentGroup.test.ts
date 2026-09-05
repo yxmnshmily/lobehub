@@ -18,6 +18,7 @@ import {
   isWorkspacePrimaryOwner,
 } from '@/server/services/workspacePermission';
 
+import { hasActivePlatformAdminAccess } from '../_helpers/platformAdminGuard';
 import {
   getWorkspaceAgentParentGroupIds,
   getWorkspaceGroupVirtualAgentIds,
@@ -33,6 +34,10 @@ vi.mock('@/server/services/workspacePermission', () => ({
 vi.mock('../_helpers/workspaceAgentGuard', () => ({
   getWorkspaceAgentParentGroupIds: vi.fn().mockResolvedValue([]),
   getWorkspaceGroupVirtualAgentIds: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  hasActivePlatformAdminAccess: vi.fn().mockResolvedValue(true),
+  requirePlatformAdmin: vi.fn((opts: any) => opts.next()),
 }));
 
 // The recipient check reads workspace membership from the DB; `mockCtx.serverDB`
@@ -71,6 +76,7 @@ describe('agentGroupRouter', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(true);
     vi.mocked(getWorkspaceAgentParentGroupIds).mockResolvedValue([]);
     vi.mocked(getWorkspaceGroupVirtualAgentIds).mockResolvedValue([]);
     vi.mocked(hasWorkspaceScopedPermission).mockResolvedValue(true);
@@ -373,8 +379,8 @@ describe('agentGroupRouter', () => {
         title: 'Test Group',
         config: DEFAULT_CHAT_GROUP_CHAT_CONFIG,
         agents: [
-          { id: 'agent-1', title: 'Agent 1' },
-          { id: 'agent-2', title: 'Agent 2' },
+          { id: 'agent-1', title: 'Agent 1', userId, workspaceId: null },
+          { id: 'agent-2', title: 'Agent 2', userId, workspaceId: null },
         ],
       };
 
@@ -424,7 +430,7 @@ describe('agentGroupRouter', () => {
       const result = await caller.getGroupDetail({ id: 'group-1' });
 
       expect(result).toEqual({
-        agents: [{ id: 'agent-1', isSupervisor: true, model: 'private-model', title: 'Agent 1' }],
+        agents: [{ id: 'agent-1', isSupervisor: true, title: 'Agent 1' }],
         config: { openingMessage: 'Welcome' },
         id: 'group-1',
         supervisorAgentId: 'agent-1',
@@ -470,7 +476,6 @@ describe('agentGroupRouter', () => {
         agents: [
           {
             id: 'agent-1',
-            model: 'private-model',
             title: 'Agent 1',
             userId: 'creator-1',
             visibility: 'public',

@@ -1,7 +1,7 @@
 import * as BaseUI from '@lobehub/ui/base-ui';
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import type { ReactElement } from 'react';
+import { type ReactElement, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SignInEmailStep } from '@/features/Auth/SignIn/SignInEmailStep';
@@ -34,6 +34,10 @@ const expectLinksToOpenInNewTabs = () => {
   const links = screen.getAllByRole('link');
 
   expect(links).toHaveLength(2);
+  expect(links.map((link) => link.getAttribute('href'))).toEqual([
+    '/terms.html',
+    '/privacy-policy.html',
+  ]);
   for (const link of links) {
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
@@ -52,19 +56,75 @@ describe('AuthAgreement', () => {
   it('should use the active agreement copy with the checkbox', () => {
     render(<AuthAgreement checked={false} onChange={vi.fn()} />);
 
-    expect(screen.getByRole('checkbox')).toBeTruthy();
+    expect(
+      screen.getByRole('checkbox', {
+        name: /agreement\.confirm\.title|确认服务条款|Terms and Privacy Policy/,
+      }),
+    ).toBeTruthy();
     expect(screen.getByText('agreement.checkbox')).toBeTruthy();
     expectLinksToOpenInNewTabs();
   });
 });
 
 describe('SignInEmailStep', () => {
-  it('should confirm the agreement before social sign-in', async () => {
-    let confirmAgreement: (() => Promise<void>) | (() => void) | undefined;
-    vi.spyOn(BaseUI, 'confirmModal').mockImplementation(({ onOk }) => {
-      confirmAgreement = onOk;
-      return { close: vi.fn(), destroy: vi.fn() };
-    });
+  const ModeSwitcher = () => {
+    const [form] = Form.useForm<{ email: string }>();
+    const [authMode, setAuthMode] = useState<'email' | 'phone'>('phone');
+
+    return (
+      <SignInEmailStep
+        enablePhoneAuth
+        serverConfigInit
+        authMode={authMode}
+        form={form}
+        isSocialOnly={false}
+        loading={false}
+        oAuthSSOProviders={[]}
+        setAuthMode={setAuthMode}
+        socialLoading={null}
+        onCheckUser={vi.fn(async () => {})}
+        onGoToSignup={vi.fn()}
+        onResetEmail={vi.fn()}
+        onSetPassword={vi.fn()}
+        onSocialSignIn={vi.fn()}
+      />
+    );
+  };
+
+  it('should show phone and mail icons in the auth mode buttons', () => {
+    render(<ModeSwitcher />);
+
+    expect(
+      screen.getByRole('button', { name: /phoneTab|手机号登录/ }).querySelector('.lucide-phone'),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /emailTab|邮箱登录/ }).querySelector('.lucide-mail'),
+    ).toBeTruthy();
+  });
+
+  it('should keep the phone and email input wrappers at the same control height', () => {
+    const { container } = render(<ModeSwitcher />);
+    const phoneInput = container.querySelector('input[inputmode="tel"]');
+    const phoneWrapper = phoneInput?.closest<HTMLElement>('.ant-input-affix-wrapper');
+    expect(phoneWrapper?.style.padding).toBe('6px');
+
+    fireEvent.click(screen.getByRole('button', { name: /emailTab|邮箱登录/ }));
+    const emailInput = container.querySelector('input[inputmode="email"]');
+    const emailWrapper = emailInput?.closest<HTMLElement>('.ant-input-affix-wrapper');
+    expect(emailWrapper?.style.padding).toBe('6px');
+  });
+
+  it('should reserve the email footer height while phone sign-in is active', () => {
+    const { container } = render(<ModeSwitcher />);
+    const reservedFooter = [
+      ...container.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
+    ].find((element) => /noAccount|还没有账号/.test(element.textContent || ''));
+
+    expect(reservedFooter).toBeTruthy();
+  });
+
+  it('should continue social sign-in without confirmation when agreement is checked by default', () => {
+    vi.spyOn(BaseUI, 'confirmModal');
     const onSocialSignIn = vi.fn();
 
     const TestSignInEmailStep = () => {
@@ -91,13 +151,7 @@ describe('SignInEmailStep', () => {
     render(<TestSignInEmailStep />);
     fireEvent.click(screen.getByRole('button', { name: /Google/ }));
 
-    expect(BaseUI.confirmModal).toHaveBeenCalledOnce();
-    expect(onSocialSignIn).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await confirmAgreement?.();
-    });
-
+    expect(BaseUI.confirmModal).not.toHaveBeenCalled();
     expect(onSocialSignIn).toHaveBeenCalledWith('google');
   });
 });

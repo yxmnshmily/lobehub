@@ -22,6 +22,7 @@ const Analytics = memo(() => {
         children: (
           <Switch
             checked={!!checked}
+            title={t('analytics.telemetry.title')}
             onChange={(e) => {
               updateGeneralConfig({ telemetry: e });
             }}

@@ -89,7 +89,7 @@ const Page = memo(() => {
   const advancedGroup: FormGroupItemType = {
     children: [
       {
-        children: <Switch />,
+        children: <Switch title={t('settingCommon.devMode.title')} />,
         desc: t('settingCommon.devMode.desc'),
         label: (
           <SettingsSearchAnchor id={'advanced-dev-mode'}>
@@ -106,6 +106,7 @@ const Page = memo(() => {
               children: (
                 <Switch
                   checked={defaultAgentGatewayModeEnabled}
+                  title={t('tab.advanced.gatewayMode.title')}
                   onChange={handleGatewayModeChange}
                 />
               ),

@@ -33,15 +33,16 @@ LobeHub 智能体 -> Device Gateway -> LobeHub Desktop 桥接 -> BlueBubbles -> 
 <Steps>
   ### 安装 BlueBubbles Server
 
-  在用于托管 iMessage 账号的 Mac 上安装 [BlueBubbles Server](https://bluebubbles.app/)。保持 Mac 唤醒并联网。
+在用于托管 iMessage 账号的 Mac 上安装 [BlueBubbles Server](https://bluebubbles.app/)。保持 Mac 唤醒并联网。
 
-  ### 设置服务器密码
+### 设置服务器密码
 
-  在 BlueBubbles Server 中设置一个强密码。LobeHub Desktop 桥接会在本地用它调用 BlueBubbles REST API。
+在 BlueBubbles Server 中设置一个强密码。LobeHub Desktop 桥接会在本地用它调用 BlueBubbles REST API。
 
-  ### 保持本地访问
+### 保持本地访问
 
-  使用 `http://127.0.0.1:1234` 这样的本地地址（或私有局域网地址）即可，无需公网 HTTPS 地址。
+使用 `http://127.0.0.1:1234` 这样的本地地址（或私有局域网地址）即可，无需公网 HTTPS 地址。
+
 </Steps>
 
 ## 第 2 步：开启 iMessage Lab
@@ -49,11 +50,12 @@ LobeHub 智能体 -> Device Gateway -> LobeHub Desktop 桥接 -> BlueBubbles -> 
 <Steps>
   ### 打开 Labs
 
-  在 LobeHub 中进入 **设置 → 高级**，找到 **Labs** 区域。
+在 LobeHub 中进入 **设置 → 高级**，找到 **Labs** 区域。
 
-  ### 打开 “iMessage Channel”
+### 打开 “iMessage Channel”
 
-  开启后，智能体渠道列表里的 iMessage 会从 “即将推出” 占位切换为可配置的渠道。
+开启后，智能体渠道列表里的 iMessage 会从 “即将推出” 占位切换为可配置的渠道。
+
 </Steps>
 
 ## 第 3 步：在智能体中配置 iMessage
@@ -61,23 +63,24 @@ LobeHub 智能体 -> Device Gateway -> LobeHub Desktop 桥接 -> BlueBubbles -> 
 <Steps>
   ### 打开渠道
 
-  进入智能体设置 → **渠道** → **iMessage**。
+进入智能体设置 → **渠道** → **iMessage**。
 
-  ### 填写三个字段
+### 填写三个字段
 
-  1. **Application ID** —— 本次连接的稳定标识，例如 `home-mac-mini`。
-  2. **BlueBubbles Server URL** —— 你的本地 BlueBubbles 地址，例如 `http://127.0.0.1:1234`。
-  3. **BlueBubbles Password** —— 第 1 步设置的服务器密码。
+1. **Application ID** —— 本次连接的稳定标识，例如 `home-mac-mini`。
+2. **BlueBubbles Server URL** —— 你的本地 BlueBubbles 地址，例如 `http://127.0.0.1:1234`。
+3. **BlueBubbles Password** —— 第 1 步设置的服务器密码。
 
-  Desktop Device ID 和 webhook secret 会自动填充与生成，无需手动管理。
+Desktop Device ID 和 webhook secret 会自动填充与生成，无需手动管理。
 
-  ### 测试连接（可选）
+### 测试连接（可选）
 
-  点击 **Test BlueBubbles**，验证 URL 和密码能否连上你的本地 BlueBubbles 服务。
+点击 **Test BlueBubbles**，验证 URL 和密码能否连上你的本地 BlueBubbles 服务。
 
-  ### 保存
+### 保存
 
-  点击 **Save Configuration**。一次保存会同时落地云端渠道**和**本地 Desktop 桥接：启动本地回环监听、注册 BlueBubbles 的 `new-message` webhook，并连接 Bot。
+点击 **Save Configuration**。一次保存会同时落地云端渠道**和**本地 Desktop 桥接：启动本地回环监听、注册 BlueBubbles 的 `new-message` webhook，并连接 Bot。
+
 </Steps>
 
 ## 第 4 步：测试 Bot

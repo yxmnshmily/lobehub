@@ -158,8 +158,27 @@ export interface ExecAgentAppContext {
   taskId?: string | null;
   /** Thread ID for threaded conversations */
   threadId?: string | null;
+  /** Generic deterministic tool steps applied by the AgentRuntime host. */
+  toolDispatchPolicy?: OperationToolDispatchPolicy;
   /** Topic ID */
   topicId?: string | null;
+}
+
+export interface OperationToolDispatchPolicyStep {
+  apiName: string;
+  arguments: string;
+  identifier: string;
+  /** Server-owned deterministic policies applied to group members forked by this step. */
+  memberToolDispatchPolicies?: Record<string, OperationToolDispatchPolicy>;
+  toolName: string;
+}
+
+export interface OperationToolDispatchPolicy {
+  cursor?: number;
+  /** Remove tools after the final forced step so the next model turn can only summarize. */
+  finishAfterSteps?: boolean;
+  steps: OperationToolDispatchPolicyStep[];
+  version: 1;
 }
 
 /**
@@ -343,6 +362,10 @@ export interface ExecGroupAgentParams {
   message: string;
   /** Optional: Create a new topic */
   newTopic?: ExecGroupAgentNewTopicOptions;
+  /** Suppress the AgentSignal governance side-channel for product-managed runs. */
+  suppressSignal?: boolean;
+  /** Optional generic deterministic tool-dispatch policy for this run. */
+  toolDispatchPolicy?: OperationToolDispatchPolicy;
   /** Existing topic ID */
   topicId?: string | null;
 }

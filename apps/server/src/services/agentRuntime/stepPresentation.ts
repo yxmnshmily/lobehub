@@ -77,8 +77,7 @@ export function buildStepPresentation(
   } else {
     // Check for done event first (finish step with no next context).
     const doneEvent = stepResult.events?.find((e) => e.type === 'done') as
-      | { reason?: string; reasonDetail?: string; type: 'done' }
-      | undefined;
+      { reason?: string; reasonDetail?: string; type: 'done' } | undefined;
 
     if (doneEvent) {
       summary = `[done] reason=${doneEvent.reason ?? 'unknown'}`;
@@ -90,8 +89,7 @@ export function buildStepPresentation(
 
       // Use parsed ChatToolPayload from payload (has identifier + apiName).
       const payloadToolsCalling = (stepResult.nextContext?.payload as any)?.toolsCalling as
-        | Array<{ apiName: string; arguments: string; identifier: string }>
-        | undefined;
+        Array<{ apiName: string; arguments: string; identifier: string }> | undefined;
       const hasToolCalls = Array.isArray(payloadToolsCalling) && payloadToolsCalling.length > 0;
 
       if (hasToolCalls) {

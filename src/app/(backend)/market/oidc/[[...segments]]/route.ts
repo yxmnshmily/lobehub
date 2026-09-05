@@ -103,8 +103,7 @@ const handleProxy = async (req: NextRequest, context: RouteContext) => {
         const form = new URLSearchParams(body);
 
         const grantType = (form.get('grant_type') || 'authorization_code') as
-          | 'authorization_code'
-          | 'refresh_token';
+          'authorization_code' | 'refresh_token';
 
         if (grantType === 'authorization_code') {
           const clientId = form.get('client_id');

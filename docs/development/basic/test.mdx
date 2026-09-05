@@ -1,8 +1,7 @@
 ---
 title: Testing Guide
 description: >-
-  Explore LobeHub's testing strategy, including unit testing with Vitest and
-  end-to-end testing with Playwright + Cucumber.
+  Explore LobeHub's testing strategy, including unit testing with Vitest and end-to-end testing with Playwright + Cucumber.
 tags:
   - LobeHub
   - Testing
@@ -373,8 +372,8 @@ screen.getByTestId('submit-button');
 import { beforeEach, afterEach, vi } from 'vitest';
 
 beforeEach(() => {
-  vi.clearAllMocks();   // Clear mock call history
-  vi.clearAllTimers();  // Clear timers if using fake timers
+  vi.clearAllMocks(); // Clear mock call history
+  vi.clearAllTimers(); // Clear timers if using fake timers
 });
 
 afterEach(() => {
@@ -497,12 +496,12 @@ Add to `.vscode/launch.json`:
 
 ```json
 {
-  "type": "node",
-  "request": "launch",
+  "console": "integratedTerminal",
   "name": "Debug Vitest",
-  "runtimeExecutable": "bun",
+  "request": "launch",
   "runtimeArgs": ["x", "vitest", "run", "${file}"],
-  "console": "integratedTerminal"
+  "runtimeExecutable": "bun",
+  "type": "node"
 }
 ```
 

@@ -1,8 +1,7 @@
 ---
 title: Configuring Upstash Redis Service
 description: >-
-  Step-by-step guide to configure Upstash Redis for LobeHub cache and session
-  storage.
+  Step-by-step guide to configure Upstash Redis for LobeHub cache and session storage.
 tags:
   - Upstash
   - Redis
@@ -19,24 +18,27 @@ tags:
 <Steps>
   ### Create Redis Database on Upstash
 
-  1. Visit [Upstash Console](https://console.upstash.com/) and sign up
-  2. Click **Create Database** and configure: name, region, enable TLS
-  3. Copy the **Redis URL** (TCP connection, not REST API) from the database details page:
+1. Visit [Upstash Console](https://console.upstash.com/) and sign up
+2. Click **Create Database** and configure: name, region, enable TLS
+3. Copy the **Redis URL** (TCP connection, not REST API) from the database details page:
 
-  <Image alt={'Copy Redis URL from Upstash'} src={'https://hub-apac-1.lobeobjects.space/docs/43d110283ba816c0c2b45408e4f9d344.png'} />
+<Image
+  alt={'Copy Redis URL from Upstash'}
+  src={'https://hub-apac-1.lobeobjects.space/docs/43d110283ba816c0c2b45408e4f9d344.png'}
+/>
 
-  ### Configure Environment Variables
+### Configure Environment Variables
 
-  ```shell
-  # Upstash Redis URL (copy from Upstash console)
-  REDIS_URL=rediss://default:xxxxxxxxxxxxx@us1-xxxxx-xxxxx.upstash.io:6379
+```shell
+# Upstash Redis URL (copy from Upstash console)
+REDIS_URL=rediss://default:xxxxxxxxxxxxx@us1-xxxxx-xxxxx.upstash.io:6379
 
-  # Optional: Enable TLS (recommended for Upstash)
-  REDIS_TLS=1
+# Optional: Enable TLS (recommended for Upstash)
+REDIS_TLS=1
 
-  # Optional: Set a prefix for Redis keys
-  REDIS_PREFIX=lobechat
-  ```
+# Optional: Set a prefix for Redis keys
+REDIS_PREFIX=lobechat
+```
 
   <Callout type={'info'}>
     Upstash uses `rediss://` (with double 's') for TLS connections. LobeHub supports this format automatically.
@@ -59,11 +61,13 @@ REDIS_PREFIX=lobechat
 ## Notes
 
 <Callout type={'tip'}>
-  Upstash offers a generous free tier with 10,000 commands per day, which is sufficient for personal use and small deployments.
+  Upstash offers a generous free tier with 10,000 commands per day, which is sufficient for personal
+  use and small deployments.
 </Callout>
 
 <Callout type={'warning'}>
-  Make sure to keep your Redis URL secure and never expose it in client-side code or public repositories.
+  Make sure to keep your Redis URL secure and never expose it in client-side code or public
+  repositories.
 </Callout>
 
 - **Free Tier Limits**: 10,000 commands/day, 256MB storage

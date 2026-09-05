@@ -170,6 +170,17 @@ describe('agentSelectors', () => {
 
       expect(meta.avatar).toBe(DEFAULT_INBOX_AVATAR);
     });
+
+    it('keeps the branded cloud mascot for the inbox even when legacy data stores another avatar', () => {
+      const state = createState({
+        activeAgentId: 'inbox-agent',
+        agentMap: { 'inbox-agent': { avatar: '/avatars/lobe-ai.png' } },
+        builtinAgentIdMap: { [INBOX_SESSION_ID]: 'inbox-agent' },
+      });
+
+      expect(agentSelectors.currentAgentAvatar(state)).toBe(DEFAULT_INBOX_AVATAR);
+      expect(agentSelectors.currentAgentMeta(state).avatar).toBe(DEFAULT_INBOX_AVATAR);
+    });
   });
 
   describe('getAgentMetaById', () => {
@@ -199,6 +210,17 @@ describe('agentSelectors', () => {
     it('should return inbox avatar fallback for inbox agent with no custom avatar', () => {
       const state = createState({
         agentMap: { 'inbox-agent': {} },
+        builtinAgentIdMap: { [INBOX_SESSION_ID]: 'inbox-agent' },
+      });
+
+      const meta = agentSelectors.getAgentMetaById('inbox-agent')(state);
+
+      expect(meta.avatar).toBe(DEFAULT_INBOX_AVATAR);
+    });
+
+    it('does not expose a legacy stored avatar as the inbox identity', () => {
+      const state = createState({
+        agentMap: { 'inbox-agent': { avatar: '/avatars/lobe-ai.png' } },
         builtinAgentIdMap: { [INBOX_SESSION_ID]: 'inbox-agent' },
       });
 

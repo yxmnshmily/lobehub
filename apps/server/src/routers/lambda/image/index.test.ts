@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
+import { markPlatformAiRuntime } from '@/server/services/platformAiRuntime';
+import { AsyncTaskErrorType, AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
 
 import { imageRouter } from './index';
 
@@ -13,11 +14,16 @@ const {
   mockChargeAfterGenerate,
   mockChargeBeforeGenerate,
   mockCreateAsyncCaller,
+  debugLog,
   mockGenerationTopicFindById,
   mockFindUserById,
   mockInsertValues,
   mockIsLobeHubModelAvailable,
   mockResolveBusinessModelMapping,
+  mockReserveUsageCall,
+  mockReserveUsageRequest,
+  mockReleaseUnclaimedUsage,
+  mockUpdateSets,
 } = vi.hoisted(() => ({
   mockServerDB: {
     transaction: vi.fn(),
@@ -28,16 +34,21 @@ const {
   mockChargeAfterGenerate: vi.fn(),
   mockChargeBeforeGenerate: vi.fn(),
   mockCreateAsyncCaller: vi.fn(),
+  debugLog: vi.fn(),
   mockGenerationTopicFindById: vi.fn(),
   mockFindUserById: vi.fn(),
   mockInsertValues: [] as unknown[],
   mockIsLobeHubModelAvailable: vi.fn(),
   mockResolveBusinessModelMapping: vi.fn(),
+  mockReserveUsageCall: vi.fn(),
+  mockReserveUsageRequest: vi.fn(),
+  mockReleaseUnclaimedUsage: vi.fn(),
+  mockUpdateSets: [] as unknown[],
 }));
 
 // Mock debug
 vi.mock('debug', () => ({
-  default: () => () => {},
+  default: () => debugLog,
 }));
 
 // Mock database adaptor
@@ -50,6 +61,14 @@ vi.mock('@/server/services/file', () => ({
   FileService: vi.fn(() => ({
     getKeyFromFullUrl: mockGetKeyFromFullUrl,
     getFullFileUrl: mockGetFullFileUrl,
+  })),
+}));
+
+vi.mock('@/server/services/platformUsageBilling/reservation', () => ({
+  PlatformUsageReservationService: vi.fn().mockImplementation(() => ({
+    releaseUnclaimed: mockReleaseUnclaimedUsage,
+    reserveCall: mockReserveUsageCall,
+    reserveRequest: mockReserveUsageRequest,
   })),
 }));
 
@@ -152,6 +171,7 @@ describe('imageRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockInsertValues.length = 0;
+    mockUpdateSets.length = 0;
 
     // Default mock implementations
     mockResolveBusinessModelMapping.mockImplementation(
@@ -160,6 +180,9 @@ describe('imageRouter', () => {
       }),
     );
     mockChargeBeforeGenerate.mockResolvedValue(undefined);
+    mockReserveUsageRequest.mockResolvedValue({ id: 'platform-budget-1' });
+    mockReserveUsageCall.mockResolvedValue({ id: 'platform-reservation-1', leaseVersion: 7 });
+    mockReleaseUnclaimedUsage.mockResolvedValue({});
     mockGetKeyFromFullUrl.mockResolvedValue(null);
     mockGetFullFileUrl.mockResolvedValue(null);
     mockFindUserById.mockResolvedValue({ email: 'user@example.com' });
@@ -197,7 +220,8 @@ describe('imageRouter', () => {
               returning: vi.fn().mockImplementation(() => {
                 insertCallCount++;
                 if (insertCallCount === 1) return [mockBatch];
-                if (insertCallCount === 2) return mockGenerations;
+                if (insertCallCount === 2)
+                  return mockGenerations.slice(0, Array.isArray(value) ? value.length : 1);
                 // For async tasks, return one at a time
                 const taskIndex = insertCallCount - 3;
                 return [mockAsyncTasks[taskIndex] || mockAsyncTasks[0]];
@@ -206,8 +230,9 @@ describe('imageRouter', () => {
           }),
         }),
         update: vi.fn().mockReturnValue({
-          set: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue(undefined),
+          set: vi.fn((value) => {
+            mockUpdateSets.push(value);
+            return { where: vi.fn().mockResolvedValue(undefined) };
           }),
         }),
       };
@@ -220,6 +245,100 @@ describe('imageRouter', () => {
         createImage: mockAsyncCallerCreateImage,
       },
     });
+  });
+
+  it('does not log image content, storage locators, internal ids, or model routing', async () => {
+    mockGetKeyFromFullUrl.mockResolvedValue('private/s3-object-key.jpg');
+    const caller = imageRouter.createCaller(createMockCtx({ workspaceId: 'private-workspace-id' }));
+
+    await caller.createImage(
+      createDefaultInput({
+        generationTopicId: 'private-topic-id',
+        model: 'private-model-id',
+        params: {
+          height: 768,
+          imageUrls: ['https://temporary.example/private-reference?api_key=secret'],
+          prompt: 'private prompt with personal phone 13800138000',
+          width: 1024,
+        },
+        provider: 'private-provider-id',
+      }),
+    );
+
+    const logged = JSON.stringify(debugLog.mock.calls);
+    for (const sensitiveValue of [
+      'private prompt with personal phone 13800138000',
+      'https://temporary.example/private-reference?api_key=secret',
+      'private/s3-object-key.jpg',
+      'test-user-id',
+      'private-workspace-id',
+      'private-topic-id',
+      'private-model-id',
+      'private-provider-id',
+      'batch-1',
+      'gen-1',
+      'gen-2',
+      'task-1',
+      'task-2',
+    ]) {
+      expect(logged).not.toContain(sensitiveValue);
+    }
+  });
+
+  it('does not serialize raw URL conversion errors to console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      mockGetKeyFromFullUrl.mockRejectedValue(new Error('raw-storage-error access-key=private'));
+      const caller = imageRouter.createCaller(createMockCtx());
+
+      await expect(
+        caller.createImage(
+          createDefaultInput({
+            params: {
+              imageUrl: 'https://temporary.example/private?signature=secret',
+              prompt: 'private prompt',
+            },
+          }),
+        ),
+      ).rejects.toThrow('Invalid configuration: Found full URL instead of key');
+
+      expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(
+        /raw-storage-error|access-key=private|temporary\.example|signature=secret/,
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it('does not serialize raw async startup errors to console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      mockCreateAsyncCaller.mockRejectedValue(
+        new Error('raw-dispatch-error database-password=private'),
+      );
+
+      const result = await imageRouter
+        .createCaller(createMockCtx())
+        .createImage(createDefaultInput());
+
+      const serialized = JSON.stringify({
+        console: consoleError.mock.calls,
+        result,
+        updates: mockAsyncTaskModelUpdate.mock.calls,
+      });
+      expect(serialized).not.toMatch(/raw-dispatch-error|database-password=private/);
+      expect(mockAsyncTaskModelUpdate).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            body: { detail: AsyncTaskErrorType.TaskTriggerError },
+            name: AsyncTaskErrorType.TaskTriggerError,
+          }),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   describe('createImage', () => {
@@ -443,6 +562,37 @@ describe('imageRouter', () => {
       );
     });
 
+    it('fails closed before charging, persistence, or async dispatch for platform images', async () => {
+      const ctx = markPlatformAiRuntime(createMockCtx({ workspaceId: 'workspace-1' }), {
+        maxCredits: 4321,
+      });
+      const caller = imageRouter.createCaller(ctx);
+
+      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).rejects.toMatchObject({
+        code: 'PRECONDITION_FAILED',
+        message: '[IMAGE_BILLING_UNAVAILABLE] 平台图片权威计价与费用上限尚不可用。',
+      });
+
+      expect(mockChargeBeforeGenerate).not.toHaveBeenCalled();
+      expect(mockServerDB.transaction).not.toHaveBeenCalled();
+      expect(mockReserveUsageRequest).not.toHaveBeenCalled();
+      expect(mockReserveUsageCall).not.toHaveBeenCalled();
+      expect(mockCreateAsyncCaller).not.toHaveBeenCalled();
+      expect(mockAsyncCallerCreateImage).not.toHaveBeenCalled();
+    });
+
+    it('rejects platform image creation without a trusted positive Credits capability', async () => {
+      const caller = imageRouter.createCaller(markPlatformAiRuntime(createMockCtx()));
+
+      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).rejects.toThrow(
+        'Credits maximum',
+      );
+
+      expect(mockServerDB.transaction).not.toHaveBeenCalled();
+      expect(mockReserveUsageRequest).not.toHaveBeenCalled();
+      expect(mockAsyncCallerCreateImage).not.toHaveBeenCalled();
+    });
+
     it('threads per-generation prechargeItems into each asyncTask metadata', async () => {
       mockChargeBeforeGenerate.mockResolvedValue({
         prechargeItems: [{ reservationKey: 'k-1' }, { reservationKey: 'k-2' }],
@@ -543,6 +693,56 @@ describe('imageRouter', () => {
         expect.objectContaining({
           isError: true,
           prechargeResult: { reservationKey: 'k-2' },
+        }),
+      );
+    });
+
+    it('contains an asynchronously rejected image dispatch and reconciles only that task', async () => {
+      mockChargeBeforeGenerate.mockResolvedValue({
+        prechargeItems: [{ reservationKey: 'k-1' }, { reservationKey: 'k-2' }],
+      });
+      mockAsyncCallerCreateImage
+        .mockRejectedValueOnce(
+          new Error(
+            'raw-async-dispatch-error https://internal-gateway.test?jwt=private-dispatch-token',
+          ),
+        )
+        .mockResolvedValueOnce({ success: true });
+
+      const caller = imageRouter.createCaller(createMockCtx());
+      const result = await caller.createImage(createDefaultInput());
+
+      expect(result.success).toBe(true);
+      await vi.waitFor(() => {
+        expect(mockAsyncTaskModelUpdate).toHaveBeenCalledWith(
+          'task-1',
+          expect.objectContaining({ status: AsyncTaskStatus.Error }),
+        );
+      });
+      expect(mockAsyncTaskModelUpdate).not.toHaveBeenCalledWith(
+        'task-2',
+        expect.objectContaining({ status: AsyncTaskStatus.Error }),
+      );
+      expect(mockChargeAfterGenerate).toHaveBeenCalledTimes(1);
+      expect(mockChargeAfterGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isError: true,
+          prechargeResult: { reservationKey: 'k-1' },
+        }),
+      );
+      expect(
+        JSON.stringify({
+          result,
+          updates: mockAsyncTaskModelUpdate.mock.calls,
+        }),
+      ).not.toMatch(/raw-async-dispatch-error|internal-gateway|private-dispatch-token/);
+      expect(mockAsyncTaskModelUpdate).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          error: expect.objectContaining({
+            body: { detail: AsyncTaskErrorType.TaskTriggerError },
+            name: AsyncTaskErrorType.TaskTriggerError,
+          }),
         }),
       );
     });

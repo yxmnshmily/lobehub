@@ -8,6 +8,7 @@ import {
   Github,
   Logto,
   MicrosoftEntra,
+  WeChat,
   Zitadel,
 } from '@lobehub/ui/icons';
 import { User } from 'lucide-react';
@@ -25,6 +26,7 @@ const iconComponents: { [key: string]: any } = {
   'logto': Logto.Color,
   'microsoft': Microsoft.Color,
   'microsoft-entra-id': MicrosoftEntra.Color,
+  'wechat': WeChat.Color,
   'zitadel': Zitadel.Color,
 };
 

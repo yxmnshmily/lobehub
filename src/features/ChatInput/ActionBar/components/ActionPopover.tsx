@@ -84,8 +84,8 @@ const ActionPopover = memo<ActionPopoverProps>(
 
     return (
       <Popover
+        nativeButton
         content={popoverContent}
-        nativeButton={false}
         placement={isMobile ? 'top' : placement}
         classNames={{
           ...(typeof resolvedClassNames === 'object' ? resolvedClassNames : {}),

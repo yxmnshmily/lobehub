@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe('useCategory', () => {
-  it('should return correct items when the user is logged in with authentication', () => {
+  it('shows only personal account entry points when the user is logged in', () => {
     act(() => {
       useUserStore.setState({ isSignedIn: true });
     });
@@ -46,15 +46,14 @@ describe('useCategory', () => {
 
     act(() => {
       const items = result.current;
-      expect(items.some((item) => item.key === 'profile')).toBe(true);
-      expect(items.some((item) => item.key === 'setting')).toBe(true);
-      expect(items.some((item) => item.key === 'docs')).toBe(true);
-      expect(items.some((item) => item.key === 'feedback')).toBe(true);
-      expect(items.some((item) => item.key === 'changelog')).toBe(true);
+      expect(items.filter((item) => item.key).map((item) => item.key)).toEqual([
+        'profile',
+        'setting',
+      ]);
     });
   });
 
-  it('should return correct items when the user is not logged in', () => {
+  it('does not expose platform or external entries when the user is not logged in', () => {
     act(() => {
       useUserStore.setState({ isSignedIn: false });
     });
@@ -63,12 +62,7 @@ describe('useCategory', () => {
 
     act(() => {
       const items = result.current;
-      expect(items.some((item) => item.key === 'profile')).toBe(false);
-      expect(items.some((item) => item.key === 'setting')).toBe(false);
-      expect(items.some((item) => item.key === 'data')).toBe(false);
-      expect(items.some((item) => item.key === 'docs')).toBe(true);
-      expect(items.some((item) => item.key === 'feedback')).toBe(true);
-      expect(items.some((item) => item.key === 'changelog')).toBe(true);
+      expect(items.filter((item) => item.key)).toEqual([]);
     });
   });
 });

@@ -19,11 +19,9 @@ const FailedPage = () => {
       icon={<FluentEmoji emoji={'🥵'} size={96} type={'anim'} />}
       status="error"
       extra={
-        <a href="/">
-          <Button block size={'large'} style={{ minWidth: 240 }}>
-            {t('error.backToHome')}
-          </Button>
-        </a>
+        <Button block href="/index.html" size={'large'} style={{ minWidth: 240 }}>
+          {t('error.backToHome')}
+        </Button>
       }
       subTitle={
         <Flexbox gap={8}>

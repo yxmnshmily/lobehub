@@ -43,6 +43,24 @@ describe('InMemoryStreamEventManager', () => {
         expect.arrayContaining([expect.objectContaining({ type: 'agent_runtime_init' })]),
       );
     });
+
+    it('snapshots event data before callers mutate shared objects', async () => {
+      const data = {
+        chunkType: 'tools_calling',
+        toolsCalling: [{ arguments: '{"agentId":"model-choice"}' }],
+      };
+
+      await manager.publishStreamEvent('op-1', {
+        data,
+        stepIndex: 0,
+        type: 'stream_chunk',
+      });
+      data.toolsCalling[0].arguments = '{"agentId":"forced-dispatch"}';
+
+      expect(manager.getAllEvents('op-1')[0].data.toolsCalling[0].arguments).toBe(
+        '{"agentId":"model-choice"}',
+      );
+    });
   });
 
   describe('readEventsOnce', () => {

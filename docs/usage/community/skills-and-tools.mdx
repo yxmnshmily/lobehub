@@ -1,8 +1,7 @@
 ---
 title: Skills and Tools
 description: >-
-  Understand the difference between Skills and Tools — what agents know vs. what
-  agents can do.
+  Understand the difference between Skills and Tools — what agents know vs. what agents can do.
 tags:
   - LobeHub
   - Skills
@@ -45,6 +44,7 @@ Skills are structured knowledge packages that enhance an agent's capabilities. T
     - **Core reasoning skills**: Enhance problem-solving and analysis
 
     Built-in skills are maintained by the LobeHub team and automatically updated.
+
   </Accordion>
 
   <Accordion title="Market Skills">
@@ -56,6 +56,7 @@ Skills are structured knowledge packages that enhance an agent's capabilities. T
     - Language and translation guides
 
     Browse, install, and share skills with the community.
+
   </Accordion>
 
   <Accordion title="User Skills">
@@ -67,6 +68,7 @@ Skills are structured knowledge packages that enhance an agent's capabilities. T
     - Project templates
 
     User skills give you complete control over agent expertise.
+
   </Accordion>
 </AccordionGroup>
 
@@ -97,23 +99,24 @@ Tools are functions that agents can call to perform actions. When you ask an age
 <Steps>
   ### Agent Receives Request
 
-  You ask the agent to perform an action.
+You ask the agent to perform an action.
 
-  ### Tool Selection
+### Tool Selection
 
-  The agent determines which tool(s) to use based on your request. This is automatic — you don't need to tell the agent which tool to use.
+The agent determines which tool(s) to use based on your request. This is automatic — you don't need to tell the agent which tool to use.
 
-  ### Function Calling
+### Function Calling
 
-  The agent calls the tool with appropriate parameters.
+The agent calls the tool with appropriate parameters.
 
-  ### Tool Execution
+### Tool Execution
 
-  The tool performs the action and returns results.
+The tool performs the action and returns results.
 
-  ### Response Generation
+### Response Generation
 
-  The agent incorporates tool results into its response.
+The agent incorporates tool results into its response.
+
 </Steps>
 
 ### Built-in Tools
@@ -154,6 +157,7 @@ Configure which tools are available to each agent:
     - Enable only tools the agent needs
     - Too many tools can slow responses
     - Some tools have API costs
+
   </Accordion>
 
   <Accordion title="Tool Parameters">
@@ -162,6 +166,7 @@ Configure which tools are available to each agent:
     - **Web Search**: Number of results, search region
     - **Image Generation**: Model, size, quality
     - **Memory**: Retention period, categories
+
   </Accordion>
 
   <Accordion title="Tool Permissions">
@@ -172,6 +177,7 @@ Configure which tools are available to each agent:
     - External service credentials
 
     Review and approve before enabling.
+
   </Accordion>
 </AccordionGroup>
 
@@ -182,19 +188,20 @@ Agents can use multiple tools in sequence to handle complex requests:
 <Steps>
   ### User Request
 
-  "Find recent research papers on quantum computing and summarize the key findings"
+"Find recent research papers on quantum computing and summarize the key findings"
 
-  ### Web Search Tool
+### Web Search Tool
 
-  Searches for research papers
+Searches for research papers
 
-  ### Knowledge Base Tool
+### Knowledge Base Tool
 
-  Retrieves relevant documents from uploaded files
+Retrieves relevant documents from uploaded files
 
-  ### Response
+### Response
 
-  Agent synthesizes a summary from all sources
+Agent synthesizes a summary from all sources
+
 </Steps>
 
 Enable **Chain of Thought** to see which tools the agent selects, what parameters it uses, and the results at each step.
@@ -223,12 +230,10 @@ Enable **Chain of Thought** to see which tools the agent selects, what parameter
     - Restart the agent session
   </Accordion>
 
-  <Accordion title="Tool Not Being Used">
-    - Confirm tool is enabled in agent settings
-    - Make request more explicit: "Use web search to find..."
-    - Check tool permissions are granted
-    - Verify API keys are configured
-  </Accordion>
+<Accordion title="Tool Not Being Used">
+  - Confirm tool is enabled in agent settings - Make request more explicit: "Use web search to
+  find..." - Check tool permissions are granted - Verify API keys are configured
+</Accordion>
 
   <Accordion title="Tool Errors">
     - Review error message in Chain of Thought
@@ -241,7 +246,7 @@ Enable **Chain of Thought** to see which tools the agent selects, what parameter
 <Cards>
   <Card href={'/docs/usage/community/mcp-market'} title={'MCP Marketplace'} />
 
-  <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
+<Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 
   <Card href={'/docs/usage/agent/chain-of-thought'} title={'Chain of Thought'} />
 </Cards>

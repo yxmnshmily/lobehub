@@ -1,10 +1,10 @@
+import { AGENT_CHAT_URL, GROUP_CHAT_URL } from '@lobechat/const';
 import { useAnalytics } from '@lobehub/analytics/react';
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 import LazyLoad from 'react-lazy-load';
 import { Link } from 'react-router';
 
-import { AGENT_CHAT_URL } from '@/const/index';
 import { useNavigateToAgent } from '@/hooks/useNavigateToAgent';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { getSessionStoreState, useSessionStore } from '@/store/session';
@@ -27,6 +27,19 @@ interface SessionListProps {
   groupId?: string;
   showAddButton?: boolean;
 }
+
+export const resolveSessionUrl = ({
+  agentId,
+  id,
+  mobile,
+  type,
+}: {
+  agentId?: string;
+  id: string;
+  mobile: boolean;
+  type: 'agent' | 'group';
+}) => (type === 'group' ? GROUP_CHAT_URL(id) : AGENT_CHAT_URL(agentId!, mobile));
+
 const SessionList = memo<SessionListProps>(({ dataSource, groupId, showAddButton = true }) => {
   const { analytics } = useAnalytics();
 
@@ -42,11 +55,18 @@ const SessionList = memo<SessionListProps>(({ dataSource, groupId, showAddButton
     dataSource.map(({ id, ...res }) => (
       <LazyLoad className={styles} key={id}>
         <Link
-          aria-label={id}
-          to={AGENT_CHAT_URL((res as any).config?.id, mobile)}
+          aria-label={(res as any).meta?.title || id}
+          to={resolveSessionUrl({
+            agentId: (res as any).config?.id,
+            id,
+            mobile,
+            type: res.type,
+          })}
           onClick={(e) => {
-            e.preventDefault();
-            navigateToAgent((res as any).config?.id);
+            if (res.type === 'agent') {
+              e.preventDefault();
+              navigateToAgent((res as any).config?.id);
+            }
 
             // Enhanced analytics tracking
             if (analytics) {

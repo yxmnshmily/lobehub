@@ -103,7 +103,9 @@ const ChatAppearance = memo(() => {
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('enableAutoScrollOnStreaming')}
             <Switch
+              aria-label={t('settingChatAppearance.autoScrollOnStreaming.title')}
               checked={general.enableAutoScrollOnStreaming ?? true}
+              title={t('settingChatAppearance.autoScrollOnStreaming.title')}
               onChange={(checked) => handleChange('enableAutoScrollOnStreaming', checked)}
             />
           </Flexbox>
@@ -121,7 +123,9 @@ const ChatAppearance = memo(() => {
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('enableMessageLinkIcon')}
             <Switch
+              aria-label={t('settingChatAppearance.linkIcon.title')}
               checked={general.enableMessageLinkIcon ?? true}
+              title={t('settingChatAppearance.linkIcon.title')}
               onChange={(checked) => handleChange('enableMessageLinkIcon', checked)}
             />
           </Flexbox>
@@ -139,17 +143,26 @@ const ChatAppearance = memo(() => {
             {renderSaveHint('fontSize')}
             <Flexbox horizontal align={'center'} gap={12} style={{ width: 240 }}>
               <DiscreteSlider
+                ariaLabel={t('settingChatAppearance.fontSize.title')}
                 options={fontSizeOptions}
                 style={{ flex: 1 }}
                 value={general.fontSize}
                 onChange={(value) => handleChange('fontSize', value)}
               />
               <InputNumber
+                aria-label={t('settingChatAppearance.fontSize.title')}
+                controls={false}
                 max={18}
                 min={12}
                 step={1}
                 style={{ width: 56 }}
                 value={general.fontSize}
+                ref={(input) => {
+                  input?.setAttribute(
+                    'aria-label',
+                    t('settingChatAppearance.fontSize.title'),
+                  );
+                }}
                 onChange={(value) => {
                   if (value !== null) handleChange('fontSize', value);
                 }}

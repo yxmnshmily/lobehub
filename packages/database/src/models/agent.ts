@@ -1071,6 +1071,97 @@ export class AgentModel {
     return result;
   };
 
+  ensureByClientId = async (clientId: string, input: Partial<AgentItem>): Promise<AgentItem> => {
+    const config = this.stripReservedSlug(input);
+    const [created] = await this.db
+      .insert(agents)
+      .values(
+        buildWorkspacePayload(
+          { userId: this.userId, workspaceId: this.workspaceId },
+          { ...config, clientId },
+        ),
+      )
+      .onConflictDoNothing({ target: [agents.clientId, agents.userId] })
+      .returning();
+    if (created) return created;
+
+    const existing = await this.db.query.agents.findFirst({
+      where: and(eq(agents.clientId, clientId), this.ownership()),
+    });
+    if (!existing) throw new Error('Failed to ensure agent by clientId');
+
+    const requiredPlugins = Array.isArray(config.plugins) ? config.plugins : [];
+    const existingPlugins = Array.isArray(existing.plugins) ? existing.plugins : [];
+    const plugins = [...new Set([...existingPlugins, ...requiredPlugins])];
+    const requiresFixedModel = config.agencyConfig?.modelSelectionPolicy === 'fixed';
+    const requiredModelRuntimeMode = config.agencyConfig?.modelRuntimeMode;
+    const [updated] = await this.db
+      .update(agents)
+      .set({
+        ...(requiresFixedModel || requiredModelRuntimeMode
+          ? {
+              agencyConfig: {
+                ...existing.agencyConfig,
+                ...(requiresFixedModel ? { modelSelectionPolicy: 'fixed' as const } : {}),
+                ...(requiredModelRuntimeMode ? { modelRuntimeMode: requiredModelRuntimeMode } : {}),
+              },
+            }
+          : {}),
+        ...(requiredPlugins.length > 0 ? { plugins } : {}),
+        ...(config.systemRole !== undefined ? { systemRole: config.systemRole } : {}),
+        ...(config.title !== undefined ? { title: config.title } : {}),
+        ...(config.virtual !== undefined ? { virtual: config.virtual } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agents.id, existing.id), this.ownership()))
+      .returning();
+
+    return updated;
+  };
+
+  findByClientId = async (clientId: string): Promise<AgentItem | undefined> =>
+    this.db.query.agents.findFirst({
+      where: and(eq(agents.clientId, clientId), this.ownership()),
+    });
+
+  ensureFixedModelSelectionPolicy = async (agentId: string): Promise<AgentItem> => {
+    const existing = await this.db.query.agents.findFirst({
+      where: and(eq(agents.id, agentId), this.ownership()),
+    });
+    if (!existing) throw new Error('Agent not found in current scope');
+
+    const [updated] = await this.db
+      .update(agents)
+      .set({
+        agencyConfig: { ...existing.agencyConfig, modelSelectionPolicy: 'fixed' },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agents.id, agentId), this.ownership()))
+      .returning();
+    return updated;
+  };
+
+  ensurePlatformManagedModelRuntime = async (agentId: string): Promise<AgentItem> => {
+    const existing = await this.db.query.agents.findFirst({
+      where: and(eq(agents.id, agentId), this.ownership()),
+    });
+    if (!existing) throw new Error('Agent not found in current scope');
+
+    const [updated] = await this.db
+      .update(agents)
+      .set({
+        agencyConfig: {
+          ...existing.agencyConfig,
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agents.id, agentId), this.ownership()))
+      .returning();
+    return updated;
+  };
+
   /**
    * Batch create multiple agents (without sessions).
    * Used for creating multiple virtual agents at once (e.g., group chat members).
@@ -1618,13 +1709,14 @@ export class AgentModel {
     // device. Sanitize exactly like `transferAgents` does when moving into a
     // workspace. Personal-scope copies keep existing bindings (any device is
     // reachable there).
-    const agencyConfig = this.workspaceId
+    const sourceAgencyConfig = this.workspaceId
       ? (
           await this.sanitizeAgencyConfigForWorkspace(this.db, this.workspaceId, [
             sourceAgent.agencyConfig,
           ])
         )[0]
       : (sourceAgent.agencyConfig ?? null);
+    const agencyConfig = sanitizeAgentApiConfig(sourceAgencyConfig);
 
     // Create new agent with explicit include fields
     const [newAgent] = await this.db

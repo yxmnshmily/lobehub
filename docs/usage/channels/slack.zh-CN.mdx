@@ -31,79 +31,80 @@ LobeHub 支持两种 Slack 连接模式：
 <Steps>
   ### 打开 Slack API 控制台
 
-  访问 [api.slack.com/apps](https://api.slack.com/apps)，点击 **Create New App** → **From an app manifest**。
+访问 [api.slack.com/apps](https://api.slack.com/apps)，点击 **Create New App** → **From an app manifest**。
 
-  ### 选择工作区
+### 选择工作区
 
-  选择您要安装应用的 Slack 工作区。
+选择您要安装应用的 Slack 工作区。
 
-  ### 粘贴 Manifest 模板
+### 粘贴 Manifest 模板
 
-  选择 **YAML** 格式，粘贴以下模板：
+选择 **YAML** 格式，粘贴以下模板：
 
-  ```yaml
-  display_information:
-    name: LobeHub Assistant
-    description: AI assistant powered by LobeHub
-  features:
-    app_home:
-      home_tab_enabled: false
-      messages_tab_enabled: true
-      messages_tab_read_only_enabled: false
-    bot_user:
-      display_name: LobeHub Assistant
-      always_online: true
-    slash_commands:
-      - command: /new
-        description: Start a new conversation
-        should_escape: false
-      - command: /stop
-        description: Stop the current execution
-        should_escape: false
-  oauth_config:
-    scopes:
-      bot:
-        - app_mentions:read
-        - channels:history
-        - channels:read
-        - chat:write
-        - commands
-        - groups:history
-        - groups:read
-        - im:history
-        - im:read
-        - mpim:history
-        - mpim:read
-        - reactions:read
-        - reactions:write
-        - users:read
-        - assistant:write
-  settings:
-    event_subscriptions:
-      bot_events:
-        - app_mention
-        - app_home_opened
-        - message.channels
-        - message.groups
-        - message.im
-        - message.mpim
-        - member_joined_channel
-        - assistant_thread_started
-        - assistant_thread_context_changed
-    interactivity:
-      is_enabled: true
-    org_deploy_enabled: false
-    socket_mode_enabled: true
-    token_rotation_enabled: false
-  ```
+```yaml
+display_information:
+  name: LobeHub Assistant
+  description: AI assistant powered by LobeHub
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: LobeHub Assistant
+    always_online: true
+  slash_commands:
+    - command: /new
+      description: Start a new conversation
+      should_escape: false
+    - command: /stop
+      description: Stop the current execution
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:history
+      - channels:read
+      - chat:write
+      - commands
+      - groups:history
+      - groups:read
+      - im:history
+      - im:read
+      - mpim:history
+      - mpim:read
+      - reactions:read
+      - reactions:write
+      - users:read
+      - assistant:write
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - app_home_opened
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+      - member_joined_channel
+      - assistant_thread_started
+      - assistant_thread_context_changed
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
+```
 
-  > **注意：** `socket_mode_enabled: true` 表示无需配置 Request URL。事件（包括 Slash Commands）通过 WebSocket 推送。
+> **注意：** `socket_mode_enabled: true` 表示无需配置 Request URL。事件（包括 Slash Commands）通过 WebSocket 推送。
 
-  ### 创建应用
+### 创建应用
 
-  确认配置摘要后，点击 **Create**。
+确认配置摘要后，点击 **Create**。
 
-  ![](/blog/assets3865756ef6158a855aee64dd01bd3d6b.webp)
+![](/blog/assets3865756ef6158a855aee64dd01bd3d6b.webp)
+
 </Steps>
 
 ### 第二步：获取凭证
@@ -111,24 +112,25 @@ LobeHub 支持两种 Slack 连接模式：
 <Steps>
   ### 复制 App ID 和 Signing Secret
 
-  在 **Basic Information** 页面，复制：
+在 **Basic Information** 页面，复制：
 
-  - **App ID** — 显示在页面顶部
-  - **Signing Secret** — 在 **App Credentials** 部分
+- **App ID** — 显示在页面顶部
+- **Signing Secret** — 在 **App Credentials** 部分
 
-  ### 生成应用级别 Token
+### 生成应用级别 Token
 
-  向下滚动到 **App-Level Tokens**，点击 **Generate Token and Scopes**。命名（如 "socket-mode"），添加 `connections:write` 权限，点击 **Generate**。
+向下滚动到 **App-Level Tokens**，点击 **Generate Token and Scopes**。命名（如 "socket-mode"），添加 `connections:write` 权限，点击 **Generate**。
 
-  复制生成的 Token（以 `xapp-` 开头）。
+复制生成的 Token（以 `xapp-` 开头）。
 
-  > **重要：** 此 Token 仅显示一次，请妥善保管。
+> **重要：** 此 Token 仅显示一次，请妥善保管。
 
-  ### 安装应用到工作区
+### 安装应用到工作区
 
-  进入侧边栏的 **OAuth & Permissions**，点击 **Install to Workspace** 并授权。复制 **Bot User OAuth Token**（以 `xoxb-` 开头）。
+进入侧边栏的 **OAuth & Permissions**，点击 **Install to Workspace** 并授权。复制 **Bot User OAuth Token**（以 `xoxb-` 开头）。
 
-  ![](/blog/assetsfd4606a4b5d801a8764bf333cde77d57.webp)
+![](/blog/assetsfd4606a4b5d801a8764bf333cde77d57.webp)
+
 </Steps>
 
 ### 第三步：在 LobeHub 中配置 Slack
@@ -136,26 +138,27 @@ LobeHub 支持两种 Slack 连接模式：
 <Steps>
   ### 打开渠道设置
 
-  在 LobeHub 中，导航到代理设置 → **渠道** 标签 → 点击 **Slack**。
+在 LobeHub 中，导航到代理设置 → **渠道** 标签 → 点击 **Slack**。
 
-  ### 输入凭证
+### 输入凭证
 
-  填写：
+填写：
 
-  - **应用 ID** — App ID
-  - **Bot Token** — Bot User OAuth Token（`xoxb-...`）
-  - **签名密钥** — Signing Secret
-  - **应用级别 Token** — App-Level Token（`xapp-...`）
+- **应用 ID** — App ID
+- **Bot Token** — Bot User OAuth Token（`xoxb-...`）
+- **签名密钥** — Signing Secret
+- **应用级别 Token** — App-Level Token（`xapp-...`）
 
-  ### 选择连接模式
+### 选择连接模式
 
-  在 **高级设置** 中，将 **连接模式** 设置为 **WebSocket**。
+在 **高级设置** 中，将 **连接模式** 设置为 **WebSocket**。
 
-  ### 保存配置
+### 保存配置
 
-  点击 **保存配置**。机器人将自动通过 Socket Mode 连接。无需配置 Webhook URL。
+点击 **保存配置**。机器人将自动通过 Socket Mode 连接。无需配置 Webhook URL。
 
-  ![](/blog/assetsc3042da681a9df811e70473636a8f461.webp)
+![](/blog/assetsc3042da681a9df811e70473636a8f461.webp)
+
 </Steps>
 
 ### 第四步：测试连接
@@ -173,42 +176,43 @@ LobeHub 支持两种 Slack 连接模式：
 <Steps>
   ### 创建 Slack 应用
 
-  访问 [api.slack.com/apps](https://api.slack.com/apps)，点击 **Create New App** → **From scratch**。命名应用并选择工作区。
+访问 [api.slack.com/apps](https://api.slack.com/apps)，点击 **Create New App** → **From scratch**。命名应用并选择工作区。
 
-  ### 添加 Bot Token 权限
+### 添加 Bot Token 权限
 
-  进入 **OAuth & Permissions** → **Bot Token Scopes**，添加：`app_mentions:read`、`channels:history`、`channels:read`、`chat:write`、`groups:history`、`groups:read`、`im:history`、`im:read`、`mpim:history`、`mpim:read`、`reactions:read`、`reactions:write`、`users:read`。
+进入 **OAuth & Permissions** → **Bot Token Scopes**，添加：`app_mentions:read`、`channels:history`、`channels:read`、`chat:write`、`groups:history`、`groups:read`、`im:history`、`im:read`、`mpim:history`、`mpim:read`、`reactions:read`、`reactions:write`、`users:read`。
 
-  ### 安装到工作区
+### 安装到工作区
 
-  点击 **Install to Workspace**，复制 **Bot User OAuth Token**（`xoxb-...`）。
+点击 **Install to Workspace**，复制 **Bot User OAuth Token**（`xoxb-...`）。
 
-  ### 在 LobeHub 中配置
+### 在 LobeHub 中配置
 
-  在 LobeHub 的 Slack 渠道设置中输入 **应用 ID**、**Bot Token** 和 **签名密钥**。在高级设置中将 **连接模式** 设为 **Webhook**。保存后复制显示的 **Webhook URL**。
+在 LobeHub 的 Slack 渠道设置中输入 **应用 ID**、**Bot Token** 和 **签名密钥**。在高级设置中将 **连接模式** 设为 **Webhook**。保存后复制显示的 **Webhook URL**。
 
-  ### 启用 App Home 消息功能
+### 启用 App Home 消息功能
 
-  在 Slack API 控制台 → **App Home** 中，找到 **Show Tabs** 区域，勾选 **Messages Tab**，并确保 **"Allow users to send Slash commands and messages from the messages tab"** 已启用。这样用户才能在私信中与机器人对话。
+在 Slack API 控制台 → **App Home** 中，找到 **Show Tabs** 区域，勾选 **Messages Tab**，并确保 **"Allow users to send Slash commands and messages from the messages tab"** 已启用。这样用户才能在私信中与机器人对话。
 
-  ### 配置事件订阅
+### 配置事件订阅
 
-  在 Slack API 控制台 → **Event Subscriptions** 中，启用事件，将 Webhook URL 粘贴为 **Request URL**，订阅事件：`app_mention`、`app_home_opened`、`message.channels`、`message.groups`、`message.im`、`message.mpim`、`member_joined_channel`。
+在 Slack API 控制台 → **Event Subscriptions** 中，启用事件，将 Webhook URL 粘贴为 **Request URL**，订阅事件：`app_mention`、`app_home_opened`、`message.channels`、`message.groups`、`message.im`、`message.mpim`、`member_joined_channel`。
 
-  ![](/blog/assets8f3657f3785fc04c42b0f53c17daa72e.webp)
+![](/blog/assets8f3657f3785fc04c42b0f53c17daa72e.webp)
 
-  ### 配置 Slash Commands（可选）
+### 配置 Slash Commands（可选）
 
-  在 Slack API 控制台 → **Slash Commands** 中，点击 **Create New Command**，添加以下命令：
+在 Slack API 控制台 → **Slash Commands** 中，点击 **Create New Command**，添加以下命令：
 
-  | Command | Request URL        | Short Description          |
-  | ------- | ------------------ | -------------------------- |
-  | `/new`  | 与上方相同的 Webhook URL | Start a new conversation   |
-  | `/stop` | 与上方相同的 Webhook URL | Stop the current execution |
+| Command | Request URL              | Short Description          |
+| ------- | ------------------------ | -------------------------- |
+| `/new`  | 与上方相同的 Webhook URL | Start a new conversation   |
+| `/stop` | 与上方相同的 Webhook URL | Stop the current execution |
 
-  > **注意：** Webhook 模式下 Request URL 为必填项。如果您使用 Socket Mode，推荐通过 Manifest 模板创建应用，Slash Commands 会自动配置，无需手动添加。
+> **注意：** Webhook 模式下 Request URL 为必填项。如果您使用 Socket Mode，推荐通过 Manifest 模板创建应用，Slash Commands 会自动配置，无需手动添加。
 
-  同时确保在 **OAuth & Permissions** → **Bot Token Scopes** 中添加 `commands` 权限，并在 **Interactivity & Shortcuts** 中启用 Interactivity，将 Request URL 设为相同的 Webhook URL。
+同时确保在 **OAuth & Permissions** → **Bot Token Scopes** 中添加 `commands` 权限，并在 **Interactivity & Shortcuts** 中启用 Interactivity，将 Request URL 设为相同的 Webhook URL。
+
 </Steps>
 
 ## 填写你的平台身份（推荐）
@@ -258,17 +262,17 @@ Slack workspace（team）ID。当你让 bot 做 "列出频道"、"发送到 #ann
 
 ## 配置参考
 
-| 字段             | 是否必需          | 描述                                                         |
-| -------------- | ------------- | ---------------------------------------------------------- |
-| **应用 ID**      | 是             | 您的 Slack 应用 ID                                             |
-| **Bot Token**  | 是             | Bot User OAuth Token（`xoxb-...`）                           |
-| **签名密钥**       | 是             | 用于验证来自 Slack 的请求                                           |
-| **应用级别 Token** | 仅 Socket Mode | 应用级别 Token（`xapp-...`），用于 WebSocket 连接                     |
-| **连接模式**       | 否             | `websocket` 或 `webhook`（默认：`webhook`）                      |
-| **允许的用户 ID**   | 否             | 逗号或空格分隔的 Slack 成员 ID。全局闸门 — 私信和频道 @ 都受其约束                  |
-| **私信策略**       | 否             | `open`（默认）、`allowlist`、`pairing` 或 `disabled` — 控制谁可以私信机器人 |
-| **群组策略**       | 否             | `open`（默认）、`allowlist` 或 `disabled` — 控制机器人在哪些频道中响应        |
-| **允许的频道 ID**   | 否             | 逗号或空格分隔的 Slack 频道 ID（以 `C` 开头）。仅在群组策略为白名单时使用               |
+| 字段 | 是否必需 | 描述 |
+| --- | --- | --- |
+| **应用 ID** | 是 | 您的 Slack 应用 ID |
+| **Bot Token** | 是 | Bot User OAuth Token（`xoxb-...`） |
+| **签名密钥** | 是 | 用于验证来自 Slack 的请求 |
+| **应用级别 Token** | 仅 Socket Mode | 应用级别 Token（`xapp-...`），用于 WebSocket 连接 |
+| **连接模式** | 否 | `websocket` 或 `webhook`（默认：`webhook`） |
+| **允许的用户 ID** | 否 | 逗号或空格分隔的 Slack 成员 ID。全局闸门 — 私信和频道 @ 都受其约束 |
+| **私信策略** | 否 | `open`（默认）、`allowlist`、`pairing` 或 `disabled` — 控制谁可以私信机器人 |
+| **群组策略** | 否 | `open`（默认）、`allowlist` 或 `disabled` — 控制机器人在哪些频道中响应 |
+| **允许的频道 ID** | 否 | 逗号或空格分隔的 Slack 频道 ID（以 `C` 开头）。仅在群组策略为白名单时使用 |
 
 ## 故障排除
 

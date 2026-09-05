@@ -1,5 +1,6 @@
 import {
   CreateNewMessageParamsSchema,
+  type UIChatMessage,
   UpdateMessageParamsSchema,
   UpdateMessagePluginSchema,
   UpdateMessageRAGParamsSchema,
@@ -20,6 +21,7 @@ import { TopicDoctorRepo } from '@/database/repositories/topicDoctor';
 import { publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
+import { GroupConversationAccessRepository as ConversationRepository } from '@/server/services/groupConversationAccess/conversationRepository';
 import { type MessageBatchOperation, MessageService } from '@/server/services/message';
 
 import {
@@ -39,6 +41,16 @@ const guardCtx = (ctx: {
   userId: string;
   workspaceId?: string | null;
 }) => ({ db: ctx.serverDB, userId: ctx.userId, workspaceId: ctx.workspaceId });
+
+const mergeOwnerGroupMessages = (
+  ownedMessages: UIChatMessage[],
+  supplementalMessages: UIChatMessage[],
+) => {
+  const ids = new Set(ownedMessages.map(({ id }) => id));
+  return [...ownedMessages, ...supplementalMessages.filter(({ id }) => !ids.has(id))].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+};
 
 const messageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -405,9 +417,23 @@ export const messageRouter = router({
       const messageModel = new MessageModel(ctx.serverDB, ctx.userId, wsId);
       const fileService = new FileService(ctx.serverDB, ctx.userId, wsId);
 
-      return messageModel.query(queryParams, {
+      const ownedMessages = await messageModel.query(queryParams, {
         postProcessUrl: (path, file) => fileService.getFileAccessUrl({ id: file.id, url: path }),
       });
+      if (ctx.workspaceId || !queryParams.groupId || !queryParams.topicId) return ownedMessages;
+
+      const supplementalMessages = await new ConversationRepository(
+        ctx.serverDB,
+      ).listOwnerSupplementalTextMessages(ctx.userId, queryParams.groupId, queryParams.topicId);
+
+      return mergeOwnerGroupMessages(
+        ownedMessages,
+        supplementalMessages.map((message) => ({
+          ...message,
+          createdAt: message.createdAt.getTime(),
+          updatedAt: message.updatedAt.getTime(),
+        })),
+      );
     }),
 
   rankModels: messageProcedure.query(async ({ ctx }) => {

@@ -1,9 +1,7 @@
 ---
 title: Connect LobeHub to Discord
 description: >-
-  Learn how to create a Discord bot and connect it to your LobeHub agent as a
-  message channel, allowing your AI assistant to interact with users directly in
-  Discord servers and direct messages.
+  Learn how to create a Discord bot and connect it to your LobeHub agent as a message channel, allowing your AI assistant to interact with users directly in Discord servers and direct messages.
 tags:
   - Discord
   - Message Channels
@@ -25,44 +23,45 @@ By connecting a Discord channel to your LobeHub agent, users can interact with t
 <Steps>
   ### Go to the Discord Developer Portal
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/83f435317ea2c9c4a2adcbfd74301536.png)
+![](https://hub-apac-1.lobeobjects.space/docs/83f435317ea2c9c4a2adcbfd74301536.png)
 
-  Visit the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**. Give your application a name (e.g., "LobeHub Assistant") and click **Create**.
+Visit the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**. Give your application a name (e.g., "LobeHub Assistant") and click **Create**.
 
-  ### Create a Bot
+### Create a Bot
 
-  In the left sidebar, click **Bot**. Customize the bot's username and avatar as needed.
+In the left sidebar, click **Bot**. Customize the bot's username and avatar as needed.
 
-  ### Enable Privileged Gateway Intents
+### Enable Privileged Gateway Intents
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/6126baa4154be45eefdad73c576723d0.png)
+![](https://hub-apac-1.lobeobjects.space/docs/6126baa4154be45eefdad73c576723d0.png)
 
-  On the Bot settings page, scroll down to **Privileged Gateway Intents** and enable:
+On the Bot settings page, scroll down to **Privileged Gateway Intents** and enable:
 
-  - **Message Content Intent** — Required for the bot to read message content
-  - **Server Members Intent** — Recommended for user identification
-  - **Presence Intent** — Optional; enable if you want the bot to access user online/offline status
+- **Message Content Intent** — Required for the bot to read message content
+- **Server Members Intent** — Recommended for user identification
+- **Presence Intent** — Optional; enable if you want the bot to access user online/offline status
 
-  Click **Save Changes**.
+Click **Save Changes**.
 
-  ### Copy the Bot Token
+### Copy the Bot Token
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/e76272de65ad8db8746b1dcafeafdce8.png)
+![](https://hub-apac-1.lobeobjects.space/docs/e76272de65ad8db8746b1dcafeafdce8.png)
 
-  On the **Bot** page, click **Reset Token** to generate your bot token. Copy and save it securely.
+On the **Bot** page, click **Reset Token** to generate your bot token. Copy and save it securely.
 
-  > **Important:** Treat your bot token like a password. Never share it publicly or commit it to version control.
+> **Important:** Treat your bot token like a password. Never share it publicly or commit it to version control.
 
-  ### Copy the Application ID and Public Key
+### Copy the Application ID and Public Key
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/d42901c6eb84e3e335d9a8535f317a35.png)
+![](https://hub-apac-1.lobeobjects.space/docs/d42901c6eb84e3e335d9a8535f317a35.png)
 
-  Go to **General Information** in the left sidebar. Copy and save:
+Go to **General Information** in the left sidebar. Copy and save:
 
-  - **Application ID**
-  - **Public Key**
+- **Application ID**
+- **Public Key**
 
-  You will need all three values (Bot Token, Application ID, Public Key) in the next step.
+You will need all three values (Bot Token, Application ID, Public Key) in the next step.
+
 </Steps>
 
 ## Step 2: Configure Discord in LobeHub
@@ -70,23 +69,24 @@ By connecting a Discord channel to your LobeHub agent, users can interact with t
 <Steps>
   ### Open Channel Settings
 
-  In LobeHub, navigate to your agent's settings, then select the **Channels** tab. Click **Discord** from the platform list.
+In LobeHub, navigate to your agent's settings, then select the **Channels** tab. Click **Discord** from the platform list.
 
-  ### Fill in the Credentials
+### Fill in the Credentials
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/c5ced26ea287ee215a9dc385367c1083.png)
+![](https://hub-apac-1.lobeobjects.space/docs/c5ced26ea287ee215a9dc385367c1083.png)
 
-  Enter the following fields:
+Enter the following fields:
 
-  - **Application ID** — The Application ID from your Discord app's General Information page
-  - **Bot Token** — The bot token you generated earlier
-  - **Public Key** — The Public Key from your Discord app, used for interaction verification
+- **Application ID** — The Application ID from your Discord app's General Information page
+- **Bot Token** — The bot token you generated earlier
+- **Public Key** — The Public Key from your Discord app, used for interaction verification
 
-  Your token will be encrypted and stored securely.
+Your token will be encrypted and stored securely.
 
-  ### Save Configuration
+### Save Configuration
 
-  Click **Save Configuration**. Your credentials will be saved and LobeHub will start listening for Discord events.
+Click **Save Configuration**. Your credentials will be saved and LobeHub will start listening for Discord events.
+
 </Steps>
 
 ## Step 3: Invite the Bot to Your Server
@@ -94,31 +94,32 @@ By connecting a Discord channel to your LobeHub agent, users can interact with t
 <Steps>
   ### Generate an Invite URL
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/5e8a93f33e085a187deddb87704f0bd3.png)
+![](https://hub-apac-1.lobeobjects.space/docs/5e8a93f33e085a187deddb87704f0bd3.png)
 
-  In the Discord Developer Portal, go to **OAuth2** → **URL Generator**. Select the following scopes:
+In the Discord Developer Portal, go to **OAuth2** → **URL Generator**. Select the following scopes:
 
-  - `bot`
-  - `applications.commands`
+- `bot`
+- `applications.commands`
 
-  Under **Bot Permissions**, select:
+Under **Bot Permissions**, select:
 
-  - View Channels
-  - Read Message History
-  - Send Messages
-  - Create Public Threads
-  - Send Messages in Threads
-  - Embed Links
-  - Attach Files
-  - Add Reactions (optional)
+- View Channels
+- Read Message History
+- Send Messages
+- Create Public Threads
+- Send Messages in Threads
+- Embed Links
+- Attach Files
+- Add Reactions (optional)
 
-  ### Authorize the Bot
+### Authorize the Bot
 
-  ![](https://hub-apac-1.lobeobjects.space/docs/d83686461d14690e87512491c1349b6b.webp)
+![](https://hub-apac-1.lobeobjects.space/docs/d83686461d14690e87512491c1349b6b.webp)
 
-  Copy the generated URL, open it in your browser, select the server you want to add the bot to, and click **Authorize**.
+Copy the generated URL, open it in your browser, select the server you want to add the bot to, and click **Authorize**.
 
-  > **Private channels need explicit access.** Server-level authorization only grants the bot category/server defaults. If a channel is marked **Private Channel**, Discord ignores the bot's server-wide role and the bot won't receive any events there — including @mentions — until you open the channel's **Settings → Permissions** and add the bot (or a role it has) under **Members and roles**. You can also click **Sync Now** to make the channel inherit its category's permissions.
+> **Private channels need explicit access.** Server-level authorization only grants the bot category/server defaults. If a channel is marked **Private Channel**, Discord ignores the bot's server-wide role and the bot won't receive any events there — including @mentions — until you open the channel's **Settings → Permissions** and add the bot (or a role it has) under **Members and roles**. You can also click **Sync Now** to make the channel inherit its category's permissions.
+
 </Steps>
 
 ## Step 4: Test the Connection
@@ -151,7 +152,7 @@ LobeHub gates inbound traffic with three layered settings, all under **Advanced 
 
 ### Allowed User IDs (global)
 
-A *global* user-level gate. When populated, **only** the listed users can interact with the bot — DM, group @mention, threads, all of it — regardless of DM Policy / Group Policy mode. Empty means "no user-level filter; let per-scope policies decide". Right-click a user → **Copy User ID** (Developer Mode must be enabled in **Settings → Advanced**) to grab an ID.
+A _global_ user-level gate. When populated, **only** the listed users can interact with the bot — DM, group @mention, threads, all of it — regardless of DM Policy / Group Policy mode. Empty means "no user-level filter; let per-scope policies decide". Right-click a user → **Copy User ID** (Developer Mode must be enabled in **Settings → Advanced**) to grab an ID.
 
 DMs from non-allowlisted users get a "you aren't authorized" notice. Group @mentions from non-allowlisted users get the same kind of notice posted **inside the auto-created reply thread** Discord makes for the @-mention — the parent channel stays quiet.
 
@@ -180,15 +181,15 @@ See the [Channels overview](/docs/usage/channels/overview#direct-message-policy)
 
 ## Configuration Reference
 
-| Field                   | Required | Description                                                                                       |
-| ----------------------- | -------- | ------------------------------------------------------------------------------------------------- |
-| **Application ID**      | Yes      | Your Discord application's ID                                                                     |
-| **Bot Token**           | Yes      | Authentication token for your Discord bot                                                         |
-| **Public Key**          | Yes      | Used to verify interaction requests from Discord                                                  |
-| **Allowed User IDs**    | No       | Comma- or whitespace-separated Discord user IDs. Global gate — applies to DMs and group @mentions |
-| **DM Policy**           | No       | `open` (default), `allowlist`, `pairing`, or `disabled` — who is allowed to DM the bot            |
-| **Group Policy**        | No       | `open` (default), `allowlist`, or `disabled` — where the bot responds to @mentions                |
-| **Allowed Channel IDs** | No       | Comma- or whitespace-separated Discord channel IDs. Used when Group Policy is Allowlist           |
+| Field | Required | Description |
+| --- | --- | --- |
+| **Application ID** | Yes | Your Discord application's ID |
+| **Bot Token** | Yes | Authentication token for your Discord bot |
+| **Public Key** | Yes | Used to verify interaction requests from Discord |
+| **Allowed User IDs** | No | Comma- or whitespace-separated Discord user IDs. Global gate — applies to DMs and group @mentions |
+| **DM Policy** | No | `open` (default), `allowlist`, `pairing`, or `disabled` — who is allowed to DM the bot |
+| **Group Policy** | No | `open` (default), `allowlist`, or `disabled` — where the bot responds to @mentions |
+| **Allowed Channel IDs** | No | Comma- or whitespace-separated Discord channel IDs. Used when Group Policy is Allowlist |
 
 ## Troubleshooting
 

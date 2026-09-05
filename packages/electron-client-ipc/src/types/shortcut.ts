@@ -12,11 +12,6 @@ export type ShortcutActionType = Record<string, any>;
 
 export interface ShortcutUpdateResult {
   errorType?:
-    | 'INVALID_ID'
-    | 'INVALID_FORMAT'
-    | 'NO_MODIFIER'
-    | 'CONFLICT'
-    | 'SYSTEM_OCCUPIED'
-    | 'UNKNOWN';
+    'INVALID_ID' | 'INVALID_FORMAT' | 'NO_MODIFIER' | 'CONFLICT' | 'SYSTEM_OCCUPIED' | 'UNKNOWN';
   success: boolean;
 }

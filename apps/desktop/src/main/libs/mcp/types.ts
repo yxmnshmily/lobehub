@@ -80,11 +80,7 @@ export interface ResourceLinkContent {
 }
 
 export type ToolCallContent =
-  | TextContent
-  | ImageContent
-  | AudioContent
-  | ResourceContent
-  | ResourceLinkContent;
+  TextContent | ImageContent | AudioContent | ResourceContent | ResourceLinkContent;
 
 export interface ToolCallResult {
   content: ToolCallContent[];

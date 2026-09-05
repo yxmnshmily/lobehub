@@ -53,8 +53,10 @@ const ThemeButton: FC<{ placement?: DropdownMenuProps['placement']; size?: numbe
       popupProps={{ className: electronStylish.nodrag }}
     >
       <ActionIcon
+        aria-label={t('settingCommon.themeMode.title')}
         icon={themeIcons[(theme as 'dark' | 'light' | 'system') || 'system']}
         size={size || { blockSize: 32, size: 16 }}
+        title={t('settingCommon.themeMode.title')}
       />
     </DropdownMenu>
   );

@@ -62,7 +62,11 @@ const styles = createStaticStyles(({ css }) => ({
  * Main conversation area component using the new ConversationStore architecture.
  * Uses ChatList from @/features/Conversation and MainChatInput for custom features.
  */
-const Conversation = memo(() => {
+interface ConversationAreaProps {
+  mobile?: boolean;
+}
+
+const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
   const { t } = useTranslation('chat');
   const context = useAgentContext();
 
@@ -203,7 +207,7 @@ const Conversation = memo(() => {
       <ExposeMainEditor />
       <ComposerDraftReceiver />
       <ThreadHydration />
-      <ChatMiniMap />
+      {!mobile && <ChatMiniMap />}
       <ForwardMessageDispatcher />
       {/* Held back while the topic is still migrating: the composer above is
           already disabled, and letting `?message=` through would send into the

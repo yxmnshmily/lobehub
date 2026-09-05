@@ -73,7 +73,13 @@ const stripStateForStream = <T extends Record<string, any>>(
     tools: _tools,
     ...rest
   } = state;
-  return rest as T;
+  if (!rest.metadata || typeof rest.metadata !== 'object') return rest as T;
+  const {
+    platformManagedExecutionAuthorized: _platformManagedExecutionAuthorized,
+    platformManagedMaxCredits: _platformManagedMaxCredits,
+    ...safeMetadata
+  } = rest.metadata;
+  return { ...rest, metadata: safeMetadata } as unknown as T;
 };
 
 /**
@@ -93,7 +99,15 @@ export const stripFinalStateInEventData = (data: unknown): unknown => {
   if (!data || typeof data !== 'object') return data;
   const record = data as Record<string, unknown>;
   const finalState = record.finalState;
-  if (!finalState || typeof finalState !== 'object') return data;
+  if (!finalState || typeof finalState !== 'object') {
+    if (!record.metadata || typeof record.metadata !== 'object') return data;
+    const {
+      platformManagedExecutionAuthorized: _platformManagedExecutionAuthorized,
+      platformManagedMaxCredits: _platformManagedMaxCredits,
+      ...safeMetadata
+    } = record.metadata as Record<string, unknown>;
+    return { ...record, metadata: safeMetadata };
+  }
   return { ...record, finalState: stripStateForStream(finalState as Record<string, any>) };
 };
 

@@ -39,9 +39,7 @@ vi.mock('@lobehub/ui', () => ({
       {children}
     </div>
   ),
-  Flexbox: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div {...props}>{children}</div>
-  ),
+  Flexbox: ({ children, horizontal: _horizontal, ...props }: HTMLAttributes<HTMLDivElement> & { horizontal?: boolean }) => <div {...props}>{children}</div>,
   Icon: () => <span />,
   Tag: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   Tooltip: ({ children, title }: { children: ReactNode; title: string }) => (
@@ -108,6 +106,34 @@ describe('MultipleProvidersModelItem', () => {
     render(<ModelItemRender audio id="gemini-audio" />);
 
     expect(screen.getByTestId('tooltip-ModelSelect.featureTag.audio')).toBeInTheDocument();
+  });
+
+  it('does not forward model metadata to the rendered DOM element', async () => {
+    const { ModelItemRender } = await vi.importActual<typeof ModelSelectModule>(
+      '@/components/ModelSelect',
+    );
+
+    const { container } = render(
+      <ModelItemRender
+        {...({
+          description: 'model description',
+          id: 'gpt-test',
+          knowledgeCutoff: '2026-01',
+          pricing: { input: 1 },
+          reasoning: true,
+          search: true,
+          structuredOutput: true,
+        } as any)}
+      />,
+    );
+    const modelItem = container.firstElementChild;
+
+    expect(modelItem).not.toHaveAttribute('description');
+    expect(modelItem).not.toHaveAttribute('knowledgecutoff');
+    expect(modelItem).not.toHaveAttribute('pricing');
+    expect(modelItem).not.toHaveAttribute('reasoning');
+    expect(modelItem).not.toHaveAttribute('search');
+    expect(modelItem).not.toHaveAttribute('structuredoutput');
   });
 
   it('renders model detail panel even when info tags are hidden', () => {

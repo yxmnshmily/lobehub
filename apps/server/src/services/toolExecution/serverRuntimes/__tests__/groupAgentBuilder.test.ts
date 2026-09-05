@@ -15,7 +15,9 @@ const {
   mockSetAccessLevel,
   mockUpdateAgent,
   mockUpdateGroup,
+  mockAssertTravelMutationAllowed,
 } = vi.hoisted(() => ({
+  mockAssertTravelMutationAllowed: vi.fn(),
   mockAddAgentsToGroup: vi.fn(),
   mockBatchCreate: vi.fn(),
   mockBuilderUpdateConfig: vi.fn(),
@@ -27,6 +29,10 @@ const {
   mockSetAccessLevel: vi.fn(),
   mockUpdateAgent: vi.fn(),
   mockUpdateGroup: vi.fn(),
+}));
+
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: mockAssertTravelMutationAllowed,
 }));
 
 vi.mock('@/database/models/agent', () => ({
@@ -88,6 +94,7 @@ const groupCtx = { editingGroupId: 'cg_1' } as never;
 describe('groupAgentBuilderRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertTravelMutationAllowed.mockResolvedValue(undefined);
     mockFindById.mockResolvedValue({ id: 'cg_1', title: 'Launch Team', visibility: 'public' });
     mockGetGroupAgentsWithMeta.mockResolvedValue([
       { agentId: 'agt_sup', description: null, role: 'supervisor', title: 'Supervisor' },
@@ -99,6 +106,32 @@ describe('groupAgentBuilderRuntime', () => {
   // member ever reaches the group.
   it('is registered in the server runtime registry', () => {
     expect(hasServerRuntime('lobe-group-agent-builder')).toBe(true);
+  });
+
+  it('blocks protected member and group tool mutations before model writes', async () => {
+    mockAssertTravelMutationAllowed.mockRejectedValue(
+      new Error('This platform-managed travel resource cannot be changed'),
+    );
+    mockGetGroupAgentsWithMeta.mockResolvedValue([
+      { agentId: 'protected-1', role: 'participant', title: 'Protected' },
+    ]);
+    const runtime = createRuntime();
+
+    const createResult = await runtime.createAgent({ systemRole: 'x', title: 'new' }, groupCtx);
+    const batchCreateResult = await runtime.batchCreateAgents(
+      { agents: [{ systemRole: 'x', title: 'new' }] },
+      groupCtx,
+    );
+    const removeResult = await runtime.removeAgent({ agentId: 'protected-1' }, groupCtx);
+    const updateResult = await runtime.updateGroup({ meta: { title: 'changed' } }, groupCtx);
+
+    expect(createResult).toMatchObject({ success: false });
+    expect(batchCreateResult).toMatchObject({ success: false });
+    expect(removeResult).toMatchObject({ success: false });
+    expect(updateResult).toMatchObject({ success: false });
+    expect(mockBatchCreate).not.toHaveBeenCalled();
+    expect(mockRemoveAgentsFromGroup).not.toHaveBeenCalled();
+    expect(mockUpdateGroup).not.toHaveBeenCalled();
   });
 
   describe('createAgent', () => {

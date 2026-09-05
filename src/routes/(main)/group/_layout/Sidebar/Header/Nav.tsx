@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveAgentGroupManagementPolicy } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { BotPromptIcon } from '@lobehub/ui/icons';
 import { MessageSquarePlusIcon, SearchIcon } from 'lucide-react';
@@ -13,7 +14,9 @@ import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryRoute } from '@/hooks/useQueryRoute';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
+import { agentGroupSelectors } from '@/store/agentGroup/selectors';
 import { useChatStore } from '@/store/chat';
 import { useGlobalStore } from '@/store/global';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
@@ -29,6 +32,11 @@ const Nav = memo(() => {
   const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
   const { allowed: canEditContent } = usePermission('edit_own_content');
   const { canEditResource, isAccessResolved } = useResourceAccess('agentGroup', groupId);
+  const group = useAgentGroupStore(agentGroupSelectors.getGroupById(groupId ?? ''));
+  const { data: isPlatformAdmin } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
+  const canConfigureGroup =
+    !!group &&
+    (resolveAgentGroupManagementPolicy(group.clientId) !== 'platform' || isPlatformAdmin === true);
   const toggleCommandMenu = useGlobalStore((s) => s.toggleCommandMenu);
   const switchTopic = useChatStore((s) => s.switchTopic);
   const switchToNewTopic = useAgentGroupStore((s) => s.switchToNewTopic);
@@ -40,7 +48,11 @@ const Nav = memo(() => {
         title={tTopic('actions.addNewTopic')}
         onClick={switchToNewTopic}
       />
-      {isAgentEditable && isAccessResolved && canEditContent && canEditResource && (
+      {isAgentEditable &&
+        isAccessResolved &&
+        canEditContent &&
+        canEditResource &&
+        canConfigureGroup && (
         <NavItem
           active={isProfileActive}
           icon={BotPromptIcon}

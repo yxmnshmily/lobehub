@@ -839,6 +839,7 @@ const Controls = ({ variant = 'popover' }: ControlsProps) => {
 
   return (
     <div className={cx(styles.form, variant === 'sidebar' && styles.formSidebar)}>
+      <AntdForm component={false} form={form} />
       <div className={cx(styles.panel, variant === 'sidebar' && styles.sidebarPanel)}>
         <div className={styles.header}>
           <span className={styles.headerTitle}>{panelTitle}</span>

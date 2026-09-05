@@ -4,11 +4,18 @@ import { AgentRuntimeCoordinator } from '../AgentRuntimeCoordinator';
 import { createAgentStateManager, createStreamEventManager } from '../factory';
 import { VISIBLE_OUTPUT_END_PUBLISHED_STEP_INDEX_METADATA_KEY } from '../visibleOutputEnd';
 
+const mocks = vi.hoisted(() => ({
+  completeSharedBudget: vi.fn(),
+}));
+
 // Mock factory module to avoid Redis/env access
 vi.mock('../factory', () => ({
   createAgentStateManager: vi.fn(),
   createStreamEventManager: vi.fn(),
   isRedisAvailable: vi.fn(() => false),
+}));
+vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
+  completePlatformUsageSharedBudgetForOperation: mocks.completeSharedBudget,
 }));
 
 describe('AgentRuntimeCoordinator', () => {
@@ -18,6 +25,7 @@ describe('AgentRuntimeCoordinator', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.completeSharedBudget.mockResolvedValue(true);
 
     mockStateManager = {
       cleanupExpiredOperations: vi.fn(),
@@ -103,6 +111,7 @@ describe('AgentRuntimeCoordinator', () => {
         stepIndex: newState.stepCount,
         uiMessages: undefined,
       });
+      expect(mocks.completeSharedBudget).toHaveBeenCalledWith(operationId);
     });
 
     it('should still publish end event when visible output event publish fails', async () => {
@@ -128,6 +137,7 @@ describe('AgentRuntimeCoordinator', () => {
         stepIndex: newState.stepCount,
         uiMessages: undefined,
       });
+      expect(mocks.completeSharedBudget).toHaveBeenCalledWith(operationId);
     });
 
     it('should publish end event when status changes to error', async () => {
@@ -265,6 +275,7 @@ describe('AgentRuntimeCoordinator', () => {
         stepIndex: 5,
         uiMessages: undefined,
       });
+      expect(mocks.completeSharedBudget).toHaveBeenCalledWith(operationId);
     });
 
     it('should still publish step-result end event when visible output event publish fails', async () => {

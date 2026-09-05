@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => {
   return {
     chainInputCompletion: vi.fn(),
     chatInputState,
+    dispatchEditorCommand: vi.fn(),
     generateJSON: vi.fn(),
     inputCompletionConfig: {
       enabled: false,
@@ -125,7 +126,10 @@ vi.mock('fuse.js', () => ({
     }
   },
 }));
-vi.mock('lexical', () => ({ KEY_ESCAPE_COMMAND: 'escape' }));
+vi.mock('lexical', () => ({
+  INSERT_LINE_BREAK_COMMAND: 'insert-line-break',
+  KEY_ESCAPE_COMMAND: 'escape',
+}));
 vi.mock('react-hotkeys-hook', () => ({
   useHotkeysContext: () => ({
     disableScope: vi.fn(),
@@ -201,7 +205,7 @@ vi.mock('@/store/user/selectors', () => ({
 vi.mock('../hooks/useAgentId', () => ({ useAgentId: () => 'agent-id' }));
 vi.mock('../store', () => {
   const editor = {
-    dispatchCommand: vi.fn(),
+    dispatchCommand: mocks.dispatchEditorCommand,
   };
   const state = {
     disableMention: true,
@@ -295,6 +299,20 @@ describe('ChatInput InputEditor', () => {
     render(<InputEditor />);
 
     expect((await getEditorStyle())?.fontSize).toBeUndefined();
+  });
+
+  it('inserts a line break when plain Tab is pressed', async () => {
+    permission.allowed = true;
+    render(<InputEditor />);
+
+    const { Editor } = await import('@lobehub/editor/react');
+    const props = vi.mocked(Editor).mock.lastCall?.[0] as
+      { onKeyDown?: (payload: { event: KeyboardEvent }) => boolean | undefined } | undefined;
+    const event = new KeyboardEvent('keydown', { cancelable: true, key: 'Tab' });
+
+    expect(props?.onKeyDown?.({ event })).toBe(true);
+    expect(event.defaultPrevented).toBe(true);
+    expect(mocks.dispatchEditorCommand).toHaveBeenCalledWith('insert-line-break', undefined);
   });
 
   it('pauses autocomplete after a non-abort generation error', async () => {

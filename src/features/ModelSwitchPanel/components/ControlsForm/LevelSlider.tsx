@@ -23,6 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     transition: color 0.2s ease;
 
+
     &:hover {
       color: ${cssVar.colorTextSecondary};
     }

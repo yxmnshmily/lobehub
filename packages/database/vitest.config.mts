@@ -30,7 +30,6 @@ export default defineConfig({
       '@/server/services': resolve(__dirname, '../../apps/server/src/services'),
       '@/server/modules': resolve(__dirname, '../../apps/server/src/modules'),
       '@': resolve(__dirname, '../../src'),
-
     },
     coverage: {
       exclude: [

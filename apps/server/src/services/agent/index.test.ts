@@ -720,6 +720,76 @@ describe('AgentService', () => {
     });
   });
 
+  describe('fixed personal agent model defaults', () => {
+    it('keeps the historical user default for an ordinary personal agent', async () => {
+      const mockAgentModel = {
+        getAgentConfigById: vi.fn().mockResolvedValue({ id: 'ordinary-agent' }),
+      };
+      (AgentModel as any).mockImplementation(() => mockAgentModel);
+      (parseAgentConfig as any).mockReturnValue({
+        model: 'platform-model',
+        provider: 'platform-provider',
+      });
+      mockUserModel.getUserSettingsDefaultAgentConfig.mockResolvedValueOnce({
+        config: { model: 'legacy-user-model', provider: 'legacy-user-provider' },
+      });
+
+      const result = await new AgentService(mockDb, mockUserId).getAgentConfigById(
+        'ordinary-agent',
+      );
+
+      expect(result?.model).toBe('legacy-user-model');
+      expect(result?.provider).toBe('legacy-user-provider');
+    });
+
+    it('skips a historical user default for a fixed personal agent', async () => {
+      const mockAgentModel = {
+        getAgentConfigById: vi.fn().mockResolvedValue({
+          agencyConfig: { modelSelectionPolicy: 'fixed' },
+          id: 'travel-copywriter',
+        }),
+      };
+      (AgentModel as any).mockImplementation(() => mockAgentModel);
+      (parseAgentConfig as any).mockReturnValue({
+        model: 'platform-model',
+        provider: 'platform-provider',
+      });
+      mockUserModel.getUserSettingsDefaultAgentConfig.mockResolvedValueOnce({
+        config: { model: 'legacy-user-model', provider: 'legacy-user-provider' },
+      });
+
+      const result = await new AgentService(mockDb, mockUserId).getAgentConfigById(
+        'travel-copywriter',
+      );
+
+      expect(result?.model).toBe('platform-model');
+      expect(result?.provider).toBe('platform-provider');
+    });
+
+    it('lets an explicit fixed member config override the server default', async () => {
+      const mockAgentModel = {
+        getAgentConfigById: vi.fn().mockResolvedValue({
+          agencyConfig: { modelSelectionPolicy: 'fixed' },
+          id: 'travel-designer',
+          model: 'member-image-model',
+          provider: 'member-image-provider',
+        }),
+      };
+      (AgentModel as any).mockImplementation(() => mockAgentModel);
+      (parseAgentConfig as any).mockReturnValue({
+        model: 'platform-model',
+        provider: 'platform-provider',
+      });
+
+      const result = await new AgentService(mockDb, mockUserId).getAgentConfigById(
+        'travel-designer',
+      );
+
+      expect(result?.model).toBe('member-image-model');
+      expect(result?.provider).toBe('member-image-provider');
+    });
+  });
+
   describe('updateAgentConfig', () => {
     it('should throw when the updated agent cannot be read back', async () => {
       const mockAgentModel = {

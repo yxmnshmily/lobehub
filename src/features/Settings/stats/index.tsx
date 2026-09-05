@@ -1,10 +1,11 @@
 'use client';
 
-import { FormGroup, Grid, Icon } from '@lobehub/ui';
+import { Flexbox, FormGroup, Grid, Icon } from '@lobehub/ui';
 import { Tabs } from '@lobehub/ui/base-ui';
 import { ProviderIcon } from '@lobehub/ui/icons';
 import { type DatePickerProps } from 'antd';
 import { DatePicker, Divider } from 'antd';
+import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import { Brain, UserIcon } from 'lucide-react';
 import { memo, type ReactNode, useEffect, useState } from 'react';
@@ -28,6 +29,26 @@ import { AssistantsRank, ModelsRank, TopicsRank } from './features/rankings';
 import { UsageCards, UsageTable, UsageTrends } from './features/usage';
 import { AiHeatmaps } from './features/visualization';
 import { GroupBy, type UserDisplayResolver } from './types';
+
+const styles = createStaticStyles(({ css }) => ({
+  mobile: css`
+    button,
+    input:not([type='hidden']) {
+      min-height: 44px;
+    }
+  `,
+  mobileUsageGroup: css`
+    & > div:first-child {
+      align-items: stretch !important;
+      flex-direction: column !important;
+      gap: 12px;
+    }
+
+    & > div:first-child > div {
+      width: 100%;
+    }
+  `,
+}));
 
 interface StatsSettingProps {
   /**
@@ -56,7 +77,7 @@ const StatsSetting = memo<StatsSettingProps>(
     dayjs.locale(i18n.language);
 
     const [groupBy, setGroupBy] = useState<GroupBy>(GroupBy.Model);
-    const [dateRange, setDateRange] = useState<dayjs.Dayjs>(dayjs(new Date()));
+    const [dateRange, setDateRange] = useState<dayjs.Dayjs>(() => dayjs(new Date()));
     const [dateStrings, setDateStrings] = useState<string>();
 
     const { data, isLoading, error, mutate } = useClientDataSWR(statsKeys.usageStat(), async () =>
@@ -67,7 +88,7 @@ const StatsSetting = memo<StatsSettingProps>(
       if (dateStrings) {
         mutate();
       }
-    }, [dateStrings]);
+    }, [dateStrings, mutate]);
 
     const handleDateChange: DatePickerProps['onChange'] = (dates, dateStrings) => {
       // Handle both single date and array
@@ -81,12 +102,12 @@ const StatsSetting = memo<StatsSettingProps>(
     };
 
     return (
-      <>
+      <div className={mobile ? styles.mobile : undefined}>
         {showSettingHeader && <SettingHeader title={t('tab.stats')} />}
         {/* ========== Header Section ========== */}
         <FormGroup
           collapsible={false}
-          extra={headerNode === undefined ? <ShareButton /> : undefined}
+          extra={headerNode === undefined ? <ShareButton mobile={mobile} /> : undefined}
           gap={16}
           variant={'filled'}
           title={
@@ -113,16 +134,22 @@ const StatsSetting = memo<StatsSettingProps>(
           </Grid>
         </FormGroup>
         <FormGroup
+          className={mobile ? styles.mobileUsageGroup : undefined}
           collapsible={false}
           gap={16}
           title={t('tab.usage')}
           variant={'filled'}
           extra={
-            <>
-              <DatePicker picker="month" value={dateRange} onChange={handleDateChange} />
+            <Flexbox horizontal align={'center'} gap={8} wrap={'wrap'}>
+              <DatePicker
+                picker="month"
+                style={mobile ? { width: '100%' } : undefined}
+                value={dateRange}
+                onChange={handleDateChange}
+              />
               <Tabs
                 activeKey={groupBy}
-                style={{ marginLeft: 8 }}
+                style={{ maxWidth: '100%' }}
                 items={[
                   {
                     icon: <Icon icon={Brain} />,
@@ -146,7 +173,7 @@ const StatsSetting = memo<StatsSettingProps>(
                 ]}
                 onChange={(key) => setGroupBy(key as GroupBy)}
               />
-            </>
+            </Flexbox>
           }
           styles={{
             title: { lineHeight: '35px' },
@@ -170,7 +197,7 @@ const StatsSetting = memo<StatsSettingProps>(
           <div style={{ height: 24 }} />
           <UsageTable dateStrings={dateStrings} />
         </FormGroup>
-      </>
+      </div>
     );
   },
 );

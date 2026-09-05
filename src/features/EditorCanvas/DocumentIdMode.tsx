@@ -11,6 +11,8 @@ import AsyncError from '@/components/AsyncError';
 import { useSaveDocumentHotkey } from '@/hooks/useHotkeys';
 import { useDocumentStore } from '@/store/document';
 import { editorSelectors } from '@/store/document/slices/editor';
+import { pageSelectors, usePageStore } from '@/store/page';
+import { isSkillMarkdownDocument } from '@/utils/skillMarkdown';
 
 import { type EditorCanvasProps } from './EditorCanvas';
 import InternalEditor from './InternalEditor';
@@ -53,13 +55,19 @@ const DocumentIdMode = memo<DocumentIdModeProps>(
     storeUpdater('editor', editor);
 
     // Get document store actions
-    const [onEditorInit, handleContentChangeStore, useFetchDocument, performSave] =
-      useDocumentStore((s) => [
-        s.onEditorInit,
-        s.handleContentChange,
-        s.useFetchDocument,
-        s.performSave,
-      ]);
+    const [
+      onEditorInit,
+      handleContentChangeStore,
+      initDocumentWithEditor,
+      useFetchDocument,
+      performSave,
+    ] = useDocumentStore((s) => [
+      s.onEditorInit,
+      s.handleContentChange,
+      s.initDocumentWithEditor,
+      s.useFetchDocument,
+      s.performSave,
+    ]);
 
     const handleManualSave = useCallback(async () => {
       handleContentChangeStore();
@@ -91,6 +99,9 @@ const DocumentIdMode = memo<DocumentIdModeProps>(
     });
     const remoteDocumentUpdatedAt = remoteDocument?.updatedAt;
     const remoteDocumentVersion = remoteDocumentUpdatedAt?.toISOString();
+    const isLocallyKnownPage = usePageStore(
+      (state) => sourceType === 'page' && !!pageSelectors.getDocumentById(documentId)(state),
+    );
 
     // Check loading state via selector (document not yet in store)
     const isLoading = useDocumentStore(editorSelectors.isDocumentLoading(documentId));
@@ -129,10 +140,68 @@ const DocumentIdMode = memo<DocumentIdModeProps>(
     const isEditorInitialized = !!editor?.getLexicalEditor();
     const contentChangeLockRef = useRef(false);
     const initRunIdRef = useRef(0);
+    const nullRetryAttemptedForIdRef = useRef<string | undefined>(undefined);
 
     // Track which documentId has already had onEditorInit called
     const initializedDocIdRef = useRef<string | null>(null);
     const hydratedVersionRef = useRef<string | undefined>(undefined);
+
+    // `useClientDataSWRWithSync` normally mirrors a fetched document into the
+    // document store through its `onData` callback. During a quick key switch,
+    // however, SWR can expose the new cached response for one render before the
+    // sync guard resets. Recover from that missed callback here so a valid page
+    // cannot remain behind the loading skeleton forever.
+    useEffect(() => {
+      if (!editor || !remoteDocument || remoteDocument.id !== documentId || !isLoading) return;
+
+      const activeDocumentId = useDocumentStore.getState().activeDocumentId;
+      if (activeDocumentId && activeDocumentId !== documentId) return;
+      // The SWR sync effect runs before this component effect. Re-read the
+      // current store so a selector value captured during render cannot cause
+      // the same document to be initialized twice.
+      if (useDocumentStore.getState().documents[documentId]) return;
+
+      initDocumentWithEditor({
+        autoSave,
+        content: remoteDocument.content,
+        contentFormat: isSkillMarkdownDocument(remoteDocument) ? 'skillMarkdown' : 'markdown',
+        documentId,
+        editor,
+        editorData: remoteDocument.editorData,
+        sourceType,
+        topicId: topicId ?? undefined,
+      });
+
+      if (sourceType === 'page') {
+        usePageStore.getState().upsertDocument(remoteDocument);
+      }
+    }, [
+      autoSave,
+      documentId,
+      editor,
+      initDocumentWithEditor,
+      isLoading,
+      remoteDocument,
+      sourceType,
+      topicId,
+    ]);
+
+    // A freshly-created page may be visible in the local list just before its
+    // detail read becomes consistent. Retry that null result once, then stop
+    // and expose the normal recoverable error action. The id-scoped ref keeps
+    // rerenders from turning this into an unbounded request loop.
+    useEffect(() => {
+      if (
+        sourceType !== 'page' ||
+        remoteDocument !== null ||
+        !isLocallyKnownPage ||
+        nullRetryAttemptedForIdRef.current === documentId
+      )
+        return;
+
+      nullRetryAttemptedForIdRef.current = documentId;
+      void mutate();
+    }, [documentId, isLocallyKnownPage, mutate, remoteDocument, sourceType]);
 
     // Critical fix: if the editor is already initialized, we need to manually call onEditorInit
     // because the onInit callback only fires on the first editor initialization
@@ -205,6 +274,21 @@ const DocumentIdMode = memo<DocumentIdModeProps>(
           {unsavedGuardNode}
           <AsyncError
             error={error}
+            variant={'page'}
+            onRetry={() => {
+              void mutate();
+            }}
+          />
+        </>
+      );
+    }
+
+    if (remoteDocument === null && sourceType === 'page' && isLocallyKnownPage) {
+      return (
+        <>
+          {unsavedGuardNode}
+          <AsyncError
+            error={new Error('Document is temporarily unavailable')}
             variant={'page'}
             onRetry={() => {
               void mutate();

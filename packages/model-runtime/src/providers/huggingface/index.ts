@@ -109,8 +109,7 @@ export const params = {
             : model.id;
 
         const pricing = getFieldFromProviders('pricing') as
-          | { input?: number; output?: number }
-          | undefined;
+          { input?: number; output?: number } | undefined;
 
         return {
           contextWindowTokens,

@@ -260,7 +260,7 @@ export const useErrorContent = (error: any) => {
 interface ErrorExtraProps {
   data: ErrorMessageData;
   error?: AlertProps;
-  onRegenerate?: () => void;
+  onRegenerate?: () => Promise<void> | void;
   /**
    * Stable scope key for the overloaded auto-retry counter (the parent user
    * message id). The group surface must pass it explicitly because its
@@ -315,21 +315,20 @@ const ErrorMessageExtra = memo<ErrorExtraProps>(
     const handleRetryAgentMessage = useCallback(() => {
       if (!canRetry) return;
       if (onRegenerate) {
-        onRegenerate();
-        return;
+        return onRegenerate();
       }
       // Replace the failed attempt in place (delete-first, then regenerate) so
       // a transient overload/auto-retry doesn't pollute history with sibling
       // branches. Regenerate-first would switch the branch away before the
       // delete, leaving the failed attempt behind on each retry.
-      void delAndRegenerateMessage(data.id);
+      return delAndRegenerateMessage(data.id);
     }, [canRetry, data.id, delAndRegenerateMessage, onRegenerate]);
 
     // A human-initiated retry restarts the auto-retry budget so the user isn't
     // stuck on the manual card after the cap was reached automatically.
     const handleManualRetry = useCallback(() => {
       if (resolvedScopeId) resetHeteroOverloadRetry(resolvedScopeId);
-      handleRetryAgentMessage();
+      return handleRetryAgentMessage();
     }, [handleRetryAgentMessage, resetHeteroOverloadRetry, resolvedScopeId]);
 
     // Business cards get the surface-resolved retry rather than deriving one

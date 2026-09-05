@@ -14,6 +14,8 @@ import { WorkspaceAuditLogModel } from '@/database/models/workspaceAuditLog';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const apiKeyScopesSchema = z
   .array(z.string().refine(isValidApiKeyScope, { message: 'Unknown API key scope' }))
   .min(1)
@@ -44,6 +46,8 @@ const apiKeyProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
   });
 });
 
+const apiKeyWriteProcedure = apiKeyProcedure.use(requirePlatformAdmin);
+
 const recordApiKeyAudit = async (
   ctx: {
     clientIp?: string | null;
@@ -71,7 +75,7 @@ const recordApiKeyAudit = async (
 };
 
 export const apiKeyRouter = router({
-  createApiKey: apiKeyProcedure
+  createApiKey: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:create'))
     .input(
       z.object({
@@ -111,7 +115,7 @@ export const apiKeyRouter = router({
       return result;
     }),
 
-  deleteAllApiKeys: apiKeyProcedure
+  deleteAllApiKeys: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:delete'))
     .mutation(async ({ ctx }) => {
       const deleted = await ctx.apiKeyModel.deleteAll();
@@ -127,7 +131,7 @@ export const apiKeyRouter = router({
       return deleted;
     }),
 
-  deleteApiKey: apiKeyProcedure
+  deleteApiKey: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:delete'))
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -143,7 +147,7 @@ export const apiKeyRouter = router({
       return result;
     }),
 
-  getApiKey: apiKeyProcedure
+  getApiKey: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:read'))
     .input(z.object({ apiKey: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -153,7 +157,7 @@ export const apiKeyRouter = router({
       return safeApiKey;
     }),
 
-  getApiKeyById: apiKeyProcedure
+  getApiKeyById: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:read'))
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -164,11 +168,13 @@ export const apiKeyRouter = router({
       return safeApiKey;
     }),
 
-  getApiKeys: apiKeyProcedure.use(withScopedPermission('api_key:read')).query(async ({ ctx }) => {
-    return ctx.apiKeyModel.query();
-  }),
+  getApiKeys: apiKeyWriteProcedure
+    .use(withScopedPermission('api_key:read'))
+    .query(async ({ ctx }) => {
+      return ctx.apiKeyModel.query();
+    }),
 
-  updateApiKey: apiKeyProcedure
+  updateApiKey: apiKeyWriteProcedure
     .use(withScopedPermission('api_key:update'))
     .input(
       z.object({

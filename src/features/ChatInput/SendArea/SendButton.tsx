@@ -1,6 +1,9 @@
 import { SendButton as Send } from '@lobehub/editor/react';
-import { Tooltip } from '@lobehub/ui';
+import { Flexbox, Tooltip } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
+import { Dropdown } from 'antd';
 import isEqual from 'fast-deep-equal';
+import { ChevronDownIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,6 +15,7 @@ import { selectors, useChatInputStore } from '../store';
 const SendButton = memo(() => {
   const { t } = useTranslation('setting');
   const sendMenu = useChatInputStore((s) => s.sendMenu);
+  const mobile = useChatInputStore((s) => s.mobile);
   const shape = useChatInputStore((s) => s.sendButtonProps?.shape);
   const size = useChatInputStore((s) => s.sendButtonProps?.size);
   const { generating, disabled } = useChatInputStore(selectors.sendButtonProps, isEqual);
@@ -27,19 +31,35 @@ const SendButton = memo(() => {
   const { canUseResource } = useChatInputResourceAccess();
   const viewOnly = !canUseResource;
   const canSend = canCreate && !viewOnly;
+  const sendLabel = t('send', { ns: 'common' });
+  const sendOptionsLabel = t('more', { ns: 'common' });
+  const isDisabled = disabled || !canSend;
+  const controlSize = size ?? (mobile ? 44 : 32);
 
   const button = (
-    <Send
-      disabled={disabled || !canSend}
-      generating={generating}
-      menu={canSend ? (sendMenu as any) : undefined}
-      placement={'topRight'}
-      shape={shape}
-      size={size}
-      trigger={['hover']}
-      onClick={generating || !canSend ? undefined : () => send()}
-      onStop={() => handleStop()}
-    />
+    <Flexbox horizontal align={'center'} gap={0}>
+      <Send
+        aria-label={generating ? t('stop', { ns: 'common' }) : sendLabel}
+        disabled={isDisabled}
+        generating={generating}
+        shape={shape}
+        size={controlSize}
+        title={generating ? t('stop', { ns: 'common' }) : sendLabel}
+        onClick={generating || !canSend ? undefined : () => send()}
+        onStop={() => handleStop()}
+      />
+      {!generating && canSend && sendMenu && (
+        <Dropdown disabled={isDisabled} menu={sendMenu} placement={'topRight'} trigger={['click']}>
+          <ActionIcon
+            aria-label={sendOptionsLabel}
+            disabled={isDisabled}
+            icon={ChevronDownIcon}
+            size={{ blockSize: controlSize, size: 16 }}
+            title={sendOptionsLabel}
+          />
+        </Dropdown>
+      )}
+    </Flexbox>
   );
 
   if (!canCreate) return <Tooltip title={reason}>{button}</Tooltip>;

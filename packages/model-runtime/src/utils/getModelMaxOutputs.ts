@@ -1,4 +1,4 @@
-import  { type AiFullModelCard } from 'model-bank';
+import { type AiFullModelCard } from 'model-bank';
 
 /**
  * Get the max outputs for a specific model from the provider's model list

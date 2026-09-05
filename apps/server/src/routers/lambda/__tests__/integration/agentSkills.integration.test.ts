@@ -22,6 +22,13 @@ vi.mock('@/database/core/db-adaptor', () => ({
   getServerDB: vi.fn(() => testDB),
 }));
 
+// Route authorization is covered by platformAdmin.router.test.ts. These
+// integration cases exercise skill persistence and isolation as an authorized
+// platform administrator.
+vi.mock('../../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => opts.next(),
+}));
+
 // Mock FileService to avoid S3 dependency
 vi.mock('@/server/services/file', () => ({
   FileService: vi.fn().mockImplementation(() => ({

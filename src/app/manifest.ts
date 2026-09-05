@@ -5,17 +5,17 @@ const manifest = async (): Promise<MetadataRoute.Manifest> => {
   if (process.env.NODE_ENV === 'development') {
     return {
       background_color: '#000000',
-      description: 'LobeHub Development',
+      description: '旅游群网开发环境',
       display: 'standalone',
       icons: [
         {
-          sizes: '192x192',
-          src: '/app-icons/icon-192x192.png',
+          sizes: 'any',
+          src: '/lobehub/app-icons/travel-cloud-mascot.png',
           type: 'image/png',
         },
       ],
-      name: 'LobeHub',
-      short_name: 'LobeHub',
+      name: '旅游群网',
+      short_name: '旅游群网',
       start_url: '/',
       theme_color: '#000000',
     };
@@ -31,28 +31,36 @@ const manifest = async (): Promise<MetadataRoute.Manifest> => {
   // @ts-expect-error - manifestModule.generate returns extended manifest with custom properties
   return manifestModule.generate({
     description: `${BRANDING_NAME} is a work-and-lifestyle space to find, build, and collaborate with agent teams that grow with you.`,
-    icons: [
-      {
-        purpose: 'any',
-        sizes: '192x192',
-        url: '/app-icons/icon-192x192.png',
-      },
-      {
-        purpose: 'maskable',
-        sizes: '192x192',
-        url: '/app-icons/icon-192x192.maskable.png',
-      },
-      {
-        purpose: 'any',
-        sizes: '512x512',
-        url: '/app-icons/icon-512x512.png',
-      },
-      {
-        purpose: 'maskable',
-        sizes: '512x512',
-        url: '/app-icons/icon-512x512.maskable.png',
-      },
-    ],
+    icons: BRANDING_LOGO_URL
+      ? [
+          {
+            purpose: 'any',
+            sizes: 'any',
+            url: BRANDING_LOGO_URL,
+          },
+        ]
+      : [
+          {
+            purpose: 'any',
+            sizes: '192x192',
+            url: '/app-icons/icon-192x192.png',
+          },
+          {
+            purpose: 'maskable',
+            sizes: '192x192',
+            url: '/app-icons/icon-192x192.maskable.png',
+          },
+          {
+            purpose: 'any',
+            sizes: '512x512',
+            url: '/app-icons/icon-512x512.png',
+          },
+          {
+            purpose: 'maskable',
+            sizes: '512x512',
+            url: '/app-icons/icon-512x512.maskable.png',
+          },
+        ],
     id: kebabCase(BRANDING_NAME),
     name: BRANDING_NAME,
     screenshots: BRANDING_LOGO_URL

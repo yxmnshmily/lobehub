@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { ActionIcon, confirmModal, toast } from '@lobehub/ui/base-ui';
-import { cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { BookMinusIcon, FileBoxIcon, Trash2Icon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +26,21 @@ import ViewSwitcher from '../ToolBar/ViewSwitcher';
 import Breadcrumb from './Breadcrumb';
 import SearchInput from './SearchInput';
 
+const styles = createStaticStyles(({ css }) => ({
+  mobileActions: css`
+    button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  `,
+}));
+
 /**
  * Toolbar for the resource explorer
  */
 const Header = memo(() => {
   const { t } = useTranslation(['components', 'common', 'file', 'knowledgeBase']);
+  const { mobile = false } = useResponsive();
 
   const activeWorkspaceId = useActiveWorkspaceId();
 
@@ -188,28 +198,54 @@ const Header = memo(() => {
     </Flexbox>
   );
 
+  const rightContent = (
+    <>
+      {/*
+        Grid view carries the source chips on its item-count row (where the
+        count and the pool it counts belong together). The list view has no
+        such row — its header is a horizontally scrolling column strip — so
+        the chips live here instead, and a standing filter stays visible in
+        both views.
+      */}
+      {viewMode === 'list' && !mobile && <SourceFilter />}
+      <SearchInput mobile={mobile} />
+      <SortDropdown />
+      <BatchActionsDropdown selectCount={selectCount} onActionClick={onActionClick} />
+      {!mobile && <ViewSwitcher />}
+      <Flexbox style={{ marginLeft: 8 }}>
+        <AddButton />
+      </Flexbox>
+    </>
+  );
+
+  if (mobile) {
+    return (
+      <Flexbox
+        gap={8}
+        padding={8}
+        style={{ borderBottom: `1px solid ${cssVar.colorBorderSecondary}` }}
+      >
+        <Flexbox horizontal align="center" minWidth={0}>
+          {leftContent}
+        </Flexbox>
+        <Flexbox
+          horizontal
+          align="center"
+          className={styles.mobileActions}
+          gap={4}
+          justify="flex-end"
+          style={{ flexWrap: 'wrap', minWidth: 0 }}
+        >
+          {rightContent}
+        </Flexbox>
+      </Flexbox>
+    );
+  }
+
   return (
     <NavHeader
       left={leftContent}
-      right={
-        <>
-          {/*
-            Grid view carries the source chips on its item-count row (where the
-            count and the pool it counts belong together). The list view has no
-            such row — its header is a horizontally scrolling column strip — so
-            the chips live here instead, and a standing filter stays visible in
-            both views.
-          */}
-          {viewMode === 'list' && <SourceFilter />}
-          <SearchInput />
-          <SortDropdown />
-          <BatchActionsDropdown selectCount={selectCount} onActionClick={onActionClick} />
-          <ViewSwitcher />
-          <Flexbox style={{ marginLeft: 8 }}>
-            <AddButton />
-          </Flexbox>
-        </>
-      }
+      right={rightContent}
       style={{
         borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
       }}

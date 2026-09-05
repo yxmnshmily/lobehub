@@ -23,6 +23,11 @@ const mockRestorePersonaVersion = vi.fn();
 const { mockTriggerProcessUsers } = vi.hoisted(() => ({
   mockTriggerProcessUsers: vi.fn(),
 }));
+const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
+
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
+}));
 
 vi.mock('@/database/models/asyncTask', () => ({
   AsyncTaskModel: vi.fn(() => ({
@@ -93,6 +98,10 @@ const createCaller = (ctxOverrides: Partial<any> = {}) => {
 
   return userMemoryRouter.createCaller(ctx);
 };
+
+beforeEach(() => {
+  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
+});
 
 describe('userMemoryRouter.requestMemoryFromChatTopic', () => {
   beforeEach(() => {
@@ -316,6 +325,17 @@ describe('userMemoryRouter.getMemoryExtractionTask', () => {
 describe('userMemoryRouter.deleteAll', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('rejects memory deletion from an ordinary customer', async () => {
+    mockDeleteAll.mockResolvedValue(undefined);
+    mockDeletePersona.mockResolvedValue(undefined);
+    mockResetMemoryExtractStatus.mockResolvedValue(undefined);
+    mockPlatformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    await expect(createCaller().deleteAll()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('purges all user memories through the aggregate model', async () => {

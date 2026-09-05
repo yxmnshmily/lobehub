@@ -1,4 +1,5 @@
 import type { LobeChatDatabase } from '@lobechat/database';
+import { BRANDING_NAME } from '@lobechat/business-const';
 import debug from 'debug';
 import type { Configuration, KoaContextWithOIDC } from 'oidc-provider';
 import Provider, { errors } from 'oidc-provider';
@@ -36,6 +37,19 @@ export const oidcArtifactTTL = {
   RefreshToken: 30 * DAY_SECONDS,
   Session: 30 * DAY_SECONDS,
 } satisfies NonNullable<Configuration['ttl']>;
+
+export const renderOIDCErrorPage = (out: unknown, error: unknown) => `
+        <html>
+          <head>
+            <title>${BRANDING_NAME} OIDC Error</title>
+          </head>
+          <body>
+            <h1>${BRANDING_NAME} OIDC Error</h1>
+            <p>${JSON.stringify(error, null, 2)}</p>
+            <p>${JSON.stringify(out, null, 2)}</p>
+          </body>
+        </html>
+      `;
 
 /**
  * Create OIDC Provider instance
@@ -281,18 +295,7 @@ export const createOIDCProvider = async (db: LobeChatDatabase): Promise<Provider
     // 12. Other configuration
     renderError: async (ctx, out, error) => {
       ctx.type = 'html';
-      ctx.body = `
-        <html>
-          <head>
-            <title>LobeHub OIDC Error</title>
-          </head>
-          <body>
-            <h1>LobeHub OIDC Error</h1>
-            <p>${JSON.stringify(error, null, 2)}</p>
-            <p>${JSON.stringify(out, null, 2)}</p>
-          </body>
-        </html>
-      `;
+      ctx.body = renderOIDCErrorPage(out, error);
     },
 
     // Added: enable refresh token rotation

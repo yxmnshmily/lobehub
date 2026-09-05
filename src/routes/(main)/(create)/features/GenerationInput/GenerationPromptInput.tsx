@@ -2,7 +2,7 @@
 
 import { ChatInput, ChatInputActionBar, SendButton } from '@lobehub/editor/react';
 import { Flexbox, TextArea } from '@lobehub/ui';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { memo } from 'react';
 
@@ -27,7 +27,17 @@ interface GenerationPromptInputProps {
   value?: string;
 }
 
-const styles = createStaticStyles(({ css, cssVar }) => ({
+const styles = createStaticStyles(({ css }) => ({
+  mobileActionScroller: css`
+    scrollbar-width: none;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
   textarea: css`
     padding: 0;
     border-radius: 0;
@@ -42,7 +52,6 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
     inlineContent,
     leftActions,
     rightActions,
-    isDarkMode,
     isCreating,
     value,
     onValueChange,
@@ -55,6 +64,7 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
     minRows = 3,
     maxRows = 6,
   }) => {
+    const { mobile = false } = useResponsive();
     const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return;
 
@@ -112,6 +122,7 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
                 <SendButton
                   disabled={disabled || disableGenerate || !value}
                   loading={isCreating}
+                  style={mobile ? { flex: '0 0 44px', height: 44, width: 44 } : undefined}
                   title={isCreating ? generatingLabel : generateLabel}
                   onClick={() => {
                     if (disabled) return;
@@ -122,14 +133,15 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
               </Flexbox>
             </Flexbox>
           ) : (
-            <ChatInputActionBar
-              left={leftActions}
-              right={
-                <Flexbox horizontal align={'center'} gap={8}>
+            mobile ? (
+              <Flexbox gap={4} padding={4} width={'100%'}>
+                <div className={styles.mobileActionScroller}>{leftActions}</div>
+                <Flexbox horizontal align={'center'} gap={8} justify={'flex-end'} width={'100%'}>
                   {rightActions}
                   <SendButton
                     disabled={disabled || disableGenerate || !value}
                     loading={isCreating}
+                    style={{ flex: '0 0 44px', height: 44, width: 44 }}
                     title={isCreating ? generatingLabel : generateLabel}
                     onClick={() => {
                       if (disabled) return;
@@ -138,8 +150,27 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
                     }}
                   />
                 </Flexbox>
-              }
-            />
+              </Flexbox>
+            ) : (
+              <ChatInputActionBar
+                left={leftActions}
+                right={
+                  <Flexbox horizontal align={'center'} gap={8}>
+                    {rightActions}
+                    <SendButton
+                      disabled={disabled || disableGenerate || !value}
+                      loading={isCreating}
+                      title={isCreating ? generatingLabel : generateLabel}
+                      onClick={() => {
+                        if (disabled) return;
+
+                        onGenerate();
+                      }}
+                    />
+                  </Flexbox>
+                }
+              />
+            )
           )
         }
       >

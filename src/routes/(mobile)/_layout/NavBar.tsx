@@ -69,11 +69,12 @@ const NavBar = memo(() => {
           title: t('tab.me'),
         },
       ].filter(Boolean) as TabBarProps['items'],
-    [t],
+    [navigate, showMarket, t],
   );
 
   return (
     <TabBar
+      safeArea
       activeKey={activeKey}
       className={styles.container}
       height={MOBILE_TABBAR_HEIGHT}

@@ -29,11 +29,16 @@ import {
 } from '@/server/services/workspacePermission';
 import { KnowledgeType } from '@/types/knowledgeBase';
 
+import { hasActivePlatformAdminAccess } from '../_helpers/platformAdminGuard';
 import { agentRouter } from '../agent';
 
 vi.mock('@/server/services/resourceEvents', () => ({ publishResourceEvent: vi.fn() }));
 vi.mock('../_helpers/workspaceAgentGuard', () => ({
   getWorkspaceAgentParentGroupIds: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  hasActivePlatformAdminAccess: vi.fn().mockResolvedValue(true),
+  requirePlatformAdmin: vi.fn((opts: any) => opts.next()),
 }));
 
 const publishResourceEventMock = vi.mocked(publishResourceEvent);
@@ -194,6 +199,8 @@ describe('agentRouter', () => {
 
     agentServiceMock = {
       createInbox: vi.fn(),
+      getAgentConfig: vi.fn(),
+      getBuiltinAgent: vi.fn(),
     };
     vi.mocked(AgentService).mockImplementation(() => agentServiceMock);
 
@@ -235,6 +242,43 @@ describe('agentRouter', () => {
       expect(result).toEqual(DEFAULT_AGENT_CONFIG);
     });
 
+    it('does not create a shared workspace inbox from a query for an ordinary member', async () => {
+      vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(false);
+      vi.mocked(UserModel.findById).mockResolvedValue({ id: userId } as any);
+      sessionModelMock.findByIdOrSlug.mockResolvedValue(undefined);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        role: 'super_admin',
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getAgentConfig({ sessionId: INBOX_SESSION_ID });
+
+      expect(result).toEqual(DEFAULT_AGENT_CONFIG);
+      expect(agentServiceMock.createInbox).not.toHaveBeenCalled();
+    });
+
+    it('keeps workspace inbox initialization available to an active platform administrator', async () => {
+      vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(true);
+      vi.mocked(UserModel.findById).mockResolvedValue({ id: userId } as any);
+      sessionModelMock.findByIdOrSlug
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({ id: 'workspace-inbox' });
+      agentModelMock.findBySessionId.mockResolvedValue(DEFAULT_AGENT_CONFIG);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        role: 'super_admin',
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getAgentConfig({ sessionId: INBOX_SESSION_ID });
+
+      expect(result).toEqual(DEFAULT_AGENT_CONFIG);
+      expect(agentServiceMock.createInbox).toHaveBeenCalledOnce();
+    });
+
     it('should find agent by session id if session exists', async () => {
       const mockSession = { id: 'session1' };
       sessionModelMock.findByIdOrSlug.mockResolvedValue(mockSession);
@@ -245,6 +289,64 @@ describe('agentRouter', () => {
 
       expect(agentModelMock.findBySessionId).toHaveBeenCalledWith('session1');
       expect(result).toEqual(DEFAULT_AGENT_CONFIG);
+    });
+  });
+
+  describe('getBuiltinAgent', () => {
+    it('uses a read-only lookup for an ordinary workspace member', async () => {
+      vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(false);
+      agentServiceMock.getAgentConfig.mockResolvedValue(null);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        role: 'super_admin',
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getBuiltinAgent({ slug: 'onboarding-understanding' });
+
+      expect(result).toBeNull();
+      expect(agentServiceMock.getAgentConfig).toHaveBeenCalledWith('onboarding-understanding');
+      expect(agentServiceMock.getBuiltinAgent).not.toHaveBeenCalled();
+    });
+
+    it('keeps personal builtin lazy initialization', async () => {
+      agentServiceMock.getBuiltinAgent.mockResolvedValue(null);
+
+      const caller = agentRouter.createCaller(mockCtx);
+      const result = await caller.getBuiltinAgent({ slug: INBOX_SESSION_ID });
+
+      expect(result).toBeNull();
+      expect(agentServiceMock.getBuiltinAgent).toHaveBeenCalledWith(INBOX_SESSION_ID);
+    });
+
+    it('keeps workspace builtin initialization available to an active platform administrator', async () => {
+      vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(true);
+      agentServiceMock.getBuiltinAgent.mockResolvedValue(null);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getBuiltinAgent({ slug: 'onboarding-understanding' });
+
+      expect(result).toBeNull();
+      expect(agentServiceMock.getBuiltinAgent).toHaveBeenCalledWith('onboarding-understanding');
+      expect(agentServiceMock.getAgentConfig).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown builtin slug without touching the agent service', async () => {
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getBuiltinAgent({ slug: 'unknown-agent' });
+
+      expect(result).toBeNull();
+      expect(agentServiceMock.getAgentConfig).not.toHaveBeenCalled();
+      expect(agentServiceMock.getBuiltinAgent).not.toHaveBeenCalled();
     });
   });
 
@@ -276,9 +378,6 @@ describe('agentRouter', () => {
       expect(result).toEqual({
         avatar: 'avatar.png',
         id: 'agent-1',
-        // The model identity is part of the safe profile surface: use-only
-        // members see (and under `member` policy, switch) the model in chat.
-        model: 'private-model',
         openingMessage: 'Hello',
         title: 'Public title',
         userId: 'creator-1',

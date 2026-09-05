@@ -18,7 +18,7 @@ assert_contains() {
 }
 
 mkdir -p "$TEST_TMP/bin"
-cat > "$TEST_TMP/bin/agent-browser" <<'SH'
+cat > "$TEST_TMP/bin/agent-browser" << 'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 

@@ -10,10 +10,7 @@ import {
 import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
-import {
-  requireWorkspaceRoleWhenScoped,
-  wsCompatProcedure,
-} from '@/business/server/trpc-middlewares/workspaceAuth';
+import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AiModelModel } from '@/database/models/aiModel';
 import { UserModel } from '@/database/models/user';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
@@ -23,6 +20,8 @@ import { getServerGlobalConfig } from '@/server/globalConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { getUserScopedAiProviderModelList } from '@/server/services/aiProviderAccess';
 import { type ProviderConfig } from '@/types/user/settings';
+
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 const AI_MODEL_UNIQUE_CONSTRAINT = 'ai_models_id_provider_id_user_id_pk';
 
@@ -70,8 +69,10 @@ const aiModelProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) 
   });
 });
 
+const platformAiModelProcedure = aiModelProcedure.use(requirePlatformAdmin);
+
 export const aiModelRouter = router({
-  batchToggleAiModels: aiModelProcedure
+  batchToggleAiModels: platformAiModelProcedure
     .use(withScopedPermission('ai_model:update'))
     .input(
       z.object({
@@ -83,7 +84,7 @@ export const aiModelRouter = router({
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.batchToggleAiModels(input.id, input.models, input.enabled);
     }),
-  batchUpdateAiModels: aiModelProcedure
+  batchUpdateAiModels: platformAiModelProcedure
     .use(withScopedPermission('ai_model:update'))
     .input(
       z.object({
@@ -96,25 +97,22 @@ export const aiModelRouter = router({
       return ctx.aiModelModel.batchUpdateAiModels(input.id, input.models);
     }),
 
-  // Model deletes are workspace-wide at the model layer (no per-user narrowing),
-  // so they are Admin-or-higher in workspace mode, matching the provider
-  // settings UI. Per-caller upserts (toggle/update/order) stay member-accessible.
-  clearModelsByProvider: aiModelProcedure
+  // Model deletes are workspace-wide at the model layer. Platform-admin and
+  // workspace-admin checks are intentionally cumulative.
+  clearModelsByProvider: platformAiModelProcedure
     .use(withScopedPermission('ai_model:delete'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.clearModelsByProvider(input.providerId);
     }),
-  clearRemoteModels: aiModelProcedure
+  clearRemoteModels: platformAiModelProcedure
     .use(withScopedPermission('ai_model:delete'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.clearRemoteModels(input.providerId);
     }),
 
-  createAiModel: aiModelProcedure
+  createAiModel: platformAiModelProcedure
     .use(withScopedPermission('ai_model:create'))
     .input(CreateAiModelSchema)
     .mutation(async ({ input, ctx }) => {
@@ -149,7 +147,7 @@ export const aiModelRouter = router({
       }
     }),
 
-  getAiModelById: aiModelProcedure
+  getAiModelById: platformAiModelProcedure
     .input(z.object({ id: z.string() }))
 
     .query(async ({ input, ctx }) => {
@@ -188,22 +186,21 @@ export const aiModelRouter = router({
       );
     }),
 
-  removeAiModel: aiModelProcedure
+  removeAiModel: platformAiModelProcedure
     .use(withScopedPermission('ai_model:delete'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(z.object({ id: z.string(), providerId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.delete(input.id, input.providerId);
     }),
 
-  toggleModelEnabled: aiModelProcedure
+  toggleModelEnabled: platformAiModelProcedure
     .use(withScopedPermission('ai_model:update'))
     .input(ToggleAiModelEnableSchema)
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.toggleModelEnabled(input);
     }),
 
-  updateAiModel: aiModelProcedure
+  updateAiModel: platformAiModelProcedure
     .use(withScopedPermission('ai_model:update'))
     .input(
       z.object({
@@ -216,12 +213,10 @@ export const aiModelRouter = router({
       return ctx.aiModelModel.update(input.id, input.providerId, input.value);
     }),
 
-  // Intentionally NOT gated by `ai_model:update`: this writes a personal
-  // preference (scoped by userId with workspaceId NULL, see
-  // AiModelModel.updateModelReasoningConfig), so workspace members without the
-  // shared model-management permission must still be able to save it. Matches
-  // the ungated getAiModelReasoningConfig read above.
-  updateAiModelReasoningConfig: aiModelProcedure
+  // The row is user-scoped, but it still changes model behavior. Customer
+  // accounts may invoke the configured platform models; only platform admins
+  // may change model settings.
+  updateAiModelReasoningConfig: platformAiModelProcedure
     .input(
       z.object({
         id: z.string(),
@@ -233,7 +228,7 @@ export const aiModelRouter = router({
       return ctx.aiModelModel.updateModelReasoningConfig(input.id, input.providerId, input.value);
     }),
 
-  updateAiModelOrder: aiModelProcedure
+  updateAiModelOrder: platformAiModelProcedure
     .use(withScopedPermission('ai_model:update'))
     .input(
       z.object({

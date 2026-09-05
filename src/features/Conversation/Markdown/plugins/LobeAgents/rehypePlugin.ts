@@ -29,9 +29,9 @@ function rehypeLobeAgents() {
           };
 
           // P1 fix: preserve any trailing siblings in the paragraph
-          const remainingChildren = node.children.slice(1).filter(
-            (c: any) => !(c.type === 'raw' && c.value.startsWith('</')),
-          );
+          const remainingChildren = node.children
+            .slice(1)
+            .filter((c: any) => !(c.type === 'raw' && c.value.startsWith('</')));
 
           if (remainingChildren.length > 0) {
             const remainingP = { ...node, children: remainingChildren };

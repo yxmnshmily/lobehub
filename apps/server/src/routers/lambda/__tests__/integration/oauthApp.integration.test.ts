@@ -13,6 +13,13 @@ vi.mock('@/database/core/db-adaptor', () => ({
   getServerDB: vi.fn(() => testDB),
 }));
 
+// Route authorization is covered by platformAdmin.router.test.ts. These
+// integration cases exercise OAuth app persistence and scope isolation as an
+// authorized platform administrator.
+vi.mock('../../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => opts.next(),
+}));
+
 describe('OAuth app router integration', () => {
   const userId = 'oauth-app-router-user';
   const memberId = 'oauth-app-router-member';

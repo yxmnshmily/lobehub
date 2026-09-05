@@ -1,4 +1,4 @@
-import { CREDITS_PER_DOLLAR } from '@lobechat/const/currency';
+import { CREDITS_PER_DOLLAR, USD_TO_CNY } from '@lobechat/const/currency';
 import debug from 'debug';
 import type { FixedPricingUnit, LookupPricingUnit, Pricing } from 'model-bank';
 
@@ -15,7 +15,7 @@ export interface ImageCostResult {
   breakdown?: {
     imageCount: number;
     lookupKey?: string;
-    pricePerImage: number; // Price per image in USD
+    pricePerImage: number; // Price per image in the model catalog currency
   };
   totalCost: number; // Total cost in USD
   totalCredits: number; // Total credits (USD * CREDITS_PER_DOLLAR)
@@ -40,7 +40,8 @@ export const computeImageCost = (
     return undefined;
   }
 
-  let pricePerImageInUSD = 0;
+  const currency = pricing.currency || 'USD';
+  let pricePerImage: number;
   let lookupKey: string | undefined;
 
   switch (imageGenUnit.strategy) {
@@ -50,8 +51,8 @@ export const computeImageCost = (
         log(`Unsupported unit type for fixed pricing: ${fixedUnit.unit}`);
         return undefined;
       }
-      pricePerImageInUSD = fixedUnit.rate;
-      log(`Fixed pricing: $${pricePerImageInUSD} per image`);
+      pricePerImage = fixedUnit.rate;
+      log(`Fixed pricing: ${pricePerImage} ${currency} per image`);
 
       break;
     }
@@ -84,8 +85,8 @@ export const computeImageCost = (
         return undefined;
       }
 
-      pricePerImageInUSD = lookupPrice;
-      log(`Lookup pricing for key "${lookupKey}": $${pricePerImageInUSD} per image`);
+      pricePerImage = lookupPrice;
+      log(`Lookup pricing for key "${lookupKey}": ${pricePerImage} ${currency} per image`);
 
       break;
     }
@@ -101,19 +102,19 @@ export const computeImageCost = (
     }
   }
 
-  // Calculate total cost in USD first, then convert to credits
-  const totalCost = pricePerImageInUSD * imageNum;
+  const costInCurrency = pricePerImage * imageNum;
+  const totalCost = currency === 'CNY' ? costInCurrency / USD_TO_CNY : costInCurrency;
   const totalCredits = Math.ceil(totalCost * CREDITS_PER_DOLLAR);
 
   log(
-    `Image cost calculation: ${imageNum} images × $${pricePerImageInUSD} = $${totalCost} (${totalCredits} credits)`,
+    `Image cost calculation: ${imageNum} images × ${pricePerImage} ${currency} = $${totalCost} USD (${totalCredits} credits)`,
   );
 
   return {
     breakdown: {
       imageCount: imageNum,
       lookupKey,
-      pricePerImage: pricePerImageInUSD,
+      pricePerImage,
     },
     totalCost,
     totalCredits,

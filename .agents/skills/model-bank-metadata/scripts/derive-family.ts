@@ -26,7 +26,8 @@ const derive = (id: string): R | undefined => {
     g = m.match(/^claude-(?:opus|sonnet|haiku)-(\d)(?!\d)/); // claude-opus-4
     if (g) return { family, generation: `claude-${g[1]}` };
     g = m.match(/^claude-(\d)[.-](\d)(?!\d)/); // claude-3-5-haiku / claude-3.7-sonnet / claude-2.1
-    if (g) return { family, generation: g[2] === '0' ? `claude-${g[1]}` : `claude-${g[1]}.${g[2]}` };
+    if (g)
+      return { family, generation: g[2] === '0' ? `claude-${g[1]}` : `claude-${g[1]}.${g[2]}` };
     g = m.match(/^claude-(\d)(?!\d)/); // claude-3-haiku
     if (g) return { family, generation: `claude-${g[1]}` };
     if (m.startsWith('claude-instant')) return { family: 'claude-instant' };

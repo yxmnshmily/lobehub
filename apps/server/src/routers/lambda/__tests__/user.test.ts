@@ -15,11 +15,13 @@ import {
   onUserActivityForBusiness,
 } from '@/business/server/user';
 import { MessageModel } from '@/database/models/message';
+import { RbacModel } from '@/database/models/rbac';
 import { SessionModel } from '@/database/models/session';
 import { UserModel } from '@/database/models/user';
 import { serverDB } from '@/database/server';
 import { router } from '@/libs/trpc/lambda';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { FileS3 } from '@/server/modules/S3';
 import { UnderstandingWorkflowUnavailableError } from '@/server/workflows/onboardingUnderstanding';
 
 import { userRouter } from '../user';
@@ -78,6 +80,10 @@ vi.mock('@/database/models/message');
 vi.mock('@/database/models/rbac');
 vi.mock('@/database/models/session');
 vi.mock('@/database/models/user');
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  assertPlatformAdmin: vi.fn(),
+  requirePlatformAdmin: async ({ next }: { next: () => unknown }) => next(),
+}));
 vi.mock('@/server/modules/KeyVaultsEncrypt');
 vi.mock('@/server/modules/S3');
 vi.mock('@/server/services/user');
@@ -120,6 +126,9 @@ describe('userRouter', () => {
     vi.mocked(getReferralStatus).mockResolvedValue(undefined);
     vi.mocked(getSubscriptionPlan).mockResolvedValue(Plans.Free);
     vi.mocked(onUserActivityForBusiness).mockResolvedValue(undefined);
+    vi.mocked(RbacModel).mockImplementation(
+      () => ({ hasGlobalRole: vi.fn().mockResolvedValue(false) }) as any,
+    );
     mockCreateUnderstandingService.mockResolvedValue(mockUnderstandingService);
     mockCreateTaskRecommendationService.mockResolvedValue(mockTaskRecommendationService);
   });
@@ -743,6 +752,135 @@ describe('userRouter', () => {
       });
     });
 
+    it('returns only personal-center preferences to an ordinary customer', async () => {
+      const settings = {
+        defaultAgent: { config: { model: 'platform-model', provider: 'platform-provider' } },
+        general: { language: 'zh-CN' },
+        hotkey: { search: 'mod+k' },
+        image: { model: 'image-model' },
+        keyVaults: { openai: { apiKey: 'decrypted-secret' } },
+        languageModel: { openai: { enabled: true } },
+        market: { accessToken: 'market-secret' },
+        memory: { enabled: true },
+        notification: { desktop: true },
+        systemAgent: { topic: { model: 'system-model' } },
+        tool: { approvalMode: 'auto-run' },
+        tts: { sttAutoStop: true },
+      };
+      const getUserState = vi.fn().mockResolvedValue({ settings });
+      vi.mocked(UserModel).mockImplementation(
+        () =>
+          ({
+            advanceLastActiveAt: vi.fn().mockResolvedValue(undefined),
+            getUserState,
+          }) as any,
+      );
+      vi.mocked(MessageModel).mockImplementation(
+        () => ({ countUpTo: vi.fn().mockResolvedValue(0) }) as any,
+      );
+      vi.mocked(SessionModel).mockImplementation(
+        () => ({ hasMoreThanN: vi.fn().mockResolvedValue(false) }) as any,
+      );
+
+      const result = await userRouter.createCaller({ ...mockCtx }).getUserState();
+
+      expect(result.settings).toEqual({
+        general: { language: 'zh-CN' },
+        hotkey: { search: 'mod+k' },
+        notification: { desktop: true },
+      });
+      expect(getUserState).not.toHaveBeenCalledWith(KeyVaultsGateKeeper.getUserKeyVaults);
+      await expect(getUserState.mock.calls[0][0]('encrypted', mockUserId)).resolves.toEqual({});
+    });
+
+    it('keeps full settings available to a platform administrator session', async () => {
+      const settings = {
+        keyVaults: { openai: { apiKey: 'decrypted-secret' } },
+        languageModel: { openai: { enabled: true } },
+        systemAgent: { topic: { model: 'system-model' } },
+      };
+      vi.mocked(RbacModel).mockImplementation(
+        () => ({ hasGlobalRole: vi.fn().mockResolvedValue(true) }) as any,
+      );
+      const getUserState = vi.fn().mockResolvedValue({ settings });
+      vi.mocked(UserModel).mockImplementation(
+        () =>
+          ({
+            advanceLastActiveAt: vi.fn().mockResolvedValue(undefined),
+            getUserState,
+          }) as any,
+      );
+      vi.mocked(MessageModel).mockImplementation(
+        () => ({ countUpTo: vi.fn().mockResolvedValue(0) }) as any,
+      );
+      vi.mocked(SessionModel).mockImplementation(
+        () => ({ hasMoreThanN: vi.fn().mockResolvedValue(false) }) as any,
+      );
+
+      const result = await userRouter.createCaller({ ...mockCtx }).getUserState();
+
+      expect(result.settings).toEqual(settings);
+      expect(getUserState).toHaveBeenCalledWith(KeyVaultsGateKeeper.getUserKeyVaults);
+    });
+
+    it('does not trust a model-returned user id to expose another users platform settings', async () => {
+      vi.mocked(UserModel).mockImplementation(
+        () =>
+          ({
+            advanceLastActiveAt: vi.fn().mockResolvedValue(undefined),
+            getUserState: vi.fn().mockResolvedValue({
+              settings: {
+                general: { language: 'zh-CN' },
+                keyVaults: { openai: { apiKey: 'other-user-secret' } },
+              },
+              userId: 'other-user-id',
+            }),
+          }) as any,
+      );
+      vi.mocked(MessageModel).mockImplementation(
+        () => ({ countUpTo: vi.fn().mockResolvedValue(0) }) as any,
+      );
+      vi.mocked(SessionModel).mockImplementation(
+        () => ({ hasMoreThanN: vi.fn().mockResolvedValue(false) }) as any,
+      );
+
+      const result = await userRouter.createCaller({ ...mockCtx }).getUserState();
+
+      expect(result.userId).toBe(mockUserId);
+      expect(result.settings).toEqual({ general: { language: 'zh-CN' } });
+    });
+
+    it('never exposes platform settings through a legacy full-access API key', async () => {
+      vi.mocked(RbacModel).mockImplementation(
+        () => ({ hasGlobalRole: vi.fn().mockResolvedValue(true) }) as any,
+      );
+      vi.mocked(UserModel).mockImplementation(
+        () =>
+          ({
+            advanceLastActiveAt: vi.fn().mockResolvedValue(undefined),
+            getUserState: vi.fn().mockResolvedValue({
+              settings: {
+                general: { language: 'zh-CN' },
+                keyVaults: { openai: { apiKey: 'decrypted-secret' } },
+                languageModel: { openai: { enabled: true } },
+              },
+            }),
+          }) as any,
+      );
+      vi.mocked(MessageModel).mockImplementation(
+        () => ({ countUpTo: vi.fn().mockResolvedValue(0) }) as any,
+      );
+      vi.mocked(SessionModel).mockImplementation(
+        () => ({ hasMoreThanN: vi.fn().mockResolvedValue(false) }) as any,
+      );
+
+      const result = await namespacedRouter
+        .createCaller({ ...mockCtx, apiKeyScopes: null })
+        .user.getUserState();
+
+      expect(result.settings).toEqual({ general: { language: 'zh-CN' } });
+    });
+
     it('should invoke the user activity hook after winning the lastActiveAt update', async () => {
       const createdAt = new Date('2026-01-01T00:00:00.000Z');
       const previousLastActiveAt = new Date('2026-03-01T00:00:00.000Z');
@@ -838,6 +976,53 @@ describe('userRouter', () => {
       await userRouter.createCaller({ ...mockCtx }).makeUserOnboarded();
 
       expect(UserModel).toHaveBeenCalledWith(serverDB, mockUserId);
+    });
+  });
+
+  describe('updateAvatar', () => {
+    it('reads only the current avatar and never loads user settings or key vaults', async () => {
+      const oldAvatar = `/webapi/user/avatar/${mockUserId}/old.png`;
+      const getAvatar = vi.fn().mockResolvedValue(oldAvatar);
+      const getUserState = vi.fn();
+      const updateUser = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const uploadBuffer = vi.fn().mockResolvedValue(undefined);
+      const deleteFile = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(UserModel).mockImplementation(
+        () => ({ getAvatar, getUserState, updateUser }) as any,
+      );
+      vi.mocked(FileS3).mockImplementation(() => ({ deleteFile, uploadBuffer }) as any);
+
+      await userRouter.createCaller({ ...mockCtx }).updateAvatar('data:image/png;base64,YWJj');
+
+      expect(getAvatar).toHaveBeenCalledOnce();
+      expect(getUserState).not.toHaveBeenCalled();
+      expect(KeyVaultsGateKeeper.getUserKeyVaults).not.toHaveBeenCalled();
+      expect(uploadBuffer).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp(`^user/avatar/${mockUserId}/.+\\.png$`)),
+        Buffer.from('abc'),
+        'image/png',
+      );
+      expect(deleteFile).toHaveBeenCalledWith(`user/avatar/${mockUserId}/old.png`);
+      expect(updateUser).toHaveBeenCalledWith({
+        avatar: expect.stringMatching(new RegExp(`^/webapi/user/avatar/${mockUserId}/.+\\.png$`)),
+      });
+    });
+  });
+
+  describe('resetSettings', () => {
+    it('clears only explicit personal preferences and preserves the settings row', async () => {
+      const deleteSetting = vi.fn();
+      const updateSetting = vi.fn().mockResolvedValue({ rowCount: 1 });
+      vi.mocked(UserModel).mockImplementation(() => ({ deleteSetting, updateSetting }) as any);
+
+      await userRouter.createCaller({ ...mockCtx }).resetSettings();
+
+      expect(updateSetting).toHaveBeenCalledWith({
+        general: null,
+        hotkey: null,
+        notification: null,
+      });
+      expect(deleteSetting).not.toHaveBeenCalled();
     });
   });
 

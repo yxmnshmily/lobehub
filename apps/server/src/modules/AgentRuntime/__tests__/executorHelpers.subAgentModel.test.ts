@@ -19,6 +19,8 @@ describe('buildServerVirtualSubAgentRunner sub-agent model resolution', () => {
       execVirtualSubAgent,
       messageModel: { create: vi.fn().mockResolvedValue({ id: 'placeholder-id' }) },
       operationId: 'parent-op',
+      platformManagedExecutionAuthorized: true,
+      platformManagedMaxCredits: 4321,
       topicId: 'topic-1',
     } as unknown as RuntimeExecutorContext;
 
@@ -79,5 +81,23 @@ describe('buildServerVirtualSubAgentRunner sub-agent model resolution', () => {
     expect(execVirtualSubAgent).toHaveBeenCalledWith(
       expect.objectContaining({ agentId: 'target-agent', model: undefined, provider: undefined }),
     );
+  });
+
+  it('does not propagate the hosted generation limit into an arbitrary sub-agent', async () => {
+    const { execVirtualSubAgent, runner } = buildRunner({
+      metadata: {
+        agentId: 'agent-1',
+        platformManagedExecutionAuthorized: true,
+        platformManagedMaxCredits: 4321,
+        topicId: 'topic-1',
+      },
+    });
+
+    await runner!.run({ agentId: 'target-agent', description: 'task', instruction: 'do it' });
+
+    const childParams = execVirtualSubAgent.mock.calls[0]?.[0];
+    expect(childParams).not.toHaveProperty('platformManagedExecutionAuthorized');
+    expect(childParams).not.toHaveProperty('platformManagedMaxCredits');
+    expect(JSON.stringify(childParams)).not.toContain('4321');
   });
 });

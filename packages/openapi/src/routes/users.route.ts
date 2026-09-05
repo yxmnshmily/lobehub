@@ -167,7 +167,7 @@ UserRoutes.patch(
   '/:id/roles',
   requireAuth,
   requireAnyPermission(
-    getAllScopePermissions('RBAC_USER_ROLE_UPDATE'),
+    getScopePermissions('RBAC_USER_ROLE_UPDATE', ['ALL']),
     'You do not have permission to assign user roles',
   ),
   zValidator('param', UserIdParamSchema),
@@ -187,7 +187,7 @@ UserRoutes.delete(
   '/:id/roles',
   requireAuth,
   requireAnyPermission(
-    getAllScopePermissions('RBAC_USER_ROLE_UPDATE'),
+    getScopePermissions('RBAC_USER_ROLE_UPDATE', ['ALL']),
     'You do not have permission to clear user roles',
   ),
   zValidator('param', UserIdParamSchema),

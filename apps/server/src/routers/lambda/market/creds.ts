@@ -9,6 +9,8 @@ import { publicProcedure, router } from '@/libs/trpc/lambda';
 import { marketUserInfo, requireMarketAuth, serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { MarketService } from '@/server/services/market';
 
+import { requirePlatformAdmin } from '../_helpers/platformAdminGuard';
+
 const log = debug('lambda-router:market:creds');
 
 const MARKET_STATUS_TO_TRPC_CODE: Record<number, TRPCError['code']> = {
@@ -56,7 +58,8 @@ const credsProcedure = publicProcedure
       },
     });
   });
-const credsManageProcedure = credsProcedure.use(withRbacPermission('workspace:update:all'));
+const credsAdminProcedure = credsProcedure.use(requirePlatformAdmin);
+const credsManageProcedure = credsAdminProcedure.use(withRbacPermission('workspace:update:all'));
 
 export const credsRouter = router({
   // Create file credential
@@ -274,17 +277,19 @@ export const credsRouter = router({
   // Publish a draft-linked credential (visibility 'private') so the rest of
   // the workspace's organization can see it. Owner-only — no orgId needed,
   // the credential is already linked from a prior `share` call.
-  publish: credsProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-    log('publish input: id=%d', input.id);
-    try {
-      const result = await ctx.marketService.market.creds.publish(input.id);
-      log('publish success: id=%d', result.id);
-      return result;
-    } catch (error) {
-      log('publish error: %O', error);
-      throw mapMarketShareError(error, 'Failed to publish credential');
-    }
-  }),
+  publish: credsAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      log('publish input: id=%d', input.id);
+      try {
+        const result = await ctx.marketService.market.creds.publish(input.id);
+        log('publish success: id=%d', result.id);
+        return result;
+      } catch (error) {
+        log('publish error: %O', error);
+        throw mapMarketShareError(error, 'Failed to publish credential');
+      }
+    }),
 
   // Share one of the caller's own personal credentials into the current
   // workspace's Market organization. Always targets `ctx.workspaceId` — never
@@ -292,7 +297,7 @@ export const credsRouter = router({
   // check (above) guarantees a caller can never share into a workspace they
   // don't belong to. Re-callable to change `visibility` on an already-shared
   // credential (Market's `shareCred` unconditionally overwrites).
-  share: credsProcedure
+  share: credsAdminProcedure
     .input(
       z.object({
         id: z.number(),
@@ -322,20 +327,22 @@ export const credsRouter = router({
 
   // Unshare a credential from its organization (flips back to private,
   // clears the link). Does not delete the credential.
-  unshare: credsProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-    log('unshare input: id=%d', input.id);
-    try {
-      const result = await ctx.marketService.market.creds.unshare(input.id);
-      log('unshare success: id=%d', result.id);
-      return result;
-    } catch (error) {
-      log('unshare error: %O', error);
-      throw mapMarketShareError(error, 'Failed to unshare credential');
-    }
-  }),
+  unshare: credsAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      log('unshare input: id=%d', input.id);
+      try {
+        const result = await ctx.marketService.market.creds.unshare(input.id);
+        log('unshare success: id=%d', result.id);
+        return result;
+      } catch (error) {
+        log('unshare error: %O', error);
+        throw mapMarketShareError(error, 'Failed to unshare credential');
+      }
+    }),
 
   // Inject credentials by keys (explicit injection).
-  inject: credsProcedure
+  inject: credsAdminProcedure
     .input(
       z.object({
         keys: z.array(z.string()),
@@ -379,7 +386,7 @@ export const credsRouter = router({
 
   // Inject credentials for skill execution (auto-inject based on skill declaration).
   // NOTE: same Market SDK gap as `inject` above — stays personal-only for now.
-  injectForSkill: credsProcedure
+  injectForSkill: credsAdminProcedure
     .input(
       z.object({
         sandbox: z.boolean().optional().default(true),

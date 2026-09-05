@@ -5,6 +5,7 @@ import { type GenericProviderDefinition } from '../types';
 const WECHAT_AUTHORIZATION_URL = 'https://open.weixin.qq.com/connect/qrconnect';
 const WECHAT_TOKEN_URL = 'https://api.weixin.qq.com/sns/oauth2/access_token';
 const WECHAT_USERINFO_URL = 'https://api.weixin.qq.com/sns/userinfo';
+const WECHAT_REQUEST_TIMEOUT_MS = 10_000;
 
 type WeChatTokenResponse = {
   access_token?: string;
@@ -50,7 +51,10 @@ const provider: GenericProviderDefinition<{
         tokenUrl.searchParams.set('code', code);
         tokenUrl.searchParams.set('grant_type', 'authorization_code');
 
-        const response = await fetch(tokenUrl, { cache: 'no-store' });
+        const response = await fetch(tokenUrl, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(WECHAT_REQUEST_TIMEOUT_MS),
+        });
         const data = (await response.json()) as WeChatTokenResponse;
 
         if (!response.ok || data.errcode) {
@@ -92,16 +96,22 @@ const provider: GenericProviderDefinition<{
         url.searchParams.set('openid', openId);
         url.searchParams.set('lang', 'zh_CN');
 
-        const response = await fetch(url, { cache: 'no-store' });
+        const response = await fetch(url, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(WECHAT_REQUEST_TIMEOUT_MS),
+        });
         if (!response.ok) {
           return null;
         }
 
         const profile = (await response.json()) as {
+          errcode?: number;
+          errmsg?: string;
           headimgurl?: string;
           nickname?: string;
           unionid?: string;
         };
+        if (profile.errcode) return null;
 
         const finalUnionId = unionId ?? profile.unionid ?? openId;
         const syntheticEmail = `${finalUnionId}@wechat.lobehub`;

@@ -2,6 +2,8 @@ import { type AgentState } from '@lobechat/agent-runtime';
 import { type UIChatMessage } from '@lobechat/types';
 import debug from 'debug';
 
+import { completePlatformUsageSharedBudgetForOperation } from '@/server/services/platformUsageBilling/sharedBudget';
+
 import { type AgentOperationMetadata, type StepResult } from './AgentStateManager';
 import { createAgentStateManager, createStreamEventManager } from './factory';
 import { type IAgentStateManager, type IStreamEventManager } from './types';
@@ -30,6 +32,7 @@ const STREAM_END_STATUSES = new Set<AgentState['status']>([
   'interrupted',
   'waiting_for_human',
 ]);
+const OPERATION_END_STATUSES = new Set<AgentState['status']>(['done', 'error', 'interrupted']);
 
 const hasEnteredStreamEndState = (
   previousStatus?: AgentState['status'],
@@ -183,6 +186,9 @@ export class AgentRuntimeCoordinator {
         if (!hasVisibleOutputEndPublished(state)) {
           await this.publishVisibleOutputEnd(operationId, state, stepIndex);
         }
+        if (OPERATION_END_STATUSES.has(state.status)) {
+          await completePlatformUsageSharedBudgetForOperation(operationId).catch(() => false);
+        }
         await this.streamEventManager.publishAgentRuntimeEnd({
           finalState: state,
           operationId,
@@ -218,6 +224,9 @@ export class AgentRuntimeCoordinator {
           stepResult.stepIndex ?? stepResult.newState.stepCount ?? previousState?.stepCount ?? 0;
         if (!hasVisibleOutputEndPublished(stepResult.newState)) {
           await this.publishVisibleOutputEnd(operationId, stepResult.newState, stepIndex);
+        }
+        if (OPERATION_END_STATUSES.has(stepResult.newState.status)) {
+          await completePlatformUsageSharedBudgetForOperation(operationId).catch(() => false);
         }
         await this.streamEventManager.publishAgentRuntimeEnd({
           finalState: stepResult.newState,

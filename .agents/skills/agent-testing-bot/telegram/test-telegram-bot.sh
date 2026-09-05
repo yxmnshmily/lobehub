@@ -33,9 +33,9 @@ SCREENSHOT="${4:-/tmp/telegram-bot-test.png}"
 
 # Detect app name — "Telegram" or "Telegram Desktop"
 APP=""
-if osascript -e 'tell application "Telegram" to name' &>/dev/null; then
+if osascript -e 'tell application "Telegram" to name' &> /dev/null; then
   APP="Telegram"
-elif osascript -e 'tell application "Telegram Desktop" to name' &>/dev/null; then
+elif osascript -e 'tell application "Telegram Desktop" to name' &> /dev/null; then
   APP="Telegram Desktop"
 else
   echo "[error] Telegram app not found. Install Telegram or Telegram Desktop."

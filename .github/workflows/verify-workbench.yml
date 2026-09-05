@@ -76,9 +76,7 @@ jobs:
           NODE_ENV: production
           NODE_OPTIONS: --max-old-space-size=8192
           VITE_CDN_BASE: >-
-            ${{ github.event.pull_request.head.repo.full_name == github.repository
-            && format('https://pr{0}-lobehub-workbench.lobeobjects-tg.workers.dev/', github.event.pull_request.number)
-            || '' }}
+            ${{ github.event.pull_request.head.repo.full_name == github.repository && format('https://pr{0}-lobehub-workbench.lobeobjects-tg.workers.dev/', github.event.pull_request.number) || '' }}
         run: |
           bun run build:rr
           printf '/*\n  Access-Control-Allow-Origin: *\n' > build/client/_headers

@@ -7,18 +7,31 @@
  * InMemory implementations when Redis is not available (test environment).
  */
 import { type LobeChatDatabase } from '@lobechat/database';
-import { agents, chatGroups, messages, topics } from '@lobechat/database/schemas';
+import { agentOperations, agents, chatGroups, messages, topics } from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
 import { and, eq } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ChatGroupModel } from '@/database/models/chatGroup';
+import { createStreamEventManager } from '@/server/modules/AgentRuntime/factory';
 import { inMemoryAgentStateManager } from '@/server/modules/AgentRuntime/InMemoryAgentStateManager';
 import { inMemoryStreamEventManager } from '@/server/modules/AgentRuntime/InMemoryStreamEventManager';
+import type { StreamEvent } from '@/server/modules/AgentRuntime/StreamEventManager';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
+import { WebsiteAiService } from '@/server/services/websiteAi';
+import {
+  createWebsiteAiProgressTracker,
+  normalizeWebsiteAiStreamEvent,
+} from '@/server/services/websiteAi/types';
 
 import { aiAgentRouter } from '../../../aiAgent';
 import { cleanupTestUser, createTestUser } from '../setup';
-import { createMockResponsesAPIStream } from './helpers';
+import {
+  createMockResponsesAPIStream,
+  createMockResponsesStream,
+  waitForOperationComplete,
+} from './helpers';
 
 // Set fake API key for testing to bypass OpenAI SDK validation
 process.env.OPENAI_API_KEY = 'sk-test-fake-api-key-for-testing';
@@ -56,6 +69,24 @@ const createTestCallerContext = (uid: string) => ({
   jwtPayload: { userId: uid },
   userId: uid,
 });
+
+const waitForWebsiteStreamEnd = async (operationId: string) => {
+  const manager = createStreamEventManager();
+  const events: StreamEvent[] = [];
+  const deadline = Date.now() + 10_000;
+  let lastEventId = '0';
+
+  while (Date.now() < deadline) {
+    const result = await manager.readEventsOnce(operationId, lastEventId, 500);
+    events.push(...result.events);
+    lastEventId = result.lastEventId;
+    if (result.events.some(({ type }) => type === 'agent_runtime_end')) return events;
+    if (result.events.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+  throw new Error(`Website stream did not finish for ${operationId}`);
+};
 
 beforeEach(async () => {
   // Setup test database
@@ -242,6 +273,350 @@ describe('execGroupAgent', () => {
     });
   });
 
+  describe('Group member execution', () => {
+    it.each([
+      [
+        '写一段桂林旅游文案',
+        'default-travel-copywriter',
+        '客户改名文案成员',
+        'You write travel copy.',
+      ],
+      [
+        '整理一份桂林旅游行程文档',
+        'default-travel-document-assistant',
+        '客户改名文档成员',
+        'You create travel itinerary documents.',
+      ],
+    ])(
+      'deterministically dispatches %s from the production group entry',
+      async (request, memberClientId, memberTitle, memberSystemRole) => {
+        await serverDB
+          .update(agents)
+          .set({ slug: 'group-supervisor', title: '旅游群主AI' })
+          .where(eq(agents.id, testAgentId));
+        await serverDB
+          .update(chatGroups)
+          .set({ clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, visibility: 'private' })
+          .where(eq(chatGroups.id, testGroupId));
+        await new ChatGroupModel(serverDB, userId).ensureSupervisorAgent(testGroupId, testAgentId);
+        const [member] = await serverDB
+          .insert(agents)
+          .values({
+            clientId: memberClientId,
+            model: 'gpt-5-pro',
+            provider: 'openai',
+            systemRole: memberSystemRole,
+            title: memberTitle,
+            userId,
+          })
+          .returning();
+        await new ChatGroupModel(serverDB, userId).addAgentsToGroup(testGroupId, [member.id]);
+
+        const callId = 'call_travel_copy';
+        const toolName = 'lobe-group-management____speak';
+        const args = JSON.stringify({
+          agentId: testAgentId,
+          instruction: '模型生成的错误调度参数',
+          skipCallSupervisor: true,
+        });
+        mockResponsesCreate
+          .mockResolvedValueOnce(
+            createMockResponsesStream([
+              {
+                response: { id: 'resp-supervisor-tool', status: 'in_progress' },
+                type: 'response.created',
+              },
+              {
+                item: {
+                  arguments: args,
+                  call_id: callId,
+                  name: toolName,
+                  type: 'function_call',
+                },
+                output_index: 0,
+                type: 'response.output_item.added',
+              },
+              {
+                response: {
+                  id: 'resp-supervisor-tool',
+                  model: 'gpt-5-pro',
+                  output: [
+                    { arguments: args, call_id: callId, name: toolName, type: 'function_call' },
+                  ],
+                  status: 'completed',
+                  usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 },
+                },
+                type: 'response.completed',
+              },
+            ]) as any,
+          )
+          .mockResolvedValueOnce(createMockResponsesAPIStream('成员制作结果') as any)
+          .mockResolvedValueOnce(createMockResponsesAPIStream('群主汇总结果') as any);
+
+        const result = await new WebsiteAiService(serverDB, userId).start({ message: request });
+
+        await waitForOperationComplete(inMemoryAgentStateManager, result.operationId, {
+          maxWaitTime: 10_000,
+          pollInterval: 50,
+        });
+
+        const progress = createWebsiteAiProgressTracker(result.progressMembers);
+        const websiteEvents = (await waitForWebsiteStreamEnd(result.operationId)).flatMap(
+          (streamEvent) => normalizeWebsiteAiStreamEvent(streamEvent, progress),
+        );
+        expect(
+          websiteEvents
+            .filter((item) => 'phase' in item)
+            .map(({ member, phase }) => [member, phase]),
+        ).toEqual([
+          [memberTitle, 'started'],
+          [memberTitle, 'completed'],
+        ]);
+        expect(websiteEvents).toContainEqual({ text: '群主汇总结果', type: 'delta' });
+        expect(JSON.stringify(websiteEvents)).not.toContain(member.id);
+
+        const childOperations = await serverDB
+          .select()
+          .from(agentOperations)
+          .where(eq(agentOperations.parentOperationId, result.operationId));
+        expect(childOperations).toContainEqual(
+          expect.objectContaining({
+            agentId: member.id,
+            chatGroupId: testGroupId,
+            parentOperationId: result.operationId,
+            userId,
+          }),
+        );
+
+        const toolMessages = await serverDB
+          .select()
+          .from(messages)
+          .where(and(eq(messages.topicId, result.topicId), eq(messages.role, 'tool')));
+        expect(toolMessages).toContainEqual(
+          expect.objectContaining({
+            content: expect.stringContaining(`${member.id} responded in the group`),
+            groupId: testGroupId,
+            parentId: expect.any(String),
+            userId,
+          }),
+        );
+
+        const assistantMessages = await serverDB
+          .select()
+          .from(messages)
+          .where(and(eq(messages.topicId, result.topicId), eq(messages.role, 'assistant')));
+        expect(JSON.stringify(assistantMessages)).toContain(callId);
+        expect(mockResponsesCreate.mock.calls[0][0]).toMatchObject({
+          tool_choice: 'required',
+          tools: [{ name: toolName }],
+        });
+        expect(mockResponsesCreate.mock.calls[2][0]).not.toHaveProperty('tool_choice');
+      },
+      15_000,
+    );
+
+    it('falls back to the supervisor when a routed member disappears before start', async () => {
+      await serverDB
+        .update(agents)
+        .set({ slug: 'group-supervisor', title: '旅游群主AI' })
+        .where(eq(agents.id, testAgentId));
+      await serverDB
+        .update(chatGroups)
+        .set({ clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, visibility: 'private' })
+        .where(eq(chatGroups.id, testGroupId));
+      await new ChatGroupModel(serverDB, userId).ensureSupervisorAgent(testGroupId, testAgentId);
+      const [member] = await serverDB
+        .insert(agents)
+        .values({
+          clientId: 'default-travel-copywriter',
+          model: 'gpt-5-pro',
+          provider: 'openai',
+          systemRole: 'You write travel copy.',
+          title: '旅游文案助理',
+          userId,
+        })
+        .returning();
+      await new ChatGroupModel(serverDB, userId).addAgentsToGroup(testGroupId, [member.id]);
+
+      const callId = 'call_travel_failure';
+      const toolName = 'lobe-group-management____speak';
+      const args = JSON.stringify({ agentId: testAgentId, instruction: '错误参数' });
+      const toolStream = createMockResponsesStream([
+        {
+          response: { id: 'resp-supervisor-failure', status: 'in_progress' },
+          type: 'response.created',
+        },
+        {
+          item: {
+            arguments: args,
+            call_id: callId,
+            name: toolName,
+            type: 'function_call',
+          },
+          output_index: 0,
+          type: 'response.output_item.added',
+        },
+        {
+          response: {
+            id: 'resp-supervisor-failure',
+            model: 'gpt-5-pro',
+            output: [{ arguments: args, call_id: callId, name: toolName, type: 'function_call' }],
+            status: 'completed',
+            usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 },
+          },
+          type: 'response.completed',
+        },
+      ]);
+      mockResponsesCreate
+        .mockImplementationOnce(async () => {
+          await serverDB.delete(agents).where(eq(agents.id, member.id));
+          return toolStream as any;
+        })
+        .mockResolvedValueOnce(
+          createMockResponsesAPIStream('助理启动失败，已由旅游群主AI回退处理。') as any,
+        );
+
+      const result = await new WebsiteAiService(serverDB, userId).start({
+        message: '写一段桂林旅游文案',
+      });
+
+      const finalState = await waitForOperationComplete(
+        inMemoryAgentStateManager,
+        result.operationId,
+        { maxWaitTime: 10_000, pollInterval: 50 },
+      );
+      expect(finalState.status).toBe('done');
+      expect(mockResponsesCreate).toHaveBeenCalledTimes(2);
+
+      const progress = createWebsiteAiProgressTracker(result.progressMembers);
+      const rawWebsiteEvents = await waitForWebsiteStreamEnd(result.operationId);
+      const websiteEvents = rawWebsiteEvents.flatMap((streamEvent) =>
+        normalizeWebsiteAiStreamEvent(streamEvent, progress),
+      );
+      expect(
+        websiteEvents.filter((item) => 'phase' in item).map(({ member, phase }) => [member, phase]),
+      ).toEqual([['旅游文案助理', 'failed']]);
+      expect(websiteEvents).toContainEqual({
+        text: '助理启动失败，已由旅游群主AI回退处理。',
+        type: 'delta',
+      });
+
+      const childOperations = await serverDB
+        .select()
+        .from(agentOperations)
+        .where(eq(agentOperations.parentOperationId, result.operationId));
+      expect(childOperations).toHaveLength(0);
+      const persistedMessages = await serverDB
+        .select()
+        .from(messages)
+        .where(eq(messages.topicId, result.topicId));
+      expect(JSON.stringify(persistedMessages)).toContain('Agent member(s) failed to start');
+      expect(JSON.stringify(persistedMessages)).toContain('已由旅游群主AI回退处理');
+    }, 15_000);
+
+    it('dispatches mixed travel intents to members sequentially in route order', async () => {
+      await serverDB
+        .update(agents)
+        .set({ slug: 'group-supervisor', title: '旅游群主AI' })
+        .where(eq(agents.id, testAgentId));
+      await serverDB
+        .update(chatGroups)
+        .set({ clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, visibility: 'private' })
+        .where(eq(chatGroups.id, testGroupId));
+      await new ChatGroupModel(serverDB, userId).ensureSupervisorAgent(testGroupId, testAgentId);
+      const createdMembers = await serverDB
+        .insert(agents)
+        .values([
+          {
+            clientId: 'default-travel-copywriter',
+            model: 'gpt-5-pro',
+            provider: 'openai',
+            systemRole: 'You write travel copy.',
+            title: '旅游文案助理',
+            userId,
+          },
+          {
+            clientId: 'default-travel-document-assistant',
+            model: 'gpt-5-pro',
+            provider: 'openai',
+            systemRole: 'You create travel itinerary documents.',
+            title: '行程文档助理',
+            userId,
+          },
+        ])
+        .returning();
+      const [copyMember, documentMember] = createdMembers;
+      await new ChatGroupModel(serverDB, userId).addAgentsToGroup(
+        testGroupId,
+        createdMembers.map(({ id }) => id),
+      );
+
+      const createToolStream = (callId: string) => {
+        const args = JSON.stringify({ agentId: testAgentId, instruction: '错误参数' });
+        const name = 'lobe-group-management____speak';
+        return createMockResponsesStream([
+          { response: { id: `resp-${callId}`, status: 'in_progress' }, type: 'response.created' },
+          {
+            item: { arguments: args, call_id: callId, name, type: 'function_call' },
+            output_index: 0,
+            type: 'response.output_item.added',
+          },
+          {
+            response: {
+              id: `resp-${callId}`,
+              model: 'gpt-5-pro',
+              output: [{ arguments: args, call_id: callId, name, type: 'function_call' }],
+              status: 'completed',
+              usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 },
+            },
+            type: 'response.completed',
+          },
+        ]);
+      };
+      mockResponsesCreate
+        .mockResolvedValueOnce(createToolStream('call-copy') as any)
+        .mockResolvedValueOnce(createMockResponsesAPIStream('文案结果') as any)
+        .mockResolvedValueOnce(createToolStream('call-document') as any)
+        .mockResolvedValueOnce(createMockResponsesAPIStream('文档结果') as any)
+        .mockResolvedValueOnce(createMockResponsesAPIStream('群主最终汇总') as any);
+
+      const result = await new WebsiteAiService(serverDB, userId).start({
+        message: '先写桂林旅游文案，再整理一份行程文档',
+      });
+      await waitForOperationComplete(inMemoryAgentStateManager, result.operationId, {
+        maxWaitTime: 10_000,
+        pollInterval: 50,
+      });
+
+      const progress = createWebsiteAiProgressTracker(result.progressMembers);
+      const websiteEvents = (await waitForWebsiteStreamEnd(result.operationId)).flatMap(
+        (streamEvent) => normalizeWebsiteAiStreamEvent(streamEvent, progress),
+      );
+      expect(
+        websiteEvents.filter((item) => 'phase' in item).map(({ member, phase }) => [member, phase]),
+      ).toEqual([
+        ['旅游文案助理', 'started'],
+        ['旅游文案助理', 'completed'],
+        ['行程文档助理', 'started'],
+        ['行程文档助理', 'completed'],
+      ]);
+      expect(websiteEvents).toContainEqual({ text: '群主最终汇总', type: 'delta' });
+
+      const childOperations = await serverDB
+        .select()
+        .from(agentOperations)
+        .where(eq(agentOperations.parentOperationId, result.operationId))
+        .orderBy(agentOperations.createdAt);
+      expect(childOperations.map(({ agentId }) => agentId)).toEqual([
+        copyMember.id,
+        documentMember.id,
+      ]);
+      expect(mockResponsesCreate.mock.calls[0][0]).toMatchObject({ tool_choice: 'required' });
+      expect(mockResponsesCreate.mock.calls[2][0]).toMatchObject({ tool_choice: 'required' });
+      expect(mockResponsesCreate.mock.calls[4][0]).not.toHaveProperty('tool_choice');
+    }, 15_000);
+  });
+
   describe('Response Data', () => {
     it('should return messages and topics in response', async () => {
       mockResponsesCreate.mockResolvedValue(
@@ -309,6 +684,24 @@ describe('execGroupAgent', () => {
         }),
       ).rejects.toThrow();
     });
+
+    it('rejects another user executing a private group supervisor', async () => {
+      const otherUserId = await createTestUser(serverDB);
+      await serverDB
+        .update(chatGroups)
+        .set({ clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, visibility: 'private' })
+        .where(eq(chatGroups.id, testGroupId));
+
+      try {
+        await expect(
+          new WebsiteAiService(serverDB, otherUserId).start({
+            message: '试图调用其他用户的旅游群',
+          }),
+        ).rejects.toThrow();
+      } finally {
+        await cleanupTestUser(serverDB, otherUserId);
+      }
+    });
   });
 
   describe('Stream Events', () => {
@@ -363,10 +756,7 @@ describe('execGroupAgent', () => {
         message: 'Test event order',
       });
 
-      // Wait a bit for all events to be processed
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const allEvents = inMemoryStreamEventManager.getAllEvents(result.operationId);
+      const allEvents = await waitForWebsiteStreamEnd(result.operationId);
       const eventTypes = allEvents.map((e) => e.type);
 
       // Log event types for debugging
@@ -385,7 +775,7 @@ describe('execGroupAgent', () => {
 
       // At minimum, we should have some events
       expect(allEvents.length).toBeGreaterThan(0);
-    });
+    }, 15_000);
   });
 
   describe('Multiple Group Sessions', () => {

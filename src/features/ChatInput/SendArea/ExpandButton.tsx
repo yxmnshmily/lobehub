@@ -8,20 +8,27 @@ import { usePermission } from '@/hooks/usePermission';
 
 const ExpandButton = memo(() => {
   const { t } = useTranslation('editor');
-  const [expand, setExpand, editor] = useChatInputStore((s) => [s.expand, s.setExpand, s.editor]);
+  const [expand, setExpand, editor, mobile] = useChatInputStore((s) => [
+    s.expand,
+    s.setExpand,
+    s.editor,
+    s.mobile,
+  ]);
   const { allowed: canUseChatInputAction, reason } = usePermission('create_content');
+  const label = canUseChatInputAction
+    ? t(expand ? 'actions.expand.off' : 'actions.expand.on')
+    : reason;
   return (
     <ActionIcon
+      aria-label={label}
       className="show-on-hover"
       disabled={!canUseChatInputAction}
       icon={expand ? Minimize2Icon : Maximize2Icon}
-      size={{ blockSize: 32, size: 16, strokeWidth: 2.3 }}
+      size={{ blockSize: mobile ? 44 : 32, size: 16, strokeWidth: 2.3 }}
+      title={label}
       style={{
         zIndex: 10,
       }}
-      title={
-        canUseChatInputAction ? t(expand ? 'actions.expand.off' : 'actions.expand.on') : reason
-      }
       onClick={() => {
         if (!canUseChatInputAction) return;
         setExpand?.(!expand);

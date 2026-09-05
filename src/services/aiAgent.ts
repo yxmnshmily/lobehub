@@ -1,6 +1,7 @@
 import type {
   ExecAgentAppContext,
   ExecAgentResult,
+  HostedGroupChatBilling,
   RuntimeMentionedAgent,
   ScheduleAgentRunParams,
   ScheduleAgentRunResult,
@@ -100,6 +101,8 @@ export interface ExecAgentTaskParams {
   agentId?: string;
   appContext?: ExecAgentAppContext;
   autoStart?: boolean;
+  /** Customer-approved ceiling and stable retry identity for the hosted travel group. */
+  billing?: HostedGroupChatBilling;
   /**
    * Client-minted ids for the rows this run creates, honoured verbatim by the
    * server — the gateway counterpart of `sendMessageInServer`'s

@@ -27,10 +27,7 @@ export const expandTilde = (input: string | undefined): string | undefined => {
  * supplied by the model resolves against the daemon's `process.cwd()` (= `/`
  * for a Finder/Dock-launched app) instead of the user's bound directory.
  */
-export const resolveAgainstCwd = (
-  input: string | undefined,
-  cwd?: string,
-): string | undefined => {
+export const resolveAgainstCwd = (input: string | undefined, cwd?: string): string | undefined => {
   const expanded = expandTilde(input);
   if (!expanded || !cwd) return expanded;
   return path.isAbsolute(expanded) ? expanded : path.join(cwd, expanded);

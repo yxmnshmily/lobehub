@@ -72,9 +72,7 @@ export const useWorkspaceWorksInfinite = (galleryKey: WorkGalleryKey) => {
   const loadMore = useCallback(() => {
     void setSize((s) => s + 1);
   }, [setSize]);
-  const reload = useCallback(() => {
-    void mutate();
-  }, [mutate]);
+  const reload = useCallback(() => mutate(), [mutate]);
 
   // SWR leaves a failed/pending page's slot `undefined`, so guard the holes.
   const items = data?.flatMap((page) => page?.items ?? []) ?? [];

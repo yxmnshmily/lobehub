@@ -15,7 +15,12 @@ describe('parseDataset - CSV', () => {
     expect(result.headers).toEqual(['id', 'prompt', 'type', 'answer']);
     expect(result.totalCount).toBe(3);
     expect(result.rows).toHaveLength(3);
-    expect(result.rows[0]).toMatchObject({ id: 1, prompt: 'What is 2+2?', type: 'math', answer: 4 });
+    expect(result.rows[0]).toMatchObject({
+      id: 1,
+      prompt: 'What is 2+2?',
+      type: 'math',
+      answer: 4,
+    });
   });
 
   it('should support preview mode', () => {

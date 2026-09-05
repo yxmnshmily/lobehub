@@ -70,11 +70,7 @@ export const buildBm25MatchCondition = (
 };
 
 export type SearchLayerKey =
-  | 'activities'
-  | 'contexts'
-  | 'experiences'
-  | 'identities'
-  | 'preferences';
+  'activities' | 'contexts' | 'experiences' | 'identities' | 'preferences';
 
 interface HybridLayerLimitRecord {
   activities?: number;

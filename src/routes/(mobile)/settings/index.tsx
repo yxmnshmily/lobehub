@@ -1,22 +1,23 @@
 'use client';
 
-import MobileContentLayout from '@/components/server/MobileNavLayout';
+import { useMatches, useParams } from 'react-router';
+
 import Footer from '@/features/Setting/Footer';
 import SettingsContent from '@/features/Settings/features/SettingsContent';
-import { parseAsString, useQueryState } from '@/hooks/useQueryParam';
-import { SettingsTabs } from '@/store/global/initialState';
 
-import Header from './_layout/Header';
+import { resolveMobileSettingsTab } from './resolveActiveTab';
 
-const Layout = () => {
-  const [activeTab] = useQueryState('active', parseAsString.withDefault(SettingsTabs.Profile));
+const MobileSettingsPage = () => {
+  const params = useParams<{ tab?: string }>();
+  const matches = useMatches();
+  const activeTab = resolveMobileSettingsTab(params.tab, matches);
 
   return (
-    <MobileContentLayout header={<Header />}>
+    <>
       <SettingsContent activeTab={activeTab} mobile={true} />
       <Footer />
-    </MobileContentLayout>
+    </>
   );
 };
 
-export default Layout;
+export default MobileSettingsPage;

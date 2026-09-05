@@ -1,5 +1,6 @@
 import { type MermaidProps } from '@lobehub/ui';
 import { Center, Flexbox, Mermaid } from '@lobehub/ui';
+import { useLayoutEffect, useRef } from 'react';
 
 const code = `sequenceDiagram
     Alice->>John: Hello John, how are you?
@@ -8,9 +9,17 @@ const code = `sequenceDiagram
 `;
 
 const MermaidPreview = ({ theme }: { theme?: MermaidProps['theme'] }) => {
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    previewRef.current
+      ?.querySelectorAll('button:not([aria-label]):not([title])')
+      .forEach((button) => button.setAttribute('aria-label', '复制流程图代码'));
+  }, []);
+
   return (
     <Center height={280}>
-      <Flexbox width={480}>
+      <Flexbox ref={previewRef} style={{ maxWidth: '100%', overflowX: 'auto' }} width={480}>
         <Mermaid theme={theme}>{code}</Mermaid>
       </Flexbox>
     </Center>

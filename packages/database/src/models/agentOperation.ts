@@ -3,7 +3,7 @@ import type {
   AgentOperationStatus,
   VerifyRunStatus,
 } from '@lobechat/types';
-import { and, eq, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 
 import { today } from '@/utils/time';
 
@@ -14,6 +14,8 @@ import type {
   NewAgentOperation,
 } from '../schemas/agentOperations';
 import { agentOperations } from '../schemas/agentOperations';
+import { chatGroupUserMemberships } from '../schemas/chatGroupUserMembership';
+import { users } from '../schemas/user';
 import type { LobeChatDatabase } from '../type';
 import { buildWorkspaceWhere } from '../utils/workspace';
 
@@ -77,6 +79,7 @@ export interface RecordOperationCompletionParams {
   completionReason?: AgentOperationCompletionReason;
   cost?: Record<string, unknown> | null;
   error?: AgentOperationError | null;
+  hostedGroupMemberFinal?: HostedGroupMemberFinalMarker;
   interruption?: AgentOperationInterruption | null;
   llmCalls?: number | null;
   /** Backfill the executed model when it's only known at completion (e.g. a
@@ -97,6 +100,75 @@ export interface RecordOperationCompletionParams {
   usage?: Record<string, unknown> | null;
 }
 
+export interface HostedGroupMemberFinalMarker {
+  actorUserIdSnapshot: string;
+  assistantMessageId: string;
+  contentHash: string;
+  groupId: string;
+  membershipVersion: number;
+  operationId: string;
+  ownerUserIdSnapshot: string;
+  publishedAt: string;
+  version: 1;
+}
+
+export interface HostedGroupSponsoredBudgetLocator {
+  actorUserId: string;
+  budgetId: string;
+  budgetLeaseVersion: number;
+  expiresAt: string;
+  groupId: string;
+  membershipVersion: number;
+  operationId: string;
+  payerUserId: string;
+  policyVersion: number;
+  resourceOwnerUserId: string;
+  version: 1;
+}
+
+const canonicalText = (value: string) => Boolean(value) && value.trim() === value;
+
+const positiveSafeInteger = (value: number) => Number.isSafeInteger(value) && value > 0;
+
+const normalizeHostedGroupSponsoredBudgetLocator = (
+  input: HostedGroupSponsoredBudgetLocator,
+): HostedGroupSponsoredBudgetLocator | undefined => {
+  const expiresAt = Date.parse(input.expiresAt);
+  if (
+    input.version !== 1 ||
+    !canonicalText(input.operationId) ||
+    !canonicalText(input.actorUserId) ||
+    !canonicalText(input.payerUserId) ||
+    !canonicalText(input.resourceOwnerUserId) ||
+    input.actorUserId === input.resourceOwnerUserId ||
+    input.payerUserId !== input.resourceOwnerUserId ||
+    !canonicalText(input.groupId) ||
+    !canonicalText(input.budgetId) ||
+    !positiveSafeInteger(input.budgetLeaseVersion) ||
+    !positiveSafeInteger(input.membershipVersion) ||
+    !positiveSafeInteger(input.policyVersion) ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= Date.now() ||
+    new Date(expiresAt).toISOString() !== input.expiresAt
+  ) {
+    return undefined;
+  }
+
+  return {
+    actorUserId: input.actorUserId,
+    budgetId: input.budgetId,
+    budgetLeaseVersion: input.budgetLeaseVersion,
+    expiresAt: input.expiresAt,
+    groupId: input.groupId,
+    membershipVersion: input.membershipVersion,
+    operationId: input.operationId,
+    payerUserId: input.payerUserId,
+    policyVersion: input.policyVersion,
+    resourceOwnerUserId: input.resourceOwnerUserId,
+    version: 1,
+  };
+};
+
 export class AgentOperationModel {
   private readonly db: LobeChatDatabase;
   private readonly userId: string;
@@ -110,6 +182,111 @@ export class AgentOperationModel {
 
   private ownership = () =>
     buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, agentOperations);
+
+  private static readonly WEBSITE_AI_ADMISSION_TRIGGER = 'website_ai_admission';
+
+  /**
+   * Read the per-customer activity used by the public Website AI admission gate.
+   * Restricting the count to the group's supervisor excludes child specialist
+   * runs, so one multi-agent request is still counted as one customer request.
+   */
+  async getWebsiteAiActivitySnapshot(params: {
+    agentId: string;
+    chatGroupId: string;
+    recentSince: Date;
+  }): Promise<{ activeCount: number; recentCount: number }> {
+    const scope = and(
+      this.ownership(),
+      eq(agentOperations.agentId, params.agentId),
+      eq(agentOperations.chatGroupId, params.chatGroupId),
+    );
+    const activeStatuses: AgentOperationStatus[] = [
+      'running',
+      'waiting_for_async_tool',
+      'waiting_for_human',
+    ];
+    const [[active], [recent]] = await Promise.all([
+      this.db
+        .select({ value: count() })
+        .from(agentOperations)
+        .where(
+          and(
+            scope,
+            inArray(agentOperations.status, activeStatuses),
+            or(
+              isNull(agentOperations.trigger),
+              ne(agentOperations.trigger, AgentOperationModel.WEBSITE_AI_ADMISSION_TRIGGER),
+              gte(agentOperations.createdAt, params.recentSince),
+            ),
+          ),
+        ),
+      this.db
+        .select({ value: count() })
+        .from(agentOperations)
+        .where(
+          and(
+            scope,
+            eq(agentOperations.trigger, AgentOperationModel.WEBSITE_AI_ADMISSION_TRIGGER),
+            gte(agentOperations.createdAt, params.recentSince),
+          ),
+        ),
+    ]);
+
+    return {
+      activeCount: Number(active?.value ?? 0),
+      recentCount: Number(recent?.value ?? 0),
+    };
+  }
+
+  /**
+   * Atomically admit one Website AI start across every server instance.
+   * The user-row lock serializes the read-and-reserve section without holding a
+   * database connection for the full model run. The reservation is an ordinary
+   * operation row so crashes remain visible and expire from active admission
+   * after the rolling window instead of becoming a permanent lock.
+   */
+  async reserveWebsiteAiAdmission(params: {
+    activeLimit: number;
+    agentId: string;
+    chatGroupId: string;
+    recentLimit: number;
+    recentSince: Date;
+    reservationId: string;
+  }): Promise<'active_limit' | 'recent_limit' | 'reserved'> {
+    return this.db.transaction(async (trx) => {
+      const scopedDB = trx as LobeChatDatabase;
+      const [user] = await scopedDB
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, this.userId))
+        .for('update');
+      if (!user) throw new Error('Website AI customer account not found');
+
+      const snapshot = await new AgentOperationModel(
+        scopedDB,
+        this.userId,
+        this.workspaceId,
+      ).getWebsiteAiActivitySnapshot({
+        agentId: params.agentId,
+        chatGroupId: params.chatGroupId,
+        recentSince: params.recentSince,
+      });
+      if (snapshot.activeCount >= params.activeLimit) return 'active_limit';
+      if (snapshot.recentCount >= params.recentLimit) return 'recent_limit';
+
+      await scopedDB.insert(agentOperations).values({
+        agentId: params.agentId,
+        chatGroupId: params.chatGroupId,
+        id: params.reservationId,
+        metadata: { websiteAiAdmission: true },
+        status: 'running',
+        trigger: AgentOperationModel.WEBSITE_AI_ADMISSION_TRIGGER,
+        userId: this.userId,
+        workspaceId: this.workspaceId ?? null,
+      });
+      return 'reserved';
+    });
+  }
 
   /**
    * Insert the initial row when an operation is created. Idempotent via
@@ -139,6 +316,72 @@ export class AgentOperationModel {
     };
 
     await this.db.insert(agentOperations).values(values).onConflictDoNothing();
+  }
+
+  /**
+   * Persist the server-only sponsored-budget locator before queue dispatch.
+   * The first exact value wins; a conflicting retry can never replace it.
+   */
+  async recordHostedGroupSponsoredBudgetLocator(
+    input: HostedGroupSponsoredBudgetLocator,
+  ): Promise<boolean> {
+    const locator = normalizeHostedGroupSponsoredBudgetLocator(input);
+    if (!locator || locator.resourceOwnerUserId !== this.userId || this.workspaceId) return false;
+
+    const hostedRunIdentity = {
+      actorUserIdSnapshot: locator.actorUserId,
+      groupId: locator.groupId,
+      membershipVersion: locator.membershipVersion,
+      ownerUserIdSnapshot: locator.resourceOwnerUserId,
+      version: 1,
+    };
+    const serialized = JSON.stringify(locator);
+    const [row] = await this.db
+      .update(agentOperations)
+      .set({
+        metadata: sql`jsonb_set(
+          coalesce(${agentOperations.metadata}, '{}'::jsonb),
+          '{hostedGroupSponsoredBudgetLocator}',
+          ${serialized}::jsonb,
+          true
+        )`,
+      })
+      .where(
+        and(
+          eq(agentOperations.id, locator.operationId),
+          eq(agentOperations.chatGroupId, locator.groupId),
+          eq(agentOperations.status, 'running'),
+          isNull(agentOperations.workspaceId),
+          this.ownership(),
+          sql`${agentOperations.metadata} @> ${JSON.stringify({ hostedGroupRun: hostedRunIdentity })}::jsonb`,
+          sql`(
+            ${agentOperations.metadata}->'hostedGroupSponsoredBudgetLocator' is null
+            or ${agentOperations.metadata}->'hostedGroupSponsoredBudgetLocator' = ${serialized}::jsonb
+          )`,
+        ),
+      )
+      .returning({ id: agentOperations.id });
+
+    return Boolean(row);
+  }
+
+  /** System-only raw read; the server locator service performs strict parsing and binding checks. */
+  async findHostedGroupSponsoredBudgetLocator(operationId: string): Promise<unknown | null> {
+    if (!canonicalText(operationId) || this.workspaceId) return null;
+    const [row] = await this.db
+      .select({ metadata: agentOperations.metadata })
+      .from(agentOperations)
+      .where(
+        and(
+          eq(agentOperations.id, operationId),
+          eq(agentOperations.status, 'running'),
+          isNull(agentOperations.workspaceId),
+          this.ownership(),
+        ),
+      )
+      .limit(1);
+    const metadata = row?.metadata as Record<string, unknown> | null | undefined;
+    return metadata?.hostedGroupSponsoredBudgetLocator ?? null;
   }
 
   /**
@@ -175,10 +418,66 @@ export class AgentOperationModel {
     operationId: string,
     params: RecordOperationCompletionParams,
   ): Promise<boolean> {
-    const updates: Partial<NewAgentOperation> = {
+    const updates: Partial<NewAgentOperation> & { metadata?: unknown } = {
       completionReason: params.completionReason,
       status: params.status,
     };
+
+    if (params.hostedGroupMemberFinal) {
+      const marker = params.hostedGroupMemberFinal;
+      if (
+        params.status !== 'done' ||
+        params.completionReason !== 'done' ||
+        marker.version !== 1 ||
+        marker.operationId !== operationId ||
+        marker.ownerUserIdSnapshot !== this.userId ||
+        marker.actorUserIdSnapshot === marker.ownerUserIdSnapshot ||
+        !marker.actorUserIdSnapshot.trim() ||
+        !marker.assistantMessageId.trim() ||
+        !/^[a-f\d]{64}$/.test(marker.contentHash) ||
+        !marker.groupId.trim() ||
+        !Number.isFinite(Date.parse(marker.publishedAt)) ||
+        !Number.isSafeInteger(marker.membershipVersion) ||
+        marker.membershipVersion <= 0
+      ) {
+        return false;
+      }
+      const hostedRunIdentity = {
+        actorUserIdSnapshot: marker.actorUserIdSnapshot,
+        groupId: marker.groupId,
+        membershipVersion: marker.membershipVersion,
+        ownerUserIdSnapshot: marker.ownerUserIdSnapshot,
+        version: 1,
+      };
+      const durableHostedRunMatches = sql`${agentOperations.metadata} @> ${JSON.stringify({ hostedGroupRun: hostedRunIdentity })}::jsonb`;
+      const membershipIsCurrent = sql`exists (
+        select 1 from ${chatGroupUserMemberships}
+        where ${chatGroupUserMemberships.chatGroupId} = ${marker.groupId}
+          and ${chatGroupUserMemberships.userId} = ${marker.actorUserIdSnapshot}
+          and ${chatGroupUserMemberships.membershipVersion} = ${marker.membershipVersion}
+          and ${chatGroupUserMemberships.removedAt} is null
+      )`;
+      const isFirstTerminalPublish = sql`${agentOperations.status} in (
+        'running',
+        'waiting_for_human',
+        'waiting_for_async_tool'
+      )`;
+      updates.metadata = sql`case
+        when ${durableHostedRunMatches}
+          and ${membershipIsCurrent}
+          and ${isFirstTerminalPublish}
+        then jsonb_set(
+          coalesce(${agentOperations.metadata}, '{}'::jsonb),
+          '{hostedGroupMemberFinal}',
+          coalesce(
+            ${agentOperations.metadata}->'hostedGroupMemberFinal',
+            ${JSON.stringify(marker)}::jsonb
+          ),
+          true
+        )
+        else ${agentOperations.metadata}
+      end`;
+    }
 
     // Only set completedAt when explicitly provided so callers can mark a
     // non-terminal status (e.g. waiting_for_human) without falsely stamping

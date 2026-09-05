@@ -14,11 +14,7 @@ import { timestamptz } from './_helpers';
 import { workspaces } from './workspace';
 
 export type LlmGenerationErrorCode =
-  | 'timeout'
-  | 'validation_failed'
-  | 'model_error'
-  | 'quota_exceeded'
-  | string;
+  'timeout' | 'validation_failed' | 'model_error' | 'quota_exceeded' | string;
 
 export type LlmGenerationFeedbackSignal = 'positive' | 'negative' | 'neutral';
 

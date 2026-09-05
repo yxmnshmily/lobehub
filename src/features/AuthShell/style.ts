@@ -30,4 +30,16 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   outerContainer: css`
     position: relative;
   `,
+
+  touchTargets: css`
+    @media (pointer: coarse) {
+      button,
+      [role='button'],
+      .ant-input-affix-wrapper,
+      .ant-input:not(.ant-input-affix-wrapper > .ant-input),
+      label:has([role='checkbox']) {
+        min-block-size: 44px !important;
+      }
+    }
+  `,
 }));

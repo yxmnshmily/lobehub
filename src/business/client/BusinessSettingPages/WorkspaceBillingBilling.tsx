@@ -1,3 +1,1 @@
-export default function WorkspaceBillingBilling() {
-  return null;
-}
+export { AdminServiceOperationsView as default } from './TravelServiceLedgerView';

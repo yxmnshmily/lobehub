@@ -1,5 +1,6 @@
 'use client';
 
+import { createStaticStyles } from 'antd-style';
 import { type FC } from 'react';
 import { Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router';
@@ -11,6 +12,35 @@ import dynamic from '@/libs/next/dynamic';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 import NavBar from './NavBar';
+
+const styles = createStaticStyles(({ css }) => ({
+  touchSurface: css`
+    & button:not([role='switch']),
+    & [role='button']:not(button) {
+      box-sizing: border-box;
+      min-block-size: 44px;
+      min-inline-size: 44px;
+    }
+
+    & input:not([type='range']),
+    & textarea,
+    & select,
+    & [role='combobox'] {
+      box-sizing: border-box;
+      min-block-size: 44px;
+    }
+
+    & button[role='switch'] {
+      position: relative;
+    }
+
+    & button[role='switch']::after {
+      content: '';
+      position: absolute;
+      inset: -11px -4px;
+    }
+  `,
+}));
 
 const CloudBanner = dynamic(() => import('@/features/AlertBanner/CloudBanner'));
 const MOBILE_NAV_ROUTES = new Set([
@@ -24,18 +54,60 @@ const MOBILE_NAV_ROUTES = new Set([
   '/me',
 ]);
 
+const RESERVED_ROOT_SEGMENTS = new Set([
+  'acceptance',
+  'admin',
+  'agent',
+  'agents',
+  'api',
+  'apps',
+  'auth-error',
+  'community',
+  'group',
+  'image',
+  'market-auth-callback',
+  'me',
+  'oauth',
+  'onboarding',
+  'page',
+  'profile',
+  'reset-password',
+  'resource',
+  'settings',
+  'share',
+  'signin',
+  'signup',
+  'task',
+  'tasks',
+  'verify-email',
+  'video',
+]);
+
+export const shouldShowMobileNav = (pathname: string) => {
+  const normalizedPath = `/${pathname.split('/').filter(Boolean).join('/')}`;
+  if (MOBILE_NAV_ROUTES.has(normalizedPath)) return true;
+
+  const segments = normalizedPath.split('/').filter(Boolean);
+  if (segments.length === 0 || RESERVED_ROOT_SEGMENTS.has(segments[0])) return false;
+
+  const workspacePath = segments.length === 1 ? '/' : `/${segments.slice(1).join('/')}`;
+  return MOBILE_NAV_ROUTES.has(workspacePath);
+};
+
 const MobileMainLayout: FC = () => {
   const { showCloudPromotion } = useServerConfigStore(featureFlagsSelectors);
   const location = useLocation();
   const pathname = location.pathname;
-  const showNav = MOBILE_NAV_ROUTES.has(pathname);
+  const showNav = shouldShowMobileNav(pathname);
   return (
     <WorkspaceContextSlot>
       <RouteMetaBridge />
       <Suspense fallback={null}>{showCloudPromotion && <CloudBanner mobile />}</Suspense>
       <Suspense fallback={<Loading debugId="MobileMainLayout > Outlet" />}>
-        <Outlet />
-        {showNav && <NavBar />}
+        <div className={styles.touchSurface} style={{ display: 'contents' }}>
+          <Outlet />
+          {showNav && <NavBar />}
+        </div>
       </Suspense>
     </WorkspaceContextSlot>
   );

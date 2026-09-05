@@ -13,6 +13,7 @@ export default {
   'codes.EMAIL_NOT_FOUND':
     'No email associated with this account. Please check if your account has an email bound.',
   'codes.EMAIL_NOT_VERIFIED': 'Please verify your email first',
+  'codes.EMAIL_ALREADY_VERIFIED': 'This email is already verified. You can sign in directly.',
   'codes.FAILED_TO_CREATE_SESSION': 'Failed to create session',
   'codes.FAILED_TO_CREATE_USER': 'Failed to create user',
   'codes.FAILED_TO_GET_SESSION': 'Failed to retrieve session',
@@ -24,11 +25,15 @@ export default {
   'codes.INVALID_EMAIL_OR_PASSWORD': 'Incorrect email or password',
   'codes.INVALID_PASSWORD': 'Invalid password format',
   'codes.INVALID_TOKEN': 'Token is invalid or has expired',
+  'codes.INVALID_VERIFICATION_TOKEN':
+    'This verification link is invalid or has expired. Please request a new email.',
   'codes.PASSWORD_TOO_LONG': 'Password is too long',
   'codes.PASSWORD_TOO_SHORT': 'Password is too short',
   'codes.PROVIDER_NOT_FOUND': 'Identity provider configuration not found',
   'codes.RATE_LIMIT_EXCEEDED': 'Too many requests, please try again later',
   'codes.SESSION_EXPIRED': 'Session has expired, please sign in again',
+  'codes.TOKEN_EXPIRED':
+    'This verification link has expired. Please request a new verification email.',
   'codes.SOCIAL_ACCOUNT_ALREADY_LINKED': 'This social account is already linked to another user',
   'codes.TEMPORARY_EMAIL_NOT_ALLOWED':
     'Temporary email addresses are not supported. Please use a regular email address. Repeated attempts may block this network.',

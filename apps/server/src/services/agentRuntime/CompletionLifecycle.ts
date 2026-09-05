@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { isParkedStatus } from '@lobechat/agent-runtime';
 import { deserializeParts } from '@lobechat/utils';
 import { isRecord } from '@lobechat/utils/object';
@@ -8,6 +10,7 @@ import { notifyAgentRunCompleted } from '@/business/server/agent-run/notifyAgent
 import {
   AgentOperationModel,
   type ChildUsageRollup,
+  type HostedGroupMemberFinalMarker,
   type RecordOperationStartParams,
 } from '@/database/models/agentOperation';
 import { MessageModel } from '@/database/models/message';
@@ -19,6 +22,7 @@ import { buildFinalSnapshotKey } from '@/server/modules/AgentTracing';
 import { emitAgentSignalSourceEvent } from '@/server/services/agentSignal';
 import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observability/traceEvents';
 import { extractSelfIterationCompletionPayload } from '@/server/services/agentSignal/services/selfIteration/completion';
+import { parseHostedGroupRunSnapshot } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
 import { instantiateVerifyPlanOnStart, runVerifyOnCompletion } from '@/server/services/verify';
 import { registerWorksForOperation } from '@/server/services/workRegistration';
 import { after } from '@/server/utils/scheduleAfterResponse';
@@ -330,12 +334,14 @@ export class CompletionLifecycle {
       return (own ?? 0) + child;
     };
 
+    const hostedGroupMemberFinal = buildHostedGroupMemberFinalMarker(operationId, state, reason);
     try {
       const accepted = await this.agentOperationModel.recordCompletion(operationId, {
         completedAt,
         completionReason,
         cost: state?.cost ?? null,
         error: state?.error ?? null,
+        hostedGroupMemberFinal,
         interruption: state?.interruption ?? null,
         llmCalls: add(state?.usage?.llm?.apiCalls, rollup?.llmCalls ?? 0),
         // Backfill the executed model/provider when the terminal state carries
@@ -369,6 +375,7 @@ export class CompletionLifecycle {
         if (operation) return false;
       }
     } catch (error) {
+      if (hostedGroupMemberFinal) throw error;
       log('[%s] Failed to persist operation completion (non-fatal): %O', operationId, error);
     }
 
@@ -1186,6 +1193,52 @@ export const findLastAssistantMessage = (
     .slice()
     .reverse()
     .find((message) => message.role === 'assistant');
+
+export const buildHostedGroupMemberFinalMarker = (
+  operationId: string,
+  state: any,
+  reason: string,
+): HostedGroupMemberFinalMarker | undefined => {
+  if (reason !== 'done' || state?.status !== 'done') return undefined;
+
+  const metadata = state?.metadata;
+  const hostedRun = parseHostedGroupRunSnapshot(metadata?.hostedGroupRun);
+  if (
+    !hostedRun ||
+    metadata?.orchestrationRole !== 'supervisor' ||
+    metadata?.billingActorUserId !== hostedRun.actorUserIdSnapshot ||
+    metadata?.resourceOwnerUserId !== hostedRun.ownerUserIdSnapshot ||
+    metadata?.groupId !== hostedRun.groupId
+  ) {
+    return undefined;
+  }
+
+  const messages = normalizeCompletionMessages(
+    Array.isArray(state?.messages) ? state.messages : [],
+  );
+  const finalMessage = messages.at(-1);
+  const finalText = finalMessage ? extractTextFromMessage(finalMessage)?.trim() : undefined;
+  if (
+    finalMessage?.role !== 'assistant' ||
+    typeof finalMessage.id !== 'string' ||
+    !finalMessage.id.trim() ||
+    !finalText
+  ) {
+    return undefined;
+  }
+
+  return {
+    actorUserIdSnapshot: hostedRun.actorUserIdSnapshot,
+    assistantMessageId: finalMessage.id,
+    contentHash: createHash('sha256').update(finalText, 'utf8').digest('hex'),
+    groupId: hostedRun.groupId,
+    membershipVersion: hostedRun.membershipVersion,
+    operationId,
+    ownerUserIdSnapshot: hostedRun.ownerUserIdSnapshot,
+    publishedAt: new Date().toISOString(),
+    version: 1,
+  };
+};
 
 /**
  * Extract image/file parts from a message's `content` array. Each entry is

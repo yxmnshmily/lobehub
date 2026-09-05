@@ -1,6 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStore } from '.';
+
+const mocks = vi.hoisted(() => ({
+  performSave: vi.fn(),
+}));
+
+vi.mock('@/store/document', () => ({
+  useDocumentStore: {
+    getState: () => ({ performSave: mocks.performSave }),
+  },
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('PageEditorStore - rightPanelMode', () => {
   it('should default to copilot mode', () => {
@@ -59,6 +73,77 @@ describe('PageEditorStore - metaReadOnly', () => {
 
     expect(store.getState().title).toBe('New');
     expect(store.getState().isMetaDirty).toBe(true);
+  });
+});
+
+describe('PageEditorStore - document switching', () => {
+  it('does not apply an old document save completion to the newly opened document', async () => {
+    let resolveSave: (() => void) | undefined;
+    mocks.performSave.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const store = createStore({
+      documentId: 'doc-1',
+      lastSavedTitle: 'Document 1',
+      title: 'Document 1',
+    });
+
+    store.setState({ isMetaDirty: true, title: 'Document 1 edited' });
+    const save = store.getState().performMetaSave();
+
+    store.setState({ documentId: 'doc-2' });
+    store.getState().initMeta('Document 2', '📄');
+
+    resolveSave?.();
+    await save;
+
+    expect(store.getState()).toMatchObject({
+      documentId: 'doc-2',
+      emoji: '📄',
+      isMetaDirty: false,
+      lastSavedEmoji: '📄',
+      lastSavedTitle: 'Document 2',
+      metaSaveStatus: 'idle',
+      title: 'Document 2',
+    });
+  });
+
+  it('does not apply an old document save failure to the newly opened document', async () => {
+    let rejectSave: ((error: Error) => void) | undefined;
+    mocks.performSave.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectSave = reject;
+        }),
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = createStore({
+      documentId: 'doc-1',
+      lastSavedTitle: 'Document 1',
+      title: 'Document 1',
+    });
+
+    store.setState({ isMetaDirty: true, title: 'Document 1 edited' });
+    const save = store.getState().performMetaSave();
+
+    store.setState({ documentId: 'doc-2' });
+    store.getState().initMeta('Document 2', '📄');
+    store.setState({ isMetaDirty: true, metaSaveStatus: 'saving', title: 'Document 2 edited' });
+
+    rejectSave?.(new Error('Document 1 save failed'));
+    await save;
+
+    expect(store.getState()).toMatchObject({
+      documentId: 'doc-2',
+      isMetaDirty: true,
+      lastSavedEmoji: '📄',
+      lastSavedTitle: 'Document 2',
+      metaSaveStatus: 'saving',
+      title: 'Document 2 edited',
+    });
   });
 });
 

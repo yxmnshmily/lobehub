@@ -6,16 +6,12 @@ vi.mock('next/headers', () => ({
   headers: vi.fn(() => new Headers()),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue({
-        user: {
-          id: 'better-auth-user-id',
-        },
-      }),
+vi.mock('@/libs/better-auth/getActiveSession', () => ({
+  getActiveSession: vi.fn().mockResolvedValue({
+    user: {
+      id: 'better-auth-user-id',
     },
-  },
+  }),
 }));
 
 describe('getUserAuth', () => {

@@ -25,7 +25,6 @@ export interface GithubModelCard {
   version: string;
 }
 
-
 export const params = {
   baseURL: 'https://models.github.ai/inference',
   chatCompletion: {

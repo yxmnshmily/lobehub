@@ -2,7 +2,7 @@ import { Flexbox } from '@lobehub/ui';
 import { Slider, type SliderProps, Tooltip } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cx } from 'antd-style';
 import type { CSSProperties, ReactNode } from 'react';
-import { memo, useMemo } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { findClosestOptionIndex } from './utils';
 
@@ -66,6 +66,7 @@ export interface DiscreteSliderProps extends Omit<
   SliderProps,
   'defaultValue' | 'max' | 'min' | 'onChange' | 'onChangeComplete' | 'step' | 'value'
 > {
+  ariaLabel?: string;
   formatTooltip?: (value: number) => ReactNode;
   onChange?: (value: number) => void;
   onChangeComplete?: (value: number) => void;
@@ -75,6 +76,7 @@ export interface DiscreteSliderProps extends Omit<
 
 const DiscreteSlider = memo<DiscreteSliderProps>(
   ({
+    ariaLabel,
     className,
     disabled,
     formatTooltip,
@@ -85,8 +87,13 @@ const DiscreteSlider = memo<DiscreteSliderProps>(
     value,
     ...rest
   }) => {
+    const rootRef = useRef<HTMLDivElement>(null);
     const currentIndex = useMemo(() => findClosestOptionIndex(options, value), [options, value]);
     const currentOption = options[currentIndex];
+    useLayoutEffect(() => {
+      if (!ariaLabel) return;
+      rootRef.current?.querySelector('input[type="range"]')?.setAttribute('aria-label', ariaLabel);
+    }, [ariaLabel]);
     const gridTemplateColumns =
       options.length > 1
         ? [
@@ -118,7 +125,7 @@ const DiscreteSlider = memo<DiscreteSliderProps>(
     );
 
     return (
-      <Flexbox className={cx(styles.root, className)} gap={6} style={style}>
+      <Flexbox className={cx(styles.root, className)} gap={6} ref={rootRef} style={style}>
         {formatTooltip && currentOption ? (
           <Tooltip title={formatTooltip(currentOption.value)}>{slider}</Tooltip>
         ) : (

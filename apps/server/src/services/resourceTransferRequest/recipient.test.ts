@@ -16,6 +16,12 @@ vi.mock('@/server/services/resourcePermission', () => ({
   assertCanPerformResourceAction: (...args: unknown[]) => assertCanPerformResourceAction(...args),
 }));
 
+const assertDefaultTravelServiceMutationAllowed = vi.fn();
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: (...args: unknown[]) =>
+    assertDefaultTravelServiceMutationAllowed(...args),
+}));
+
 const getMember = vi.fn();
 
 const baseParams = {
@@ -28,6 +34,7 @@ const baseParams = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  assertDefaultTravelServiceMutationAllowed.mockResolvedValue(undefined);
   vi.mocked(WorkspaceMemberModel).mockImplementation(() => ({ getMember }) as any);
 });
 
@@ -115,6 +122,28 @@ describe('executeAcceptedTransfer recipient recheck', () => {
     ).rejects.toMatchObject({
       cause: { data: { code: TransferErrorCode.TargetNotWorkspaceMember } },
     });
+  });
+
+  it('rechecks the protected travel identity inside the accepting transaction', async () => {
+    assertDefaultTravelServiceMutationAllowed.mockRejectedValue(
+      new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'This platform-managed travel resource cannot be changed',
+      }),
+    );
+
+    await expect(
+      executeAcceptedTransfer({
+        db: dbWithLockedMemberRows([{ role: 'member' }]),
+        recipientId: 'recipient-1',
+        request,
+        workspaceId: 'ws-1',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(assertDefaultTravelServiceMutationAllowed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ agentIds: ['agent-1'], kind: 'agent' }),
+    );
   });
 
   it("refuses a reassignment accept when the initiator's transfer authority was revoked", async () => {

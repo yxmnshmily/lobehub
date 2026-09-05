@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { DEFAULT_INBOX_AVATAR, DEFAULT_INBOX_TITLE, INBOX_SESSION_ID } from '@lobechat/const';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
@@ -800,6 +800,24 @@ describe('AgentModel', () => {
   });
 
   describe('update', () => {
+    it('should strip platform-managed runtime mode from a generic update', async () => {
+      const [agent] = await serverDB.insert(agents).values({ userId }).returning();
+
+      await agentModel.update(agent.id, {
+        agencyConfig: {
+          executionTarget: 'none',
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+      });
+
+      const updated = await serverDB.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      expect(updated?.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('should update agent fields and set updatedAt', async () => {
       const agent = await serverDB
         .insert(agents)
@@ -1190,6 +1208,31 @@ describe('AgentModel', () => {
   });
 
   describe('updateConfig', () => {
+    it('should strip an existing platform-managed runtime mode during generic config updates', async () => {
+      const [agent] = await serverDB
+        .insert(agents)
+        .values({
+          agencyConfig: {
+            executionTarget: 'none',
+            modelRuntimeMode: 'platform-managed',
+            modelSelectionPolicy: 'fixed',
+          },
+          userId,
+        })
+        .returning();
+
+      await agentModel.updateConfig(agent.id, {
+        agencyConfig: { localSandbox: true },
+      });
+
+      const updated = await serverDB.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      expect(updated?.agencyConfig).toEqual({
+        executionTarget: 'none',
+        localSandbox: true,
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('replaces the profile wholesale so a removed trait can be cleared', async () => {
       const agent = await serverDB
         .insert(agents)
@@ -1554,6 +1597,147 @@ describe('AgentModel', () => {
   });
 
   describe('create', () => {
+    it('should strip platform-managed runtime mode from a generic create', async () => {
+      const agent = await agentModel.create({
+        agencyConfig: {
+          executionTarget: 'none',
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+      });
+
+      expect(agent.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
+    it('should ensure one user-owned agent by clientId', async () => {
+      const first = await agentModel.ensureByClientId('travel-copywriter', {
+        title: '旅游文案助理',
+        virtual: true,
+      });
+      const retried = await agentModel.ensureByClientId('travel-copywriter', {
+        title: '旅游文案助理',
+        virtual: true,
+      });
+
+      expect(retried.id).toBe(first.id);
+      expect(
+        await serverDB.query.agents.findMany({
+          where: and(eq(agents.clientId, 'travel-copywriter'), eq(agents.userId, userId)),
+        }),
+      ).toHaveLength(1);
+    });
+
+    it('should upgrade product fields for an existing ensured agent and preserve user config', async () => {
+      await serverDB.insert(agents).values({
+        agencyConfig: { executionTarget: 'none', localSandbox: true },
+        clientId: 'travel-image-designer',
+        description: 'user note',
+        id: 'legacy-travel-image',
+        model: 'user-model',
+        plugins: ['user-plugin'],
+        systemRole: 'old prompt',
+        title: 'old title',
+        userId,
+        virtual: true,
+      });
+
+      const upgraded = await agentModel.ensureByClientId('travel-image-designer', {
+        agencyConfig: {
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+        plugins: ['lobe-image-generation'],
+        systemRole: 'new product prompt',
+        title: '图片封面助理',
+        virtual: true,
+      });
+
+      expect(upgraded).toMatchObject({
+        agencyConfig: {
+          executionTarget: 'none',
+          localSandbox: true,
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+        description: 'user note',
+        id: 'legacy-travel-image',
+        model: 'user-model',
+        plugins: ['user-plugin', 'lobe-image-generation'],
+        systemRole: 'new product prompt',
+        title: '图片封面助理',
+      });
+    });
+
+    it('should not upgrade another users agent with the same clientId', async () => {
+      const other = await agentModel2.ensureByClientId('travel-copywriter', {
+        systemRole: 'other prompt',
+        title: 'other title',
+      });
+      const mine = await agentModel.ensureByClientId('travel-copywriter', {
+        systemRole: 'my prompt',
+        title: '旅游文案助理',
+      });
+
+      expect(mine.id).not.toBe(other.id);
+      expect(
+        await serverDB.query.agents.findFirst({ where: eq(agents.id, other.id) }),
+      ).toMatchObject({
+        systemRole: 'other prompt',
+        title: 'other title',
+      });
+    });
+
+    it('should fix model selection for an owned supervisor and preserve its config and model', async () => {
+      await serverDB.insert(agents).values({
+        agencyConfig: { executionTarget: 'none', localSandbox: true },
+        id: 'travel-supervisor',
+        model: 'explicit-model',
+        provider: 'explicit-provider',
+        userId,
+      });
+
+      const updated = await agentModel.ensureFixedModelSelectionPolicy('travel-supervisor');
+
+      expect(updated).toMatchObject({
+        agencyConfig: {
+          executionTarget: 'none',
+          localSandbox: true,
+          modelSelectionPolicy: 'fixed',
+        },
+        model: 'explicit-model',
+        provider: 'explicit-provider',
+      });
+    });
+
+    it('should enable platform-managed runtime for an owned agent and preserve its config and model', async () => {
+      await serverDB.insert(agents).values({
+        agencyConfig: { executionTarget: 'none', localSandbox: true },
+        id: 'travel-platform-supervisor',
+        model: 'explicit-model',
+        provider: 'explicit-provider',
+        userId,
+      });
+
+      const updated = await agentModel.ensurePlatformManagedModelRuntime(
+        'travel-platform-supervisor',
+      );
+
+      expect(updated).toMatchObject({
+        agencyConfig: {
+          executionTarget: 'none',
+          localSandbox: true,
+          modelRuntimeMode: 'platform-managed',
+          modelSelectionPolicy: 'fixed',
+        },
+        model: 'explicit-model',
+        provider: 'explicit-provider',
+        userId,
+      });
+    });
+
     it('should strip secrets and unknown fields from an API binding', async () => {
       const agent = await agentModel.create({
         agencyConfig: {
@@ -1768,6 +1952,24 @@ describe('AgentModel', () => {
   });
 
   describe('batchCreate', () => {
+    it('should strip platform-managed runtime mode from generic batch imports', async () => {
+      const [agent] = await agentModel.batchCreate([
+        {
+          agencyConfig: {
+            executionTarget: 'none',
+            modelRuntimeMode: 'platform-managed',
+            modelSelectionPolicy: 'fixed',
+          },
+          title: 'Imported managed agent',
+        },
+      ]);
+
+      expect(agent.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('should drop reserved builtin slugs in a batch', async () => {
       const created = await agentModel.batchCreate([
         { slug: 'inbox', title: 'Squatter A' },
@@ -2205,6 +2407,31 @@ describe('AgentModel', () => {
   });
 
   describe('duplicate', () => {
+    it('should not copy platform-managed runtime mode into a generic duplicate', async () => {
+      const [sourceAgent] = await serverDB
+        .insert(agents)
+        .values({
+          agencyConfig: {
+            executionTarget: 'none',
+            modelRuntimeMode: 'platform-managed',
+            modelSelectionPolicy: 'fixed',
+          },
+          title: 'Managed Agent',
+          userId,
+        })
+        .returning();
+
+      const result = await agentModel.duplicate(sourceAgent.id);
+      const duplicatedAgent = await serverDB.query.agents.findFirst({
+        where: eq(agents.id, result!.agentId),
+      });
+
+      expect(duplicatedAgent?.agencyConfig).toEqual({
+        executionTarget: 'none',
+        modelSelectionPolicy: 'fixed',
+      });
+    });
+
     it('should duplicate an agent with all config fields', async () => {
       // Create source agent with full config
       const [sourceAgent] = await serverDB

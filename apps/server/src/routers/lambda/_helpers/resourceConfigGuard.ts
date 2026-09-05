@@ -7,6 +7,7 @@ import {
   type ResourceMeta,
 } from '@/server/services/resourcePermission';
 
+import { hasActivePlatformAdminAccess } from './platformAdminGuard';
 import { getWorkspaceAgentParentGroupIds } from './workspaceAgentGuard';
 
 interface ResourceConfigGuardCtx {
@@ -61,7 +62,18 @@ export const getResourceConfigAccess = async (
   knownMeta?: ResourceMeta,
 ): Promise<ResourceConfigAccess> => {
   const workspaceId = ctx.workspaceId ?? undefined;
-  if (!workspaceId) return 'full';
+  if (!workspaceId) {
+    const meta = knownMeta ?? (await getResourceMeta(ctx.db, resourceType, resourceId));
+    if (!meta) return 'none';
+
+    if (await hasActivePlatformAdminAccess(ctx.db, ctx.userId)) return 'full';
+
+    // Agent/group configuration is platform-managed. Ownership still grants
+    // ordinary customers use of an older personal record, but never its
+    // prompt, model, provider, tools, or other administrator configuration.
+    if (meta.userId === ctx.userId || meta.visibility === 'public') return 'profile';
+    return 'none';
+  }
 
   // Resolved once and threaded through: both the access evaluation and the
   // builtin exemption below need it. Callers may hand over a partial meta —
@@ -134,11 +146,9 @@ const AGENT_PROFILE_KEYS = [
   'id',
   'isSupervisor',
   'marketIdentifier',
-  'model',
   'name',
   'openingMessage',
   'openingQuestions',
-  'provider',
   'slug',
   'title',
   'updatedAt',
@@ -165,15 +175,8 @@ export const redactAgentConfig = <T extends Record<string, any>>(agent: T): T =>
     const safeAgencySummary = pick(agencyConfig, [
       'executionTarget',
       'executionTargetSelectionPolicy',
-      'modelSelectionPolicy',
       'topicSharePolicy',
     ]);
-    // The hetero marker is identity, not executable config: without it,
-    // use/view members render an external-CLI agent as a plain runtime agent
-    // (wrong model selector, wrong composer). Expose the type only — args,
-    // env and device bindings stay behind edit-level access.
-    const heteroType = agencyConfig.heterogeneousProvider?.type;
-    if (heteroType) safeAgencySummary.heterogeneousProvider = { type: heteroType };
     if (Object.keys(safeAgencySummary).length > 0) result.agencyConfig = safeAgencySummary;
   }
   const chatConfig = agent.chatConfig as Record<string, any> | null | undefined;

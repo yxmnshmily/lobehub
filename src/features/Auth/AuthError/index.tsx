@@ -3,12 +3,13 @@
 import { SiDiscord } from '@icons-pack/react-simple-icons';
 import { SOCIAL_URL } from '@lobechat/business-const';
 import { Flexbox, Icon } from '@lobehub/ui';
-import { Button, Text } from '@lobehub/ui/base-ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import AuthCard from '@/features/AuthCard';
 
 const normalizeErrorCode = (code?: string | null) =>
@@ -28,28 +29,24 @@ const AuthErrorPage = memo(() => {
       title={t('title')}
       footer={
         <Flexbox gap={12} justify="center" wrap="wrap">
-          <Link to="/signin">
-            <Button block size={'large'} type="primary">
-              {t('actions.retry')}
-            </Button>
-          </Link>
-          <a href={'/'}>
-            <Button block size={'large'}>
-              {t('actions.home')}
-            </Button>
-          </a>
-          <a href={SOCIAL_URL.discord} rel="noopener noreferrer" target="_blank">
-            <Button block icon={<Icon fill={cssVar.colorText} icon={SiDiscord} />} type="text">
-              {t('actions.discord')}
-            </Button>
-          </a>
+          <Button block href={withLobeHubMountPath('/signin')} size={'large'} type="primary">
+            {t('actions.retry')}
+          </Button>
+          <Button block href={'/index.html'} size={'large'}>
+            {t('actions.home')}
+          </Button>
+          <Button
+            block
+            href={SOCIAL_URL.discord}
+            icon={<Icon fill={cssVar.colorText} icon={SiDiscord} />}
+            target="_blank"
+            type="text"
+          >
+            {t('actions.discord')}
+          </Button>
         </Flexbox>
       }
-    >
-      <Text style={{ fontFamily: cssVar.fontFamilyCode }} type={'secondary'}>
-        ErrorCode: {error || 'UNKNOWN'}
-      </Text>
-    </AuthCard>
+    />
   );
 });
 

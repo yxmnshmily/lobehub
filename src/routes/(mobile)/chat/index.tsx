@@ -13,7 +13,7 @@ const MobileChatPage = memo(() => {
   return (
     <>
       <ChatHydration />
-      <ConversationArea />
+      <ConversationArea mobile />
       <Topic />
       <PortalPanel mobile />
       <TelemetryNotification mobile />

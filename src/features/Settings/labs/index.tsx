@@ -75,6 +75,7 @@ const LabsForm = memo(() => {
       <Switch
         checked={checkedByFlag[flag]}
         loading={!isPreferenceInit}
+        title={tLabs(`features.${i18nKey}.title`)}
         onChange={(next: boolean) => updateLab({ [flag]: next })}
       />
     ),

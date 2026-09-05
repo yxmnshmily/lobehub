@@ -55,6 +55,25 @@ export class RbacModel {
     this.db = db;
   }
 
+  /** Whether the user holds an active, globally-scoped platform role. */
+  hasGlobalRole = async (roleName: string, userId = this.userId): Promise<boolean> => {
+    const result = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(
+        and(
+          eq(userRoles.userId, userId),
+          isNull(userRoles.workspaceId),
+          eq(roles.name, roleName),
+          eq(roles.isActive, true),
+          sql`(${userRoles.expiresAt} IS NULL OR ${userRoles.expiresAt} > NOW())`,
+        ),
+      );
+
+    return (result[0]?.count || 0) > 0;
+  };
+
   /** Resolve several users' effective workspace grants in two batched queries. */
   static getWorkspaceUsersPermissions = async ({
     db,

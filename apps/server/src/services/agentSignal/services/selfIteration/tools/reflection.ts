@@ -3,12 +3,7 @@ import type { ToolWriteResult } from './shared';
 
 /** Reflection action class considered by the direct-apply policy. */
 export type ReflectionActionType =
-  | 'consolidate_skill'
-  | 'create_skill'
-  | 'noop'
-  | 'proposal_only'
-  | 'refine_skill'
-  | 'write_memory';
+  'consolidate_skill' | 'create_skill' | 'noop' | 'proposal_only' | 'refine_skill' | 'write_memory';
 
 /** Evidence strength used by reflection direct-apply policy. */
 export type ReflectionEvidenceStrength = 'medium' | 'strong' | 'weak';

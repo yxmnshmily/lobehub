@@ -60,13 +60,13 @@ const convertType = (type: string): SchemaType => {
  */
 export const convertOpenAISchemaToGoogleSchema = (openAISchema: GenerateObjectSchema): any => {
   // Check whether a schema type is (or includes) STRING / OBJECT.
-// Handles both `type: 'string'` and nullable `type: ['string', 'null']`.
-const isStringType = (t: unknown): boolean =>
-  typeof t === 'string' ? t === 'string' : Array.isArray(t) && t.includes('string');
-const isObjectType = (t: unknown): boolean =>
-  typeof t === 'string' ? t === 'object' : Array.isArray(t) && t.includes('object');
+  // Handles both `type: 'string'` and nullable `type: ['string', 'null']`.
+  const isStringType = (t: unknown): boolean =>
+    typeof t === 'string' ? t === 'string' : Array.isArray(t) && t.includes('string');
+  const isObjectType = (t: unknown): boolean =>
+    typeof t === 'string' ? t === 'object' : Array.isArray(t) && t.includes('object');
 
-const convertSchema = (schema: any): any => {
+  const convertSchema = (schema: any): any => {
     if (!schema) return schema;
 
     // convertType handles single string types; for array types (nullable)

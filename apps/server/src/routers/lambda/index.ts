@@ -46,6 +46,7 @@ import { comfyuiRouter } from './comfyui';
 import { composioRouter } from './composio';
 import { configRouter } from './config';
 import { connectorRouter } from './connector';
+import { customerCenterRouter } from './customerCenter';
 import { deviceRouter } from './device';
 import { documentRouter } from './document';
 import { documentCommentRouter } from './documentComment';
@@ -57,6 +58,9 @@ import { generationRouter } from './generation';
 import { generationBatchRouter } from './generationBatch';
 import { generationTopicRouter } from './generationTopic';
 import { goalRouter } from './goal';
+import { groupConversationRouter } from './groupConversation';
+import { groupMembershipRouter } from './groupMembership';
+import { groupSponsoredCreditRouter } from './groupSponsoredCredit';
 import { homeRouter } from './home';
 import { imageRouter } from './image';
 import { importerRouter } from './importer';
@@ -71,6 +75,11 @@ import { notebookRouter } from './notebook';
 import { notificationRouter } from './notification';
 import { oauthAppRouter } from './oauthApp';
 import { oauthDeviceFlowRouter } from './oauthDeviceFlow';
+import { platformAccessRouter } from './platformAccess';
+import { platformCreditRouter } from './platformCredit';
+import { platformCreditPurchaseRouter } from './platformCreditPurchase';
+import { platformModerationRouter } from './platformModeration';
+import { platformOperationsRouter } from './platformOperations';
 import { pluginRouter } from './plugin';
 import { projectRouter } from './project';
 import { pushTokenRouter } from './pushToken';
@@ -86,11 +95,14 @@ import { taskRouter } from './task';
 import { threadRouter } from './thread';
 import { topicRouter } from './topic';
 import { topicCommentRouter } from './topicComment';
+import { travelGenerationRouter } from './travelGeneration';
+import { travelServiceLedgerRouter } from './travelServiceLedger';
 import { uploadRouter } from './upload';
 import { usageRouter } from './usage';
 import { userRouter } from './user';
 import { userMemoriesRouter } from './userMemories';
 import { userMemoryRouter } from './userMemory';
+import { userSessionManagementRouter } from './userSessionManagement';
 import { verifyRouter } from './verify';
 import { videoRouter } from './video';
 import { webBrowsingRouter } from './webBrowsing';
@@ -123,6 +135,7 @@ export const lambdaRouter = router({
   comfyui: comfyuiRouter,
   config: configRouter,
   connector: connectorRouter,
+  customerCenter: customerCenterRouter,
   device: deviceRouter,
   document: documentRouter,
   documentComment: documentCommentRouter,
@@ -134,6 +147,9 @@ export const lambdaRouter = router({
   generationTopic: generationTopicRouter,
   goal: goalRouter,
   group: agentGroupRouter,
+  groupConversation: groupConversationRouter,
+  groupMembership: groupMembershipRouter,
+  groupSponsoredCredit: groupSponsoredCreditRouter,
   healthcheck: publicProcedure.query(() => "i'm live!"),
   home: homeRouter,
   image: imageRouter,
@@ -152,6 +168,11 @@ export const lambdaRouter = router({
   oauthApp: oauthAppRouter,
   oauthDeviceFlow: oauthDeviceFlowRouter,
   plugin: pluginRouter,
+  platformAccess: platformAccessRouter,
+  platformCredit: platformCreditRouter,
+  platformCreditPurchase: platformCreditPurchaseRouter,
+  platformModeration: platformModerationRouter,
+  platformOperations: platformOperationsRouter,
   project: projectRouter,
   pushToken: pushTokenRouter,
   ragEval: ragEvalRouter,
@@ -166,11 +187,14 @@ export const lambdaRouter = router({
   thread: threadRouter,
   topic: topicRouter,
   topicComment: topicCommentRouter,
+  travelGeneration: travelGenerationRouter,
+  travelServiceLedger: travelServiceLedgerRouter,
   upload: uploadRouter,
   usage: usageRouter,
   user: userRouter,
   userMemories: userMemoriesRouter,
   userMemory: userMemoryRouter,
+  userSessionManagement: userSessionManagementRouter,
   verify: verifyRouter,
   video: videoRouter,
   webBrowsing: webBrowsingRouter,

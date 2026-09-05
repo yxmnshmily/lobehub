@@ -211,7 +211,17 @@ export class AgentService {
    * 3. userDefaultAgentConfig - from user settings (defaultAgent.config)
    * 4. agent - actual agent config from database
    *
-   * Workspace exception: a workspace is a shared resource, so its agents must
+   * Workspace / fixed-policy exception: a workspace is a shared resource, and
+   * a fixed-policy personal agent is platform-managed. Neither may inherit an
+   * individual member's personal default model. Otherwise a shared or managed
+   * agent persisted with an empty model resolves to whoever opens it and can
+   * silently switch providers or platform cost.
+   *
+   * Workspace agents and personal agents with
+   * `agencyConfig.modelSelectionPolicy === 'fixed'` therefore skip the user
+   * layer and fall back to the hardcoded/server platform default.
+   *
+   * A workspace is a shared resource, so its agents must
    * NOT inherit any individual member's *personal* default model. Otherwise a
    * shared agent persisted with an empty model (e.g. the workspace inbox)
    * resolves to whoever opens it — the creator's personal default leaks in and
@@ -228,8 +238,8 @@ export class AgentService {
     const serverDefaultAgentConfig = getServerDefaultAgentConfig();
     const baseConfig = merge(DEFAULT_AGENT_CONFIG, serverDefaultAgentConfig);
 
-    // Skip the personal default layer for workspace-scoped agents (see above).
-    if (this.workspaceId) {
+    // Skip the personal default layer for workspace and platform-managed agents.
+    if (this.workspaceId || agent?.agencyConfig?.modelSelectionPolicy === 'fixed') {
       return merge(baseConfig, cleanObject(agent));
     }
 

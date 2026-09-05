@@ -13,6 +13,7 @@ import type {
   ChatMethodOptions,
   ChatStreamCallbacks,
   ChatStreamPayload,
+  GenerateObjectBoundedOptions,
   GenerateObjectOptions,
   GenerateObjectPayload,
 } from '../../types';
@@ -26,6 +27,7 @@ import type { ModelIdMappingOptions } from '../../utils/modelIdMapping';
 import { resolveMappedModelId } from '../../utils/modelIdMapping';
 import { MODEL_LIST_CONFIGS, processModelList } from '../../utils/modelParse';
 import { StreamingResponse } from '../../utils/response';
+import { getRuntimeSignatureScopeSource } from '../../utils/signatureScope';
 import type { LobeRuntimeAI } from '../BaseAI';
 import {
   buildAnthropicMessages,
@@ -39,6 +41,7 @@ import { type ComputeChatCostOptions } from '../usageConverters/utils/computeCha
 import {
   type AnthropicGenerateObjectConfig,
   createAnthropicGenerateObject,
+  prepareAnthropicGenerateObjectBounded,
 } from './generateObject';
 import { handleAnthropicError } from './handleAnthropicError';
 import {
@@ -75,6 +78,20 @@ const resolveDefaultAnthropicTimeout = () => {
   const timeout = Number(process.env[ANTHROPIC_CLIENT_TIMEOUT_ENV]);
 
   return Number.isInteger(timeout) && timeout > 0 ? timeout : DEFAULT_ANTHROPIC_TIMEOUT;
+};
+
+const getExactBoundedModelPricing = async (
+  model: string,
+  providerId: string,
+  pricingContext?: GenerateObjectBoundedOptions['pricingContext'],
+) => {
+  const { loadModels } = (await import('@lobechat/business-model-bank/model-config')) as {
+    loadModels: (options?: {
+      pricingContext?: GenerateObjectBoundedOptions['pricingContext'];
+    }) => Promise<Array<{ id: string; pricing?: Pricing; providerId: string }>>;
+  };
+  const models = await loadModels(pricingContext ? { pricingContext } : undefined);
+  return models.find((item) => item.id === model && item.providerId === providerId)?.pricing;
 };
 
 export interface CustomClientOptions<T extends Record<string, any> = any> {
@@ -775,6 +792,51 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
       } catch (error) {
         throw this.handleError(error);
       }
+    }
+
+    async prepareGenerateObjectBounded(
+      payload: GenerateObjectPayload,
+      options: GenerateObjectBoundedOptions,
+    ) {
+      const requestModel = resolveMappedModelId(payload.model, this.modelIdMappingOptions);
+      if (requestModel !== payload.model) {
+        throw new Error('Bounded generateObject requires an exact model id');
+      }
+      const source = getRuntimeSignatureScopeSource(this);
+      const actualRoute = source?.channelId
+        ? {
+            apiType: source.apiType,
+            channelId: source.channelId,
+            model: requestModel,
+            providerId: source.provider,
+            routerId: source.routerId ?? source.provider,
+          }
+        : {
+            apiType: 'anthropic',
+            channelId: this.id,
+            model: requestModel,
+            providerId: this.id,
+            routerId: this.id,
+          };
+
+      if (
+        Object.entries(actualRoute).some(
+          ([key, value]) => options.route?.[key as keyof typeof actualRoute] !== value,
+        )
+      ) {
+        throw new Error('Bounded generateObject route identity mismatch');
+      }
+
+      const pricing = await getExactBoundedModelPricing(
+        payload.model,
+        this.id,
+        options.pricingContext,
+      );
+      return prepareAnthropicGenerateObjectBounded(this.client, payload, options, pricing, {
+        maxOutputTokens: options.maxOutputTokens,
+        requestModel,
+        route: Object.freeze(actualRoute),
+      });
     }
 
     async models() {

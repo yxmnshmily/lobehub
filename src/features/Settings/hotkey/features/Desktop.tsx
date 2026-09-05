@@ -1,7 +1,7 @@
 'use client';
 
 import { type FormGroupItemType } from '@lobehub/ui';
-import { Form, HotkeyInput, Icon, Skeleton } from '@lobehub/ui';
+import { Form, Icon, Skeleton } from '@lobehub/ui';
 import { toast } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { Loader2Icon } from 'lucide-react';
@@ -15,10 +15,11 @@ import { useElectronStore } from '@/store/electron';
 import { desktopHotkeysSelectors } from '@/store/electron/selectors';
 import { type DesktopHotkeyItem } from '@/types/hotkey';
 
+import AccessibleHotkeyInput from './AccessibleHotkeyInput';
 import { hotkeyFormStyles } from './styles';
 
 const HotkeySetting = memo(() => {
-  const { t } = useTranslation(['setting', 'hotkey']);
+  const { t } = useTranslation(['setting', 'hotkey', 'common']);
   const [form] = Form.useForm();
 
   const hotkeys = useElectronStore(desktopHotkeysSelectors.hotkeys, isEqual);
@@ -54,12 +55,13 @@ const HotkeySetting = memo(() => {
 
   const mapHotkeyItem = (item: DesktopHotkeyItem) => ({
     children: (
-      <HotkeyInput
+      <AccessibleHotkeyInput
         allowClear={!item.nonEditable}
+        clearLabel={t('hotkey.clearBinding')}
         disabled={item.nonEditable}
         placeholder={t('hotkey.record')}
+        resetLabel={t('reset', { ns: 'common' })}
         resetValue={item.keys}
-        texts={{ clear: t('hotkey.clearBinding') }}
         value={hotkeys[item.id]}
         onChange={(value) => void updateHotkey(item.id, value)}
       />

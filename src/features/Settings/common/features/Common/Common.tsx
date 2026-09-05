@@ -3,6 +3,7 @@
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Flexbox, Form, Icon, ImageSelect, Skeleton } from '@lobehub/ui';
 import { Select, Tabs } from '@lobehub/ui/base-ui';
+import { useResponsive } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Ban, Gauge, Monitor, Moon, Mouse, Sun, Waves } from 'lucide-react';
 import { useTheme as useNextThemesTheme } from 'next-themes';
@@ -25,6 +26,7 @@ import { preloadLang } from '@/utils/client/preloadLang';
 
 const Common = memo(() => {
   const { t } = useTranslation('setting');
+  const { mobile = false } = useResponsive();
 
   const general = useUserStore((s) => settingsSelectors.currentSettings(s).general, isEqual);
   const { theme, setTheme } = useNextThemesTheme();
@@ -48,10 +50,10 @@ const Common = memo(() => {
       {
         children: (
           <ImageSelect
-            height={60}
+            height={mobile ? 44 : 60}
             unoptimized={isDesktop}
             value={currentTheme}
-            width={100}
+            width={mobile ? 72 : 100}
             options={[
               {
                 icon: Sun,
@@ -105,7 +107,7 @@ const Common = memo(() => {
                 ...localeOptions,
               ]}
               style={{
-                width: '50%',
+                width: mobile ? '100%' : '50%',
               }}
               onChange={handleLangChange}
             />
@@ -120,6 +122,7 @@ const Common = memo(() => {
       {
         children: (
           <Tabs
+            style={{ maxWidth: '100%' }}
             items={[
               {
                 icon: <Icon icon={Ban} size={16} />,
@@ -151,6 +154,7 @@ const Common = memo(() => {
       {
         children: (
           <Tabs
+            style={{ maxWidth: '100%' }}
             items={[
               {
                 icon: <Icon icon={Ban} size={16} />,
@@ -184,7 +188,7 @@ const Common = memo(() => {
               placeholder={t('settingCommon.responseLanguage.placeholder')}
               value={general?.responseLanguage || undefined}
               style={{
-                width: '50%',
+                width: mobile ? '100%' : '50%',
               }}
               onChange={(value) => {
                 save(() => setSettings({ general: { responseLanguage: value ?? '' } }));

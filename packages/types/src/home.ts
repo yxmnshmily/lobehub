@@ -1,3 +1,5 @@
+import type { AgentGroupManagementPolicy } from './agentGroup';
+
 /**
  * Sidebar item type - can be an agent or a chat group
  */
@@ -74,6 +76,11 @@ export interface SidebarAgentItem {
    * agents). Used by the agents list to render label tags and group by label.
    */
   labels?: SidebarAgentLabel[];
+  /**
+   * Read-only management boundary for chat groups. Platform-managed groups
+   * remain usable in chat while their configuration is reserved for admins.
+   */
+  managementPolicy?: AgentGroupManagementPolicy;
   /**
    * The agent's personal name. Absent for chat groups and for agents created
    * before names existed — resolve the label with `agentDisplayName(item)`.

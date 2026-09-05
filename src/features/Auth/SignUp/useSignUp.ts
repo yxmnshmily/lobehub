@@ -1,6 +1,6 @@
 import { toast } from '@lobehub/ui/base-ui';
 import { Form } from 'antd';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -8,10 +8,13 @@ import type { BusinessSignupFomData } from '@/business/client/hooks/useBusinessS
 import { useBusinessSignup } from '@/business/client/hooks/useBusinessSignup';
 import type { AuthFetchOptions } from '@/features/Auth/utils/authFetchOptions';
 import { withCaptchaToken } from '@/features/Auth/utils/authFetchOptions';
+import {
+  buildMountedEmailVerificationResultPath,
+  buildMountedOnboardingPath,
+} from '@/features/Auth/utils/mountedPath';
 import { useAuthServerConfigStore } from '@/features/AuthShell';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 import { signUp } from '@/libs/better-auth/auth-client';
-import { buildOnboardingRedirectUrl } from '@/utils/onboardingRedirect';
 
 import type { BaseSignUpFormValues } from './types';
 
@@ -33,6 +36,7 @@ export const useSignUp = () => {
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm<SignUpFormValues>();
   const [loading, setLoading] = useState(false);
+  const signupInFlight = useRef(false);
   const { getCaptchaTokenOnError, getFetchOptions, preSocialSignupCheck, businessElement } =
     useBusinessSignup(form);
   const enableEmailVerification = useAuthServerConfigStore(
@@ -43,25 +47,30 @@ export const useSignUp = () => {
   );
 
   const handleSignUp = async (values: SignUpFormValues) => {
+    if (signupInFlight.current) return;
+    signupInFlight.current = true;
     setLoading(true);
-    await trackLoginOrSignupClicked({ spm: 'signup.submit.click' });
 
     try {
+      await trackLoginOrSignupClicked({ spm: 'signup.submit.click' });
       if (enableBusinessFeatures && !(await preSocialSignupCheck(values))) {
-        setLoading(false);
         return;
       }
 
-      const callbackUrl = searchParams.get('callbackUrl') || '/';
+      const callbackUrl = searchParams.get('callbackUrl');
       // New users always go through onboarding first; the original target is
       // threaded via the `callbackUrl` query param and restored on finish.
-      const redirectUrl = buildOnboardingRedirectUrl(callbackUrl);
+      const redirectUrl = buildMountedOnboardingPath(callbackUrl);
+      const verificationResultUrl = buildMountedEmailVerificationResultPath(
+        redirectUrl,
+        values.email,
+      );
       const username = values.email.split('@')[0];
       const fetchOptions = await getFetchOptions();
 
       const submit = async (nextFetchOptions?: AuthFetchOptions) =>
         signUp.email({
-          callbackURL: redirectUrl,
+          callbackURL: enableEmailVerification ? verificationResultUrl : redirectUrl,
           email: values.email,
           fetchOptions: nextFetchOptions,
           name: username,
@@ -97,7 +106,7 @@ export const useSignUp = () => {
         const translated = signUpError.code
           ? t(`authError:codes.${signUpError.code}`, { defaultValue: '' })
           : '';
-        toast.error(translated || signUpError.message || t('betterAuth.signup.error'));
+        toast.error(translated || t('betterAuth.signup.error'));
         return;
       }
 
@@ -112,6 +121,7 @@ export const useSignUp = () => {
     } catch {
       toast.error(t('betterAuth.signup.error'));
     } finally {
+      signupInFlight.current = false;
       setLoading(false);
     }
   };

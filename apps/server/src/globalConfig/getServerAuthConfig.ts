@@ -3,6 +3,7 @@ import { ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
 import { appEnv } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
+import { isSmsAuthenticationEnabled } from '@/server/services/sms';
 import { type GlobalServerConfig } from '@/types/serverConfig';
 
 const getBetterAuthSSOProviders = () => {
@@ -16,6 +17,7 @@ export const getServerAuthConfig = (): GlobalServerConfig => {
     enableBusinessFeatures: ENABLE_BUSINESS_FEATURES,
     enableEmailVerification: authEnv.AUTH_EMAIL_VERIFICATION,
     enableMagicLink: authEnv.AUTH_ENABLE_MAGIC_LINK,
+    enablePhoneAuth: isSmsAuthenticationEnabled(),
     enableMarketTrustedClient: !!(
       appEnv.MARKET_TRUSTED_CLIENT_SECRET && appEnv.MARKET_TRUSTED_CLIENT_ID
     ),

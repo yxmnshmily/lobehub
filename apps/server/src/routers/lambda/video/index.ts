@@ -35,6 +35,11 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { FileService } from '@/server/services/file';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
+import {
+  getPlatformAiRuntimeMarker,
+  PLATFORM_MANAGED_AI_RUNTIME,
+  PlatformAiRuntime,
+} from '@/server/services/platformAiRuntime';
 import { after } from '@/server/utils/scheduleAfterResponse';
 import { AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
 
@@ -83,7 +88,15 @@ export const videoRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
       const wsId = ctx.workspaceId ?? undefined;
+      const isPlatformManaged = getPlatformAiRuntimeMarker(ctx) === PLATFORM_MANAGED_AI_RUNTIME;
       const { generationTopicId, provider, model, params } = input;
+
+      if (isPlatformManaged) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: '[VIDEO_USAGE_UNAVAILABLE] 平台视频用量结算尚不可用。',
+        });
+      }
 
       const { resolvedModelId } = await resolveBusinessModelMapping(provider, model);
 
@@ -221,6 +234,7 @@ export const videoRouter = router({
           .insert(asyncTasks)
           .values({
             metadata: {
+              ...(isPlatformManaged ? { platformAiRuntime: true } : {}),
               ...(prechargeResult ? { precharge: prechargeResult } : {}),
               webhookToken,
             },
@@ -250,7 +264,13 @@ export const videoRouter = router({
 
       // Step 2: Call model runtime to submit video generation task
       try {
-        const modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider, wsId);
+        const modelRuntime = isPlatformManaged
+          ? await new PlatformAiRuntime(serverDB).init({
+              actorUserId: userId,
+              provider,
+              workspaceId: wsId,
+            })
+          : await initModelRuntimeFromDB(serverDB, userId, provider, wsId);
 
         const callbackBaseUrl = process.env.WEBHOOK_PROXY_URL || appEnv.APP_URL;
         const callbackUrl = `${callbackBaseUrl}/api/webhooks/video/${provider}?token=${webhookToken}`;
@@ -303,6 +323,7 @@ export const videoRouter = router({
                 generationTopicId,
                 inferenceId: response.inferenceId,
                 model,
+                ...(isPlatformManaged ? { modelRuntimeMode: PLATFORM_MANAGED_AI_RUNTIME } : {}),
                 prechargeResult,
                 provider,
                 userId,

@@ -4,7 +4,7 @@ import { type AgentGroupMember } from '@lobechat/types';
 import { Flexbox, SortableList } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
-import { memo, useEffect, useState } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import ImperativeModal from '@/components/ImperativeModal';
@@ -13,6 +13,7 @@ import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
 
 import MemberItem from './MemberItem';
+import { useSortableMembers } from './useSortableMembers';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   item: css`
@@ -44,14 +45,7 @@ const SortMembersModal = memo<SortMembersModalProps>(({ groupId, open, onCancel 
   const members = useAgentGroupStore(agentGroupSelectors.getGroupMembers(groupId), isEqual);
   const reorderGroupMembers = useAgentGroupStore((s) => s.reorderGroupMembers);
 
-  // Local (optimistic) order so the list doesn't snap back while the reorder
-  // request + refetch are in flight. Re-seed from the persisted roster each time
-  // the modal opens.
-  const [list, setList] = useState<AgentGroupMember[]>(members);
-  useEffect(() => {
-    if (open) setList(members);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  const { list, setList } = useSortableMembers({ groupId, members, open });
 
   return (
     <ImperativeModal

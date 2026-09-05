@@ -64,6 +64,7 @@ export const userAuthMiddleware = async (c: Context, next: Next) => {
           const isExpired = apiKeyRecord.expiresAt && new Date() > new Date(apiKeyRecord.expiresAt);
 
           if (!isExpired) {
+            await assertOIDCUserActive(db, apiKeyRecord.userId);
             userId = apiKeyRecord.userId;
             authType = 'apikey';
             authData = { apiKeyId: apiKeyRecord.id, apiKeyName: apiKeyRecord.name };

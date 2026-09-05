@@ -454,6 +454,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
           })()}
 
           <ActionIcon
+            aria-label={t('upload.action.tooltip')}
             icon={Paperclip}
             size={'small'}
             title={t('upload.action.tooltip')}

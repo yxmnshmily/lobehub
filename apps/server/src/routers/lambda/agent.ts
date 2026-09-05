@@ -61,6 +61,7 @@ import {
   getRestrictedKnowledgeBaseIds,
   getUseLevelKnowledgeBaseIds,
 } from './_helpers/knowledgeBaseAccess';
+import { hasActivePlatformAdminAccess, requirePlatformAdmin } from './_helpers/platformAdminGuard';
 import { getResourceConfigAccess, redactAgentConfig } from './_helpers/resourceConfigGuard';
 
 const getAgentPermissionPolicyPatch = (value: Record<string, unknown>) => {
@@ -77,6 +78,7 @@ const stripAgentPermissionPolicies = (value: Record<string, unknown>) => {
 
   const {
     executionTargetSelectionPolicy: _executionTargetSelectionPolicy,
+    modelRuntimeMode: _modelRuntimeMode,
     modelSelectionPolicy: _modelSelectionPolicy,
     topicSharePolicy: _topicSharePolicy,
     ...safeAgencyConfig
@@ -129,6 +131,9 @@ const agentProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   });
 });
 
+const platformAdminAgentProcedure = agentProcedure.use(requirePlatformAdmin);
+const builtinAgentSlugs = new Set<string>(Object.values(BUILTIN_AGENT_SLUGS));
+
 export const agentRouter = router({
   /**
    * Check if an agent with the given marketIdentifier already exists
@@ -166,7 +171,7 @@ export const agentRouter = router({
    * Create a new agent with session
    * Returns the created agent ID and session ID
    */
-  createAgent: agentProcedure
+  createAgent: platformAdminAgentProcedure
     .use(withScopedPermission('agent:create'))
     .input(
       z.object({
@@ -229,7 +234,7 @@ export const agentRouter = router({
    * The inverse transition (public → private) goes through
    * `setAgentVisibility`, which is gated to the creator only.
    */
-  publishAgentToWorkspace: agentProcedure
+  publishAgentToWorkspace: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -262,7 +267,7 @@ export const agentRouter = router({
    *   effectively appropriate it, so everyone else gets FORBIDDEN. The UI
    *   hides the entry for them, this is the server-side backstop.
    */
-  setAgentVisibility: agentProcedure
+  setAgentVisibility: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -389,7 +394,7 @@ export const agentRouter = router({
       });
     }),
 
-  createAgentFiles: agentProcedure
+  createAgentFiles: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -412,7 +417,7 @@ export const agentRouter = router({
       return ctx.agentModel.createAgentFiles(input.agentId, input.fileIds, input.enabled);
     }),
 
-  createAgentKnowledgeBase: agentProcedure
+  createAgentKnowledgeBase: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -444,7 +449,7 @@ export const agentRouter = router({
    * Used for Group Agent Builder to create agents for groups.
    * Returns only the agent ID.
    */
-  createAgentOnly: agentProcedure
+  createAgentOnly: platformAdminAgentProcedure
     .use(withScopedPermission('agent:create'))
     .input(
       z.object({
@@ -485,7 +490,7 @@ export const agentRouter = router({
       return { agentId: agent.id };
     }),
 
-  deleteAgentFile: agentProcedure
+  deleteAgentFile: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -507,7 +512,7 @@ export const agentRouter = router({
       return ctx.agentModel.deleteAgentFile(input.agentId, input.fileId);
     }),
 
-  deleteAgentKnowledgeBase: agentProcedure
+  deleteAgentKnowledgeBase: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -533,7 +538,7 @@ export const agentRouter = router({
    * Duplicate an agent and its associated session.
    * Returns the new agent ID and session ID.
    */
-  duplicateAgent: agentProcedure
+  duplicateAgent: platformAdminAgentProcedure
     .use(withScopedPermission('agent:fork'))
     .input(
       z.object({
@@ -599,6 +604,13 @@ export const agentRouter = router({
           const user = await UserModel.findById(ctx.serverDB, ctx.userId);
           if (!user) return DEFAULT_AGENT_CONFIG;
 
+          // Personal inbox bootstrap remains lazy. In a workspace, creating the
+          // missing inbox also creates a public Agent row, so only an active
+          // platform administrator may cross that write boundary from a query.
+          if (ctx.workspaceId && !(await hasActivePlatformAdminAccess(ctx.serverDB, ctx.userId))) {
+            return DEFAULT_AGENT_CONFIG;
+          }
+
           const res = await ctx.agentService.createInbox();
           console.info('create inbox session', res);
         }
@@ -635,7 +647,15 @@ export const agentRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      const config = await ctx.agentService.getBuiltinAgent(input.slug);
+      // Do not let an arbitrary agent slug turn this builtin endpoint into a
+      // generic config lookup. Registered slugs are server-controlled.
+      if (!builtinAgentSlugs.has(input.slug)) return null;
+
+      const canEnsureBuiltin =
+        !ctx.workspaceId || (await hasActivePlatformAdminAccess(ctx.serverDB, ctx.userId));
+      const config = canEnsureBuiltin
+        ? await ctx.agentService.getBuiltinAgent(input.slug)
+        : await ctx.agentService.getAgentConfig(input.slug);
       return config?.id ? protectAgentConfig(ctx, config.id, config) : config;
     }),
 
@@ -755,7 +775,7 @@ export const agentRouter = router({
   /**
    * Remove an agent and its associated session
    */
-  removeAgent: agentProcedure
+  removeAgent: platformAdminAgentProcedure
     .use(withScopedPermission('agent:delete'))
     .input(z.object({ agentId: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -818,7 +838,7 @@ export const agentRouter = router({
       return result;
     }),
 
-  toggleFile: agentProcedure
+  toggleFile: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -841,7 +861,7 @@ export const agentRouter = router({
       return ctx.agentModel.toggleFile(input.agentId, input.fileId, input.enabled);
     }),
 
-  toggleKnowledgeBase: agentProcedure
+  toggleKnowledgeBase: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -932,7 +952,7 @@ export const agentRouter = router({
    * front of the backfill queue. Returns whether the topic was still pending
    * (false → already migrated, the client can refetch messages immediately).
    */
-  prioritizeTransferTopic: agentProcedure
+  prioritizeTransferTopic: platformAdminAgentProcedure
     .input(z.object({ topicId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       // Scope check: reordering the backfill queue is only allowed for topics
@@ -951,7 +971,7 @@ export const agentRouter = router({
       return { pending: flagged };
     }),
 
-  transferAgent: agentProcedure
+  transferAgent: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -1202,7 +1222,7 @@ export const agentRouter = router({
    * selected agents, so a multi-select "Move Agent" is no longer N serial
    * round-trips (each with its own permission checks and large-table updates).
    */
-  transferAgents: agentProcedure
+  transferAgents: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -1214,7 +1234,6 @@ export const agentRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const agentIds = [...new Set(input.agentIds)];
-
       // 1. All agents must exist in the current scope
       const existences = await Promise.all(
         agentIds.map((agentId) => ctx.agentModel.existsById(agentId)),
@@ -1364,7 +1383,7 @@ export const agentRouter = router({
       return results;
     }),
 
-  updateAgentConfig: agentProcedure
+  updateAgentConfig: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -1439,7 +1458,7 @@ export const agentRouter = router({
    * Rename an agent's url slug. Separate from `updateAgentConfig` because `slug`
    * is immutable there by design — see `IMMUTABLE_AGENT_FIELDS`.
    */
-  updateAgentSlug: agentProcedure
+  updateAgentSlug: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(z.object({ agentId: z.string(), slug: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -1457,7 +1476,7 @@ export const agentRouter = router({
   /**
    * Pin or unpin an agent
    */
-  updateAgentPinned: agentProcedure
+  updateAgentPinned: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(
       z.object({
@@ -1469,7 +1488,7 @@ export const agentRouter = router({
       return ctx.agentModel.update(input.id, { pinned: input.pinned });
     }),
 
-  acquireAgentLock: agentProcedure
+  acquireAgentLock: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(z.object({ agentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -1498,7 +1517,7 @@ export const agentRouter = router({
       };
     }),
 
-  releaseAgentLock: agentProcedure
+  releaseAgentLock: platformAdminAgentProcedure
     .use(withScopedPermission('agent:update'))
     .input(z.object({ agentId: z.string() }))
     .mutation(async ({ ctx, input }) => {

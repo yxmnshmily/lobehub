@@ -2,18 +2,28 @@ import { create } from 'zustand';
 
 interface AgentSelectionState {
   // Actions
+  beginSelection: (groupId: string) => void;
   clearSelection: () => void;
   isSelected: (agentId: string) => boolean;
   removeAgent: (agentId: string) => void;
   // State
   selectedAgentIds: string[];
+  selectionGroupId?: string;
   setSelectedAgents: (agentIds: string[]) => void;
   toggleAgent: (agentId: string) => void;
 }
 
 export const useAgentSelectionStore = create<AgentSelectionState>((set, get) => ({
+  beginSelection: (groupId) => {
+    set((state) =>
+      state.selectionGroupId === groupId
+        ? state
+        : { selectedAgentIds: [], selectionGroupId: groupId },
+    );
+  },
+
   clearSelection: () => {
-    set({ selectedAgentIds: [] });
+    set({ selectedAgentIds: [], selectionGroupId: undefined });
   },
 
   isSelected: (agentId) => {
@@ -27,6 +37,7 @@ export const useAgentSelectionStore = create<AgentSelectionState>((set, get) => 
   },
 
   selectedAgentIds: [],
+  selectionGroupId: undefined,
 
   setSelectedAgents: (agentIds) => {
     set({ selectedAgentIds: agentIds });

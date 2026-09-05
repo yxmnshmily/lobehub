@@ -59,6 +59,38 @@ describe('createAuthSlice', () => {
 
       expect(mockBetterAuthClient.signOut).toHaveBeenCalled();
     });
+
+    it('returns to the active group after signing in again', async () => {
+      const originalLocation = window.location;
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          ...originalLocation,
+          href: 'http://localhost/lobehub/group/group-1/topic-1',
+        },
+        writable: true,
+      });
+      mockBetterAuthClient.signOut.mockImplementationOnce(async ({ fetchOptions }) => {
+        fetchOptions.onSuccess();
+        return {};
+      });
+
+      const { result } = renderHook(() => useUserStore());
+
+      await act(async () => {
+        await result.current.logout();
+      });
+
+      expect(window.location.href).toBe(
+        '/signin?callbackUrl=http%3A%2F%2Flocalhost%2Flobehub%2Fgroup%2Fgroup-1%2Ftopic-1',
+      );
+
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+        writable: true,
+      });
+    });
   });
 
   describe('openLogin', () => {

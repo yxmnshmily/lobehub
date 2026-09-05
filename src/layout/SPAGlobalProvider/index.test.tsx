@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen, waitFor } from '@testing-library/react';
-import { type ReactNode, useEffect } from 'react';
+import { render, screen } from '@testing-library/react';
+import { type ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setPostRenderReady } from '@/spa/atoms/app';
@@ -13,11 +13,13 @@ import { type DevDockLayout as DevDockLayoutComponent } from './index';
 
 let SPAGlobalProvider: typeof SPAGlobalProviderComponent;
 let DevDockLayout: typeof DevDockLayoutComponent;
-const { cacheGateReleased, canAccessDevDock, devDockRenderError } = vi.hoisted(() => ({
-  cacheGateReleased: { current: true },
-  canAccessDevDock: vi.fn(() => false),
-  devDockRenderError: { current: null as Error | null },
-}));
+const { cacheGateReleased, canAccessDevDock, devDockRenderError, serverConfigMobileProp } =
+  vi.hoisted(() => ({
+    cacheGateReleased: { current: true },
+    canAccessDevDock: vi.fn(() => false),
+    devDockRenderError: { current: null as Error | null },
+    serverConfigMobileProp: { current: undefined as boolean | undefined },
+  }));
 
 vi.mock('@lobehub/ui', async () => {
   const React = await import('react');
@@ -172,8 +174,16 @@ vi.mock('@/store/serverConfig/Provider', async () => {
   const React = await import('react');
 
   return {
-    ServerConfigStoreProvider: ({ children }: { children?: ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
+    ServerConfigStoreProvider: ({
+      children,
+      isMobile,
+    }: {
+      children?: ReactNode;
+      isMobile?: boolean;
+    }) => {
+      serverConfigMobileProp.current = isMobile;
+      return React.createElement(React.Fragment, null, children);
+    },
   };
 });
 
@@ -202,6 +212,7 @@ describe('SPAGlobalProvider', () => {
     cacheGateReleased.current = true;
     canAccessDevDock.mockReturnValue(false);
     devDockRenderError.current = null;
+    serverConfigMobileProp.current = undefined;
     setDevDockUnlocked(false);
     Reflect.deleteProperty(window, '__SERVER_CONFIG__');
     setPostRenderReady(false);
@@ -222,107 +233,41 @@ describe('SPAGlobalProvider', () => {
 
     expect(routeContent.closest('[data-testid="market-auth-provider"]')).not.toBeNull();
   });
-  it('mounts DevDock in dev builds even without server-resolved access', async () => {
+
+  it('prefers the server-resolved mobile flag over the build fallback', () => {
+    window.__SERVER_CONFIG__ = { isMobile: true } as any;
+
     render(
-      <DevDockLayout>
-        <div data-testid="spa-route-content" />
-      </DevDockLayout>,
+      <SPAGlobalProvider>
+        <div />
+      </SPAGlobalProvider>,
     );
 
-    expect(await screen.findByTestId('dev-dock')).toBeInTheDocument();
+    expect(serverConfigMobileProp.current).toBe(true);
   });
-
-  it('does not mount DevDock in production without an unlock', () => {
-    vi.stubEnv('PROD', true);
-    canAccessDevDock.mockReturnValue(true);
-
+  it('does not mount DevDock in web development builds', () => {
     render(
       <DevDockLayout>
         <div data-testid="spa-route-content" />
       </DevDockLayout>,
     );
 
-    expect(screen.queryByTestId('dev-dock')).toBeNull();
-  });
-
-  it('does not mount DevDock in production without server access', () => {
-    vi.stubEnv('PROD', true);
-    setDevDockUnlocked(true);
-
-    render(
-      <DevDockLayout>
-        <div data-testid="spa-route-content" />
-      </DevDockLayout>,
-    );
-
-    expect(screen.queryByTestId('dev-dock')).toBeNull();
-  });
-
-  it('mounts DevDock in production with server access and an unlock', async () => {
-    vi.stubEnv('PROD', true);
-    canAccessDevDock.mockReturnValue(true);
-    setDevDockUnlocked(true);
-
-    render(
-      <DevDockLayout>
-        <div data-testid="spa-route-content" />
-      </DevDockLayout>,
-    );
-
-    expect(await screen.findByTestId('dev-dock')).toBeInTheDocument();
-  });
-
-  it('keeps the app alive when DevDock fails to load', async () => {
-    vi.stubEnv('PROD', true);
-    canAccessDevDock.mockReturnValue(true);
-    setDevDockUnlocked(true);
-    devDockRenderError.current = new TypeError(
-      "Cannot read properties of undefined (reading 'default')",
-    );
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    render(
-      <DevDockLayout>
-        <div data-testid="spa-route-content" />
-      </DevDockLayout>,
-    );
-
-    await waitFor(() => expect(consoleError).toHaveBeenCalled());
     expect(screen.getByTestId('spa-route-content')).toBeInTheDocument();
     expect(screen.queryByTestId('dev-dock')).toBeNull();
-    consoleError.mockRestore();
   });
 
-  it('does not remount application providers when DevDock becomes available', async () => {
+  it('does not mount DevDock in production even when access and unlock are present', () => {
     vi.stubEnv('PROD', true);
-    const mounted = vi.fn();
-    const unmounted = vi.fn();
-    const ProviderProbe = () => {
-      useEffect(() => {
-        mounted();
-        return unmounted;
-      }, []);
-      return <div data-testid="provider-probe" />;
-    };
-
-    const view = render(
-      <DevDockLayout>
-        <ProviderProbe />
-      </DevDockLayout>,
-    );
-    expect(mounted).toHaveBeenCalledOnce();
-
     canAccessDevDock.mockReturnValue(true);
     setDevDockUnlocked(true);
-    view.rerender(
+
+    render(
       <DevDockLayout>
-        <ProviderProbe />
+        <div data-testid="spa-route-content" />
       </DevDockLayout>,
     );
 
-    expect(await screen.findByTestId('dev-dock')).toBeInTheDocument();
-    expect(mounted).toHaveBeenCalledOnce();
-    expect(unmounted).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('dev-dock')).toBeNull();
   });
 
   it('mounts global interaction hosts with the application shell', () => {

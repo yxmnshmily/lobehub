@@ -24,6 +24,7 @@ import {
   isCollaborativeBuiltinAgent,
 } from '@/server/services/resourcePermission';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 import { getWorkspaceGroupVirtualAgentIds } from './_helpers/workspaceAgentGuard';
 
 const resourceInput = z.object({
@@ -54,6 +55,7 @@ const permissionProcedure = wsCompatProcedure.use(serverDatabase).use(async (opt
     },
   });
 });
+const permissionWriteProcedure = permissionProcedure.use(requirePlatformAdmin);
 
 /**
  * Shared guard of every permission-management procedure: resolve the resource
@@ -102,7 +104,7 @@ export const resourcePermissionRouter = router({
    * The creator is silently skipped (they already hold full access), and every
    * target must be an active member of the workspace.
    */
-  addCollaborators: permissionProcedure
+  addCollaborators: permissionWriteProcedure
     .input(
       resourceInput.extend({
         accessLevel: accessLevelSchema,
@@ -249,7 +251,7 @@ export const resourcePermissionRouter = router({
   }),
 
   /** Revoke one member's collaborator grant on a resource. */
-  removeCollaborator: permissionProcedure
+  removeCollaborator: permissionWriteProcedure
     .input(resourceInput.extend({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await loadManageableResource(ctx, input);
@@ -264,7 +266,7 @@ export const resourcePermissionRouter = router({
   /**
    * Set the explicit Workspace General-access level (creator or workspace owner).
    */
-  setGeneralAccess: permissionProcedure
+  setGeneralAccess: permissionWriteProcedure
     .input(
       resourceInput
         .extend({

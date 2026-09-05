@@ -4,6 +4,7 @@ import { BRANDING_NAME } from '@lobechat/business-const';
 import { Icon } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { Form, Input, type InputRef } from 'antd';
+import { createStaticStyles } from 'antd-style';
 import { Lock, Mail } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,16 @@ import { AuthAgreement, useAuthAgreement } from '@/features/AuthShell';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 
 import { useSignUp } from './useSignUp';
+
+const styles = createStaticStyles(({ css }) => ({
+  signInLink: css`
+    @media (pointer: coarse) {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+    }
+  `,
+}));
 
 const BetterAuthSignUpForm = () => {
   const { form, loading, onSubmit, businessElement } = useSignUp();
@@ -40,6 +51,7 @@ const BetterAuthSignUpForm = () => {
     <Text>
       {t('betterAuth.signup.hasAccount')}{' '}
       <Link
+        className={styles.signInLink}
         to={`/signin?${searchParams.toString()}`}
         onClick={(event) => {
           event.preventDefault();

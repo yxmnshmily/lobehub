@@ -47,7 +47,6 @@ const mockAssertTransferAuthority = vi.fn();
 vi.mock('@/server/services/resourcePermission', () => ({
   assertCanPerformResourceAction: (...args: unknown[]) => mockAssertTransferAuthority(...args),
 }));
-
 const { TRANSFER_REQUEST_EXPIRED, TRANSFER_REQUEST_NOT_PENDING } =
   await import('@/database/models/resourceTransferRequest');
 const { AGENT_OWNERSHIP_STALE } = await import('@/database/models/agent');
@@ -72,9 +71,14 @@ const pendingRequest = {
 describe('resourceTransferRequestRouter', () => {
   const ctx: any = { serverDB: {}, userId: recipientId, workspaceId: 'ws-1' };
   const caller = resourceTransferRequestRouter.createCaller(ctx);
+  const initiatorCaller = resourceTransferRequestRouter.createCaller({
+    ...ctx,
+    userId: initiatorId,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindById.mockResolvedValue(pendingRequest);
   });
 
   it('rejects personal-mode calls', async () => {
@@ -311,14 +315,14 @@ describe('resourceTransferRequestRouter', () => {
     it('cancel maps an already-resolved request to CONFLICT', async () => {
       mockCancel.mockRejectedValue(new Error(TRANSFER_REQUEST_NOT_PENDING));
 
-      await expect(caller.cancel({ requestId: 'req-1' })).rejects.toMatchObject({
+      await expect(initiatorCaller.cancel({ requestId: 'req-1' })).rejects.toMatchObject({
         code: 'CONFLICT',
       });
     });
 
     it('maps an expired request to BAD_REQUEST on cancel and decline', async () => {
       mockCancel.mockRejectedValue(new Error(TRANSFER_REQUEST_EXPIRED));
-      await expect(caller.cancel({ requestId: 'req-1' })).rejects.toMatchObject({
+      await expect(initiatorCaller.cancel({ requestId: 'req-1' })).rejects.toMatchObject({
         code: 'BAD_REQUEST',
       });
 

@@ -1,14 +1,21 @@
+import { ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
+import {
+  buildMappedBusinessModelFields,
+  resolveBusinessModelMapping,
+} from '@lobechat/business-model-runtime';
 import { RequestTrigger } from '@lobechat/types';
 import debug from 'debug';
 
 import { getProviderContentPolicyErrorMessage } from '@/business/server/getProviderContentPolicyErrorMessage';
 import { trackProviderContentPolicyViolation } from '@/business/server/trackProviderContentPolicyViolation';
+import { chargeAfterGenerate } from '@/business/server/video-generation/chargeAfterGenerate';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { GenerationModel } from '@/database/models/generation';
 import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { VideoGenerationService } from '@/server/services/generation/video';
 import { buildVideoGenerationFilePayload } from '@/server/services/generation/videoFile';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { FileSource } from '@/types/files';
 import type { VideoGenerationAsset } from '@/types/generation';
@@ -23,6 +30,7 @@ interface BackgroundPollingParams {
   generationTopicId: string;
   inferenceId: string;
   model: string;
+  modelRuntimeMode?: 'platform-managed';
   prechargeResult?: any;
   provider: string;
   userId: string;
@@ -38,8 +46,11 @@ export async function processBackgroundVideoPolling(
     asyncTaskId,
     generationBatchId,
     generationId,
+    generationTopicId,
     inferenceId,
     model,
+    modelRuntimeMode,
+    prechargeResult,
     provider,
     userId,
     workspaceId,
@@ -52,12 +63,22 @@ export async function processBackgroundVideoPolling(
     inferenceId,
   );
 
+  let resolvedModelId = model;
   try {
     const asyncTaskModel = new AsyncTaskModel(db, userId, workspaceId);
     const videoService = new VideoGenerationService(db, userId, workspaceId);
     const generationModel = new GenerationModel(db, userId, workspaceId);
 
-    const modelRuntime = await initModelRuntimeFromDB(db, userId, provider, workspaceId);
+    ({ resolvedModelId } = await resolveBusinessModelMapping(provider, model));
+
+    const modelRuntime =
+      modelRuntimeMode === 'platform-managed'
+        ? await new PlatformAiRuntime(db).init({
+            actorUserId: userId,
+            provider,
+            workspaceId,
+          })
+        : await initModelRuntimeFromDB(db, userId, provider, workspaceId);
     const pollResult = await pollUntilCompletion(modelRuntime, inferenceId);
 
     if (!pollResult) {
@@ -103,6 +124,36 @@ export async function processBackgroundVideoPolling(
       status: AsyncTaskStatus.Success,
     });
 
+    if (ENABLE_BUSINESS_FEATURES && prechargeResult !== undefined) {
+      try {
+        await chargeAfterGenerate({
+          computePriceParams: {
+            generateAudio: (batch?.config as any)?.generateAudio,
+            resolution: (batch?.config as any)?.resolution,
+          },
+          latency: duration,
+          metadata: {
+            asyncTaskId,
+            generationBatchId,
+            topicId: generationTopicId,
+            ...buildMappedBusinessModelFields({
+              provider,
+              requestedModelId: resolvedModelId === model ? undefined : model,
+              resolvedModelId,
+            }),
+          },
+          model: resolvedModelId,
+          prechargeResult,
+          provider,
+          usage: undefined,
+          userId,
+          workspaceId,
+        });
+      } catch (chargeError) {
+        console.error('[video-polling] Failed to charge after generation:', chargeError);
+      }
+    }
+
     log('Video processing completed successfully for task: %s', asyncTaskId);
   } catch (error) {
     log('Background video polling error for task: %s', asyncTaskId, error);
@@ -138,6 +189,31 @@ export async function processBackgroundVideoPolling(
       ),
       status: AsyncTaskStatus.Error,
     });
+
+    if (ENABLE_BUSINESS_FEATURES && prechargeResult !== undefined) {
+      try {
+        await chargeAfterGenerate({
+          isError: true,
+          metadata: {
+            asyncTaskId,
+            generationBatchId,
+            topicId: generationTopicId,
+            ...buildMappedBusinessModelFields({
+              provider,
+              requestedModelId: resolvedModelId === model ? undefined : model,
+              resolvedModelId,
+            }),
+          },
+          model: resolvedModelId,
+          prechargeResult,
+          provider,
+          userId,
+          workspaceId,
+        });
+      } catch (refundError) {
+        console.error('[video-polling] Failed to refund precharge:', refundError);
+      }
+    }
   }
 }
 

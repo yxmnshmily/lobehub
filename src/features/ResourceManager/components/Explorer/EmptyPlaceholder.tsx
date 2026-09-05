@@ -17,6 +17,11 @@ import { ResourceSourceFilter } from '@/types/files';
 const ICON_SIZE = 80;
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
+  actions: css`
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  `,
   actionTitle: css`
     margin-block-start: 12px;
     font-size: 16px;
@@ -111,13 +116,21 @@ const EmptyPlaceholder = () => {
         <Text as={'h4'}>{t('FileManager.emptyStatus.title')}</Text>
         <Text type={'secondary'}>{t('FileManager.emptyStatus.or')}</Text>
       </Flexbox>
-      <Flexbox horizontal gap={12}>
+      <Flexbox horizontal className={styles.actions} gap={12}>
         {!libraryId && (
           <Flexbox
             className={styles.card}
             padding={16}
+            role="button"
+            tabIndex={0}
             onClick={() => {
               open();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                open();
+              }
             }}
           >
             <span className={styles.actionTitle}>
@@ -141,7 +154,18 @@ const EmptyPlaceholder = () => {
             return false;
           }}
         >
-          <Flexbox className={styles.card} padding={16}>
+          <Flexbox
+            className={styles.card}
+            padding={16}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.currentTarget.click();
+              }
+            }}
+          >
             <span className={styles.actionTitle}>{t('FileManager.emptyStatus.actions.file')}</span>
             <div className={styles.glow} style={{ background: cssVar.gold }} />
             <FileTypeIcon
@@ -165,7 +189,18 @@ const EmptyPlaceholder = () => {
             return false;
           }}
         >
-          <Flexbox className={styles.card} padding={16}>
+          <Flexbox
+            className={styles.card}
+            padding={16}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.currentTarget.click();
+              }
+            }}
+          >
             <span className={styles.actionTitle}>
               {t('FileManager.emptyStatus.actions.folder')}
             </span>

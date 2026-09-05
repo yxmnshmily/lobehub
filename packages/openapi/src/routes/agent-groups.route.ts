@@ -7,6 +7,7 @@ import { zValidator } from '../common/validator';
 import { AgentGroupController } from '../controllers/agent-group.controller';
 import { requireAuth } from '../middleware/auth';
 import { requireAnyPermission } from '../middleware/permission-check';
+import { requirePlatformAdmin } from '../middleware/platform-admin';
 import {
   AgentGroupIdParamSchema,
   CreateAgentGroupRequestSchema,
@@ -43,6 +44,7 @@ AgentGroupRoutes.get(
 AgentGroupRoutes.post(
   '/',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AGENT_CREATE'),
     'You do not have permission to create an agent group',
@@ -81,6 +83,7 @@ AgentGroupRoutes.get(
 AgentGroupRoutes.patch(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AGENT_UPDATE'),
     'You do not have permission to update an agent group',
@@ -105,6 +108,7 @@ AgentGroupRoutes.patch(
 AgentGroupRoutes.delete(
   '/:id',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AGENT_DELETE'),
     'You do not have permission to delete an agent group',

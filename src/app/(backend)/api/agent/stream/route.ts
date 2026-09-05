@@ -3,6 +3,9 @@ import debug from 'debug';
 import { type NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { checkAuth } from '@/app/(backend)/middleware/auth';
+import { resolveValidWorkspaceIdFromRequest } from '@/app/(backend)/webapi/_utils/workspace';
+import { AgentOperationModel } from '@/database/models/agentOperation';
 import { createStreamEventManager } from '@/server/modules/AgentRuntime';
 
 const log = debug('api-route:agent:stream');
@@ -12,10 +15,7 @@ const timing = debug('lobe-server:agent-runtime:timing');
  * Server-Sent Events (SSE) endpoint
  * Provides real-time Agent execution event stream for clients
  */
-export async function GET(request: NextRequest) {
-  // Initialize stream event manager (uses InMemory singleton in local dev, Redis in production)
-  const streamManager = createStreamEventManager();
-
+export const GET = checkAuth(async (request: NextRequest, { serverDB, userId }) => {
   const { searchParams } = new URL(request.url);
   const operationId = searchParams.get('operationId');
   const lastEventId = searchParams.get('lastEventId') || '0';
@@ -29,6 +29,18 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  const workspaceId = await resolveValidWorkspaceIdFromRequest({ req: request, serverDB, userId });
+  const operation = await new AgentOperationModel(serverDB, userId, workspaceId).findById(
+    operationId,
+  );
+  if (!operation) {
+    return NextResponse.json({ error: 'operation not found' }, { status: 404 });
+  }
+
+  // Initialize only after durable ownership is confirmed. Redis stream keys are
+  // keyed by operationId and do not carry a user principal on their own.
+  const streamManager = createStreamEventManager();
 
   log(`Starting SSE connection for operation ${operationId} from eventId ${lastEventId}`);
 
@@ -207,7 +219,9 @@ export async function GET(request: NextRequest) {
   });
 
   // Set SSE response headers
-  return new Response(stream, {
-    headers: createSSEHeaders(),
-  });
-}
+  const headers = new Headers(createSSEHeaders());
+  headers.delete('Access-Control-Allow-Headers');
+  headers.delete('Access-Control-Allow-Methods');
+  headers.delete('Access-Control-Allow-Origin');
+  return new Response(stream, { headers });
+});

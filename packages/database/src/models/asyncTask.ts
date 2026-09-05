@@ -70,6 +70,22 @@ export class AsyncTaskModel {
       .where(and(eq(asyncTasks.id, taskId), this.ownership()));
   }
 
+  transitionStatus = async (
+    taskId: string,
+    fromStatuses: AsyncTaskStatus[],
+    status: AsyncTaskStatus,
+  ): Promise<boolean> => {
+    const rows = await this.db
+      .update(asyncTasks)
+      .set({ status, updatedAt: new Date() })
+      .where(
+        and(eq(asyncTasks.id, taskId), this.ownership(), inArray(asyncTasks.status, fromStatuses)),
+      )
+      .returning({ id: asyncTasks.id });
+
+    return rows.length === 1;
+  };
+
   findActiveByType = async (type: AsyncTaskType) => {
     return this.db.query.asyncTasks.findFirst({
       where: and(

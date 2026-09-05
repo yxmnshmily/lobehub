@@ -24,9 +24,11 @@ const CustomTextLogo = memo<FlexboxProps & { size: number }>(({ size, style, ...
     <Flexbox
       height={size}
       style={{
+        flexShrink: 0,
         fontSize: size / 1.5,
         fontWeight: 'bolder',
         userSelect: 'none',
+        whiteSpace: 'nowrap',
         ...style,
       }}
       {...rest}
@@ -91,7 +93,7 @@ const CustomLogo = memo<LobeChatProps>(({ extra, size = 32, className, style, ty
     case 'combine': {
       logoComponent = (
         <>
-          <CustomImageLogo size={size} />
+          <CustomImageLogo size={size} style={{ flex: 'none' }} />
           <CustomTextLogo size={size} style={{ marginLeft: Math.round(size / 4) }} />
         </>
       );

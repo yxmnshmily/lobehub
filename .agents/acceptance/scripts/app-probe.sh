@@ -112,7 +112,7 @@ EVALEOF
       exit 2
     }
     DEADLINE=$((SECONDS + TIMEOUT_SECONDS))
-    while (( SECONDS <= DEADLINE )); do
+    while ((SECONDS <= DEADLINE)); do
       OPS_OUTPUT="$(AB_TARGET="$AB_TARGET" bash "${BASH_SOURCE[0]}" ops)"
       RUNNING_COUNT="$(
         node -e '

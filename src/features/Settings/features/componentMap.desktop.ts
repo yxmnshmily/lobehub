@@ -3,6 +3,7 @@ import Credits from '@/business/client/BusinessSettingPages/Credits';
 import Notification from '@/business/client/BusinessSettingPages/Notification';
 import Plans from '@/business/client/BusinessSettingPages/Plans';
 import Referral from '@/business/client/BusinessSettingPages/Referral';
+import ServiceOperations from '@/business/client/BusinessSettingPages/ServiceOperations';
 import Usage from '@/business/client/BusinessSettingPages/Usage';
 import { SettingsTabs } from '@/store/global/initialState';
 
@@ -53,6 +54,7 @@ export const componentMap = {
   [SettingsTabs.OAuthApps]: OAuthApps,
   [SettingsTabs.Creds]: Creds,
   [SettingsTabs.Security]: Security,
+  [SettingsTabs.ServiceOperations]: ServiceOperations,
   [SettingsTabs.Skill]: Skill,
   [SettingsTabs.Connector]: Connector,
 

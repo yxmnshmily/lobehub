@@ -6,12 +6,12 @@ import { parse } from 'cookie';
 import debug from 'debug';
 import { type NextRequest } from 'next/server';
 
-import { auth } from '@/auth';
 import { canUseWorkspaceApiKeys } from '@/business/server/workspaceApiKey';
 import { getServerDB } from '@/database/core/db-adaptor';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { hasActiveWorkspaceMembership } from '@/database/models/workspace';
 import { authEnv, LOBE_CHAT_OIDC_AUTH_HEADER } from '@/envs/auth';
+import { getActiveSession } from '@/libs/better-auth/getActiveSession';
 import { extractTraceContext } from '@/libs/observability/traceparent';
 import { assertOIDCUserActive, isOIDCUserInactiveError } from '@/libs/oidc-provider/access-control';
 import { validateOIDCJWT } from '@/libs/oidc-provider/jwt';
@@ -22,6 +22,21 @@ import { HETERO_OPERATION_JWT_PURPOSE } from '../utils/internalJwt';
 // Create context logger namespace
 const log = debug('lobe-trpc:lambda:context');
 const LOBE_CHAT_API_KEY_HEADER = 'X-API-Key';
+
+const verifyRequestedWorkspaceMembership = async (
+  userId: string,
+  workspaceId: string,
+  database?: Parameters<typeof hasActiveWorkspaceMembership>[0],
+): Promise<boolean> => {
+  try {
+    return await hasActiveWorkspaceMembership(database ?? (await getServerDB()), {
+      userId,
+      workspaceId,
+    });
+  } catch {
+    return false;
+  }
+};
 
 const extractClientIp = (request: NextRequest): string | undefined => {
   const forwardedFor = request.headers.get('x-forwarded-for');
@@ -52,6 +67,7 @@ const validateApiKey = async (apiKey: string): Promise<ValidatedApiKey | null> =
     if (!apiKeyRecord) return null;
     if (!apiKeyRecord.enabled) return null;
     if (isApiKeyExpired(apiKeyRecord.expiresAt)) return null;
+    await assertOIDCUserActive(db, apiKeyRecord.userId);
 
     const userApiKeyModel = new ApiKeyModel(
       db,
@@ -69,6 +85,10 @@ const validateApiKey = async (apiKey: string): Promise<ValidatedApiKey | null> =
       workspaceId: apiKeyRecord.workspaceId ?? null,
     };
   } catch (error) {
+    if (isOIDCUserInactiveError(error)) {
+      log('API key authentication failed because its user is inactive');
+      return null;
+    }
     log('API key authentication failed: %O', error);
     console.error('API key authentication failed, trying other methods:', error);
     return null;
@@ -306,6 +326,15 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
         userId = tokenInfo.userId;
         const db = await getServerDB();
         await assertOIDCUserActive(db, userId);
+        if (workspaceId && !(await verifyRequestedWorkspaceMembership(userId, workspaceId, db))) {
+          log('OIDC workspace membership verification failed');
+          return createContextInner({
+            ...commonContext,
+            traceContext,
+            userId: null,
+            workspaceId: undefined,
+          });
+        }
         log('OIDC authentication successful, userId: %s', userId);
 
         const oidcClientId =
@@ -343,15 +372,32 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
   // If OIDC is not enabled or validation fails, try Better Auth authentication
   log('Attempting Better Auth authentication');
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const session = await getActiveSession(request.headers);
 
     if (session && session?.user?.id) {
       userId = session.user.id;
+      if (
+        workspaceId &&
+        !(await verifyRequestedWorkspaceMembership(session.user.id, workspaceId))
+      ) {
+        log('Session workspace membership verification failed');
+        return createContextInner({
+          ...commonContext,
+          traceContext,
+          userId: null,
+          workspaceId: undefined,
+        });
+      }
       log('Better Auth authentication successful, userId: %s', userId);
     } else {
       log('Better Auth authentication failed, no valid session');
+      userId = null;
+      return createContextInner({
+        ...commonContext,
+        traceContext,
+        userId,
+        workspaceId: undefined,
+      });
     }
 
     return createContextInner({
@@ -369,5 +415,5 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
     'All authentication methods attempted, returning final context, userId: %s',
     userId || 'not authenticated',
   );
-  return createContextInner({ ...commonContext, traceContext, userId });
+  return createContextInner({ ...commonContext, traceContext, userId, workspaceId: undefined });
 };

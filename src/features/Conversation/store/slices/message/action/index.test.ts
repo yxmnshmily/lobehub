@@ -320,4 +320,19 @@ describe('sendMessage composer ownership', () => {
     expect(sendMessage).not.toHaveBeenCalled();
     expect(store.getState().inputMessage).toBe('keep this draft');
   });
+
+  it('forwards hosted group billing without moving it into message metadata', async () => {
+    const store = createTestStore();
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(useChatStore, 'getState').mockReturnValue({ sendMessage } as any);
+
+    await store.getState().sendMessage({
+      billing: { idempotencyKey: 'request-1', maxCredits: 16 },
+      message: '写一篇西藏旅游文案',
+    });
+
+    const forwarded = sendMessage.mock.calls[0][0];
+    expect(forwarded.billing).toEqual({ idempotencyKey: 'request-1', maxCredits: 16 });
+    expect(forwarded.metadata).toBeUndefined();
+  });
 });

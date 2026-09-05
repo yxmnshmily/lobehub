@@ -158,7 +158,11 @@ const ListConfig = memo<ListConfigProps>(
         trigger={['click']}
         onOpenChange={setOpen}
       >
-        <ActionIcon icon={Settings2Icon} size={DESKTOP_HEADER_ICON_SMALL_SIZE} />
+        <ActionIcon
+          aria-label={t('setting')}
+          icon={Settings2Icon}
+          size={DESKTOP_HEADER_ICON_SMALL_SIZE}
+        />
       </Popover>
     );
   },

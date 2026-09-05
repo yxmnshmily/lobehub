@@ -11,6 +11,7 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { EditLockService } from '@/server/services/editLock';
 import { assertCanEditResource } from '@/server/services/resourcePermission';
+import { assertDefaultTravelServiceMutationAllowed } from '@/server/services/user/travelServiceGroupMutationGuard';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 
 /**
@@ -45,7 +46,6 @@ const workspaceUserSettingsProcedure = wsCompatProcedure.use(serverDatabase).use
 // `WorkspaceUserPreference` doesn't need a coupled zod-schema bump — the
 // type layer already constrains the write paths.
 const preferencePatchSchema = z.object({}).passthrough().partial();
-
 export const workspaceUserSettingsRouter = router({
   /**
    * Fetch the caller's preference for the current workspace. Returns an
@@ -112,6 +112,12 @@ export const workspaceUserSettingsRouter = router({
               // The legacy map keys generic sidebar item ids: agents move via
               // `agents.sessionGroupId`, chat groups via `chat_groups.groupId`.
               if (itemId.startsWith('cg_')) {
+                await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+                  actorUserId: ctx.userId,
+                  groupId: itemId,
+                  kind: 'group',
+                  workspaceId: ctx.workspaceId,
+                });
                 // Same per-resource gate as `agentGroup.updateGroup` — the
                 // workspace-wide organize grant alone must not allow editing a
                 // group whose General Access is view/use only.
@@ -126,8 +132,20 @@ export const workspaceUserSettingsRouter = router({
                 // skip the move while another member actively edits the group.
                 const blockedBy = await editLockService.getBlockingHolder('chatGroup', itemId);
                 if (blockedBy) throw new Error('Group is being edited by another user');
+                await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+                  actorUserId: ctx.userId,
+                  groupId: itemId,
+                  kind: 'group',
+                  workspaceId: ctx.workspaceId,
+                });
                 await chatGroupModel.update(itemId, { groupId: groupId ?? null });
               } else {
+                await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+                  actorUserId: ctx.userId,
+                  agentIds: [itemId],
+                  kind: 'agent',
+                  workspaceId: ctx.workspaceId,
+                });
                 await agentModel.updateSessionGroupId(itemId, groupId ?? null);
               }
             } catch (error) {

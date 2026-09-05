@@ -1,17 +1,22 @@
 'use client';
 
-import { createStaticStyles } from 'antd-style';
+import { Button } from '@lobehub/ui/base-ui';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import isEqual from 'fast-deep-equal';
+import { ChevronLeft } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import NavHeader from '@/features/NavHeader';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useToolStore } from '@/store/tool';
 import { agentSkillsSelectors, builtinToolSelectors } from '@/store/tool/selectors';
 
 import LeftPanel from './features/LeftPanel';
 import SkillDetail, { type ToolDetailType } from './features/SkillDetail';
 import { type SkillViewMode } from './features/SkillList';
+import { shouldUseMobileToolLayout } from './mobileLayout';
 
 export interface SelectedTool {
   identifier: string;
@@ -22,6 +27,7 @@ const styles = createStaticStyles(({ css }) => ({
   detail: css`
     overflow-y: auto;
     flex: 1;
+    min-width: 0;
   `,
   root: css`
     overflow: hidden;
@@ -41,6 +47,12 @@ interface ToolSettingsProps {
 }
 
 export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
+  const { t } = useTranslation('common');
+  const { mobile: responsiveMobile = false } = useResponsive();
+  const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
+  const mobileViewport =
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 575px)').matches;
+  const mobile = shouldUseMobileToolLayout(responsiveMobile, runtimeMobile, mobileViewport);
   const [searchParams] = useSearchParams();
   const querySkillIdentifier = searchParams.get('skill');
   const [selected, setSelected] = useState<SelectedTool | null>(null);
@@ -56,6 +68,7 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
 
   useEffect(() => {
     if (selected) return;
+    if (mobile) return;
     if (viewMode === 'skill' && querySkillIdentifier) return;
     if (viewMode === 'connector') {
       const firstTool = builtinTools.find(
@@ -70,7 +83,15 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
         setSelected({ identifier: firstSkill.identifier, type: 'builtin-skill' });
       }
     }
-  }, [builtinTools, builtinSkills, installedBuiltinIds, querySkillIdentifier, selected, viewMode]);
+  }, [
+    builtinTools,
+    builtinSkills,
+    installedBuiltinIds,
+    mobile,
+    querySkillIdentifier,
+    selected,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (viewMode !== 'skill' || !querySkillIdentifier) return;
@@ -89,15 +110,29 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
     <>
       <NavHeader />
       <div className={styles.root}>
-        <LeftPanel
-          selectedIdentifier={selected?.identifier}
-          viewMode={viewMode}
-          onDeleteSelected={() => setSelected(null)}
-          onSelect={handleSelect}
-        />
+        {(!mobile || !selected) && (
+          <LeftPanel
+            selectedIdentifier={selected?.identifier}
+            viewMode={viewMode}
+            onDeleteSelected={() => setSelected(null)}
+            onSelect={handleSelect}
+          />
+        )}
 
         {selected && (
           <div className={styles.detail}>
+            {mobile && (
+              <div
+                style={{
+                  borderBlockEnd: '1px solid var(--ant-color-border-secondary)',
+                  padding: 8,
+                }}
+              >
+                <Button icon={ChevronLeft} size="small" onClick={() => setSelected(null)}>
+                  {t('back')}
+                </Button>
+              </div>
+            )}
             <SkillDetail
               identifier={selected.identifier}
               type={selected.type}

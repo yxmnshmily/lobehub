@@ -55,6 +55,7 @@ import { DEFAULT_RESOURCE_ACCESS_LEVELS } from '@/database/schemas';
 import type { ChatGroupConfig } from '@/database/types/chatGroup';
 import { AgentGroupService } from '@/server/services/agentGroup';
 import { assertCanPerformResourceAction } from '@/server/services/resourcePermission';
+import { assertDefaultTravelServiceMutationAllowed } from '@/server/services/user/travelServiceGroupMutationGuard';
 
 import { type ToolExecutionContext, type ToolExecutionResult } from '../types';
 import { agentBuilderRuntime } from './agentBuilder';
@@ -315,6 +316,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [],
+            groupId,
+            kind: 'membership',
+            operation: 'add',
+            workspaceId,
+          });
 
           const [agent] = await agentModel.batchCreate([
             {
@@ -359,6 +368,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [],
+            groupId,
+            kind: 'membership',
+            operation: 'add',
+            workspaceId,
+          });
 
           const createdAgents = await agentModel.batchCreate(
             params.agents.map((agent) => ({
@@ -411,6 +428,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            groupId,
+            kind: 'membership',
+            operation: 'add',
+            workspaceId,
+          });
 
           const roster = await chatGroupModel.getGroupAgentsWithMeta(groupId);
           const existing = roster.find((member) => member.agentId === params.agentId);
@@ -427,6 +452,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
             };
           }
 
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            groupId,
+            kind: 'membership',
+            operation: 'add',
+            workspaceId,
+          });
           const result = await chatGroupModel.addAgentsToGroup(groupId, [params.agentId]);
           const wasAdded = result.added.length > 0;
 
@@ -463,6 +496,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            groupId,
+            kind: 'membership',
+            operation: 'remove',
+            workspaceId,
+          });
 
           const roster = await chatGroupModel.getGroupAgentsWithMeta(groupId);
           const member = roster.find((item) => item.agentId === params.agentId);
@@ -492,6 +533,14 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
             };
           }
 
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            groupId,
+            kind: 'membership',
+            operation: 'remove',
+            workspaceId,
+          });
           await chatGroupModel.removeAgentsFromGroup(groupId, [params.agentId]);
 
           return {
@@ -519,6 +568,12 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
 
         try {
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            kind: 'agent',
+            workspaceId,
+          });
 
           const roster = await chatGroupModel.getGroupAgentsWithMeta(groupId);
           if (!roster.some((member) => member.agentId === params.agentId)) {
@@ -534,6 +589,12 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           // Clear `editorData` alongside `systemRole`: the profile editor treats
           // the JSON doc as authoritative, so leaving it stale would revert the
           // markdown on the next autosave (same rule as AgentBuilder.updatePrompt).
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            kind: 'agent',
+            workspaceId,
+          });
           await agentModel.update(params.agentId, {
             editorData: null,
             systemRole: params.prompt,
@@ -577,6 +638,12 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            groupId,
+            kind: 'group',
+            workspaceId,
+          });
 
           const updatedFields: string[] = [];
           const state: UpdateGroupState = { success: true };
@@ -627,7 +694,15 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
             }
           }
 
-          if (Object.keys(patch).length > 0) await chatGroupModel.update(groupId, patch);
+          if (Object.keys(patch).length > 0) {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              groupId,
+              kind: 'group',
+              workspaceId,
+            });
+            await chatGroupModel.update(groupId, patch);
+          }
 
           return {
             content: `Successfully updated group: ${updatedFields.join(', ')}`,
@@ -651,9 +726,21 @@ export const groupAgentBuilderRuntime: ServerRuntimeRegistration = {
           if (!group) return groupNotFound(groupId);
 
           await assertGroupEditable(groupId);
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            groupId,
+            kind: 'group',
+            workspaceId,
+          });
 
           // `editorData` mirrors `content` for the profile editor; clear it so a
           // stale JSON doc doesn't overwrite the new markdown on next autosave.
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            groupId,
+            kind: 'group',
+            workspaceId,
+          });
           await chatGroupModel.update(groupId, { content: params.prompt, editorData: null });
 
           return {

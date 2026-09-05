@@ -10,11 +10,9 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
-import {
-  requireWorkspaceRoleWhenScoped,
-  wsCompatProcedure,
-} from '@/business/server/trpc-middlewares/workspaceAuth';
+import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AiProviderModel } from '@/database/models/aiProvider';
+import { RbacModel } from '@/database/models/rbac';
 import { UserModel } from '@/database/models/user';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
 import { router } from '@/libs/trpc/lambda';
@@ -31,12 +29,13 @@ import {
 } from '@/types/aiProvider';
 import { type ProviderConfig } from '@/types/user/settings';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const aiProviderProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   const { aiProvider } = await getServerGlobalConfig();
 
-  const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
   return opts.next({
     ctx: {
       aiInfraRepos: new AiInfraRepos(
@@ -46,10 +45,16 @@ const aiProviderProcedure = wsCompatProcedure.use(serverDatabase).use(async (opt
         ctx.workspaceId ?? undefined,
       ),
       aiProviderModel: new AiProviderModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined),
-      gateKeeper,
       userModel: new UserModel(ctx.serverDB, ctx.userId),
     },
   });
+});
+
+const platformAiProviderProcedure = aiProviderProcedure.use(requirePlatformAdmin);
+const platformAiProviderCredentialProcedure = platformAiProviderProcedure.use(async (opts) => {
+  const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+  return opts.next({ ctx: { gateKeeper } });
 });
 
 const resolveProviderBindingAgentTypes = (
@@ -71,7 +76,7 @@ const resolveProviderBindingAgentTypes = (
   );
 
 export const aiProviderRouter = router({
-  checkProviderConnectivity: aiProviderProcedure
+  checkProviderConnectivity: platformAiProviderProcedure
     .use(withScopedPermission('ai_provider:update'))
     .input(
       z.object({
@@ -129,7 +134,7 @@ export const aiProviderRouter = router({
       }
     }),
 
-  createAiProvider: aiProviderProcedure
+  createAiProvider: platformAiProviderCredentialProcedure
     .use(withScopedPermission('ai_provider:create'))
     .input(CreateAiProviderSchema)
     .mutation(async ({ input, ctx }) => {
@@ -148,7 +153,7 @@ export const aiProviderRouter = router({
       }
     }),
 
-  getAiProviderById: aiProviderProcedure
+  getAiProviderById: platformAiProviderProcedure
     .input(z.object({ id: z.string() }))
 
     .query(async ({ input, ctx }): Promise<AiProviderDetailItem | undefined> => {
@@ -165,29 +170,32 @@ export const aiProviderRouter = router({
       return detail;
     }),
 
-  getAiProviderList: aiProviderProcedure.query(async ({ ctx }) => {
+  getAiProviderList: platformAiProviderProcedure.query(async ({ ctx }) => {
     return await ctx.aiInfraRepos.getAiProviderList();
   }),
 
   getAiProviderRuntimeState: aiProviderProcedure
     .input(z.object({ isLogin: z.boolean().optional() }))
     .query(async ({ ctx }): Promise<AiProviderRuntimeState> => {
+      const isPlatformAdmin = await new RbacModel(ctx.serverDB, ctx.userId).hasGlobalRole(
+        'super_admin',
+      );
+      const canReadRuntimeConfig =
+        isPlatformAdmin && (ctx.apiKeyScopes === undefined || isFullAccessApiKey(ctx.apiKeyScopes));
       const state = await getUserScopedAiProviderRuntimeState(ctx.userId, () =>
-        ctx.aiInfraRepos.getAiProviderRuntimeState(KeyVaultsGateKeeper.getUserKeyVaults),
+        canReadRuntimeConfig
+          ? ctx.aiInfraRepos.getAiProviderRuntimeState(KeyVaultsGateKeeper.getUserKeyVaults)
+          : ctx.aiInfraRepos.getAiProviderCatalogState(),
       );
       const providerBindingAgentTypes = resolveProviderBindingAgentTypes(state);
 
-      // restricted API keys must not exfiltrate decrypted provider credentials
-      if (ctx.apiKeyScopes !== undefined && !isFullAccessApiKey(ctx.apiKeyScopes)) {
+      // Customer sessions and restricted API keys only receive catalog state.
+      // Platform credentials remain server-side and are resolved by PlatformAiRuntime.
+      if (!canReadRuntimeConfig) {
         return {
           ...state,
           providerBindingAgentTypes,
-          runtimeConfig: Object.fromEntries(
-            Object.entries(state.runtimeConfig).map(([id, config]) => [
-              id,
-              { ...config, keyVaults: {} },
-            ]),
-          ),
+          runtimeConfig: {},
         };
       }
 
@@ -204,7 +212,7 @@ export const aiProviderRouter = router({
    * makes Desktop main the authority on model availability instead of the
    * renderer's possibly stale store state.
    */
-  getProviderBindingRuntime: aiProviderProcedure
+  getProviderBindingRuntime: platformAiProviderProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }): Promise<HeterogeneousProviderBindingRuntime> => {
       const state = await getUserScopedAiProviderRuntimeState(ctx.userId, () =>
@@ -243,15 +251,14 @@ export const aiProviderRouter = router({
   // Provider rows carry workspace-shared credentials and the model-layer where is
   // workspace-wide, so destructive/config writes are Admin-or-higher in workspace mode
   // (the workspace provider settings UI is likewise admin-only).
-  removeAiProvider: aiProviderProcedure
+  removeAiProvider: platformAiProviderProcedure
     .use(withScopedPermission('ai_provider:delete'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.aiProviderModel.delete(input.id);
     }),
 
-  toggleProviderEnabled: aiProviderProcedure
+  toggleProviderEnabled: platformAiProviderProcedure
     .use(withScopedPermission('ai_provider:update'))
     .input(
       z.object({
@@ -270,9 +277,8 @@ export const aiProviderRouter = router({
       return ctx.aiProviderModel.toggleProviderEnabled(input.id, input.enabled);
     }),
 
-  updateAiProvider: aiProviderProcedure
+  updateAiProvider: platformAiProviderProcedure
     .use(withScopedPermission('ai_provider:update'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(
       z.object({
         id: z.string(),
@@ -283,9 +289,8 @@ export const aiProviderRouter = router({
       return ctx.aiProviderModel.update(input.id, input.value);
     }),
 
-  updateAiProviderConfig: aiProviderProcedure
+  updateAiProviderConfig: platformAiProviderCredentialProcedure
     .use(withScopedPermission('ai_provider:update'))
-    .use(requireWorkspaceRoleWhenScoped('admin'))
     .input(
       z.object({
         id: z.string(),
@@ -301,7 +306,7 @@ export const aiProviderRouter = router({
       );
     }),
 
-  updateAiProviderOrder: aiProviderProcedure
+  updateAiProviderOrder: platformAiProviderProcedure
     .use(withScopedPermission('ai_provider:update'))
     .input(
       z.object({

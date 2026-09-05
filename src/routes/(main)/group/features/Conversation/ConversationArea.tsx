@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { cssVar } from 'antd-style';
-import { memo, Suspense, useMemo } from 'react';
+import { memo, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -17,7 +17,6 @@ import {
 } from '@/features/Conversation/MessageForward';
 import { useOperationState } from '@/hooks/useOperationState';
 import { useChatStore } from '@/store/chat';
-import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 
 import WelcomeChatItem from './AgentWelcome';
 import ChatHydration from './ChatHydration';
@@ -26,6 +25,7 @@ import MessageFromUrl from './MainChatInput/MessageFromUrl';
 import ThreadHydration from './ThreadHydration';
 import { useActionsBarConfig } from './useActionsBarConfig';
 import { useGroupContext } from './useGroupContext';
+import { useGroupConversationMessages } from './useGroupConversationMessages';
 
 interface ConversationAreaProps {
   mobile?: boolean;
@@ -41,14 +41,10 @@ const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
   const { t } = useTranslation('chat');
   const context = useGroupContext();
 
-  // Get raw dbMessages from ChatStore for this context
-  // ConversationStore will parse them internally to generate displayMessages
-  const chatKey = useMemo(
-    () => messageMapKey(context),
-    [context.agentId, context.topicId, context.threadId],
-  );
+  // Get raw dbMessages from ChatStore for this context.
+  // ConversationStore will parse them internally to generate displayMessages.
   const replaceMessages = useChatStore((s) => s.replaceMessages);
-  const messages = useChatStore((s) => s.dbMessagesMap[chatKey]);
+  const messages = useGroupConversationMessages(context);
 
   // Get operation state from ChatStore for reactive updates
   const operationState = useOperationState(context);

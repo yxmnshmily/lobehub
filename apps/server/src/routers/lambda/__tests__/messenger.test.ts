@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getMessengerTelegramConfig } from '@/config/messenger';
@@ -45,6 +46,7 @@ const {
   mockSendMessengerPush,
   mockSlackAuthTest,
   mockUpsertForPlatform,
+  mockPlatformAdminGuard,
 } = vi.hoisted(() => ({
   mockAcquireWechatQrFinalizeLock: vi.fn(),
   mockAssertBotFeatureAccess: vi.fn(),
@@ -83,6 +85,11 @@ const {
   mockSendMessengerPush: vi.fn(),
   mockSlackAuthTest: vi.fn(),
   mockUpsertForPlatform: vi.fn(),
+  mockPlatformAdminGuard: vi.fn(),
+}));
+
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
 }));
 
 vi.mock('@lobechat/chat-adapter-wechat', () => ({
@@ -225,6 +232,26 @@ vi.mock('@/server/services/messenger/push', () => ({
 }));
 
 const createCaller = createCallerFactory(messengerRouter);
+
+beforeEach(() => {
+  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
+});
+
+describe('messengerRouter platform administration', () => {
+  it('rejects messenger channel writes from an ordinary customer', async () => {
+    mockGetServerDB.mockResolvedValue({ kind: 'server-db' });
+    mockDeleteByPlatform.mockResolvedValue(undefined);
+    mockListAccountLinks.mockResolvedValue([]);
+    mockPlatformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    const caller = createCaller(await createContextInner({ userId: 'user-1' }));
+    await expect(caller.unlink({ platform: 'wechat' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
 
 const buildSlackInstall = () => ({
   accountId: null,

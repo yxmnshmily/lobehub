@@ -169,6 +169,33 @@ describe('createAsyncServerClient - INTERNAL_APP_URL Tests', () => {
       expect(httpLinkOptions.headers['X-lobe-chat-auth']).toBe('test-encrypted-auth-data');
     });
 
+    it('threads only the trusted platform mode across the encrypted async boundary', async () => {
+      const mockEncrypt = vi.fn().mockResolvedValue('test-encrypted-auth-data');
+      vi.mocked(KeyVaultsGateKeeper.initWithEnvKey).mockResolvedValueOnce({
+        encrypt: mockEncrypt,
+      } as any);
+
+      await createAsyncServerClient('customer', { modelRuntimeMode: 'platform-managed' });
+
+      expect(mockEncrypt).toHaveBeenCalledWith(
+        JSON.stringify({ modelRuntimeMode: 'platform-managed', userId: 'customer' }),
+      );
+      expect(mockEncrypt.mock.calls[0][0]).not.toContain('credentialOwnerId');
+    });
+
+    it('drops an attempted credential owner injection from internal caller options', async () => {
+      const mockEncrypt = vi.fn().mockResolvedValue('test-encrypted-auth-data');
+      vi.mocked(KeyVaultsGateKeeper.initWithEnvKey).mockResolvedValueOnce({
+        encrypt: mockEncrypt,
+      } as any);
+
+      await createAsyncServerClient('customer', {
+        credentialOwnerId: 'attacker',
+      } as any);
+
+      expect(mockEncrypt).toHaveBeenCalledWith(JSON.stringify({ userId: 'customer' }));
+    });
+
     it('should include Vercel bypass secret when available', async () => {
       const originalEnv = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
       process.env.VERCEL_AUTOMATION_BYPASS_SECRET = 'test-bypass-value';

@@ -11,7 +11,9 @@ const {
   mockGetHiddenBuiltinModelsForUser,
   mockUpdateAgent,
   mockUpdateConfig,
+  mockAssertTravelMutationAllowed,
 } = vi.hoisted(() => ({
+  mockAssertTravelMutationAllowed: vi.fn(),
   mockCreatePlugin: vi.fn(),
   mockFindById: vi.fn(),
   mockGetAgentConfigById: vi.fn(),
@@ -20,6 +22,11 @@ const {
   mockGetHiddenBuiltinModelsForUser: vi.fn(),
   mockUpdateAgent: vi.fn(),
   mockUpdateConfig: vi.fn(),
+}));
+
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: mockAssertTravelMutationAllowed,
+  assertNoReservedTravelServiceIdentity: vi.fn(),
 }));
 
 vi.mock('@/business/server/aiProvider', () => ({
@@ -64,7 +71,23 @@ const createRuntime = () =>
 describe('agentBuilderRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertTravelMutationAllowed.mockResolvedValue(undefined);
     mockGetHiddenBuiltinModelsForUser.mockResolvedValue(undefined);
+  });
+
+  it('blocks a protected agent before builder config writes', async () => {
+    mockAssertTravelMutationAllowed.mockRejectedValue(
+      new Error('This platform-managed travel resource cannot be changed'),
+    );
+
+    const result = await createRuntime().updateConfig(
+      { meta: { title: 'changed' } },
+      { editingAgentId: 'agent-1', toolManifestMap: {} },
+    );
+
+    expect(result).toMatchObject({ success: false });
+    expect(mockUpdateAgent).not.toHaveBeenCalled();
+    expect(mockUpdateConfig).not.toHaveBeenCalled();
   });
 
   describe('getAvailableModels', () => {

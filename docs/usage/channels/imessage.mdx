@@ -1,8 +1,7 @@
 ---
 title: Connect LobeHub to iMessage
 description: >-
-  Learn how to connect iMessage to your LobeHub agent through the local LobeHub
-  Desktop BlueBubbles bridge.
+  Learn how to connect iMessage to your LobeHub agent through the local LobeHub Desktop BlueBubbles bridge.
 tags:
   - iMessage
   - BlueBubbles
@@ -35,15 +34,16 @@ LobeHub agent -> Device Gateway -> LobeHub Desktop bridge -> BlueBubbles -> iMes
 <Steps>
   ### Install BlueBubbles Server
 
-  Install [BlueBubbles Server](https://bluebubbles.app/) on the Mac that hosts the iMessage account. Keep the Mac awake and on the network.
+Install [BlueBubbles Server](https://bluebubbles.app/) on the Mac that hosts the iMessage account. Keep the Mac awake and on the network.
 
-  ### Set a server password
+### Set a server password
 
-  In BlueBubbles Server, set a strong password. The LobeHub Desktop bridge uses it locally to call the BlueBubbles REST API.
+In BlueBubbles Server, set a strong password. The LobeHub Desktop bridge uses it locally to call the BlueBubbles REST API.
 
-  ### Keep it local
+### Keep it local
 
-  A local address such as `http://127.0.0.1:1234` (or a private LAN address) is all you need — no public HTTPS URL required.
+A local address such as `http://127.0.0.1:1234` (or a private LAN address) is all you need — no public HTTPS URL required.
+
 </Steps>
 
 ## Step 2: Enable the iMessage Lab
@@ -51,11 +51,12 @@ LobeHub agent -> Device Gateway -> LobeHub Desktop bridge -> BlueBubbles -> iMes
 <Steps>
   ### Open Labs
 
-  In LobeHub, go to **Settings → Advanced** and find the **Labs** section.
+In LobeHub, go to **Settings → Advanced** and find the **Labs** section.
 
-  ### Turn on "iMessage Channel"
+### Turn on "iMessage Channel"
 
-  Toggle it on. The iMessage entry in your agent's channel list switches from a "Coming Soon" placeholder to a configurable channel.
+Toggle it on. The iMessage entry in your agent's channel list switches from a "Coming Soon" placeholder to a configurable channel.
+
 </Steps>
 
 ## Step 3: Configure iMessage in Your Agent
@@ -63,23 +64,24 @@ LobeHub agent -> Device Gateway -> LobeHub Desktop bridge -> BlueBubbles -> iMes
 <Steps>
   ### Open the channel
 
-  Go to your agent's settings → **Channels** → **iMessage**.
+Go to your agent's settings → **Channels** → **iMessage**.
 
-  ### Fill in the three fields
+### Fill in the three fields
 
-  1. **Application ID** — a stable identifier for this connection, e.g. `home-mac-mini`.
-  2. **BlueBubbles Server URL** — your local BlueBubbles address, e.g. `http://127.0.0.1:1234`.
-  3. **BlueBubbles Password** — the server password from Step 1.
+1. **Application ID** — a stable identifier for this connection, e.g. `home-mac-mini`.
+2. **BlueBubbles Server URL** — your local BlueBubbles address, e.g. `http://127.0.0.1:1234`.
+3. **BlueBubbles Password** — the server password from Step 1.
 
-  The Desktop Device ID and webhook secret are filled in and generated automatically — you don't need to manage them.
+The Desktop Device ID and webhook secret are filled in and generated automatically — you don't need to manage them.
 
-  ### Test the connection (optional)
+### Test the connection (optional)
 
-  Click **Test BlueBubbles** to verify the URL and password reach your local BlueBubbles server.
+Click **Test BlueBubbles** to verify the URL and password reach your local BlueBubbles server.
 
-  ### Save
+### Save
 
-  Click **Save Configuration**. A single save persists the cloud channel **and** the local Desktop bridge: it starts the loopback listener, registers the BlueBubbles `new-message` webhook, and connects the bot.
+Click **Save Configuration**. A single save persists the cloud channel **and** the local Desktop bridge: it starts the loopback listener, registers the BlueBubbles `new-message` webhook, and connects the bot.
+
 </Steps>
 
 ## Step 4: Test the Bot

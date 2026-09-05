@@ -24,14 +24,20 @@ describe('customBrandingLoadingScreen', () => {
   });
 
   it('keeps the default LobeHub wordmark untouched', async () => {
-    vi.doMock('@lobechat/business-const/branding', () => ({ BRANDING_NAME: 'LobeHub' }));
+    vi.doMock('@lobechat/business-const/branding', () => ({
+      BRANDING_LOGO_URL: '',
+      BRANDING_NAME: 'LobeHub',
+    }));
     const handler = await loadHandler();
 
     expect(handler(SAMPLE_HTML)).toBe(SAMPLE_HTML);
   });
 
   it('replaces the wordmark with the custom brand name', async () => {
-    vi.doMock('@lobechat/business-const/branding', () => ({ BRANDING_NAME: 'AI Workstation' }));
+    vi.doMock('@lobechat/business-const/branding', () => ({
+      BRANDING_LOGO_URL: '',
+      BRANDING_NAME: 'AI Workstation',
+    }));
     const handler = await loadHandler();
 
     const result = handler(SAMPLE_HTML);
@@ -43,8 +49,23 @@ describe('customBrandingLoadingScreen', () => {
     expect(result).toContain('<div id="root" style="height: 100%"></div>');
   });
 
+  it('does not overlay custom brand text on a custom image logo', async () => {
+    vi.doMock('@lobechat/business-const/branding', () => ({
+      BRANDING_LOGO_URL: '/lobehub/app-icons/travel-cloud-mascot.png',
+      BRANDING_NAME: '旅游群网',
+    }));
+    const handler = await loadHandler();
+
+    const result = handler(SAMPLE_HTML);
+    expect(result).toContain('<div id="loading-brand" aria-label="Loading" role="status"></div>');
+    expect(result).not.toContain('>旅游群网</div>');
+  });
+
   it('escapes HTML-sensitive characters in the brand name', async () => {
-    vi.doMock('@lobechat/business-const/branding', () => ({ BRANDING_NAME: 'A<B>&"C' }));
+    vi.doMock('@lobechat/business-const/branding', () => ({
+      BRANDING_LOGO_URL: '',
+      BRANDING_NAME: 'A<B>&"C',
+    }));
     const handler = await loadHandler();
 
     const result = handler(SAMPLE_HTML);

@@ -40,12 +40,7 @@ export interface AgentSignalReceiptMetadata {
   reviewScope?: Scope;
   /** Rollback availability/status for the linked mutation. */
   rollbackStatus?:
-    | 'available'
-    | 'conflict'
-    | 'failed'
-    | 'not_found'
-    | 'rolled_back'
-    | 'unsupported';
+    'available' | 'conflict' | 'failed' | 'not_found' | 'rolled_back' | 'unsupported';
   /** Scoped self-reflection id for non-nightly review receipts. */
   scopeId?: string;
   /** Scoped self-reflection namespace for non-nightly review receipts. */

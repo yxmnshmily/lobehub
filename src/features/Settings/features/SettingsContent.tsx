@@ -8,6 +8,7 @@ import NavHeader from '@/features/NavHeader';
 import SettingContainer from '@/features/Setting/SettingContainer';
 import { useSettingsAnchorScroll } from '@/features/SettingsSearch/anchor';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { SettingsTabs } from '@/store/global/initialState';
 import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 
@@ -21,6 +22,14 @@ const REDIRECT_MAP: Record<string, string> = {
   [SettingsTabs.TTS]: SettingsTabs.ServiceModel,
   [SettingsTabs.Image]: SettingsTabs.ServiceModel,
 };
+
+const CUSTOMER_SETTINGS_TABS = new Set<string>([
+  SettingsTabs.Billing,
+  SettingsTabs.Credits,
+  SettingsTabs.Profile,
+  SettingsTabs.Security,
+  SettingsTabs.Usage,
+]);
 
 const COMPACT_HEADER_TABS = [
   SettingsTabs.About,
@@ -52,13 +61,16 @@ const SettingsContent = ({ mobile, activeTab }: SettingsContentProps) => {
   const { t } = useTranslation(['auth', 'labs', 'setting', 'subscription']);
   const enableBusinessFeatures = useServerConfigStore(serverConfigSelectors.enableBusinessFeatures);
   const navigate = useWorkspaceAwareNavigate();
+  const { data: isPlatformAdmin, isLoading: isPlatformAdminLoading } =
+    lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
+  const isCustomerSettingsTab = !activeTab || CUSTOMER_SETTINGS_TABS.has(activeTab);
 
   const compactHeaderTitles: Partial<Record<SettingsTabs, string>> = {
     [SettingsTabs.About]: t('setting:tab.about'),
     [SettingsTabs.APIKey]: t('setting:tab.apikey'),
     [SettingsTabs.Appearance]: t('setting:tab.appearance'),
-    [SettingsTabs.Billing]: t('subscription:tab.billing'),
-    [SettingsTabs.Credits]: t('subscription:tab.credits'),
+    [SettingsTabs.Billing]: 'Credits 明细与服务订单',
+    [SettingsTabs.Credits]: 'Credits 余额',
     [SettingsTabs.Devices]: t('setting:devices.title'),
     [SettingsTabs.Hotkey]: t('setting:tab.hotkey'),
     [SettingsTabs.Labels]: t('setting:tab.labels'),
@@ -78,13 +90,20 @@ const SettingsContent = ({ mobile, activeTab }: SettingsContentProps) => {
   useSettingsAnchorScroll();
 
   useEffect(() => {
-    if (activeTab && REDIRECT_MAP[activeTab]) {
+    if (!activeTab || isPlatformAdminLoading) return;
+
+    if (!isPlatformAdmin && !isCustomerSettingsTab) {
+      navigate('/settings/profile', { escape: true, replace: true });
+      return;
+    }
+
+    if (isPlatformAdmin && REDIRECT_MAP[activeTab]) {
       // Personal-only redirect: legacy URL aliases (common, agent, tts, image,
       // chat-appearance) map to personal-settings tabs. `escape: true` keeps the
       // user in personal context even when a workspace happens to be active.
       navigate(`/settings/${REDIRECT_MAP[activeTab]}`, { escape: true, replace: true });
     }
-  }, [activeTab, navigate]);
+  }, [activeTab, isCustomerSettingsTab, isPlatformAdmin, isPlatformAdminLoading, navigate]);
 
   const renderComponent = (tab: string) => {
     const Component = componentMap[tab as keyof typeof componentMap] || componentMap.appearance;
@@ -115,7 +134,8 @@ const SettingsContent = ({ mobile, activeTab }: SettingsContentProps) => {
     return <Component {...componentProps} />;
   };
 
-  if (activeTab && REDIRECT_MAP[activeTab]) return null;
+  if (!isCustomerSettingsTab && (isPlatformAdminLoading || !isPlatformAdmin)) return null;
+  if (activeTab && isPlatformAdmin && REDIRECT_MAP[activeTab]) return null;
 
   if (mobile) {
     return activeTab ? renderComponent(activeTab) : renderComponent(SettingsTabs.Profile);
@@ -129,6 +149,7 @@ const SettingsContent = ({ mobile, activeTab }: SettingsContentProps) => {
           tabKey === SettingsTabs.Skill ||
           tabKey === SettingsTabs.Connector ||
           tabKey === SettingsTabs.Creds ||
+          tabKey === SettingsTabs.ServiceOperations ||
           tabKey === SettingsTabs.Usage;
         if (activeTab !== tabKey) return null;
         const content = renderComponent(tabKey);

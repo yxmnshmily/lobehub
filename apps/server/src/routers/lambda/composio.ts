@@ -25,6 +25,7 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 const composioProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -52,6 +53,8 @@ const composioProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts)
 // on top per-mutation via `assertComposioRowManageable` (mirrors the native
 // connector router's connectorWriteProcedure + assertWorkspaceRowManageable).
 const composioWriteProcedure = composioProcedure.use(requireWorkspaceRoleWhenScoped('member'));
+const composioAdminProcedure = composioProcedure.use(requirePlatformAdmin);
+const composioAdminWriteProcedure = composioWriteProcedure.use(requirePlatformAdmin);
 
 /**
  * Before mutating (overwriting/deleting) a Composio connection in a workspace,
@@ -206,7 +209,7 @@ async function assertCanEditAgent(
 }
 
 export const composioRouter = router({
-  createConnection: composioWriteProcedure
+  createConnection: composioAdminWriteProcedure
     .input(
       z.object({
         /** Bind the connection to this agent (Agent > Personal). Requires edit rights. */
@@ -354,7 +357,7 @@ export const composioRouter = router({
       };
     }),
 
-  deleteConnection: composioWriteProcedure
+  deleteConnection: composioAdminWriteProcedure
     .input(
       z.object({
         agentId: z.string().optional(),
@@ -363,11 +366,23 @@ export const composioRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      // Gate before deleting the remote account, so a non-creator/owner member
-      // can't grief another member's Composio connection.
-      await assertComposioRowManageable(ctx, input.identifier, input.agentId);
+      const existing = await ctx.connectorModel.findScopedByIdentifier(
+        input.identifier,
+        input.agentId,
+      );
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Composio connection not found' });
+      }
+      assertWorkspaceRowManageable(ctx, existing.userId, 'connector');
+      const ownedConnectedAccountId = existing.metadata?.composio?.connectedAccountId;
+      if (!ownedConnectedAccountId || ownedConnectedAccountId !== input.connectedAccountId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Composio connection does not belong to this connector',
+        });
+      }
       try {
-        await (ctx.composioClient.connectedAccounts as any).delete(input.connectedAccountId);
+        await (ctx.composioClient.connectedAccounts as any).delete(ownedConnectedAccountId);
       } catch (error) {
         console.warn('[Composio] Failed to delete remote connection:', error);
       }
@@ -380,18 +395,24 @@ export const composioRouter = router({
       return { success: true };
     }),
 
-  getComposioPlugins: composioProcedure.query(async ({ ctx }) => {
+  getComposioPlugins: composioAdminProcedure.query(async ({ ctx }) => {
     const allPlugins = await ctx.pluginModel.query();
     return allPlugins.filter((plugin) => plugin.customParams?.composio);
   }),
 
-  getConnection: composioProcedure
+  getConnection: composioAdminProcedure
     .input(
       z.object({
         connectedAccountId: z.string(),
       }),
     )
     .query(async ({ input, ctx }) => {
+      const owned = await ctx.connectorModel.findComposioReferenceByConnectedAccountId(
+        input.connectedAccountId,
+      );
+      if (!owned) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Composio connection not found' });
+      }
       try {
         const account = await (ctx.composioClient.connectedAccounts as any).get(
           input.connectedAccountId,
@@ -439,7 +460,7 @@ export const composioRouter = router({
       }
     }),
 
-  removeComposioPlugin: composioWriteProcedure
+  removeComposioPlugin: composioAdminWriteProcedure
     .input(z.object({ agentId: z.string().optional(), identifier: z.string() }))
     .mutation(async ({ input, ctx }) => {
       await assertComposioRowManageable(ctx, input.identifier, input.agentId);
@@ -448,7 +469,7 @@ export const composioRouter = router({
       return { success: true };
     }),
 
-  updateComposioPlugin: composioWriteProcedure
+  updateComposioPlugin: composioAdminWriteProcedure
     .input(
       z.object({
         /** Bind the connection to this agent (Agent > Personal). Requires edit rights. */

@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useChatInputNotice } from './useChatInputNotice';
+import { useChatInputNotice, useChatInputNoticeForAgent } from './useChatInputNotice';
 
 const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 
@@ -164,6 +164,12 @@ describe('useChatInputNotice', () => {
       isGroupContext: false,
       isResourceGated: false,
     };
+  });
+
+  it('supports an explicit agent id without reading the ChatInput provider', () => {
+    const { result } = renderHook(() => useChatInputNoticeForAgent('page-agent'));
+
+    expect(result.current).toBeUndefined();
   });
 
   it('returns the agent view-only notice when the member lacks use access', () => {

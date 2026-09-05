@@ -605,7 +605,7 @@ export default {
   'historySummary': 'Historical Message Summary',
   'inactive': 'Inactive',
   'inbox.desc': 'Collaborate in one Workspace and move ideas into outcomes.',
-  'inbox.title': 'Lobe AI',
+  'inbox.title': 'Travel Group Owner AI',
   'input.addAi': 'Add an AI message',
   'input.addAiPrefillUnsupported':
     'The current model doesn’t support ending the conversation with an assistant message. Follow it with a user message before sending.',
@@ -798,12 +798,12 @@ export default {
   'createModal.skillSuggestion.actions.install': 'Add Skill',
   'createModal.skillSuggestion.actions.installing': 'Adding…',
   'createModal.skillSuggestion.actions.openSkills': 'View in Skills',
-  'createModal.skillSuggestion.actions.tryInLobeAI': 'Use in LobeAI',
+  'createModal.skillSuggestion.actions.tryInLobeAI': 'Use in Travel Group Owner AI',
   'createModal.skillSuggestion.description':
     'This looks like a reusable workflow. Install the Skill once, then use it across Agents.',
   'createModal.skillSuggestion.installed.description':
-    'You can use this Skill in LobeAI or add it to any Agent.',
-  'createModal.skillSuggestion.installed.ready': 'Ready in LobeAI',
+    'You can use this Skill in Travel Group Owner AI or add it to any Agent.',
+  'createModal.skillSuggestion.installed.ready': 'Ready in Travel Group Owner AI',
   'createModal.skillSuggestion.installed.title': 'Skill added',
   'createModal.skillSuggestion.installError':
     "Skill wasn't added. Retry, or create an Agent anyway.",
@@ -1841,7 +1841,7 @@ export default {
   'taskList.scheduled.title': 'Scheduled tasks',
   'taskList.title': 'Tasks',
   'taskList.unassigned': 'Unassigned',
-  'taskList.unassignedHint': 'Lobe AI will run this task when no assignee is set',
+  'taskList.unassignedHint': 'Travel Group Owner AI will run this task when no assignee is set',
   'taskList.assigneeSearch.empty': 'No matching assignee',
   'taskList.assigneeSearch.placeholder': 'Search member or agent...',
   'taskList.assigneeSelector.agentGroup': 'Agents',

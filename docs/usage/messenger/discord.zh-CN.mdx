@@ -1,8 +1,7 @@
 ---
 title: 在 Discord 使用 LobeHub
 description: >-
-  把官方 LobeHub 机器人加入 Discord 服务器，再把自己的 Discord 账号关联到 LobeHub；选择默认 Agent，就能在
-  Discord DM 里直接和 AI 助手对话，无需自建机器人。
+  把官方 LobeHub 机器人加入 Discord 服务器，再把自己的 Discord 账号关联到 LobeHub；选择默认 Agent，就能在 Discord DM 里直接和 AI 助手对话，无需自建机器人。
 tags:
   - Messenger
   - Discord
@@ -28,23 +27,24 @@ Discord 接入分两步：**服务器管理员把 LobeHub 机器人加入 Discor
 <Steps>
   ### 打开「设置 → Messenger → Discord」
 
-  在 LobeHub 中打开 **设置 → Messenger**，点击 **Discord** 卡片，再点右上角的 **连接**。
+在 LobeHub 中打开 **设置 → Messenger**，点击 **Discord** 卡片，再点右上角的 **连接**。
 
-  {/* TODO: 截图 —— Discord 详情页（Connections 列表为空 + Connect 按钮） */}
+{/* TODO: 截图 —— Discord 详情页（Connections 列表为空 + Connect 按钮） */}
 
-  ### 在 Discord 中授权
+### 在 Discord 中授权
 
-  页面跳转到 Discord 添加机器人页面。选择目标服务器，点击 **Authorise（授权）**。
+页面跳转到 Discord 添加机器人页面。选择目标服务器，点击 **Authorise（授权）**。
 
-  {/* TODO: 截图 —— Discord OAuth 授权页（含服务器选择器） */}
+{/* TODO: 截图 —— Discord OAuth 授权页（含服务器选择器） */}
 
-  ### 服务器出现在 Connections 列表
+### 服务器出现在 Connections 列表
 
-  授权成功后跳回 LobeHub。该服务器会以 **server** 行的形式出现在 **Connections** 中。
+授权成功后跳回 LobeHub。该服务器会以 **server** 行的形式出现在 **Connections** 中。
 
-  {/* TODO: 截图 —— Discord 详情页：已连接的 server 行 */}
+{/* TODO: 截图 —— Discord 详情页：已连接的 server 行 */}
 
-  > **服务器已被他人连接？** LobeHub 会提示「Server already connected」。你**不需要**再次添加机器人，只要在 Discord 里私聊 LobeHub 机器人完成个人账号关联即可。
+> **服务器已被他人连接？** LobeHub 会提示「Server already connected」。你**不需要**再次添加机器人，只要在 Discord 里私聊 LobeHub 机器人完成个人账号关联即可。
+
 </Steps>
 
 ## 阶段 B —— 关联个人账号（每位成员）
@@ -52,25 +52,26 @@ Discord 接入分两步：**服务器管理员把 LobeHub 机器人加入 Discor
 <Steps>
   ### 在 Discord 中打开 LobeHub 机器人
 
-  在 Discord 中打开 LobeHub 机器人 —— Discord 详情页（或 pending 状态的 user 行）上的 **在 Discord 中打开** 按钮可以直接跳过去。
+在 Discord 中打开 LobeHub 机器人 —— Discord 详情页（或 pending 状态的 user 行）上的 **在 Discord 中打开** 按钮可以直接跳过去。
 
-  {/* TODO: 截图 —— Discord 详情页：pending 的 user 行 + Open in Discord 按钮 */}
+{/* TODO: 截图 —— Discord 详情页：pending 的 user 行 + Open in Discord 按钮 */}
 
-  ### 发送任意一条消息
+### 发送任意一条消息
 
-  在机器人 DM 里发送任意一条消息触发关联流程。机器人会回复一个一次性确认链接。
+在机器人 DM 里发送任意一条消息触发关联流程。机器人会回复一个一次性确认链接。
 
-  {/* TODO: 截图 —— Discord DM 中机器人发送的关联按钮消息 */}
+{/* TODO: 截图 —— Discord DM 中机器人发送的关联按钮消息 */}
 
-  ### 在浏览器里确认关联
+### 在浏览器里确认关联
 
-  点击链接，必要时登录 LobeHub，然后选择一个 **默认 Agent**。之后你在 Discord 任意服务器里私聊 LobeHub 机器人的每条消息都会路由到这个 Agent。
+点击链接，必要时登录 LobeHub，然后选择一个 **默认 Agent**。之后你在 Discord 任意服务器里私聊 LobeHub 机器人的每条消息都会路由到这个 Agent。
 
-  {/* TODO: 截图 —— LobeHub 确认关联页面，含 Agent 选择器 */}
+{/* TODO: 截图 —— LobeHub 确认关联页面，含 Agent 选择器 */}
 
-  关联完成后会在 **Connections** 里以 **user** 行的形式出现。
+关联完成后会在 **Connections** 里以 **user** 行的形式出现。
 
-  {/* TODO: 截图 —— Discord 详情页：server 行 + 已连接的 user 行 */}
+{/* TODO: 截图 —— Discord 详情页：server 行 + 已连接的 user 行 */}
+
 </Steps>
 
 ## 切换接收消息的 Agent
@@ -86,10 +87,10 @@ Discord 接入分两步：**服务器管理员把 LobeHub 机器人加入 Discor
 
 Discord 也有两种含义不同的断开操作，有一处和 Slack 不同需要特别注意：
 
-| 操作                   | 效果                                                                            |
-| -------------------- | ----------------------------------------------------------------------------- |
-| 在 *user* 行点 **断开**   | 解除 **你自己** 的 LobeHub 账号与 Discord 账号的关联。机器人不再接收你的 DM，直到你再次发消息并完成关联。            |
-| 在 *server* 行点 **断开** | **只移除安装审计记录**。**机器人会继续留在 Discord 服务器里**，直到 Discord 服务器管理员手动把它踢出。其他人的个人关联不受影响。 |
+| 操作 | 效果 |
+| --- | --- |
+| 在 _user_ 行点 **断开** | 解除 **你自己** 的 LobeHub 账号与 Discord 账号的关联。机器人不再接收你的 DM，直到你再次发消息并完成关联。 |
+| 在 _server_ 行点 **断开** | **只移除安装审计记录**。**机器人会继续留在 Discord 服务器里**，直到 Discord 服务器管理员手动把它踢出。其他人的个人关联不受影响。 |
 
 任何时候都可以重新走对应阶段把机器人加回服务器、或重新建立个人关联。
 

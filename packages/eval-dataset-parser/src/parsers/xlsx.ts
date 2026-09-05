@@ -2,10 +2,7 @@ import * as XLSX from 'xlsx';
 
 import type { ParseOptions, ParseResult } from '../types';
 
-export function parseXLSX(
-  data: Buffer | Uint8Array,
-  options?: ParseOptions,
-): ParseResult {
+export function parseXLSX(data: Buffer | Uint8Array, options?: ParseOptions): ParseResult {
   const workbook = XLSX.read(data, { type: 'array' });
 
   // Select sheet

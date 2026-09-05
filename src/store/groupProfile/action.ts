@@ -153,6 +153,22 @@ export class ActionImpl {
     }
   };
 
+  reset = (): void => {
+    this.#debouncedSave.cancel();
+    saveCallbackRef = null;
+    currentTabIdRef = null;
+    this.#set(
+      {
+        ...initialState,
+        agentBuilderContentUpdate: undefined,
+        editor: undefined,
+        editorState: undefined,
+      },
+      false,
+      'resetGroupProfileStore',
+    );
+  };
+
   setActiveTabId = (tabId: string): void => {
     this.#set({ activeTabId: tabId });
   };

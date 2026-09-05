@@ -5,9 +5,12 @@ import { isRecord } from '@lobechat/utils/object';
 export const sanitizeAgentApiConfig = (
   agencyConfig: LobeAgentAgencyConfig | null | undefined,
 ): LobeAgentAgencyConfig | null | undefined => {
-  const heterogeneousProvider = agencyConfig?.heterogeneousProvider;
+  if (!agencyConfig) return agencyConfig;
+
+  const { modelRuntimeMode: _modelRuntimeMode, ...clientSafeAgencyConfig } = agencyConfig;
+  const heterogeneousProvider = clientSafeAgencyConfig.heterogeneousProvider;
   if (!heterogeneousProvider || !Object.hasOwn(heterogeneousProvider, 'apiConfig')) {
-    return agencyConfig;
+    return clientSafeAgencyConfig;
   }
 
   const rawApiConfig = heterogeneousProvider.apiConfig;
@@ -27,7 +30,7 @@ export const sanitizeAgentApiConfig = (
   }
 
   return {
-    ...agencyConfig,
+    ...clientSafeAgencyConfig,
     heterogeneousProvider: {
       ...heterogeneousProvider,
       apiConfig,

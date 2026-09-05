@@ -40,7 +40,9 @@ export function normalizeInboxAgentAvatar(
   avatar: string | null | undefined,
   identity: InboxAgentIdentity,
 ) {
-  return isInboxAgentIdentity(identity) && isBlank(avatar) ? DEFAULT_INBOX_AVATAR : avatar;
+  // The Inbox is the product-owned chief agent. Always normalize legacy or
+  // previously persisted LobeHub artwork to the active product branding.
+  return isInboxAgentIdentity(identity) ? DEFAULT_INBOX_AVATAR : avatar;
 }
 
 export const normalizeInboxAgentMeta = <T extends InboxAgentMeta>(

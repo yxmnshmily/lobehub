@@ -1,9 +1,7 @@
 ---
 title: Configuring Keycloak Authentication Service in LobeHub
 description: >-
-  Learn how to configure the Keycloak authentication service in LobeHub,
-  including deployment, creation, permission settings, and environment
-  variables.
+  Learn how to configure the Keycloak authentication service in LobeHub, including deployment, creation, permission settings, and environment variables.
 tags:
   - Keycloak Authentication
   - Environment Variable Configuration
@@ -14,7 +12,11 @@ tags:
 # Configuring Keycloak Authentication Service in LobeHub
 
 <Callout type={'warning'}>
-  NextAuth (Auth.js) has been fully removed from LobeHub. The `NEXT_AUTH_SSO_PROVIDERS` and `AUTH_URL` variables shown below will now cause the deployment to fail at build/startup. This page is kept for historical reference only — use the [Better Auth provider guides](/docs/self-hosting/auth) and the [NextAuth to Better Auth migration guide](/docs/self-hosting/migration/v2/auth/nextauth-to-betterauth) instead.
+  NextAuth (Auth.js) has been fully removed from LobeHub. The `NEXT_AUTH_SSO_PROVIDERS` and
+  `AUTH_URL` variables shown below will now cause the deployment to fail at build/startup. This page
+  is kept for historical reference only — use the [Better Auth provider
+  guides](/docs/self-hosting/auth) and the [NextAuth to Better Auth migration
+  guide](/docs/self-hosting/migration/v2/auth/nextauth-to-betterauth) instead.
 </Callout>
 
 [Keycloak](https://www.keycloak.org/) is an open-source identity and access management solution that provides single sign-on, identity brokering, and social login features, suitable for modern applications and services.
@@ -39,86 +41,86 @@ If you deploy using a public network, this guide assumes:
 <Steps>
   ### Create Keycloak Realm and Client
 
-  Access your privately deployed Keycloak admin console (default is `http://localhost:8080/admin`) and log in with the administrator account.
+Access your privately deployed Keycloak admin console (default is `http://localhost:8080/admin`) and log in with the administrator account.
 
-  1. Create a new Realm
+1. Create a new Realm
 
-     - Click the dropdown menu in the upper left corner and select "Create Realm"
-     - Enter a name, such as "LobeHub", then click "Create"
+   - Click the dropdown menu in the upper left corner and select "Create Realm"
+   - Enter a name, such as "LobeHub", then click "Create"
 
-  2. Create a Client
+2. Create a Client
 
-     - Select "Clients" from the left menu, then click "Create client"
-     - Fill in the following information:
-       - Client ID: `LobeHub`
-       - Client type: `OpenID Connect`
-       - Click "Next"
-     - On the "Capability config" page:
-       - Enable "Client authentication"
-       - Enable "Standard flow"
-       - Click "Next"
-     - On the "Login settings" page:
-       - Valid redirect URIs:
-         - Local development environment: `http://localhost:3210/api/auth/callback/keycloak`
-         - Local network IP deployment: `http://LobeHub_IP:3210/api/auth/callback/keycloak`
-         - Public environment: `https://lobe.example.com/api/auth/callback/keycloak`
-       - Web origins: Add your LobeHub domain or IP
-       - Click "Save"
+   - Select "Clients" from the left menu, then click "Create client"
+   - Fill in the following information:
+     - Client ID: `LobeHub`
+     - Client type: `OpenID Connect`
+     - Click "Next"
+   - On the "Capability config" page:
+     - Enable "Client authentication"
+     - Enable "Standard flow"
+     - Click "Next"
+   - On the "Login settings" page:
+     - Valid redirect URIs:
+       - Local development environment: `http://localhost:3210/api/auth/callback/keycloak`
+       - Local network IP deployment: `http://LobeHub_IP:3210/api/auth/callback/keycloak`
+       - Public environment: `https://lobe.example.com/api/auth/callback/keycloak`
+     - Web origins: Add your LobeHub domain or IP
+     - Click "Save"
 
-  3. Get Client Secret
-     - On the client details page, switch to the "Credentials" tab
-     - Copy the "Client secret" value, which will be needed later
+3. Get Client Secret
+   - On the client details page, switch to the "Credentials" tab
+   - Copy the "Client secret" value, which will be needed later
 
-  ### Configure Users and Roles (Optional)
+### Configure Users and Roles (Optional)
 
-  1. Create Users
+1. Create Users
 
-     - Select "Users" from the left menu, then click "Add user"
-     - Fill in the user information and click "Create"
-     - On the user details page, switch to the "Credentials" tab
-     - Set a password, and disable the "Temporary" option if needed
-     - Click "Set Password" to save
+   - Select "Users" from the left menu, then click "Add user"
+   - Fill in the user information and click "Create"
+   - On the user details page, switch to the "Credentials" tab
+   - Set a password, and disable the "Temporary" option if needed
+   - Click "Set Password" to save
 
-  2. Create Roles and Permissions
-     - Select "Realm roles" from the left menu
-     - Click "Create role"
-     - Create necessary roles, such as "admin", "user", etc.
-     - Assign roles to users: On the user details page, switch to the "Role mapping" tab and assign appropriate roles
+2. Create Roles and Permissions
+   - Select "Realm roles" from the left menu
+   - Click "Create role"
+   - Create necessary roles, such as "admin", "user", etc.
+   - Assign roles to users: On the user details page, switch to the "Role mapping" tab and assign appropriate roles
 
-  ### Disable Registration (Optional)
+### Disable Registration (Optional)
 
-  To ensure the security of your application, it's recommended to control Keycloak's registration functionality.
+To ensure the security of your application, it's recommended to control Keycloak's registration functionality.
 
-  1. Select "Realm settings" from the left menu
-  2. Switch to the "Login" tab
-  3. In the "User registration" section, disable the "User registration" option
-  4. Click "Save" to save the settings
+1. Select "Realm settings" from the left menu
+2. Switch to the "Login" tab
+3. In the "User registration" section, disable the "User registration" option
+4. Click "Save" to save the settings
 
-  <Callout type={'warning'}>
-    If registration is not disabled, anyone might be able to register and log in to your application.
-    Please configure according to your security requirements.
-  </Callout>
+<Callout type={'warning'}>
+  If registration is not disabled, anyone might be able to register and log in to your application.
+  Please configure according to your security requirements.
+</Callout>
 
-  ### Configure Environment Variables
+### Configure Environment Variables
 
-  Set the obtained client ID and client secret as `AUTH_KEYCLOAK_ID` and `AUTH_KEYCLOAK_SECRET` in the LobeHub environment variables.
+Set the obtained client ID and client secret as `AUTH_KEYCLOAK_ID` and `AUTH_KEYCLOAK_SECRET` in the LobeHub environment variables.
 
-  Configure the LobeHub environment variable `AUTH_KEYCLOAK_ISSUER` as:
+Configure the LobeHub environment variable `AUTH_KEYCLOAK_ISSUER` as:
 
-  - `http://localhost:8080/realms/LobeHub` for local development environment
-  - `http://KEYCLOAK_IP:8080/realms/LobeHub` for privately deployed Keycloak on a local network
-  - `https://lobe-auth-api.example.com/realms/LobeHub` for Keycloak deployed in a public environment
+- `http://localhost:8080/realms/LobeHub` for local development environment
+- `http://KEYCLOAK_IP:8080/realms/LobeHub` for privately deployed Keycloak on a local network
+- `https://lobe-auth-api.example.com/realms/LobeHub` for Keycloak deployed in a public environment
 
-  When deploying LobeHub, you need to configure the following environment variables:
+When deploying LobeHub, you need to configure the following environment variables:
 
-  | Environment Variable      | Type     | Description                                                                                                                                                                              |
-  | ------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `AUTH_SECRET`             | Required | Key used to encrypt Auth.js session tokens. You can generate a key using: `openssl rand -base64 32`                                                                                      |
-  | `NEXT_AUTH_SSO_PROVIDERS` | Required | Select the single sign-on provider for LobeHub. For Keycloak, fill in `keycloak`.                                                                                                        |
-  | `AUTH_KEYCLOAK_ID`        | Required | Keycloak client ID                                                                                                                                                                       |
-  | `AUTH_KEYCLOAK_SECRET`    | Required | Keycloak client secret                                                                                                                                                                   |
-  | `AUTH_KEYCLOAK_ISSUER`    | Required | OpenID Connect issuer URL for the Keycloak provider, in the format `{keycloak_url}/realms/{realm_name}`                                                                                  |
-  | `AUTH_URL`                | Required | This URL specifies the callback address for Auth.js during OAuth verification. Only needed when the default generated redirect address is incorrect. `https://lobe.example.com/api/auth` |
+| Environment Variable | Type | Description |
+| --- | --- | --- |
+| `AUTH_SECRET` | Required | Key used to encrypt Auth.js session tokens. You can generate a key using: `openssl rand -base64 32` |
+| `NEXT_AUTH_SSO_PROVIDERS` | Required | Select the single sign-on provider for LobeHub. For Keycloak, fill in `keycloak`. |
+| `AUTH_KEYCLOAK_ID` | Required | Keycloak client ID |
+| `AUTH_KEYCLOAK_SECRET` | Required | Keycloak client secret |
+| `AUTH_KEYCLOAK_ISSUER` | Required | OpenID Connect issuer URL for the Keycloak provider, in the format `{keycloak_url}/realms/{realm_name}` |
+| `AUTH_URL` | Required | This URL specifies the callback address for Auth.js during OAuth verification. Only needed when the default generated redirect address is incorrect. `https://lobe.example.com/api/auth` |
 
   <Callout type={'tip'}>
     Visit [📘 Environment Variables](/zh/docs/self-hosting/environment-variables/auth#keycloak) for details on related variables.

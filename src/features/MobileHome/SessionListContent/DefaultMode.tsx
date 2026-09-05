@@ -20,6 +20,16 @@ import Inbox from './Inbox';
 import SessionList from './List';
 import ConfigGroupModal from './Modals/ConfigGroupModal';
 import { openRenameGroupModal } from './Modals/RenameGroupModal';
+import RecentTopics from './RecentTopics';
+
+export const filterSessionsForDevice = (sessions: LobeSessions, isMobile: boolean): LobeSessions =>
+  isMobile
+    ? sessions
+    : sessions.filter(
+        (session) =>
+          session.type !== LobeSessionType.Agent ||
+          !Boolean((session as LobeAgentSession).config?.virtual),
+      );
 
 const DefaultMode = memo(() => {
   const { t } = useTranslation('chat');
@@ -34,26 +44,11 @@ const DefaultMode = memo(() => {
   const customSessionGroups = useSessionStore(sessionSelectors.customSessionGroups, isEqual);
   const pinnedSessions = useSessionStore(sessionSelectors.pinnedSessions, isEqual);
 
-  const shouldHideSession = (session: LobeSessions[0]) =>
-    !isMobile &&
-    session.type === LobeSessionType.Agent &&
-    Boolean((session as LobeAgentSession).config?.virtual);
-
-  const filterSessionsForView = (sessions: LobeSessions): LobeSessions => {
-    const filteredForDevice = isMobile
-      ? sessions.filter((session) => session.type !== LobeSessionType.Group)
-      : sessions;
-
-    if (isMobile) return filteredForDevice;
-
-    return filteredForDevice.filter((session) => !shouldHideSession(session));
-  };
-
-  const filteredDefaultSessions = filterSessionsForView(defaultSessions);
-  const filteredPinnedSessions = filterSessionsForView(pinnedSessions);
+  const filteredDefaultSessions = filterSessionsForDevice(defaultSessions, isMobile);
+  const filteredPinnedSessions = filterSessionsForDevice(pinnedSessions, isMobile);
   const filteredCustomSessionGroups = customSessionGroups?.map((group) => ({
     ...group,
-    children: filterSessionsForView(group.children),
+    children: filterSessionsForDevice(group.children, isMobile),
   }));
 
   const activeWorkspaceId = useActiveWorkspaceId();
@@ -98,6 +93,7 @@ const DefaultMode = memo(() => {
   return (
     <>
       <Inbox />
+      <RecentTopics />
       <CollapseGroup
         activeKey={sessionGroupKeys}
         items={items}

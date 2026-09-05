@@ -1,7 +1,12 @@
 import { getServerFeatureFlagsValue } from '@/config/featureFlags';
 import { appEnv } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
-import { buildAnalyticsConfig, fetchViteDevTemplate, renderSpaHtml } from '@/libs/spaHtml';
+import {
+  buildAnalyticsConfig,
+  fetchViteDevTemplate,
+  renderSpaHtml,
+  resolveViteBrowserOrigin,
+} from '@/libs/spaHtml';
 import { type Locales, normalizeLocale } from '@/locales/resources';
 import { getServerAuthConfig } from '@/server/globalConfig/getServerAuthConfig';
 import { type AuthSPAServerConfig } from '@/types/spaServerConfig';
@@ -16,8 +21,16 @@ export function generateStaticParams() {
 
 const isDev = process.env.NODE_ENV === 'development';
 
-async function getTemplate(): Promise<string> {
-  if (isDev) return fetchViteDevTemplate('/index.auth.html');
+async function getTemplate(request: Request): Promise<string> {
+  if (isDev)
+    return fetchViteDevTemplate(
+      '/index.auth.html',
+      resolveViteBrowserOrigin(
+        request.url,
+        undefined,
+        request.headers.get('x-forwarded-host'),
+      ),
+    );
 
   const { authHtmlTemplate } = await import('../../authHtmlTemplate');
 
@@ -25,7 +38,7 @@ async function getTemplate(): Promise<string> {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ locale: string; path?: string[] }> },
 ) {
   const { locale: rawLocale, path } = await params;
@@ -39,7 +52,7 @@ export async function GET(
     globalCDN: appEnv.CDN_USE_GLOBAL,
   };
 
-  const template = await getTemplate();
+  const template = await getTemplate(request);
   const pathname = `/${(path ?? []).join('/')}`;
   const seoMeta = await buildSeoMeta(locale, pathname);
 

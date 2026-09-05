@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgentModel } from '@/database/models/agent';
@@ -10,6 +11,7 @@ import { connectorRouter } from '../connector';
 
 const mocks = vi.hoisted(() => ({
   connectedAccountsDelete: vi.fn(),
+  platformAdminGuard: vi.fn(),
 }));
 
 // `vi.mock` is hoisted by vitest's transformer above all imports at runtime,
@@ -41,6 +43,9 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
   serverDatabase: async (opts: any) =>
     opts.next({ ctx: { ...opts.ctx, serverDB: opts.ctx.serverDB ?? {} } }),
 }));
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mocks.platformAdminGuard(opts),
+}));
 
 describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
   let connectorModelMock: any;
@@ -49,9 +54,11 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.platformAdminGuard.mockImplementation((opts: any) => opts.next());
 
     connectorModelMock = {
       create: vi.fn().mockResolvedValue({ id: 'conn-new' }),
+      findScopedByIdentifier: vi.fn().mockResolvedValue(undefined),
       queryByIdentifiers: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     };
@@ -69,6 +76,30 @@ describe('connectorRouter.syncPluginTools — customPlugin guard', () => {
       userId: 'user_test',
       workspaceId: workspaceId ?? null,
     } as any);
+
+  it('rejects connector configuration writes from an ordinary customer', async () => {
+    mocks.platformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    await expect(
+      callerFor().create({ identifier: 'custom', name: 'Custom', sourceType: 'custom' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('rejects automatic plugin-tool synchronization from an ordinary customer', async () => {
+    pluginModelMock.findById.mockResolvedValue({
+      type: 'plugin',
+      manifest: { api: [], meta: { title: 'WebSearch' } },
+    });
+    mocks.platformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    await expect(callerFor().syncPluginTools({ identifier: 'web-search' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
 
   it('returns { connectorId: null } early for customPlugin rows that own an MCP endpoint', async () => {
     // This is the load-bearing guard: legacy custom MCP plugins MUST go through
@@ -486,7 +517,7 @@ describe('connectorRouter.listAgentBound — hides connectors of unseen agents '
 
   beforeEach(() => {
     vi.clearAllMocks();
-    connectorModelMock = { queryAllAgentScoped: vi.fn() };
+    connectorModelMock = { queryAllAgentScopedPublic: vi.fn() };
     connectorToolModelMock = { queryByConnector: vi.fn().mockResolvedValue([]) };
     agentModelMock = { getAgentAvatarsByIds: vi.fn() };
     vi.mocked(ConnectorModel).mockImplementation(() => connectorModelMock);
@@ -503,20 +534,20 @@ describe('connectorRouter.listAgentBound — hides connectors of unseen agents '
     } as any);
 
   it('drops rows whose owning agent is not in the visible set', async () => {
-    connectorModelMock.queryAllAgentScoped.mockResolvedValueOnce([
+    connectorModelMock.queryAllAgentScopedPublic.mockResolvedValueOnce([
       {
         agentId: 'agent-visible',
-        credentials: null,
+        authorizedByUserId: 'user_test',
         id: 'c-visible',
         identifier: 'gmail',
-        oidcConfig: null,
+        userId: 'user_test',
       },
       {
         agentId: 'agent-private',
-        credentials: null,
+        authorizedByUserId: 'other-user',
         id: 'c-private',
         identifier: 'notion',
-        oidcConfig: null,
+        userId: 'other-user',
       },
     ]);
     // AgentModel.ownership() (visibility-aware) only returns the visible agent —

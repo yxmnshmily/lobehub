@@ -5,6 +5,7 @@ import { createMemoryRouter, Outlet } from 'react-router';
 
 import RouteSegmentSkeleton from '@/components/Skeleton/RouteSegment';
 import TabLocationReporter from '@/features/Electron/TabHost/TabLocationReporter';
+import { customerMainElement } from '@/features/PlatformAdminRouteGuard';
 import { ErrorBoundary } from '@/utils/router';
 
 import { createMainAreaChildren } from './desktopRouter.config';
@@ -24,7 +25,7 @@ export const createTabRouter = (initialUrl: string) =>
         // Per-tab routers bypass `createSharedDesktopRoutes`, so the main-area
         // fallback rewrite has to be applied here too.
         children: withSegmentFallback(createMainAreaChildren()),
-        element: <TabRootLayout />,
+        element: customerMainElement(<TabRootLayout />),
         // The error element replaces `TabRootLayout`, so the reporter is repeated
         // here: the memory router has already advanced to the failing url, and
         // without a report the tab store and window url keep describing the

@@ -146,6 +146,25 @@ describe('UserModel', () => {
     });
   });
 
+  describe('getAvatar', () => {
+    it('reads only the avatar without decrypting user settings', async () => {
+      await serverDB
+        .update(users)
+        .set({ avatar: '/webapi/user/avatar/user-model-test/current.png' })
+        .where(eq(users.id, userId));
+      await serverDB.insert(userSettings).values({
+        id: userId,
+        keyVaults: 'encrypted-provider-secrets',
+      });
+
+      expect(typeof userModel.getAvatar).toBe('function');
+      const result = await userModel.getAvatar();
+
+      expect(result).toBe('/webapi/user/avatar/user-model-test/current.png');
+      expect(mockDecryptor).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getUserSSOProviders', () => {
     it('should return SSO providers for user', async () => {
       await serverDB.insert(nextauthAccounts).values({

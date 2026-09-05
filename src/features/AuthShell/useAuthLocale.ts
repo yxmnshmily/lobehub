@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react';
-import { isRtlLang } from 'rtl-detect';
+
+import { LOBE_LOCALE_COOKIE } from '@/const/locale';
+import { matchLocale, normalizeLocale } from '@/locales/resources';
 
 import { createAuthI18n } from './createAuthI18n';
 
 const SYSTEM_STATUS_KEY = 'LOBE_SYSTEM_STATUS';
+
+const readPersistedLocale = () => {
+  try {
+    const cookie = document.cookie
+      .split('; ')
+      .find((item) => item.startsWith(`${LOBE_LOCALE_COOKIE}=`));
+    if (!cookie) return;
+
+    return matchLocale(decodeURIComponent(cookie.slice(LOBE_LOCALE_COOKIE.length + 1)));
+  } catch {
+    return;
+  }
+};
 
 const syncBackendLanguagePreference = (language: string) => {
   try {
@@ -15,8 +30,9 @@ const syncBackendLanguagePreference = (language: string) => {
 };
 
 export const useAuthLocale = (defaultLang = 'zh-CN') => {
-  const [i18n] = useState(() => createAuthI18n(defaultLang));
-  const [lang, setLang] = useState(defaultLang);
+  const [initialLang] = useState(() => readPersistedLocale() || normalizeLocale(defaultLang));
+  const [i18n] = useState(() => createAuthI18n(initialLang));
+  const [lang, setLang] = useState(initialLang);
 
   if (!i18n.instance.isInitialized) {
     i18n.init();
@@ -24,16 +40,20 @@ export const useAuthLocale = (defaultLang = 'zh-CN') => {
 
   useEffect(() => {
     const handleLang = (lng: string) => {
+      document.documentElement.dir = 'ltr';
+      document.documentElement.lang = lng;
       setLang((prev) => (prev === lng ? prev : lng));
       syncBackendLanguagePreference(lng);
     };
 
-    syncBackendLanguagePreference(defaultLang);
+    document.documentElement.dir = 'ltr';
+    document.documentElement.lang = initialLang;
+    syncBackendLanguagePreference(initialLang);
     i18n.instance.on('languageChanged', handleLang);
     return () => {
       i18n.instance.off('languageChanged', handleLang);
     };
-  }, [defaultLang, i18n]);
+  }, [i18n, initialLang]);
 
-  return { documentDir: isRtlLang(lang) ? 'rtl' : 'ltr', i18n, lang };
+  return { documentDir: 'ltr' as const, i18n, lang };
 };

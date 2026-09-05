@@ -8,6 +8,20 @@ interface BusinessModelConfigModule {
   }) => Promise<LobeDefaultAiModelListItem[]>;
 }
 
+export async function getExactModelPricing(
+  model?: string,
+  provider?: string,
+  pricingContext?: ModelPricingContext,
+): Promise<Pricing | undefined> {
+  if (!model?.trim() || !provider?.trim()) return undefined;
+
+  const { loadModels } =
+    (await import('@lobechat/business-model-bank/model-config')) as BusinessModelConfigModule;
+  const models = await loadModels(pricingContext ? { pricingContext } : undefined);
+
+  return models.find((item) => item.id === model && item.providerId === provider)?.pricing;
+}
+
 /**
  * 1. First try to get pricing from the specified provider
  * 2. If not found, try to get pricing from other providers with the same model name

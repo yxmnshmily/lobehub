@@ -1,4 +1,4 @@
-import { BRANDING_NAME } from '@lobechat/business-const';
+import { BRANDING_LOGO_URL, BRANDING_NAME } from '@lobechat/business-const';
 import type { PropsWithChildren } from 'react';
 import type { LoaderFunctionArgs, MetaFunction } from 'react-router';
 import {
@@ -54,7 +54,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
       <head>
         <meta charSet="utf-8" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
-        <link href="/favicon.ico" rel="icon" />
+        <link href={BRANDING_LOGO_URL} rel="icon" type="image/png" />
         <Meta />
         <Links />
         <style dangerouslySetInnerHTML={{ __html: bodyBackground }} />

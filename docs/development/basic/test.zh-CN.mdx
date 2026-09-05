@@ -42,8 +42,8 @@ pnpm e2e
 ```
 
 <Callout type={'warning'}>
-  **切勿运行完整测试套件**（`bun run test`）—— 这会运行所有测试，耗时约 10 分钟。请始终使用
-  `bunx vitest run --silent='passed-only' '[file-path]'` 指定目标文件。
+  **切勿运行完整测试套件**（`bun run test`）—— 这会运行所有测试，耗时约 10 分钟。请始终使用 `bunx
+  vitest run --silent='passed-only' '[file-path]'` 指定目标文件。
 </Callout>
 
 ## 使用 Vitest 进行单元测试
@@ -371,8 +371,8 @@ screen.getByTestId('submit-button');
 import { beforeEach, afterEach, vi } from 'vitest';
 
 beforeEach(() => {
-  vi.clearAllMocks();   // 清除 mock 调用历史
-  vi.clearAllTimers();  // 使用 fake timers 时清除计时器
+  vi.clearAllMocks(); // 清除 mock 调用历史
+  vi.clearAllTimers(); // 使用 fake timers 时清除计时器
 });
 
 afterEach(() => {
@@ -481,11 +481,11 @@ bun run test-app:coverage
 
 ### 覆盖率目标
 
-| 类型    | 目标   |
-| ----- | ---- |
-| 关键路径  | 80%+ |
-| 工具函数  | 90%+ |
-| UI 组件 | 70%+ |
+| 类型     | 目标 |
+| -------- | ---- |
+| 关键路径 | 80%+ |
+| 工具函数 | 90%+ |
+| UI 组件  | 70%+ |
 
 ## 调试测试
 
@@ -495,12 +495,12 @@ bun run test-app:coverage
 
 ```json
 {
-  "type": "node",
-  "request": "launch",
+  "console": "integratedTerminal",
   "name": "Debug Vitest",
-  "runtimeExecutable": "bun",
+  "request": "launch",
   "runtimeArgs": ["x", "vitest", "run", "${file}"],
-  "console": "integratedTerminal"
+  "runtimeExecutable": "bun",
+  "type": "node"
 }
 ```
 

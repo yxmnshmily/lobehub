@@ -149,7 +149,7 @@ interface ComfyUIKeyVault {
 // 无认证
 const comfyUI = new LobeComfyUI({
   baseURL: 'http://localhost:8000',
-  authType: 'none'
+  authType: 'none',
 });
 
 // 基础认证
@@ -157,14 +157,14 @@ const comfyUI = new LobeComfyUI({
   baseURL: 'https://your-comfyui-server.com',
   authType: 'basic',
   username: 'your-username',
-  password: 'your-password'
+  password: 'your-password',
 });
 
 // Bearer Token
 const comfyUI = new LobeComfyUI({
   baseURL: 'https://your-comfyui-server.com',
   authType: 'bearer',
-  apiKey: 'your-api-key'
+  apiKey: 'your-api-key',
 });
 
 // 自定义头部
@@ -173,8 +173,8 @@ const comfyUI = new LobeComfyUI({
   authType: 'custom',
   customHeaders: {
     'X-API-Key': 'your-custom-key',
-    'Authorization': 'Custom your-token'
-  }
+    'Authorization': 'Custom your-token',
+  },
 });
 ```
 
@@ -240,9 +240,9 @@ if (agentError && 'errorType' in agentError) {
 // packages/model-runtime/src/providers/comfyui/config/modelRegistry.ts
 export interface ModelConfig {
   modelFamily: 'FLUX' | 'SD1' | 'SDXL' | 'SD3';
-  priority: number;        // 1=官方, 2=企业, 3=社区
+  priority: number; // 1=官方, 2=企业, 3=社区
   recommendedDtype?: 'default' | 'fp8_e4m3fn' | 'fp8_e5m2';
-  variant: string;         // 模型变体标识符
+  variant: string; // 模型变体标识符
 }
 ```
 
@@ -258,7 +258,7 @@ export const FLUX_MODEL_REGISTRY: Record<string, ModelConfig> = {
   // 添加新的FLUX Dev模型
   'your-custom-flux-dev.safetensors': {
     modelFamily: 'FLUX',
-    priority: 2,  // 企业级模型
+    priority: 2, // 企业级模型
     variant: 'dev',
     recommendedDtype: 'default',
   },
@@ -302,7 +302,7 @@ export const MODEL_ID_VARIANT_MAP: Record<string, string> = {
   // 现有映射...
 
   // 添加新模型的友好ID
-  'my-custom-flux': 'dev',  // 映射到dev变体
+  'my-custom-flux': 'dev', // 映射到dev变体
   'my-custom-sd35': 'sd35', // 映射到sd35变体
 };
 ```
@@ -349,7 +349,6 @@ export async function buildYourCustomWorkflow(
   params: Record<string, any>,
   context: WorkflowContext,
 ): Promise<PromptBuilder<any, any, any>> {
-
   // 从ComfyUI "Export (API Format)" 获得的JSON结构
   const workflow = {
     '1': {
@@ -363,7 +362,7 @@ export async function buildYourCustomWorkflow(
       _meta: { title: 'CLIP Text Encode' },
       class_type: 'CLIPTextEncode',
       inputs: {
-        clip: ['1', 1],  // 连接到节点1的CLIP输出
+        clip: ['1', 1], // 连接到节点1的CLIP输出
         text: params.prompt,
       },
     },
@@ -380,9 +379,9 @@ export async function buildYourCustomWorkflow(
       _meta: { title: 'KSampler' },
       class_type: 'KSampler',
       inputs: {
-        model: ['1', 0],      // 连接到节点1的MODEL输出
-        positive: ['2', 0],    // 连接到节点2的CONDITIONING输出
-        negative: ['2', 0],    // 可以配置负面提示词
+        model: ['1', 0], // 连接到节点1的MODEL输出
+        positive: ['2', 0], // 连接到节点2的CONDITIONING输出
+        negative: ['2', 0], // 可以配置负面提示词
         latent_image: ['3', 0],
         seed: params.seed ?? generateUniqueSeeds(1)[0],
         steps: params.steps,
@@ -397,7 +396,7 @@ export async function buildYourCustomWorkflow(
       class_type: 'VAEDecode',
       inputs: {
         samples: ['4', 0],
-        vae: ['1', 2],        // 连接到节点1的VAE输出
+        vae: ['1', 2], // 连接到节点1的VAE输出
       },
     },
     '6': {
@@ -413,8 +412,8 @@ export async function buildYourCustomWorkflow(
   // 使用PromptBuilder包装静态JSON
   const builder = new PromptBuilder(
     workflow,
-    ['width', 'height', 'steps', 'cfg', 'seed'],  // 输入参数
-    ['images'],  // 输出参数
+    ['width', 'height', 'steps', 'cfg', 'seed'], // 输入参数
+    ['images'], // 输出参数
   );
 
   // 设置输出节点
@@ -510,11 +509,11 @@ export async function buildFluxDevWorkflow(
 ```typescript
 // packages/model-runtime/src/providers/comfyui/config/systemComponents.ts
 export interface ComponentConfig {
-  modelFamily: string;           // 模型家族
-  priority: number;             // 1=必需, 2=标准, 3=可选
-  type: string;                 // 组件类型
+  modelFamily: string; // 模型家族
+  priority: number; // 1=必需, 2=标准, 3=可选
+  type: string; // 组件类型
   compatibleVariants?: string[]; // 兼容变体（LoRA/ControlNet）
-  controlnetType?: string;      // ControlNet类型
+  controlnetType?: string; // ControlNet类型
 }
 
 export const SYSTEM_COMPONENTS: Record<string, ComponentConfig> = {
@@ -592,14 +591,14 @@ const bestT5 = getOptimalComponent('t5', 'FLUX');
 const availableLoras = getAllComponentsWithNames({
   type: 'lora',
   modelFamily: 'FLUX',
-  compatibleVariant: 'dev'
+  compatibleVariant: 'dev',
 });
 
 // 查询ControlNet
 const cannyControlNets = getAllComponentsWithNames({
   type: 'controlnet',
   controlnetType: 'canny',
-  modelFamily: 'FLUX'
+  modelFamily: 'FLUX',
 });
 ```
 
@@ -687,7 +686,7 @@ import { ModelResolverError, WorkflowError } from '../errors';
 try {
   const result = await comfyUI.createImage({
     model: 'nonexistent-model',
-    params: { prompt: '测试' }
+    params: { prompt: '测试' },
   });
 } catch (error) {
   if (error instanceof ModelResolverError) {
@@ -761,7 +760,7 @@ packages/model-runtime/src/providers/comfyui/__tests__/
 export const myNewModelParamsSchema = {
   prompt: { type: 'string', required: true },
   steps: { type: 'number', default: 20, min: 1, max: 150 },
-  cfg: { type: 'number', default: 7.0, min: 1.0, max: 30.0 }
+  cfg: { type: 'number', default: 7.0, min: 1.0, max: 30.0 },
 };
 ```
 
@@ -772,9 +771,9 @@ export const myNewModelParamsSchema = {
 export async function buildMyNewModelWorkflow(
   modelName: string,
   params: MyNewModelParams,
-  context: ComfyUIContext
+  context: ComfyUIContext,
 ) {
-  const workflow = { /* 工作流定义 */ };
+  const workflow = {/* 工作流定义 */};
 
   // 参数注入
   workflow['1'].inputs.prompt = params.prompt;
@@ -803,10 +802,10 @@ export const parametersFixture = {
       },
       boundaries: {
         min: { steps: myNewModelParamsSchema.steps.min },
-        max: { steps: myNewModelParamsSchema.steps.max }
-      }
-    }
-  }
+        max: { steps: myNewModelParamsSchema.steps.max },
+      },
+    },
+  },
 };
 ```
 
@@ -832,9 +831,7 @@ describe('MyTest', () => {
 
 ```typescript
 // 测试会自动包含新注册的模型
-describe.each(
-  Object.entries(models).filter(([name]) => workflowBuilders[name])
-)(
+describe.each(Object.entries(models).filter(([name]) => workflowBuilders[name]))(
   '%s parameter mapping',
   (modelName, modelConfig) => {
     it('should map schema parameters to workflow', async () => {
@@ -846,7 +843,7 @@ describe.each(
       const workflow = await builder(`${modelName}.safetensors`, params, mockContext);
       expect(workflow).toBeDefined();
     });
-  }
+  },
 );
 ```
 
@@ -902,7 +899,7 @@ describe('Custom Workflow', () => {
     const workflow = await buildYourCustomWorkflow(
       'test-model.safetensors',
       { prompt: '测试', width: 512, height: 512 },
-      mockContext
+      mockContext,
     );
 
     expect(workflow).toBeDefined();
@@ -935,7 +932,7 @@ import { LobeComfyUI } from '@lobechat/model-runtime';
 
 const comfyUI = new LobeComfyUI({
   baseURL: 'http://localhost:8000',
-  authType: 'none'
+  authType: 'none',
 });
 
 // FLUX Dev模型生成
@@ -947,8 +944,8 @@ const result = await comfyUI.createImage({
     height: 1024,
     steps: 20,
     cfg: 3.5,
-    seed: -1
-  }
+    seed: -1,
+  },
 });
 
 console.log('生成图像URL:', result.imageUrl);
@@ -965,8 +962,8 @@ const sd35Result = await comfyUI.createImage({
     width: 1344,
     height: 768,
     steps: 28,
-    cfg: 4.5
-  }
+    cfg: 4.5,
+  },
 });
 ```
 
@@ -980,8 +977,8 @@ const optimizedResult = await comfyUI.createImage({
     prompt: '专业商务肖像',
     width: 768,
     height: 1024,
-    steps: 15  // FP8模型可以用更少步数
-  }
+    steps: 15, // FP8模型可以用更少步数
+  },
 });
 ```
 

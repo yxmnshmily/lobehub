@@ -8,6 +8,8 @@ import { HomeRepository } from '@/database/repositories/home';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { type HomeBriefData, HomeService } from '@/server/services/home';
+import { type MyTravelGroupReadiness, UserService } from '@/server/services/user';
+import { assertDefaultTravelServiceMutationAllowed } from '@/server/services/user/travelServiceGroupMutationGuard';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 import { after } from '@/server/utils/scheduleAfterResponse';
 
@@ -21,11 +23,44 @@ const homeProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => 
       agentModel: new AgentModel(ctx.serverDB, ctx.userId, workspaceId),
       homeRepository: new HomeRepository(ctx.serverDB, ctx.userId, workspaceId),
       homeService: new HomeService(ctx.userId),
+      userService: new UserService(ctx.serverDB),
     },
   });
 });
 
+const travelServiceReadyPromises = new Map<string, Promise<MyTravelGroupReadiness>>();
+
+const toPublicTravelGroupReadiness = (readiness: MyTravelGroupReadiness): MyTravelGroupReadiness =>
+  readiness.status === 'ready'
+    ? { groupId: readiness.groupId, status: 'ready' }
+    : { status: readiness.status };
+
+const ensureMyTravelServiceReady = (
+  userService: UserService,
+  userId: string,
+): Promise<MyTravelGroupReadiness> => {
+  const active = travelServiceReadyPromises.get(userId);
+  if (active) return active;
+
+  const operation = userService
+    .ensureTravelServiceReady(userId)
+    .then(() => userService.checkTravelServiceReadiness(userId))
+    .then(toPublicTravelGroupReadiness)
+    .catch(() => ({ status: 'retryable_error' }) as const)
+    .finally(() => {
+      if (travelServiceReadyPromises.get(userId) === operation) {
+        travelServiceReadyPromises.delete(userId);
+      }
+    });
+  travelServiceReadyPromises.set(userId, operation);
+  return operation;
+};
+
 export const homeRouter = router({
+  ensureMyTravelServiceReady: homeProcedure
+    .input(z.undefined())
+    .mutation(({ ctx }) => ensureMyTravelServiceReady(ctx.userService, ctx.userId)),
+
   getDailyBrief: homeProcedure.query(({ ctx }): Promise<HomeBriefData> =>
     ctx.homeService.getDailyBrief(),
   ),
@@ -74,6 +109,12 @@ export const homeRouter = router({
     return result;
   }),
 
+  getMyTravelGroupReadiness: homeProcedure
+    .input(z.undefined())
+    .query(async ({ ctx }) =>
+      toPublicTravelGroupReadiness(await ctx.userService.checkTravelServiceReadiness(ctx.userId)),
+    ),
+
   searchAgents: homeProcedure
     .input(z.object({ keyword: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -89,6 +130,12 @@ export const homeRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        agentIds: [input.agentId],
+        kind: 'agent',
+        workspaceId: ctx.workspaceId,
+      });
       return ctx.agentModel.updateSessionGroupId(input.agentId, input.sessionGroupId);
     }),
 });

@@ -27,8 +27,6 @@ export class CreateVideoActionImpl {
   }
 
   createVideo = async (): Promise<void> => {
-    this.#set({ isCreating: true }, false, 'createVideo/startCreateVideo');
-
     const store = this.#get();
     const parameters = videoGenerationConfigSelectors.parameters(store);
     const provider = videoGenerationConfigSelectors.provider(store);
@@ -59,30 +57,30 @@ export class CreateVideoActionImpl {
         description: t('generation.validation.endFrameRequiresStartFrame', { ns: 'video' }),
         duration: 3000,
       });
-      this.#set({ isCreating: false }, false, 'createVideo/endCreateVideo');
       return;
     }
 
+    this.#set({ isCreating: true }, false, 'createVideo/startCreateVideo');
+
     let finalTopicId = activeGenerationTopicId;
 
-    // 1. Create generation topic if not exists
-    const generationTopicId = activeGenerationTopicId;
     let isNewTopic = false;
 
-    if (!generationTopicId) {
-      isNewTopic = true;
-      const prompts = [parameters.prompt];
-      const newGenerationTopicId = await createGenerationTopic(prompts);
-      finalTopicId = newGenerationTopicId;
-
-      // 2. Initialize empty batch array to avoid skeleton screen
-      setTopicBatchLoaded(newGenerationTopicId);
-
-      // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
-      switchGenerationTopic(newGenerationTopicId);
-    }
-
     try {
+      // 1. Create generation topic if not exists
+      if (!activeGenerationTopicId) {
+        isNewTopic = true;
+        const prompts = [parameters.prompt];
+        const newGenerationTopicId = await createGenerationTopic(prompts);
+        finalTopicId = newGenerationTopicId;
+
+        // 2. Initialize empty batch array to avoid skeleton screen
+        setTopicBatchLoaded(newGenerationTopicId);
+
+        // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
+        switchGenerationTopic(newGenerationTopicId);
+      }
+
       // 3. If it's a new topic, set the creating state after topic creation
       if (isNewTopic) {
         this.#set(
@@ -102,7 +100,13 @@ export class CreateVideoActionImpl {
 
       // 5. Refresh generation batches to show the new batch
       if (!isNewTopic) {
-        await this.#get().refreshGenerationBatches();
+        try {
+          await this.#get().refreshGenerationBatches();
+        } catch (error) {
+          // The paid generation request already succeeded. A cache refresh
+          // failure must not turn it into a retryable creation failure.
+          console.error('Failed to refresh video generation batches after creation:', error);
+        }
       }
 
       // 6. Clear the prompt input after successful video creation
@@ -132,13 +136,13 @@ export class CreateVideoActionImpl {
   };
 
   recreateVideo = async (generationBatchId: string): Promise<void> => {
-    this.#set({ isCreating: true }, false, 'recreateVideo/start');
-
     const store = this.#get();
     const activeGenerationTopicId = generationTopicSelectors.activeGenerationTopicId(store);
     if (!activeGenerationTopicId) {
       throw new Error('No active generation topic');
     }
+
+    this.#set({ isCreating: true }, false, 'recreateVideo/start');
 
     const { removeGenerationBatch } = store;
     const batch = generationBatchSelectors.getGenerationBatchByBatchId(generationBatchId)(store)!;

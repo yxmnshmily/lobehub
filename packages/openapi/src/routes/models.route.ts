@@ -6,6 +6,7 @@ import { zValidator } from '../common/validator';
 import { ModelController } from '../controllers';
 import { requireAuth } from '../middleware';
 import { requireAnyPermission } from '../middleware/permission-check';
+import { requirePlatformAdmin } from '../middleware/platform-admin';
 import {
   CreateModelRequestSchema,
   ModelIdParamSchema,
@@ -35,6 +36,7 @@ ModelRoutes.get(
 ModelRoutes.post(
   '/',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_MODEL_CREATE'),
     'You do not have permission to create a model',
@@ -65,6 +67,7 @@ ModelRoutes.get(
 ModelRoutes.patch(
   '/:providerId/:modelId',
   requireAuth,
+  requirePlatformAdmin,
   requireAnyPermission(
     getAllScopePermissions('AI_MODEL_UPDATE'),
     'You do not have permission to update a model',

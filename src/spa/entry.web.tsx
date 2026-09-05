@@ -3,6 +3,7 @@ import '../initialize';
 import { RouterProvider } from 'react-router/dom';
 
 import BootErrorBoundary from '@/components/BootErrorBoundary';
+import { TravelSiteShell } from '@/features/TravelSiteNavigation';
 import NextThemeProvider from '@/layout/GlobalProvider/NextThemeProvider';
 import { bootTiming } from '@/libs/bootTiming';
 import { createAppRouter } from '@/utils/router';
@@ -38,8 +39,10 @@ const showBootShell = isMainLayoutLocation(desktopRoutes, window.location.pathna
 createSPARoot(document.getElementById('root')!).render(
   <BootErrorBoundary>
     <NextThemeProvider>
-      {showBootShell && <BootShell />}
-      <RouterProvider router={router} />
+      <TravelSiteShell>
+        {showBootShell && <BootShell />}
+        <RouterProvider router={router} />
+      </TravelSiteShell>
     </NextThemeProvider>
   </BootErrorBoundary>,
 );

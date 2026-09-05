@@ -107,10 +107,12 @@ describe('TODO state selectors', () => {
   const item = { status: 'processing' as const, text: 'Ship the fix' };
 
   it('normalizes canonical and legacy states, including empty clear tombstones', () => {
-    expect(normalizeTodosState({ items: [item], updatedAt: 'canonical-time' }, 'fallback')).toEqual({
-      items: [item],
-      updatedAt: 'canonical-time',
-    });
+    expect(normalizeTodosState({ items: [item], updatedAt: 'canonical-time' }, 'fallback')).toEqual(
+      {
+        items: [item],
+        updatedAt: 'canonical-time',
+      },
+    );
     expect(normalizeTodosState([item], 'fallback')).toEqual({
       items: [item],
       updatedAt: 'fallback',
@@ -129,7 +131,9 @@ describe('TODO state selectors', () => {
   it('rejects alternate fields and malformed items', () => {
     expect(normalizeTodosState({ tasks: [item] }, 'fallback')).toBeUndefined();
     expect(normalizeTodosState({ todoList: [item] }, 'fallback')).toBeUndefined();
-    expect(normalizeTodosState({ items: [{ status: 'unknown', text: 'bad' }] }, 'fallback')).toBeUndefined();
+    expect(
+      normalizeTodosState({ items: [{ status: 'unknown', text: 'bad' }] }, 'fallback'),
+    ).toBeUndefined();
     expect(normalizeTodosState({ items: [{ status: 'todo' }] }, 'fallback')).toBeUndefined();
   });
 

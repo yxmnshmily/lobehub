@@ -2,6 +2,15 @@ import { z } from 'zod';
 
 import type { AgentItem } from '../agent';
 
+export const DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID = 'default-travel-service-group';
+
+export type AgentGroupManagementPolicy = 'platform' | 'user';
+
+export const resolveAgentGroupManagementPolicy = (
+  clientId?: string | null,
+): AgentGroupManagementPolicy =>
+  clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID ? 'platform' : 'user';
+
 export interface LobeChatGroupMetaConfig {
   avatar?: string;
   backgroundColor?: string;

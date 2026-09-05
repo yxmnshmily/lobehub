@@ -571,13 +571,13 @@ const AgentViewAllPage = memo(() => {
             )}
             {canCreate ? (
               <DropdownMenu items={createMenuItems}>
-                <Button icon={PlusIcon} loading={isMutatingAgent}>
+                <Button aria-label={t('new')} icon={PlusIcon} loading={isMutatingAgent}>
                   <Icon icon={ChevronDownIcon} size={14} />
                 </Button>
               </DropdownMenu>
             ) : (
               <Tooltip title={createBlockedReason}>
-                <Button disabled icon={PlusIcon}>
+                <Button disabled aria-label={t('new')} icon={PlusIcon}>
                   <Icon icon={ChevronDownIcon} size={14} />
                 </Button>
               </Tooltip>

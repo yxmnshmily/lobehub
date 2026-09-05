@@ -1,8 +1,8 @@
 import debug from 'debug';
 import type { Context } from 'hono';
 
-import { auth } from '@/auth';
 import { appEnv } from '@/envs/app';
+import { getActiveSession } from '@/libs/better-auth/getActiveSession';
 import { issueOAuthState } from '@/server/services/messenger/oauth/stateStore';
 import { messengerPlatformRegistry } from '@/server/services/messenger/platforms';
 
@@ -43,13 +43,7 @@ export async function messengerInstall(c: Context): Promise<Response> {
   }
 
   // 2. Session check — unauth users get bounced through sign-in and back.
-  let session: Awaited<ReturnType<typeof auth.api.getSession>>;
-  try {
-    session = await auth.api.getSession({ headers: req.headers });
-  } catch (error) {
-    log('install: getSession failed: %O', error);
-    session = null;
-  }
+  const session = await getActiveSession(req.headers);
   if (!session?.user?.id) {
     const callbackUrl = encodeURIComponent(`/api/agent/messenger/${platform}/install`);
     return Response.redirect(new URL(`/signin?callbackUrl=${callbackUrl}`, url.origin), 302);

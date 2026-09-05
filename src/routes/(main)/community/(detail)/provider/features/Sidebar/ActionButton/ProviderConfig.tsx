@@ -58,7 +58,12 @@ const ProviderConfig = memo(() => {
     );
 
   return (
-    <SplitButton size={'large'} style={{ flex: 1, width: 'unset' }} type={'primary'}>
+    <SplitButton
+      aria-label={t('providers.config')}
+      size={'large'}
+      style={{ flex: 1, width: 'unset' }}
+      type={'primary'}
+    >
       <SplitButton.Main style={{ flex: 1 }} onClick={openSettings}>
         {t('providers.config')}
       </SplitButton.Main>

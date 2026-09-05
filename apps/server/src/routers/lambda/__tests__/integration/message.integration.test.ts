@@ -1,10 +1,19 @@
 // @vitest-environment node
 import { type LobeChatDatabase } from '@lobechat/database';
-import { messages, sessions, topics } from '@lobechat/database/schemas';
+import {
+  chatGroups,
+  chatGroupUserMemberships,
+  messages,
+  sessions,
+  topics,
+} from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
+
+import { groupConversationRouter } from '../../groupConversation';
 import { messageRouter } from '../../message';
 import { cleanupTestUser, createTestContext, createTestUser } from './setup';
 
@@ -515,6 +524,112 @@ describe('Message Router Integration Tests', () => {
   });
 
   describe('getMessages', () => {
+    it('keeps owner and member text visible across both routers while revoking the removed member only', async () => {
+      const memberId = await createTestUser(serverDB);
+      const groupId = `group-owner-member-${userId}`;
+
+      try {
+        await serverDB.insert(chatGroups).values({
+          clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+          id: groupId,
+          title: '双向真人群',
+          userId,
+          visibility: 'private',
+        });
+        await serverDB.insert(chatGroupUserMemberships).values({
+          chatGroupId: groupId,
+          invitedByUserId: userId,
+          membershipVersion: 1,
+          userId: memberId,
+        });
+
+        const memberCaller = groupConversationRouter.createCaller(createTestContext(memberId));
+        const topic = await memberCaller.createTopic({
+          groupId,
+          idempotencyKey: 'member-standard-owner-topic',
+          title: '成员发起的真人话题',
+        });
+        const memberMessage = await memberCaller.createTextMessage({
+          content: '成员说：你好',
+          groupId,
+          idempotencyKey: 'member-standard-owner-message',
+          topicId: topic.id,
+        });
+
+        const ownerCaller = messageRouter.createCaller(createTestContext(userId));
+        const ownerView = await ownerCaller.getMessages({ groupId, topicId: topic.id });
+        expect(ownerView).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              content: '成员说：你好',
+              groupId,
+              role: 'user',
+              sender: expect.objectContaining({ id: memberId }),
+              topicId: topic.id,
+            }),
+          ]),
+        );
+
+        await ownerCaller.createMessage({
+          content: '群主回复：你好',
+          groupId,
+          role: 'user',
+          topicId: topic.id,
+        });
+        const memberView = await memberCaller.listTextMessages({ groupId, topicId: topic.id });
+        expect(
+          memberView.items.map(({ authorKind, content }) => ({ authorKind, content })),
+        ).toEqual(
+          expect.arrayContaining([
+            { authorKind: 'self', content: '成员说：你好' },
+            { authorKind: 'owner', content: '群主回复：你好' },
+          ]),
+        );
+        expect(JSON.stringify(memberView)).not.toMatch(
+          new RegExp(`${memberId}|${userId}`),
+        );
+        expect(memberMessage.publicMessageId).toMatch(/^[a-f\d]{64}$/);
+
+        await serverDB
+          .update(chatGroupUserMemberships)
+          .set({ membershipVersion: 2, removedAt: new Date('2026-09-04T09:00:00.000Z') })
+          .where(
+            and(
+              eq(chatGroupUserMemberships.chatGroupId, groupId),
+              eq(chatGroupUserMemberships.userId, memberId),
+            ),
+          );
+
+        await expect(
+          memberCaller.listTextMessages({ groupId, topicId: topic.id }),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await expect(
+          memberCaller.createTextMessage({
+            content: '移除后不应写入',
+            groupId,
+            idempotencyKey: 'removed-member-message',
+            topicId: topic.id,
+          }),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+        const ownerHistory = await ownerCaller.getMessages({ groupId, topicId: topic.id });
+        expect(ownerHistory).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              content: '成员说：你好',
+              sender: expect.objectContaining({ id: memberId }),
+            }),
+            expect.objectContaining({
+              content: '群主回复：你好',
+              sender: expect.objectContaining({ id: userId }),
+            }),
+          ]),
+        );
+      } finally {
+        await cleanupTestUser(serverDB, memberId);
+      }
+    });
+
     it('should return messages filtered by sessionId', async () => {
       const caller = messageRouter.createCaller(createTestContext(userId));
 

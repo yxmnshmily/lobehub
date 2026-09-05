@@ -7,6 +7,13 @@ import { isDev } from '@/utils/env';
 const APPLE_TRUSTED_ORIGIN = 'https://appleid.apple.com';
 const MOBILE_APP_SCHEME = 'com.lobehub.app://';
 const EXPO_DEV_SCHEME = 'exp://*/*';
+const GET_AND_DELETE_SCRIPT = `
+local value = redis.call('GET', KEYS[1])
+if value then
+  redis.call('DEL', KEYS[1])
+end
+return value
+`;
 
 /**
  * Normalize a URL-like string to an origin with https fallback.
@@ -96,6 +103,10 @@ export const createSecondaryStorage = () => {
     get: async (key: string) => {
       const redisClient = await getRedisClient();
       return (await redisClient.get(buildKey(key))) ?? null;
+    },
+    getAndDelete: async (key: string) => {
+      const redisClient = await getRedisClient();
+      return redisClient.eval<null | string>(GET_AND_DELETE_SCRIPT, 1, buildKey(key));
     },
     set: async (key: string, value: string, ttl?: number) => {
       const redisClient = await getRedisClient();

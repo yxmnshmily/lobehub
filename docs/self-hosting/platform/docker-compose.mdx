@@ -1,8 +1,7 @@
 ---
 title: Deploying LobeHub with Docker Compose
 description: >-
-  Learn how to deploy the LobeHub service using Docker Compose, including
-  configuration tutorials for various services.
+  Learn how to deploy the LobeHub service using Docker Compose, including configuration tutorials for various services.
 tags:
   - Docker Compose
   - LobeHub
@@ -15,9 +14,10 @@ tags:
 <div style={{display:"flex", gap: 4}}>
   [![][docker-release-shield]][docker-release-link]
 
-  [![][docker-size-shield]][docker-size-link]
+[![][docker-size-shield]][docker-size-link]
 
-  [![][docker-pulls-shield]][docker-pulls-link]
+[![][docker-pulls-shield]][docker-pulls-link]
+
 </div>
 
 ## Quick Start
@@ -25,14 +25,14 @@ tags:
 <Callout type="info">
   **System Compatibility Notes**
 
-  - One-click deployment is supported in Unix environments (Linux/macOS).
+- One-click deployment is supported in Unix environments (Linux/macOS).
 
-  - Windows users must run through [WSL 2](https://aka.ms/wsl).
+- Windows users must run through [WSL 2](https://aka.ms/wsl).
 
-  - The one-click startup script is only for initial deployment; for subsequent deployments, please refer to the [Custom Deployment](#custom-deployment) section.
+- The one-click startup script is only for initial deployment; for subsequent deployments, please refer to the [Custom Deployment](#custom-deployment) section.
 
-  - Port occupation check: Ensure that ports `3210`, `9000`, and `9001` are available.
-</Callout>
+- Port occupation check: Ensure that ports `3210`, `9000`, and `9001` are available.
+  </Callout>
 
 Execute the following commands to set up the deployment environment; the directory `lobehub` will be used to store your configuration files and subsequent database files.
 
@@ -63,51 +63,52 @@ The script supports the following deployment modes; please choose the appropriat
 <Steps>
   ### Complete Remaining Configuration in Interactive Script
 
-  Continue pressing enter to use the default configuration.
+Continue pressing enter to use the default configuration.
 
-  ### Check Configuration Generation Report
+### Check Configuration Generation Report
 
-  After the script finishes running, check the configuration generation report which includes service URLs and passwords.
+After the script finishes running, check the configuration generation report which includes service URLs and passwords.
 
-  ```log
-  The results of the secure key generation are as follows:
-  LobeHub:
-    - URL: http://localhost:3210
-  RustFS:
-    - URL: http://localhost:9000
-    - Username: admin
-    - Password: 8c82ea41
-  ```
+```log
+The results of the secure key generation are as follows:
+LobeHub:
+  - URL: http://localhost:3210
+RustFS:
+  - URL: http://localhost:9000
+  - Username: admin
+  - Password: 8c82ea41
+```
 
-  ### Start Docker
+### Start Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### Check Logs
+### Check Logs
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  If you see the following logs in the container, it means the startup was successful:
+If you see the following logs in the container, it means the startup was successful:
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        http://localhost:3210
-    - Network:      http://0.0.0.0:3210
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        http://localhost:3210
+  - Network:      http://0.0.0.0:3210
 
-   ✓ Starting...
-   ✓ Ready in 95ms
-  ```
+ ✓ Starting...
+ ✓ Ready in 95ms
+```
 
-  ### Access Application
+### Access Application
 
-  Visit your LobeHub service at [http://localhost:3210](http://localhost:3210).
+Visit your LobeHub service at [http://localhost:3210](http://localhost:3210).
+
 </Steps>
 
 ### Port Mode
@@ -115,53 +116,54 @@ The script supports the following deployment modes; please choose the appropriat
 <Steps>
   ### Complete Remaining Configuration in Interactive Script
 
-  In port mode, you need to complete the following based on the script prompts:
+In port mode, you need to complete the following based on the script prompts:
 
-  - Server IP address settings: for LAN/public access.
-  - Regenerate secure keys: We highly recommend regenerating the secure keys; if you lack the key generation library required by the script, we suggest referring to the [Custom Deployment](#custom-deployment) section for key modifications.
+- Server IP address settings: for LAN/public access.
+- Regenerate secure keys: We highly recommend regenerating the secure keys; if you lack the key generation library required by the script, we suggest referring to the [Custom Deployment](#custom-deployment) section for key modifications.
 
-  ### Check Configuration Generation Report
+### Check Configuration Generation Report
 
-  After the script finishes running, check the configuration generation report which includes service URLs and passwords.
+After the script finishes running, check the configuration generation report which includes service URLs and passwords.
 
-  ```log
-  The results of the secure key generation are as follows:
-  LobeHub:
-    - URL: http://your_server_ip:3210
-  RustFS:
-    - URL: http://your_server_ip:9000
-    - Username: admin
-    - Password: dbac8440
-  ```
+```log
+The results of the secure key generation are as follows:
+LobeHub:
+  - URL: http://your_server_ip:3210
+RustFS:
+  - URL: http://your_server_ip:9000
+  - Username: admin
+  - Password: dbac8440
+```
 
-  ### Start Docker
+### Start Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### Check Logs
+### Check Logs
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  If you see the following logs in the container, it means the startup was successful:
+If you see the following logs in the container, it means the startup was successful:
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        http://your_server_ip:3210
-    - Network:      http://0.0.0.0:3210
-   ✓ Starting...
-   ✓ Ready in 95ms
-  ```
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        http://your_server_ip:3210
+  - Network:      http://0.0.0.0:3210
+ ✓ Starting...
+ ✓ Ready in 95ms
+```
 
-  ### Access Application
+### Access Application
 
-  You can access your LobeHub service at `http://your_server_ip:3210`.
+You can access your LobeHub service at `http://your_server_ip:3210`.
+
 </Steps>
 
 ### Domain Mode
@@ -169,22 +171,22 @@ The script supports the following deployment modes; please choose the appropriat
 <Steps>
   ### Complete Reverse Proxy Configuration
 
-  In domain mode, you need to complete the reverse proxy configuration and ensure that the LAN/public can access the following services. Please use a reverse proxy to map the following service ports to the domain names:
+In domain mode, you need to complete the reverse proxy configuration and ensure that the LAN/public can access the following services. Please use a reverse proxy to map the following service ports to the domain names:
 
-  | Domain              | Proxy Port | Required |
-  | ------------------- | ---------- | -------- |
-  | `lobe.example.com`  | `3210`     | Yes      |
-  | `s3.example.com`    | `9000`     | Yes      |
-  | `s3-ui.example.com` | `9001`     |          |
+| Domain              | Proxy Port | Required |
+| ------------------- | ---------- | -------- |
+| `lobe.example.com`  | `3210`     | Yes      |
+| `s3.example.com`    | `9000`     | Yes      |
+| `s3-ui.example.com` | `9001`     |          |
 
-  ### Complete Remaining Configuration in Interactive Script
+### Complete Remaining Configuration in Interactive Script
 
-  In domain mode, you need to complete the following configurations based on script prompts:
+In domain mode, you need to complete the following configurations based on script prompts:
 
-  - Domain setup for the LobeHub service: `lobe.example.com`
-  - Domain setup for the S3 service: `s3.example.com`
-  - Choose the access protocol: `http` or `https`
-  - Regenerate secure keys: We highly recommend regenerating the secure keys; if you lack the key generation library required by the script, we suggest referring to the [Custom Deployment](#custom-deployment) section for key modifications.
+- Domain setup for the LobeHub service: `lobe.example.com`
+- Domain setup for the S3 service: `s3.example.com`
+- Choose the access protocol: `http` or `https`
+- Regenerate secure keys: We highly recommend regenerating the secure keys; if you lack the key generation library required by the script, we suggest referring to the [Custom Deployment](#custom-deployment) section for key modifications.
 
   <Callout type="tip">
     **Single Domain Deployment**
@@ -198,6 +200,7 @@ The script supports the following deployment modes; please choose the appropriat
 
     - Port Mode: The script automatically uses default ports (3210/9000/9001)
     - Domain Mode: You can customize ports (via reverse proxy configuration)
+
   </Callout>
 
   <Callout type="warning">
@@ -208,50 +211,52 @@ The script supports the following deployment modes; please choose the appropriat
     - If you are using Cloudflare for domain resolution and have activated `full proxy`, please use the `https` protocol.
 
     - If you have used the HTTPS protocol, ensure that your domain certificate is correctly configured; one-click deployment does not support self-signed certificates by default.
+
   </Callout>
 
-  ### Check Configuration Generation Report
+### Check Configuration Generation Report
 
-  After the script finishes running, check the configuration generation report which includes service URLs and passwords.
+After the script finishes running, check the configuration generation report which includes service URLs and passwords.
 
-  ```log
-  The results of the secure key generation are as follows:
-  LobeHub:
-    - URL: https://lobe.example.com
-  RustFS:
-    - URL: https://s3.example.com
-    - Username: admin
-    - Password: dbac8440
-  ```
+```log
+The results of the secure key generation are as follows:
+LobeHub:
+  - URL: https://lobe.example.com
+RustFS:
+  - URL: https://s3.example.com
+  - Username: admin
+  - Password: dbac8440
+```
 
-  ### Start Docker
+### Start Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### Check Logs
+### Check Logs
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  If you see the following logs in the container, it indicates a successful startup:
+If you see the following logs in the container, it indicates a successful startup:
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        https://localhost:3210
-    - Network:      http://0.0.0.0:3210
-    ✓ Starting...
-    ✓ Ready in 95ms
-  ```
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        https://localhost:3210
+  - Network:      http://0.0.0.0:3210
+  ✓ Starting...
+  ✓ Ready in 95ms
+```
 
-  ### Access Application
+### Access Application
 
-  You can access your LobeHub service via `https://lobe.example.com`.
+You can access your LobeHub service via `https://lobe.example.com`.
+
 </Steps>
 
 ## Custom Deployment
@@ -290,7 +295,8 @@ Now, we will introduce the necessary configurations for running these services:
 LobeHub needs to provide a public access URL for object files for the LLM service provider, so you need to configure the S3 Endpoint:
 
 <Callout type="tip">
-  Using `S3_ENDPOINT=http://rustfs:9000` directly will prevent conversation image uploads from working (browser cannot resolve container names), but avatar uploads are not affected.
+  Using `S3_ENDPOINT=http://rustfs:9000` directly will prevent conversation image uploads from
+  working (browser cannot resolve container names), but avatar uploads are not affected.
 </Callout>
 
 ```env
@@ -311,7 +317,11 @@ services:
 3. Internal Communication URL (`INTERNAL_APP_URL`)
 
 <Callout type="warning">
-  `INTERNAL_APP_URL` is **required** for Docker Compose deployments. LobeHub's async features (e.g., AI image generation) require the container to make HTTP requests to itself internally. If `INTERNAL_APP_URL` is not set, the system falls back to `APP_URL`. When `APP_URL` is a host IP (e.g., `http://10.1.7.146:8080`), the container cannot reach that address internally, causing async features like image generation to silently fail.
+  `INTERNAL_APP_URL` is **required** for Docker Compose deployments. LobeHub's async features (e.g.,
+  AI image generation) require the container to make HTTP requests to itself internally. If
+  `INTERNAL_APP_URL` is not set, the system falls back to `APP_URL`. When `APP_URL` is a host IP
+  (e.g., `http://10.1.7.146:8080`), the container cannot reach that address internally, causing
+  async features like image generation to silently fail.
 </Callout>
 
 ```env
@@ -322,7 +332,8 @@ INTERNAL_APP_URL=http://localhost:3210
 - `INTERNAL_APP_URL`: Used for internal server-to-server communication within the container (bypasses CDN/proxy/host network)
 
 <Callout type="tip">
-  For Docker Compose deployments, we recommend using `http://localhost:3210` (container calling itself) or `http://lobe:3210` (using service name for container-to-container communication).
+  For Docker Compose deployments, we recommend using `http://localhost:3210` (container calling
+  itself) or `http://lobe:3210` (using service name for container-to-container communication).
 </Callout>
 
 ## FAQ
@@ -387,10 +398,10 @@ lobehub.example.com {
 
 ```yaml
 labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.lobehub.rule=Host(`lobehub.example.com`)"
-  - "traefik.http.routers.lobehub.entrypoints=websecure"
-  - "traefik.http.routers.lobehub.tls.certresolver=letsencrypt"
+  - 'traefik.enable=true'
+  - 'traefik.http.routers.lobehub.rule=Host(`lobehub.example.com`)'
+  - 'traefik.http.routers.lobehub.entrypoints=websecure'
+  - 'traefik.http.routers.lobehub.tls.certresolver=letsencrypt'
 ```
 
 ## Management Commands

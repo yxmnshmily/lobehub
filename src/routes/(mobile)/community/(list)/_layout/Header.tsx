@@ -6,6 +6,7 @@ import { ChatHeader } from '@lobehub/ui/mobile';
 import { createStaticStyles } from 'antd-style';
 import { SearchIcon } from 'lucide-react';
 import { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { mobileHeaderSticky } from '@/styles/mobileHeader';
@@ -26,18 +27,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 const Header = memo(() => {
   const [showSearch, setShowSearch] = useState(false);
+  const { t } = useTranslation('discover');
 
   return (
     <ChatHeader
       left={<Nav />}
       styles={{ center: { display: 'none' } }}
-      center={
-        showSearch && (
-          <Flexbox align={'center'} className={styles.search} paddingBlock={8} paddingInline={16}>
-            <StoreSearchBar mobile onBlur={() => setShowSearch(false)} />
-          </Flexbox>
-        )
-      }
       right={
         showSearch ? (
           <Flexbox align={'center'} className={styles.search} paddingBlock={8} paddingInline={16}>
@@ -45,6 +40,7 @@ const Header = memo(() => {
           </Flexbox>
         ) : (
           <ActionIcon
+            aria-label={t('search.placeholder')}
             icon={SearchIcon}
             size={MOBILE_HEADER_ICON_SIZE}
             onClick={() => setShowSearch(true)}

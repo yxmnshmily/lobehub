@@ -7,6 +7,7 @@ import { prepareRequestForTRPC } from '@/libs/trpc/utils/request-adapter';
 import { createResponseMeta } from '@/libs/trpc/utils/responseMeta';
 import { lambdaRouter } from '@/server/routers/lambda';
 
+// Keep this route as a thin transport boundary; product behavior belongs in mounted routers.
 const handler = (req: NextRequest) => {
   // Clone the request to avoid "Response body object should not be disturbed or locked" error
   // in Next.js 16 when the body stream has been consumed by Next.js internal mechanisms

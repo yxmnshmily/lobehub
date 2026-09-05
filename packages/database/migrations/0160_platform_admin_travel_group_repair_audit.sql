@@ -1,0 +1,2 @@
+ALTER TABLE "platform_admin_operation_audits" DROP CONSTRAINT IF EXISTS "platform_admin_operation_audits_action_valid";--> statement-breakpoint
+ALTER TABLE "platform_admin_operation_audits" ADD CONSTRAINT "platform_admin_operation_audits_action_valid" CHECK ("platform_admin_operation_audits"."action" IN ('user.profile_updated', 'user.banned', 'user.unbanned', 'user.password_reset_requested', 'user.sessions_revoked', 'user.travel_group_repaired'));

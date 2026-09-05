@@ -1,5 +1,5 @@
 import { AgentRuntimeErrorType } from '@lobechat/model-runtime';
-import { AsyncTaskErrorType } from '@lobechat/types';
+import { AsyncTaskError, AsyncTaskErrorType } from '@lobechat/types';
 import { describe, expect, it } from 'vitest';
 
 import { CONTENT_POLICY_ERROR_MESSAGE } from './contentPolicyError';
@@ -25,7 +25,7 @@ describe('categorizeImageGenerationError', () => {
     });
   });
 
-  it('should surface provider text-only image responses as server errors', () => {
+  it('should redact provider text-only image responses as server errors', () => {
     const result = categorizeImageGenerationError({
       error: {
         error: {
@@ -39,12 +39,12 @@ describe('categorizeImageGenerationError', () => {
     });
 
     expect(result).toEqual({
-      errorMessage: "I'm just a language model and can't help with that.",
+      errorMessage: AsyncTaskErrorType.ServerError,
       errorType: AsyncTaskErrorType.ServerError,
     });
   });
 
-  it('should surface provider text refusal reasons when the runtime classified an explicit refusal', () => {
+  it('should redact provider refusal reasons when the runtime classified an explicit refusal', () => {
     const result = categorizeImageGenerationError({
       error: {
         error: {
@@ -58,8 +58,69 @@ describe('categorizeImageGenerationError', () => {
     });
 
     expect(result).toEqual({
-      errorMessage: 'No image generated: The requested output format is not supported.',
+      errorMessage: AsyncTaskErrorType.ServerError,
       errorType: AsyncTaskErrorType.ServerError,
+    });
+  });
+
+  it.each([
+    [
+      'provider permission error',
+      {
+        error: { message: 'provider rejected sk-private-provider-key' },
+        errorType: AgentRuntimeErrorType.PermissionDenied,
+      },
+      AsyncTaskErrorType.InvalidProviderAPIKey,
+    ],
+    [
+      'database error',
+      { message: 'postgresql://admin:private-password@internal-db/image' },
+      AsyncTaskErrorType.ServerError,
+    ],
+    [
+      'network error',
+      {
+        message: 'network request failed at https://internal-provider.test?token=private',
+        name: 'NetworkError',
+      },
+      AsyncTaskErrorType.ServerError,
+    ],
+    [
+      'wrapped async task error',
+      new AsyncTaskError(
+        AsyncTaskErrorType.SubscriptionPlanLimit,
+        'billing account secret=private',
+      ),
+      AsyncTaskErrorType.SubscriptionPlanLimit,
+    ],
+  ])('should project a fixed public message for %s', (_label, error, expectedType) => {
+    const result = categorizeImageGenerationError({
+      error,
+      isAborted: false,
+      isEditingImage: false,
+    });
+
+    expect(result).toEqual({
+      errorMessage: expectedType,
+      errorType: expectedType,
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /sk-private|private-password|internal-provider|billing account secret/,
+    );
+  });
+
+  it('should not trust a provider-supplied content policy message', () => {
+    const result = categorizeImageGenerationError({
+      error: new Error('provider moderation failed'),
+      isAborted: false,
+      isEditingImage: false,
+      providerContentPolicyMessage:
+        'blocked by https://internal-moderation.test?api_key=private-policy-key',
+    });
+
+    expect(result).toEqual({
+      errorMessage: CONTENT_POLICY_ERROR_MESSAGE,
+      errorType: AsyncTaskErrorType.ProviderContentModeration,
     });
   });
 

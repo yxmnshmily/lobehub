@@ -196,6 +196,11 @@ const AgentRow = memo<AgentRowProps>(
           >
             {onToggleSidebar && (
               <ActionIcon
+                aria-label={
+                  sidebarHidden
+                    ? t('agentViewAll.addToSidebar')
+                    : t('agentViewAll.removeFromSidebar')
+                }
                 color={cssVar.colorTextSecondary}
                 icon={sidebarHidden ? EyeOffIcon : EyeIcon}
                 size={'small'}

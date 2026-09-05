@@ -8,9 +8,7 @@ interface FirecrawlScrapeOptions {
 }
 
 type FirecrawlSource =
-  | { location?: string; tbs?: string; type: 'web' }
-  | { type: 'images' }
-  | { type: 'news' };
+  { location?: string; tbs?: string; type: 'web' } | { type: 'images' } | { type: 'news' };
 
 type FirecrawlCategory = { type: 'github' } | { type: 'research' } | { type: 'pdf' };
 

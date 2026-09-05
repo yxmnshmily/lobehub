@@ -38,8 +38,14 @@ PASS=0
 FAIL=0
 
 # ── Output helpers ───────────────────────────────────────────────────
-ok()   { echo "  ✓ $1"; PASS=$((PASS + 1)); }
-bad()  { echo "  ✗ $1 — $2"; FAIL=$((FAIL + 1)); }
+ok() {
+  echo "  ✓ $1"
+  PASS=$((PASS + 1))
+}
+bad() {
+  echo "  ✗ $1 — $2"
+  FAIL=$((FAIL + 1))
+}
 note() { echo "[imsg-test] $1"; }
 
 # ── BlueBubbles REST helpers ─────────────────────────────────────────
@@ -56,9 +62,9 @@ try: d=json.load(sys.stdin)
 except Exception: sys.exit(0)
 for w in (d.get("data") or []):
     if "'"$APP_ID"'" in (w.get("url") or ""): print(w["id"])
-' 2>/dev/null || true)
+' 2> /dev/null || true)
   for id in $ids; do
-    curl -sS -m 8 -X DELETE "${BB_URL}/api/v1/webhook/${id}?password=${BB_PASS}" >/dev/null 2>&1 || true
+    curl -sS -m 8 -X DELETE "${BB_URL}/api/v1/webhook/${id}?password=${BB_PASS}" > /dev/null 2>&1 || true
   done
 }
 
@@ -68,7 +74,7 @@ for w in (d.get("data") or []):
 # secret never need shell/JS quoting.
 ipc_eval() {
   local js="$1"
-  agent-browser --cdp "$CDP_PORT" eval -b "$(printf '%s' "$js" | base64)" 2>/dev/null
+  agent-browser --cdp "$CDP_PORT" eval -b "$(printf '%s' "$js" | base64)" 2> /dev/null
 }
 
 PASS_B64=$(printf '%s' "$BB_PASS" | base64)
@@ -89,12 +95,14 @@ code=$(curl -sS -m 6 -o /dev/null -w '%{http_code}' \
   "${BB_URL}/api/v1/server/info?password=${BB_PASS}" || echo 000)
 if [ "$code" = "200" ]; then ok "BlueBubbles reachable + password valid"; else
   bad "BlueBubbles preflight" "HTTP $code (is BlueBubbles running on ${BB_URL}?)"
-  echo "Aborting — fix BlueBubbles first."; exit 1
+  echo "Aborting — fix BlueBubbles first."
+  exit 1
 fi
 
-if ! curl -sf --max-time 3 "http://localhost:${CDP_PORT}/json/version" >/dev/null 2>&1; then
+if ! curl -sf --max-time 3 "http://localhost:${CDP_PORT}/json/version" > /dev/null 2>&1; then
   bad "Electron CDP preflight" "CDP ${CDP_PORT} unreachable — run electron-dev.sh start"
-  echo "Aborting."; exit 1
+  echo "Aborting."
+  exit 1
 fi
 ok "Electron CDP reachable"
 
@@ -102,11 +110,15 @@ ok "Electron CDP reachable"
 probe=$(ipc_eval "(async()=>{try{var s=await window.electronAPI.invoke('imessageBridge.getStatus',{});return 'OK:'+JSON.stringify(s);}catch(e){return 'ERR:'+(e.message||e);}})()")
 case "$probe" in
   *OK:*) ok "imessageBridge IPC available" ;;
-  *) bad "imessageBridge IPC" "got: $probe (is the iMessage Desktop branch checked out?)"; echo "Aborting."; exit 1 ;;
+  *)
+    bad "imessageBridge IPC" "got: $probe (is the iMessage Desktop branch checked out?)"
+    echo "Aborting."
+    exit 1
+    ;;
 esac
 
 # Start clean: remove any leftover config for this appId + BB webhooks.
-ipc_eval "(async()=>{try{await window.electronAPI.invoke('imessageBridge.removeConfig',{applicationId:'${APP_ID}'});}catch(e){}return 'done';})()" >/dev/null
+ipc_eval "(async()=>{try{await window.electronAPI.invoke('imessageBridge.removeConfig',{applicationId:'${APP_ID}'});}catch(e){}return 'done';})()" > /dev/null
 bb_cleanup_webhooks
 
 # ── testConfig: happy path ───────────────────────────────────────────
@@ -146,7 +158,7 @@ esac
 r=$(ipc_eval "(async()=>{var s=await window.electronAPI.invoke('imessageBridge.getStatus',{});var c=(s.configs||[]).find(function(x){return x.applicationId==='${APP_ID}';});return 'RUN='+(s.running?'Y':'N')+' CFG='+(c?'Y':'N')+' PW='+((c&&c.blueBubblesPasswordSet)?'Y':'N');})()")
 echo "$r" | grep -q 'RUN=Y' && ok "bridge running" || bad "bridge running" "got: $r"
 echo "$r" | grep -q 'CFG=Y' && ok "config persisted" || bad "config persisted" "got: $r"
-echo "$r" | grep -q 'PW=Y'  && ok "password stored (redacted in status)" || bad "password stored" "got: $r"
+echo "$r" | grep -q 'PW=Y' && ok "password stored (redacted in status)" || bad "password stored" "got: $r"
 
 # ── BlueBubbles webhook actually registered ──────────────────────────
 if bb_get_webhooks | grep -q "${APP_ID}"; then
@@ -177,7 +189,7 @@ else
 fi
 
 # ── Cleanup ──────────────────────────────────────────────────────────
-ipc_eval "(async()=>{try{await window.electronAPI.invoke('imessageBridge.removeConfig',{applicationId:'${APP_ID}'});await window.electronAPI.invoke('imessageBridge.stop',{});}catch(e){}return 'cleaned';})()" >/dev/null
+ipc_eval "(async()=>{try{await window.electronAPI.invoke('imessageBridge.removeConfig',{applicationId:'${APP_ID}'});await window.electronAPI.invoke('imessageBridge.stop',{});}catch(e){}return 'cleaned';})()" > /dev/null
 bb_cleanup_webhooks
 note "cleaned up config + BlueBubbles webhook for ${APP_ID}"
 

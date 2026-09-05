@@ -1,9 +1,5 @@
 export type AgentDocumentVfsErrorCode =
-  | 'BAD_REQUEST'
-  | 'CONFLICT'
-  | 'FORBIDDEN'
-  | 'METHOD_NOT_SUPPORTED'
-  | 'NOT_FOUND';
+  'BAD_REQUEST' | 'CONFLICT' | 'FORBIDDEN' | 'METHOD_NOT_SUPPORTED' | 'NOT_FOUND';
 
 /**
  * Represents VFS and mounted-subtree operation failures.

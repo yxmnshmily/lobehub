@@ -166,7 +166,7 @@ describe('workspace settings useCategory', () => {
 
     expect(itemKeys).not.toContain(WorkspaceSettingsTabs.Credits);
     expect(itemKeys).not.toContain(WorkspaceSettingsTabs.Billing);
-    expect(itemKeys).toContain(WorkspaceSettingsTabs.Plans);
-    expect(itemKeys).toContain(WorkspaceSettingsTabs.Usage);
+    expect(itemKeys).not.toContain(WorkspaceSettingsTabs.Plans);
+    expect(itemKeys).not.toContain(WorkspaceSettingsTabs.Usage);
   });
 });

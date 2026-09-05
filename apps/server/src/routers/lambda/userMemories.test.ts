@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { LayersEnum, TypesEnum } from '@lobechat/types';
+import { TRPCError } from '@trpc/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getServerDB } from '@/database/core/db-adaptor';
@@ -36,7 +37,12 @@ vi.mock('@/database/models/userMemory', async (importOriginal) => {
   } satisfies typeof UserMemoryModule;
 });
 
+vi.mock('./_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
+}));
+
 const embeddingsMock = vi.fn();
+const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
 const mockCtx = { userId: 'test-user' };
 const makeServerDBMock = (query: Record<string, any> = {}) => ({
   query: {
@@ -49,6 +55,7 @@ const makeServerDBMock = (query: Record<string, any> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
 
   embeddingsMock.mockImplementation(async ({ input }: { input: string[] | string }) => {
     const items = Array.isArray(input) ? input : [input];
@@ -595,6 +602,46 @@ describe('userMemories.retrieveMemory', () => {
 });
 
 describe('userMemories.toolAddActivityMemory', () => {
+  const input = {
+    details: 'Discussed roadmap',
+    memoryCategory: 'work',
+    memoryType: TypesEnum.Activity,
+    summary: 'Roadmap sync with Alice',
+    tags: ['meeting'],
+    title: 'Roadmap sync',
+    withActivity: {
+      associatedLocations: [{ name: 'HQ', type: 'place' }],
+      associatedObjects: [{ name: 'Slides', type: 'item' }],
+      associatedSubjects: [{ name: 'Alice', type: 'person' }],
+      endsAt: '2024-05-01T11:00:00Z',
+      feedback: 'Productive',
+      metadata: { source: 'chat' },
+      narrative: 'We reviewed milestones and risks',
+      notes: 'Follow up with action items',
+      startsAt: '2024-05-01T10:00:00Z',
+      status: 'completed',
+      tags: ['product'],
+      timezone: 'UTC',
+      type: 'meeting',
+    },
+  };
+
+  it('rejects tool-driven memory writes from an ordinary customer', async () => {
+    const createActivityMemory = vi.fn().mockResolvedValue({
+      activity: { id: 'activity-1' },
+      memory: { id: 'memory-1' },
+    });
+    vi.mocked(UserMemoryModel).mockImplementation(() => ({ createActivityMemory }) as any);
+    vi.mocked(getServerDB).mockResolvedValue(makeServerDBMock() as any);
+    mockPlatformAdminGuard.mockRejectedValueOnce(
+      new TRPCError({ code: 'FORBIDDEN', message: 'Platform administrator access is required' }),
+    );
+
+    await expect(
+      userMemoriesRouter.createCaller(mockCtx as any).toolAddActivityMemory(input as any),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   it('creates activity memory with embeddings and normalized fields', async () => {
     const createActivityMemory = vi.fn().mockResolvedValue({
       activity: { id: 'activity-1' },
@@ -611,30 +658,6 @@ describe('userMemories.toolAddActivityMemory', () => {
     vi.mocked(getServerDB).mockResolvedValue(makeServerDBMock() as any);
 
     const caller = userMemoriesRouter.createCaller(mockCtx as any);
-
-    const input = {
-      details: 'Discussed roadmap',
-      memoryCategory: 'work',
-      memoryType: TypesEnum.Activity,
-      summary: 'Roadmap sync with Alice',
-      tags: ['meeting'],
-      title: 'Roadmap sync',
-      withActivity: {
-        associatedLocations: [{ name: 'HQ', type: 'place' }],
-        associatedObjects: [{ name: 'Slides', type: 'item' }],
-        associatedSubjects: [{ name: 'Alice', type: 'person' }],
-        endsAt: '2024-05-01T11:00:00Z',
-        feedback: 'Productive',
-        metadata: { source: 'chat' },
-        narrative: 'We reviewed milestones and risks',
-        notes: 'Follow up with action items',
-        startsAt: '2024-05-01T10:00:00Z',
-        status: 'completed',
-        tags: ['product'],
-        timezone: 'UTC',
-        type: 'meeting',
-      },
-    };
 
     const result = await caller.toolAddActivityMemory(input as any);
 

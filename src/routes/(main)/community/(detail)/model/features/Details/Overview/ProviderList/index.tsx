@@ -149,6 +149,7 @@ const ProviderList = memo(() => {
                     {isLobeHub && (
                       <Tooltip title={t('models.providerInfo.officialTooltip')}>
                         <ActionIcon
+                          aria-label={t('models.providerInfo.officialTooltip')}
                           color={cssVar.colorSuccess}
                           icon={BadgeCheck}
                           size={'small'}
@@ -159,6 +160,7 @@ const ProviderList = memo(() => {
                     {!isLobeHub && (
                       <Tooltip title={t('models.providerInfo.apiTooltip')}>
                         <ActionIcon
+                          aria-label={t('models.providerInfo.apiTooltip')}
                           icon={<Icon icon={KeyIcon} />}
                           size={'small'}
                           variant={'filled'}
@@ -167,18 +169,26 @@ const ProviderList = memo(() => {
                     )}
                     <Tooltip title={t('models.guide')}>
                       <a
+                        aria-label={t('models.guide')}
                         href={urlJoin(BASE_PROVIDER_DOC_URL, record.id)}
                         rel="noreferrer"
                         target={'_blank'}
                       >
-                        <ActionIcon icon={BookIcon} size={'small'} variant={'filled'} />
+                        <ActionIcon
+                          aria-label={t('models.guide')}
+                          icon={BookIcon}
+                          size={'small'}
+                          variant={'filled'}
+                        />
                       </a>
                     </Tooltip>
                     <WorkspaceLink
+                      aria-label={record.name || record.id}
                       style={{ color: 'inherit' }}
                       to={urlJoin('/community/provider', record.id)}
                     >
                       <ActionIcon
+                        aria-label={record.name || record.id}
                         color={cssVar.colorTextDescription}
                         icon={ChevronRightIcon}
                         size={'small'}

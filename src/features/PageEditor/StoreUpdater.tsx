@@ -46,6 +46,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
     const useStoreUpdater = createStoreUpdater(storeApi);
 
     const editor = usePageEditorStore((s) => s.editor);
+    const flushMetaSave = usePageEditorStore((s) => s.flushMetaSave);
     const initMeta = usePageEditorStore((s) => s.initMeta);
     const pageAgentEditor = editor as unknown as PageAgentEditor | undefined;
     // Workspace pages are view-first; resolve once here so the lock + gating read
@@ -64,6 +65,10 @@ const StoreUpdater = memo<StoreUpdaterProps>(
     // Snapshot unsaved content to sessionStorage while the lock is degraded so
     // an accidental refresh during a network blip doesn't blow away typing.
     usePageDraft();
+
+    // Persist the outgoing document's pending title/emoji before the updater
+    // effects replace documentId and initialize the next document's metadata.
+    useEffect(() => () => flushMetaSave(), [flushMetaSave, pageId]);
 
     // Update store with props
     useStoreUpdater('documentId', pageId);

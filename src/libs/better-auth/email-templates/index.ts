@@ -1,3 +1,9 @@
+export {
+  AUTH_EMAIL_BRAND_LOGO_URL,
+  AUTH_EMAIL_BRAND_NAME,
+  getAuthEmailSender,
+  getMountedAuthEmailUrl,
+} from './auth-brand';
 export { getChangeEmailVerificationTemplate } from './change-email';
 export { getMagicLinkEmailTemplate } from './magic-link';
 export { getResetPasswordEmailTemplate } from './reset-password';

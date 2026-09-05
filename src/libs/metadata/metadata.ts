@@ -1,4 +1,4 @@
-import { BRANDING_NAME, ORG_NAME } from '@lobechat/business-const';
+import { BRANDING_NAME } from '@lobechat/business-const';
 import { type Metadata } from 'next';
 import qs from 'query-string';
 
@@ -91,7 +91,7 @@ export class Meta {
       card: 'summary_large_image',
       description,
       images: [image],
-      site: isCustomORG ? `@${ORG_NAME}` : '@lobehub',
+      ...(!isCustomORG && { site: '@lobehub' }),
       title,
       url,
     };

@@ -7,6 +7,7 @@ import {
   isCollaborativeBuiltinAgent,
 } from '@/server/services/resourcePermission';
 
+import { hasActivePlatformAdminAccess } from './platformAdminGuard';
 import {
   getResourceConfigAccess,
   redactAgentConfig,
@@ -22,11 +23,15 @@ vi.mock('@/server/services/resourcePermission', () => ({
 vi.mock('./workspaceAgentGuard', () => ({
   getWorkspaceAgentParentGroupIds: vi.fn(),
 }));
+vi.mock('./platformAdminGuard', () => ({
+  hasActivePlatformAdminAccess: vi.fn(),
+}));
 
 const canPerformMock = vi.mocked(canPerformResourceAction);
 const getResourceMetaMock = vi.mocked(getResourceMeta);
 const getParentGroupIdsMock = vi.mocked(getWorkspaceAgentParentGroupIds);
 const isBuiltinMock = vi.mocked(isCollaborativeBuiltinAgent);
+const hasPlatformAdminAccessMock = vi.mocked(hasActivePlatformAdminAccess);
 const meta = { userId: 'creator', visibility: 'public', workspaceId: 'ws-1' };
 
 const ctx = (workspaceId: string | null = 'ws-1') => ({
@@ -40,6 +45,7 @@ beforeEach(() => {
   getResourceMetaMock.mockResolvedValue(meta);
   getParentGroupIdsMock.mockResolvedValue([]);
   isBuiltinMock.mockReturnValue(false);
+  hasPlatformAdminAccessMock.mockResolvedValue(false);
 });
 
 describe('getResourceConfigAccess', () => {
@@ -86,11 +92,51 @@ describe('getResourceConfigAccess', () => {
     await expect(getResourceConfigAccess(ctx(), 'agent', 'agent-1')).resolves.toBe('profile');
   });
 
-  it('returns full access in personal mode', async () => {
-    await expect(getResourceConfigAccess(ctx(null), 'agent', 'agent-1')).resolves.toBe('full');
+  it('returns only a profile for an ordinary customer owning a legacy personal resource', async () => {
+    getResourceMetaMock.mockResolvedValueOnce({
+      userId: 'member-1',
+      visibility: 'private',
+      workspaceId: null,
+    });
 
-    expect(getResourceMetaMock).not.toHaveBeenCalled();
+    await expect(getResourceConfigAccess(ctx(null), 'agent', 'agent-1')).resolves.toBe('profile');
+
     expect(canPerformMock).not.toHaveBeenCalled();
+  });
+
+  it('returns only a profile for an ordinary customer reading a public platform resource', async () => {
+    getResourceMetaMock.mockResolvedValueOnce({
+      userId: 'platform-owner',
+      visibility: 'public',
+      workspaceId: 'platform-workspace',
+    });
+
+    await expect(getResourceConfigAccess(ctx(null), 'agent', 'platform-agent')).resolves.toBe(
+      'profile',
+    );
+  });
+
+  it('returns full platform resource config to a platform administrator', async () => {
+    hasPlatformAdminAccessMock.mockResolvedValueOnce(true);
+    getResourceMetaMock.mockResolvedValueOnce({
+      userId: 'platform-owner',
+      visibility: 'private',
+      workspaceId: 'platform-workspace',
+    });
+
+    await expect(getResourceConfigAccess(ctx(null), 'agentGroup', 'platform-group')).resolves.toBe(
+      'full',
+    );
+  });
+
+  it('does not expose a private cross-user personal resource', async () => {
+    getResourceMetaMock.mockResolvedValueOnce({
+      userId: 'other-user',
+      visibility: 'private',
+      workspaceId: null,
+    });
+
+    await expect(getResourceConfigAccess(ctx(null), 'agent', 'other-agent')).resolves.toBe('none');
   });
 
   it('returns full access when the caller can edit', async () => {
@@ -169,8 +215,6 @@ describe('config redaction', () => {
       agencyConfig: {
         executionTarget: 'device',
         executionTargetSelectionPolicy: 'fixed',
-        heterogeneousProvider: { type: 'codex' },
-        modelSelectionPolicy: 'fixed',
         // Authorization metadata: without it a use-level member's share button
         // would offer a link the server then refuses.
         topicSharePolicy: 'restricted',
@@ -179,15 +223,13 @@ describe('config redaction', () => {
       chatConfig: { enableAgentMode: false },
       description: 'Public description',
       id: 'agent-1',
-      model: 'shared-model',
       name: 'Alice',
       openingMessage: 'Hello',
-      provider: 'shared-provider',
       title: 'Public title',
     });
   });
 
-  it('keeps a type-only hetero summary without leaking provider env', () => {
+  it('removes heterogeneous provider metadata together with its private config', () => {
     const result = redactAgentConfig({
       agencyConfig: {
         heterogeneousProvider: {
@@ -200,7 +242,7 @@ describe('config redaction', () => {
       title: 'Hetero agent',
     });
 
-    expect(result.agencyConfig).toEqual({ heterogeneousProvider: { type: 'claude-code' } });
+    expect(result).toEqual({ id: 'agent-1', title: 'Hetero agent' });
   });
 
   it('redacts group prompts and every member config', () => {

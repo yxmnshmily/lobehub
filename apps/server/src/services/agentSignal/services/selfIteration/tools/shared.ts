@@ -311,12 +311,7 @@ export const createSkillManagementService = (adapters: SkillAdapters = {}) => ({
 
 /** Terminal status emitted by safe write tools. */
 export type ToolWriteStatus =
-  | 'applied'
-  | 'deduped'
-  | 'failed'
-  | 'proposed'
-  | 'skipped_stale'
-  | 'skipped_unsupported';
+  'applied' | 'deduped' | 'failed' | 'proposed' | 'skipped_stale' | 'skipped_unsupported';
 
 /** Public result returned by safe write tools. */
 export interface ToolWriteResult {

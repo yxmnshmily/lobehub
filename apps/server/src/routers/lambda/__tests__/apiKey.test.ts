@@ -59,6 +59,10 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
   serverDatabase: vi.fn((opts: any) => opts.next({ ctx: opts.ctx })),
 }));
 
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: vi.fn((opts: any) => opts.next({ ctx: opts.ctx })),
+}));
+
 const createCaller = (workspaceRole: 'admin' | 'member' | 'owner' = 'member') =>
   apiKeyRouter.createCaller({
     clientIp: '127.0.0.1',

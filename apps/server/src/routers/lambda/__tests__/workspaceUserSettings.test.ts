@@ -1,10 +1,17 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockAssertTravelMutationAllowed = vi.hoisted(() => vi.fn());
+
 // serverDatabase middleware calls getServerDB(); stub it (the model mocks
 // ignore the db handle anyway).
 vi.mock('@/database/core/db-adaptor', () => ({
   getServerDB: vi.fn(() => ({})),
+}));
+
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: (...args: unknown[]) =>
+    mockAssertTravelMutationAllowed(...args),
 }));
 
 const mockUpdatePreference = vi.fn();
@@ -52,6 +59,7 @@ describe('workspaceUserSettingsRouter.updatePreference', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertTravelMutationAllowed.mockResolvedValue(undefined);
     mockHasPermission.mockResolvedValue(true);
     mockUpdatePreference.mockResolvedValue({ preference: {} });
     mockUpdateSessionGroupId.mockResolvedValue({ id: 'agt_1' });
@@ -107,6 +115,21 @@ describe('workspaceUserSettingsRouter.updatePreference', () => {
       expect(result.success).toBe(true);
       expect(mockUpdateSessionGroupId).toHaveBeenCalledTimes(2);
       expect(mockUpdatePreference).toHaveBeenCalled();
+    });
+
+    it('skips a protected travel resource in the legacy batch without moving it', async () => {
+      mockAssertTravelMutationAllowed
+        .mockRejectedValueOnce(new Error('This platform-managed travel resource cannot be changed'))
+        .mockResolvedValueOnce(undefined);
+      const caller = workspaceUserSettingsRouter.createCaller(ctx);
+
+      const result = await caller.updatePreference({
+        sidebarGroupAssignments: { agt_protected: 'sg_target', agt_custom: 'sg_target' },
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockUpdateSessionGroupId).toHaveBeenCalledTimes(1);
+      expect(mockUpdateSessionGroupId).toHaveBeenCalledWith('agt_custom', 'sg_target');
     });
 
     it('routes chat-group ids through ChatGroupModel.update, not AgentModel', async () => {

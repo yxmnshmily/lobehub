@@ -644,6 +644,37 @@ describe('GenerationTopicAction', () => {
 
       expect(generationTopicService.createTopic).toHaveBeenCalledWith('image', 'public');
     });
+
+    it('should remove the temporary topic and loading state when creation fails', async () => {
+      const { result } = renderHook(() => useImageStore());
+      vi.mocked(generationTopicService.createTopic).mockRejectedValueOnce(
+        new Error('Create topic failed'),
+      );
+
+      await act(async () => {
+        await expect(result.current.internal_createGenerationTopic()).rejects.toThrow(
+          'Create topic failed',
+        );
+      });
+
+      expect(useImageStore.getState().generationTopics).toEqual([]);
+      expect(useImageStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
+
+    it('should remove the temporary topic and loading state when refresh fails', async () => {
+      const { result } = renderHook(() => useImageStore());
+      vi.mocked(generationTopicService.createTopic).mockResolvedValueOnce('gt_new_topic');
+      vi.mocked(mutate).mockRejectedValueOnce(new Error('Refresh failed'));
+
+      await act(async () => {
+        await expect(result.current.internal_createGenerationTopic()).rejects.toThrow(
+          'Refresh failed',
+        );
+      });
+
+      expect(useImageStore.getState().generationTopics).toEqual([]);
+      expect(useImageStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
   });
 
   describe('internal_updateGenerationTopic', () => {

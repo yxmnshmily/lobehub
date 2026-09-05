@@ -55,7 +55,7 @@ for w in windowList {
         break
     }
 }
-' 2>/dev/null || true)
+' 2> /dev/null || true)
 
 if [ -n "$WINDOW_ID" ]; then
   screencapture -l "$WINDOW_ID" -x "$OUTPUT"

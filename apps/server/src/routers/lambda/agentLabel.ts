@@ -7,6 +7,8 @@ import { AgentLabelModel } from '@/database/models/agentLabel';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 /**
  * `color` is rendered straight into an inline `background` on label tags, the
  * settings list and the picker dots, so an arbitrary string is a CSS injection
@@ -62,9 +64,10 @@ const labelProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
     },
   });
 });
+const labelWriteProcedure = labelProcedure.use(requirePlatformAdmin);
 
 export const agentLabelRouter = router({
-  createLabel: labelProcedure
+  createLabel: labelWriteProcedure
     .use(withScopedPermission('agent_label:create'))
     .input(
       z.object({
@@ -88,7 +91,7 @@ export const agentLabelRouter = router({
       return ctx.agentLabelModel.query();
     }),
 
-  removeLabel: labelProcedure
+  removeLabel: labelWriteProcedure
     .use(withScopedPermission('agent_label:delete'))
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -111,7 +114,7 @@ export const agentLabelRouter = router({
    * `agentOwnership()` in the model keeps another member's *private* agents
    * out of reach entirely.
    */
-  setAgentLabels: labelProcedure
+  setAgentLabels: labelWriteProcedure
     .use(withScopedPermission('agent:update'))
     // Assigning requires reading too: the call takes label ids and returns the
     // effective set, so a role denied `agent_label:read` could otherwise probe
@@ -127,7 +130,7 @@ export const agentLabelRouter = router({
    * Single-label delta. Same guards as `setAgentLabels`, but expresses one
    * toggle so a concurrent editor's change is not clobbered.
    */
-  toggleAgentLabel: labelProcedure
+  toggleAgentLabel: labelWriteProcedure
     .use(withScopedPermission('agent:update'))
     .use(withScopedPermission('agent_label:read'))
     .input(z.object({ agentId: z.string(), assigned: z.boolean(), labelId: z.string() }))
@@ -135,7 +138,7 @@ export const agentLabelRouter = router({
       return ctx.agentLabelModel.toggleAgentLabel(input.agentId, input.labelId, input.assigned);
     }),
 
-  updateLabel: labelProcedure
+  updateLabel: labelWriteProcedure
     .use(withScopedPermission('agent_label:update'))
     .input(
       z.object({

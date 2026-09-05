@@ -61,7 +61,9 @@ export async function parseFormData(c: Context): Promise<FormData> {
     const nodeReadable =
       typeof Readable?.fromWeb === 'function' ? Readable.fromWeb(webBody as any) : null;
     if (!nodeReadable) {
-      throw new Error('Parse failed: Readable.fromWeb is not supported in this runtime, no fallback applied');
+      throw new Error(
+        'Parse failed: Readable.fromWeb is not supported in this runtime, no fallback applied',
+      );
     }
 
     // Construct a minimal Node-like IncomingMessage for formidable

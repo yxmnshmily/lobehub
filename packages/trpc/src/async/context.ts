@@ -9,6 +9,7 @@ const log = debug('lobe-async:context');
 
 export interface AsyncAuthContext {
   authorizationToken?: string;
+  modelRuntimeMode?: 'platform-managed';
   serverDB?: LobeChatDatabase;
   userId?: string | null;
 }
@@ -19,9 +20,11 @@ export interface AsyncAuthContext {
  */
 export const createAsyncContextInner = async (params?: {
   authorizationToken?: string;
+  modelRuntimeMode?: 'platform-managed';
   userId?: string | null;
 }): Promise<AsyncAuthContext> => ({
   authorizationToken: params?.authorizationToken,
+  modelRuntimeMode: params?.modelRuntimeMode,
   userId: params?.userId,
 });
 
@@ -56,11 +59,14 @@ export const createAsyncRouteContext = async (request: NextRequest): Promise<Asy
     const { plaintext } = await gateKeeper.decrypt(lobeChatAuthorization);
 
     log('Parsing decrypted authorization data');
-    const { userId } = JSON.parse(plaintext);
+    const parsed = JSON.parse(plaintext) as { modelRuntimeMode?: unknown; userId?: unknown };
+    const userId = typeof parsed.userId === 'string' ? parsed.userId : null;
+    const modelRuntimeMode =
+      parsed.modelRuntimeMode === 'platform-managed' ? 'platform-managed' : undefined;
 
     log('Successfully parsed authorization data - userId: %s', userId);
 
-    return createAsyncContextInner({ authorizationToken: authorization, userId });
+    return createAsyncContextInner({ authorizationToken: authorization, modelRuntimeMode, userId });
   } catch (error) {
     log('Error creating async route context: %O', error);
     throw error;

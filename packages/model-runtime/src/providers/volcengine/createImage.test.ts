@@ -4,6 +4,10 @@ import type { CreateImageOptions } from '../../core/openaiCompatibleFactory';
 import type { CreateImagePayload } from '../../types/image';
 import { createVolcengineImage } from './createImage';
 
+const getModelPricing = vi.hoisted(() => vi.fn());
+
+vi.mock('../../utils/getModelPricing', () => ({ getModelPricing }));
+
 // Mock dependencies
 vi.mock('debug', () => ({
   default: vi.fn(() => vi.fn()),
@@ -24,6 +28,7 @@ describe('createVolcengineImage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getModelPricing.mockResolvedValue(undefined);
 
     // Default test payload and options
     payload = {
@@ -99,6 +104,28 @@ describe('createVolcengineImage', () => {
         width: undefined,
         height: undefined,
       });
+    });
+
+    it('should attach model-bank image cost as runtime model usage', async () => {
+      getModelPricing.mockResolvedValue({
+        currency: 'CNY',
+        units: [
+          {
+            name: 'imageGeneration',
+            rate: 0.22,
+            strategy: 'fixed',
+            unit: 'image',
+          },
+        ],
+      });
+      mockGenerate.mockResolvedValue({
+        data: [{ url: 'https://example.com/generated-image.jpg' }],
+      });
+
+      const result = await createVolcengineImage(payload, options);
+
+      expect(getModelPricing).toHaveBeenCalledWith(payload.model, 'volcengine', undefined);
+      expect(result.modelUsage?.cost).toBeCloseTo(0.22 / 7.12, 10);
     });
   });
 

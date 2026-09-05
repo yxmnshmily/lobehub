@@ -21,6 +21,13 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { createAsyncCaller } from '@/server/routers/async/caller';
 import { FileService } from '@/server/services/file';
 import {
+  getPlatformAiRuntimeCapability,
+  getPlatformAiRuntimeMarker,
+  PLATFORM_MANAGED_AI_RUNTIME,
+} from '@/server/services/platformAiRuntime';
+import { PlatformUsageReservationService } from '@/server/services/platformUsageBilling/reservation';
+import { buildPlatformImageSettlementIdentity } from '@/server/services/travelGeneration/platformImageSettlementIdentity';
+import {
   AsyncTaskError,
   AsyncTaskErrorType,
   AsyncTaskStatus,
@@ -31,6 +38,13 @@ import { generateUniqueSeeds } from '@/utils/number';
 import { validateNoUrlsInConfig } from './utils';
 
 const log = debug('lobe-image:lambda');
+const PLATFORM_IMAGE_RESERVATION_LEASE_MS = 15 * 60 * 1000;
+
+type PlatformImageReservationHandle = {
+  budgetId: string;
+  leaseVersion: number;
+  reservationId: string;
+};
 
 const imageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -87,9 +101,41 @@ export const imageRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
       const wsId = ctx.workspaceId ?? undefined;
+      const isPlatformManaged = getPlatformAiRuntimeMarker(ctx) === PLATFORM_MANAGED_AI_RUNTIME;
+      const platformCapability = getPlatformAiRuntimeCapability(ctx);
       const { generationTopicId, provider, model, imageNum, params } = input;
 
-      log('Starting image creation process, input: %O', input);
+      if (isPlatformManaged) {
+        if (
+          !Number.isSafeInteger(platformCapability?.maxCredits) ||
+          Number(platformCapability?.maxCredits) <= 0
+        ) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message:
+              'A trusted positive Credits maximum is required for platform image generation.',
+          });
+        }
+        if (imageNum !== 1) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'Platform image generation currently requires exactly one image.',
+          });
+        }
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: '[IMAGE_BILLING_UNAVAILABLE] 平台图片权威计价与费用上限尚不可用。',
+        });
+      }
+
+      log('Image creation requested: %O', {
+        height: params.height,
+        imageCount: imageNum,
+        referenceImageCount:
+          (Array.isArray(params.imageUrls) ? params.imageUrls.length : 0) +
+          (typeof params.imageUrl === 'string' && params.imageUrl ? 1 : 0),
+        width: params.width,
+      });
 
       const { resolvedModelId } = await resolveBusinessModelMapping(provider, model);
 
@@ -113,18 +159,10 @@ export const imageRouter = router({
       let configForDatabase = { ...params };
       // 1) Process multiple images in imageUrls
       if (Array.isArray(params.imageUrls) && params.imageUrls.length > 0) {
-        log('Converting imageUrls to S3 keys for database storage: %O', params.imageUrls);
+        log('Normalizing %d reference images for storage', params.imageUrls.length);
         try {
           const imageKeysWithNull = await Promise.all(
-            params.imageUrls.map(async (url) => {
-              const key = await fileService.getKeyFromFullUrl(url);
-              if (key) {
-                log('Converted URL %s to key %s', url, key);
-              } else {
-                log('Failed to extract key from URL: %s', url);
-              }
-              return key;
-            }),
+            params.imageUrls.map((url) => fileService.getKeyFromFullUrl(url)),
           );
           const imageKeys = imageKeysWithNull.filter((key): key is string => key !== null);
 
@@ -132,10 +170,12 @@ export const imageRouter = router({
             ...configForDatabase,
             imageUrls: imageKeys,
           };
-          log('Successfully converted imageUrls to keys for database: %O', imageKeys);
-        } catch (error) {
-          console.error('Error converting imageUrls to keys: %O', error);
-          console.error('Keeping original imageUrls due to conversion error');
+          log('Reference image normalization completed: %O', {
+            inputCount: params.imageUrls.length,
+            normalizedCount: imageKeys.length,
+          });
+        } catch {
+          console.error('Reference image normalization failed');
         }
       }
       // 2) Process single image in imageUrl
@@ -143,13 +183,11 @@ export const imageRouter = router({
         try {
           const key = await fileService.getKeyFromFullUrl(params.imageUrl);
           if (key) {
-            log('Converted single imageUrl to key: %s -> %s', params.imageUrl, key);
             configForDatabase = { ...configForDatabase, imageUrl: key };
-          } else {
-            log('Failed to extract key from single imageUrl: %s', params.imageUrl);
           }
-        } catch (error) {
-          console.error('Error converting imageUrl to key: %O', error);
+          log('Reference image normalization completed');
+        } catch {
+          console.error('Reference image normalization failed');
           // Keep original value if conversion fails
         }
       }
@@ -163,7 +201,6 @@ export const imageRouter = router({
         if (typeof params.imageUrl === 'string' && params.imageUrl) {
           const s3Url = await fileService.getFullFileUrl(configForDatabase.imageUrl as string);
           if (s3Url) {
-            log('Dev: converted proxy URL to S3 URL: %s -> %s', params.imageUrl, s3Url);
             updates.imageUrl = s3Url;
           }
         }
@@ -173,12 +210,12 @@ export const imageRouter = router({
           const s3Urls = await Promise.all(
             (configForDatabase.imageUrls as string[]).map((key) => fileService.getFullFileUrl(key)),
           );
-          log('Dev: converted proxy URLs to S3 URLs: %O', s3Urls);
           updates.imageUrls = s3Urls;
         }
 
         if (Object.keys(updates).length > 0) {
           generationParams = { ...params, ...updates };
+          log('Development reference image preparation completed');
         }
       }
 
@@ -190,17 +227,22 @@ export const imageRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Invalid generation topic' });
       }
 
-      const chargeResult = await chargeBeforeGenerate({
-        clientIp: ctx.clientIp,
-        configForDatabase,
-        generationParams,
-        generationTopicId,
-        imageNum,
-        model,
-        provider,
-        userId,
-        workspaceId: wsId,
-      });
+      // Platform-managed image usage is settled from the provider's actual
+      // ModelUsage in the async worker. The legacy business precharge is a
+      // separate billing authority and must not run for this path.
+      const chargeResult = isPlatformManaged
+        ? undefined
+        : await chargeBeforeGenerate({
+            clientIp: ctx.clientIp,
+            configForDatabase,
+            generationParams,
+            generationTopicId,
+            imageNum,
+            model,
+            provider,
+            userId,
+            workspaceId: wsId,
+          });
       // An error batch (insufficient budget / cooldown / frozen workspace) is
       // returned to the client as-is.
       if (isErrorBatchResult(chargeResult)) {
@@ -228,9 +270,9 @@ export const imageRouter = router({
             workspaceId: wsId,
             width: params.width, // Use converted config for database storage
           };
-          log('Creating generation batch: %O', newBatch);
+          log('Creating generation batch');
           const [batch] = await tx.insert(generationBatches).values(newBatch).returning();
-          log('Generation batch created successfully: %s', batch.id);
+          log('Generation batch created');
 
           // 2. Create generations
           const seeds =
@@ -246,15 +288,12 @@ export const imageRouter = router({
             };
           });
 
-          log('Creating %d generations for batch: %s', newGenerations.length, batch.id);
+          log('Creating %d image generations', newGenerations.length);
           const createdGenerations = await tx
             .insert(generations)
             .values(newGenerations)
             .returning();
-          log(
-            'Generations created successfully: %O',
-            createdGenerations.map((g) => g.id),
-          );
+          log('Image generations created: %d', createdGenerations.length);
 
           // 3. Concurrently create asyncTask for each generation (within transaction)
           log('Creating async tasks for generations');
@@ -265,10 +304,14 @@ export const imageRouter = router({
               // Presence check (not truthiness): handles are opaque, so falsy
               // values like 0 or '' must still be stored verbatim.
               const prechargeItem = prechargeItems?.[index];
+              const taskMetadata = {
+                ...(isPlatformManaged ? { platformAiRuntime: true } : {}),
+                ...(prechargeItem === undefined ? {} : { precharge: prechargeItem }),
+              };
               const [createdAsyncTask] = await tx
                 .insert(asyncTasks)
                 .values({
-                  metadata: prechargeItem === undefined ? undefined : { precharge: prechargeItem },
+                  metadata: Object.keys(taskMetadata).length > 0 ? taskMetadata : undefined,
                   status: AsyncTaskStatus.Pending,
                   type: AsyncTaskType.ImageGeneration,
                   userId,
@@ -277,7 +320,6 @@ export const imageRouter = router({
                 .returning();
 
               const asyncTaskId = createdAsyncTask.id;
-              log('Created async task %s for generation %s', asyncTaskId, generation.id);
 
               // Update generation's asyncTaskId
               await tx
@@ -288,6 +330,50 @@ export const imageRouter = router({
               return { asyncTaskId, generation };
             }),
           );
+
+          if (isPlatformManaged) {
+            const reservations = new PlatformUsageReservationService(tx as typeof serverDB, userId);
+            const limit = {
+              maxCredits: platformCapability!.maxCredits as number,
+              source: 'user-explicit' as const,
+            };
+            const expiresAt = new Date(Date.now() + PLATFORM_IMAGE_RESERVATION_LEASE_MS);
+            const budget = await reservations.reserveRequest({
+              expiresAt,
+              idempotencyKey: `platform-image:${batch.id}:request`,
+              limit,
+              sourceId: batch.id,
+              sourceType: 'platform-image-generation',
+              workspaceId: wsId,
+            });
+
+            for (const item of generationsWithTasks) {
+              const settlementIdentity = buildPlatformImageSettlementIdentity(item.generation.id);
+              const reservation = await reservations.reserveCall({
+                budgetId: budget.id,
+                callKind: 'image',
+                expiresAt,
+                ...settlementIdentity,
+                idempotencyKey: `platform-image:${item.generation.id}:call`,
+                limit,
+                model: resolvedModelId,
+                provider,
+                workspaceId: wsId,
+              });
+              const platformUsageReservation: PlatformImageReservationHandle = {
+                budgetId: budget.id,
+                leaseVersion: reservation.leaseVersion,
+                reservationId: reservation.id,
+              };
+              await tx
+                .update(asyncTasks)
+                .set({
+                  metadata: { platformAiRuntime: true, platformUsageReservation },
+                })
+                .where(and(eq(asyncTasks.id, item.asyncTaskId), eq(asyncTasks.userId, userId)));
+              Object.assign(item, { platformUsageReservation });
+            }
+          }
           log('All async tasks created in transaction');
 
           return {
@@ -303,38 +389,90 @@ export const imageRouter = router({
       log('Starting async image generation tasks');
 
       try {
-        log('Creating unified async caller for userId: %s', userId);
+        log('Creating async image caller');
 
         // Async router will read keyVaults from DB, no need to pass jwtPayload
         const asyncCaller = await createAsyncCaller({
+          ...(isPlatformManaged ? { modelRuntimeMode: PLATFORM_MANAGED_AI_RUNTIME } : {}),
           userId: ctx.userId,
         });
 
-        log('Unified async caller created successfully for userId: %s', ctx.userId);
+        log('Async image caller created');
         log('Processing %d async image generation tasks', generationsWithTasks.length);
 
         // Fire-and-forget: trigger async tasks without awaiting
         // These calls go to the async router which handles them independently
         // Do not schedule here; the async router handles these tasks independently.
-        generationsWithTasks.forEach(({ generation, asyncTaskId }) => {
-          log('Starting background async task %s for generation %s', asyncTaskId, generation.id);
+        generationsWithTasks.forEach((item, index) => {
+          const { generation, asyncTaskId } = item;
+          void Promise.resolve(
+            asyncCaller.image.createImage({
+              generationBatchId: createdBatch.id,
+              generationId: generation.id,
+              generationTopicId,
+              model,
+              params: generationParams,
+              provider,
+              taskId: asyncTaskId,
+              workspaceId: wsId,
+            }),
+          ).catch(async () => {
+            console.error('Async image dispatch failed');
+            try {
+              await asyncTaskModel.update(asyncTaskId, {
+                error: new AsyncTaskError(
+                  AsyncTaskErrorType.TaskTriggerError,
+                  AsyncTaskErrorType.TaskTriggerError,
+                ),
+                status: AsyncTaskStatus.Error,
+              });
+            } catch {
+              console.error('Rejected async image task update failed');
+            }
 
-          asyncCaller.image.createImage({
-            generationBatchId: createdBatch.id,
-            generationId: generation.id,
-            generationTopicId,
-            model,
-            params: generationParams,
-            provider,
-            taskId: asyncTaskId,
-            workspaceId: wsId,
+            const platformUsageReservation = (
+              item as typeof item & {
+                platformUsageReservation?: PlatformImageReservationHandle;
+              }
+            ).platformUsageReservation;
+            if (isPlatformManaged && platformUsageReservation) {
+              try {
+                await new PlatformUsageReservationService(serverDB, userId).releaseUnclaimed({
+                  completeRequest: true,
+                  leaseVersion: platformUsageReservation.leaseVersion,
+                  reservationId: platformUsageReservation.reservationId,
+                });
+              } catch {
+                console.error('Rejected platform image reservation release failed');
+              }
+              return;
+            }
+
+            const prechargeItem = prechargeItems?.[index];
+            if (!ENABLE_BUSINESS_FEATURES || prechargeItem === undefined) return;
+            try {
+              await chargeAfterGenerate({
+                isError: true,
+                metadata: {
+                  asyncTaskId,
+                  generationBatchId: createdBatch.id,
+                  modelId: model,
+                  topicId: generationTopicId,
+                },
+                prechargeResult: prechargeItem,
+                provider,
+                userId,
+                workspaceId: wsId,
+              });
+            } catch {
+              console.error('Rejected image task billing reconciliation failed');
+            }
           });
         });
 
         log('All %d background async image generation tasks started', generationsWithTasks.length);
-      } catch (e) {
-        console.error('Failed to process async tasks:', e);
-        console.error('Failed to process async tasks: %O', e);
+      } catch {
+        console.error('Async image task startup failed');
 
         // If overall failure occurs, update all task statuses to failed
         try {
@@ -342,15 +480,37 @@ export const imageRouter = router({
             generationsWithTasks.map(({ asyncTaskId }) =>
               asyncTaskModel.update(asyncTaskId, {
                 error: new AsyncTaskError(
-                  AsyncTaskErrorType.ServerError,
-                  'start async task error: ' + (e instanceof Error ? e.message : 'Unknown error'),
+                  AsyncTaskErrorType.TaskTriggerError,
+                  AsyncTaskErrorType.TaskTriggerError,
                 ),
                 status: AsyncTaskStatus.Error,
               }),
             ),
           );
-        } catch (batchUpdateError) {
-          console.error('Failed to update batch task statuses:', batchUpdateError);
+        } catch {
+          console.error('Async image task status update failed');
+        }
+
+        if (isPlatformManaged) {
+          await Promise.allSettled(
+            generationsWithTasks.map(async (item) => {
+              const platformUsageReservation = (
+                item as typeof item & {
+                  platformUsageReservation?: PlatformImageReservationHandle;
+                }
+              ).platformUsageReservation;
+              if (!platformUsageReservation) return;
+              try {
+                await new PlatformUsageReservationService(serverDB, userId).releaseUnclaimed({
+                  completeRequest: true,
+                  leaseVersion: platformUsageReservation.leaseVersion,
+                  reservationId: platformUsageReservation.reservationId,
+                });
+              } catch {
+                console.error('Failed platform image reservation release failed');
+              }
+            }),
+          );
         }
 
         // The async router never ran for these tasks, so its failure billing
@@ -375,8 +535,8 @@ export const imageRouter = router({
                   userId,
                   workspaceId: wsId,
                 });
-              } catch (chargeError) {
-                console.error('Failed to reconcile billing for failed task:', chargeError);
+              } catch {
+                console.error('Failed image task billing reconciliation failed');
               }
             }),
           );
@@ -388,9 +548,7 @@ export const imageRouter = router({
         asyncTaskId: item.asyncTaskId,
       }));
       log('Image creation process completed successfully: %O', {
-        batchId: createdBatch.id,
         generationCount: createdGenerations.length,
-        generationIds: createdGenerations.map((g) => g.id),
       });
 
       return {

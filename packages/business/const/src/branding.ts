@@ -4,15 +4,15 @@
 
 export const LOBE_CHAT_CLOUD = 'LobeHub Cloud';
 
-export const BRANDING_NAME = 'LobeHub';
-export const BRANDING_LOGO_URL = '';
+export const BRANDING_NAME = '旅游群网';
+export const BRANDING_LOGO_URL = '/lobehub/app-icons/travel-cloud-mascot.png';
 
-export const ORG_NAME = 'LobeHub';
+export const ORG_NAME = '旅游群网';
 
 export const BRANDING_URL = {
   help: undefined,
   privacy: undefined,
-  subscription: 'https://app.lobehub.com/settings/plans',
+  subscription: undefined,
   support: undefined,
   terms: undefined,
 };
@@ -30,9 +30,9 @@ export const FILE_URL = {
 };
 
 export const BRANDING_EMAIL = {
-  business: 'hello@lobehub.com',
-  replyTo: undefined,
-  support: 'support@lobehub.com',
+  business: 'jinwang1016@163.com',
+  replyTo: 'yxmnshmily@qq.com',
+  support: 'yxmnshmily@qq.com',
 };
 
 export const BRANDING_PROVIDER = 'lobehub';

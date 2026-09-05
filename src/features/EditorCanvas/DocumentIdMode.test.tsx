@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { editorSelectors } from '@/store/document/slices/editor';
@@ -11,7 +11,9 @@ import DocumentIdMode from './DocumentIdMode';
 const handleContentChangeStore = vi.fn();
 const performSave = vi.fn();
 const flushSave = vi.fn();
+const initDocumentWithEditor = vi.fn();
 const onEditorInit = vi.fn().mockResolvedValue(undefined);
+const upsertDocument = vi.fn();
 const createFetchDocumentResult = (
   overrides: Partial<{
     data: unknown;
@@ -23,10 +25,16 @@ const createFetchDocumentResult = (
 const useFetchDocument = vi.fn(() => createFetchDocumentResult());
 
 let saveHotkeyHandler: (() => void | Promise<void>) | undefined;
+let documentStoreState: {
+  activeDocumentId?: string;
+  documents: Record<string, unknown>;
+};
+let pageDocuments: Array<{ id: string }>;
 
 const mockDocumentStore = {
   flushSave,
   handleContentChange: handleContentChangeStore,
+  initDocumentWithEditor,
   onEditorInit,
   performSave,
   useFetchDocument,
@@ -53,14 +61,36 @@ vi.mock('@/components/404', () => ({
 }));
 
 vi.mock('@/components/AsyncError', () => ({
-  default: vi.fn(() => <div data-testid="async-error" />),
+  default: vi.fn(({ onRetry }: { onRetry: () => void }) => (
+    <button data-testid="async-error" onClick={onRetry}>
+      retry
+    </button>
+  )),
 }));
 
 vi.mock('@/store/document', () => ({
   useDocumentStore: Object.assign(
-    vi.fn((selector: (state: typeof mockDocumentStore) => unknown) => selector(mockDocumentStore)),
+    vi.fn((selector: (state: typeof mockDocumentStore & typeof documentStoreState) => unknown) =>
+      selector({ ...mockDocumentStore, ...documentStoreState }),
+    ),
     {
-      getState: vi.fn(() => ({ documents: {} })),
+      getState: vi.fn(() => ({ ...mockDocumentStore, ...documentStoreState })),
+    },
+  ),
+}));
+
+vi.mock('@/store/page', () => ({
+  pageSelectors: {
+    getDocumentById:
+      (documentId: string | undefined) => (state: { documents: typeof pageDocuments }) =>
+        state.documents.find((document) => document.id === documentId),
+  },
+  usePageStore: Object.assign(
+    vi.fn((selector: (state: { documents: typeof pageDocuments }) => unknown) =>
+      selector({ documents: pageDocuments }),
+    ),
+    {
+      getState: vi.fn(() => ({ upsertDocument })),
     },
   ),
 }));
@@ -85,8 +115,12 @@ describe('DocumentIdMode', () => {
     handleContentChangeStore.mockClear();
     performSave.mockClear();
     flushSave.mockClear();
+    initDocumentWithEditor.mockReset();
     onEditorInit.mockClear();
+    upsertDocument.mockClear();
     useFetchDocument.mockClear();
+    documentStoreState = { activeDocumentId: 'doc-1', documents: {} };
+    pageDocuments = [];
     vi.mocked(editorSelectors.isDocumentLoading).mockReturnValue(() => false);
     saveHotkeyHandler = undefined;
   });
@@ -146,13 +180,15 @@ describe('DocumentIdMode', () => {
     });
   });
 
-  it('should render a fetch error before the document loading gate', () => {
+  it('should render a recoverable fetch error before the document loading gate', () => {
     const editor = {
       getLexicalEditor: vi.fn(() => ({})),
     } as any;
+    const mutate = vi.fn();
     useFetchDocument.mockReturnValueOnce({
       ...createFetchDocumentResult(),
       error: new Error('load failed'),
+      mutate,
     });
     vi.mocked(editorSelectors.isDocumentLoading).mockReturnValueOnce(() => true);
 
@@ -160,6 +196,112 @@ describe('DocumentIdMode', () => {
 
     expect(screen.getByTestId('async-error')).toBeInTheDocument();
     expect(screen.queryByTestId('internal-editor')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('async-error'));
+    expect(mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('should recover a matching fetched document when the store sync was missed', async () => {
+    const editor = {
+      getLexicalEditor: vi.fn(() => ({})),
+    } as any;
+    const remoteDocument = {
+      content: '# Existing page',
+      editorData: {},
+      id: 'doc-1',
+      updatedAt: new Date('2026-09-03T00:00:00.000Z'),
+    };
+    useFetchDocument.mockReturnValue(createFetchDocumentResult({ data: remoteDocument }));
+    vi.mocked(editorSelectors.isDocumentLoading).mockImplementation(
+      (documentId: string) => (state: typeof documentStoreState) => !state.documents[documentId],
+    );
+    initDocumentWithEditor.mockImplementation(({ documentId }: { documentId: string }) => {
+      documentStoreState.documents[documentId] = {};
+    });
+
+    const view = render(<DocumentIdMode documentId="doc-1" editor={editor} />);
+
+    await waitFor(() => {
+      expect(initDocumentWithEditor).toHaveBeenCalledWith(
+        expect.objectContaining({ documentId: 'doc-1', editor, sourceType: 'page' }),
+      );
+    });
+    // The real Zustand store update schedules this render. The test store is a
+    // plain mutable object, so change a harmless prop to bypass React.memo.
+    view.rerender(<DocumentIdMode documentId="doc-1" editor={editor} style={{ width: '100%' }} />);
+
+    expect(screen.getByTestId('internal-editor')).toBeInTheDocument();
+    expect(upsertDocument).toHaveBeenCalledWith(remoteDocument);
+  });
+
+  it('should not hydrate a response that is no longer the active document', async () => {
+    const editor = {
+      getLexicalEditor: vi.fn(() => ({})),
+    } as any;
+    documentStoreState.activeDocumentId = 'doc-2';
+    useFetchDocument.mockReturnValue(
+      createFetchDocumentResult({
+        data: {
+          content: '# Old page',
+          editorData: {},
+          id: 'doc-1',
+          updatedAt: new Date('2026-09-03T00:00:00.000Z'),
+        },
+      }),
+    );
+    vi.mocked(editorSelectors.isDocumentLoading).mockReturnValue(() => true);
+
+    render(<DocumentIdMode documentId="doc-1" editor={editor} />);
+
+    await act(async () => undefined);
+    expect(initDocumentWithEditor).not.toHaveBeenCalled();
+  });
+
+  it('should not duplicate hydration when the sync callback already populated the store', async () => {
+    const editor = {
+      getLexicalEditor: vi.fn(() => ({})),
+    } as any;
+    documentStoreState.documents['doc-1'] = {};
+    useFetchDocument.mockReturnValue(
+      createFetchDocumentResult({
+        data: {
+          content: '# Synced page',
+          editorData: {},
+          id: 'doc-1',
+          updatedAt: new Date('2026-09-03T00:00:00.000Z'),
+        },
+      }),
+    );
+    // Simulate the selector value captured before useFetchDocument's onData
+    // effect populated the real store.
+    vi.mocked(editorSelectors.isDocumentLoading).mockReturnValue(() => true);
+
+    render(<DocumentIdMode documentId="doc-1" editor={editor} />);
+
+    await act(async () => undefined);
+    expect(initDocumentWithEditor).not.toHaveBeenCalled();
+  });
+
+  it('should retry a locally known new page once and settle on a recoverable error', async () => {
+    const editor = {
+      getLexicalEditor: vi.fn(() => ({})),
+    } as any;
+    const mutate = vi.fn();
+    pageDocuments = [{ id: 'doc-1' }];
+    useFetchDocument.mockReturnValue(createFetchDocumentResult({ data: null, mutate }));
+    vi.mocked(editorSelectors.isDocumentLoading).mockReturnValue(() => true);
+
+    const view = render(<DocumentIdMode documentId="doc-1" editor={editor} />);
+
+    expect(screen.queryByTestId('not-found')).not.toBeInTheDocument();
+    expect(screen.getByTestId('async-error')).toBeInTheDocument();
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+
+    view.rerender(<DocumentIdMode documentId="doc-1" editor={editor} />);
+    expect(mutate).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('async-error'));
+    expect(mutate).toHaveBeenCalledTimes(2);
   });
 
   it('should render not found when the document fetch resolves to null', () => {

@@ -38,6 +38,11 @@ import { goalDetailRouteMeta, goalsRouteMeta } from '@/features/AgentGoals/route
 import { taskRouteMeta, tasksRouteMeta } from '@/features/AgentTasks/routeMeta';
 import { agentsRouteMeta } from '@/features/AgentViewAll/routeMeta';
 import { pageRouteMeta } from '@/features/Pages/routeMeta';
+import { customerMainElement, platformAdminElement } from '@/features/PlatformAdminRouteGuard';
+import {
+  CUSTOMER_SETTINGS_TAB_PATHS,
+  PLATFORM_SETTINGS_TAB_PATHS,
+} from '@/features/PlatformAdminRouteGuard/access';
 import { projectsRouteMeta } from '@/features/Projects/routeMeta';
 import { settingsRouteMeta } from '@/features/Settings/features/routeMeta';
 import { workspaceHomeRouteMeta } from '@/features/Workspace/routeMeta';
@@ -1074,9 +1079,11 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
             path: ':providerId',
           },
         ],
-        element: dynamicElement(
-          () => import('@/routes/(main)/settings/provider').then((m) => m.ProviderLayout),
-          'Desktop > Settings > Provider > Layout',
+        element: platformAdminElement(
+          dynamicElement(
+            () => import('@/routes/(main)/settings/provider').then((m) => m.ProviderLayout),
+            'Desktop > Settings > Provider > Layout',
+          ),
         ),
         handle: {
           meta: routeMeta({ icon: Settings, titleKey: 'navigation.provider' }),
@@ -1084,9 +1091,8 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
         path: 'provider',
       },
       {
-        element: dynamicElement(
-          () => import('@/routes/(main)/settings'),
-          'Desktop > Settings > Memory',
+        element: platformAdminElement(
+          dynamicElement(() => import('@/routes/(main)/settings'), 'Desktop > Settings > Memory'),
         ),
         handle: { meta: settingsRouteMeta, settingsTab: SettingsTabs.Memory },
         path: 'memory',
@@ -1095,11 +1101,54 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
         element: redirectElement('/settings/credential'),
         path: 'creds',
       },
+      {
+        element: redirectElement('/page'),
+        path: 'works',
+      },
+      ...CUSTOMER_SETTINGS_TAB_PATHS.flatMap((tab) => [
+        {
+          element: dynamicElement(
+            () => import('@/routes/(main)/settings'),
+            `Desktop > Customer Settings > ${tab}`,
+          ),
+          handle: { meta: settingsRouteMeta, settingsTab: tab },
+          path: tab,
+        },
+        {
+          element: dynamicElement(
+            () => import('@/routes/(main)/settings'),
+            `Desktop > Customer Settings > ${tab} > Sub`,
+          ),
+          handle: { meta: settingsRouteMeta, settingsTab: tab },
+          path: `${tab}/:sub`,
+        },
+      ]),
+      ...PLATFORM_SETTINGS_TAB_PATHS.flatMap((tab) => [
+        {
+          element: platformAdminElement(
+            dynamicElement(() => import('@/routes/(main)/settings'), `Desktop > Settings > ${tab}`),
+          ),
+          handle: { meta: settingsRouteMeta, settingsTab: tab },
+          path: tab,
+        },
+        {
+          element: platformAdminElement(
+            dynamicElement(
+              () => import('@/routes/(main)/settings'),
+              `Desktop > Settings > ${tab} > Sub`,
+            ),
+          ),
+          handle: { meta: settingsRouteMeta, settingsTab: tab },
+          path: `${tab}/:sub`,
+        },
+      ]),
       // Other settings tabs
       {
-        element: dynamicElement(
-          () => import('@/routes/(main)/settings'),
-          'Desktop > Settings > Tab',
+        element: platformAdminElement(
+          dynamicElement(
+            () => import('@/routes/(main)/settings'),
+            'Desktop > Settings > Protected Tab',
+          ),
         ),
         handle: { meta: settingsRouteMeta },
         path: ':tab',
@@ -1107,9 +1156,11 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
       // Tabs that need a sub-segment (e.g. /settings/messenger/discord) reuse
       // the same tab page; nested feature components read `:sub` via useParams.
       {
-        element: dynamicElement(
-          () => import('@/routes/(main)/settings'),
-          'Desktop > Settings > Tab > Sub',
+        element: platformAdminElement(
+          dynamicElement(
+            () => import('@/routes/(main)/settings'),
+            'Desktop > Settings > Protected Tab > Sub',
+          ),
         ),
         handle: { meta: settingsRouteMeta },
         path: ':tab/:sub',
@@ -1150,17 +1201,21 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
           // Full-bleed tabs render directly inside the workspace settings
           // shell (sidebar + outlet) — they own their internal layout.
           {
-            element: dynamicElement(
-              () => import('@/routes/(main)/[workspaceSlug]/settings/provider'),
-              'Desktop > Workspace > Settings > Provider',
+            element: platformAdminElement(
+              dynamicElement(
+                () => import('@/routes/(main)/[workspaceSlug]/settings/provider'),
+                'Desktop > Workspace > Settings > Provider',
+              ),
             ),
             path: 'provider',
           },
           {
-            element: dynamicElement(
-              () => import('@/routes/(main)/[workspaceSlug]/settings/skill'),
-              'Desktop > Workspace > Settings > Skill',
-              { preloadId: 'settings' },
+            element: platformAdminElement(
+              dynamicElement(
+                () => import('@/routes/(main)/[workspaceSlug]/settings/skill'),
+                'Desktop > Workspace > Settings > Skill',
+                { preloadId: 'settings' },
+              ),
             ),
             path: 'skill',
           },
@@ -1253,16 +1308,20 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
                 path: 'usage',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/service-model'),
-                  'Desktop > Workspace > Settings > Service Model',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/service-model'),
+                    'Desktop > Workspace > Settings > Service Model',
+                  ),
                 ),
                 path: 'service-model',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/credential'),
-                  'Desktop > Workspace > Settings > Credential',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/credential'),
+                    'Desktop > Workspace > Settings > Credential',
+                  ),
                 ),
                 path: 'credential',
               },
@@ -1272,23 +1331,29 @@ const createMainAreaChildrenDefinition = (options: MainAreaRouteOptions = {}): R
                 path: 'creds',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/apikey'),
-                  'Desktop > Workspace > Settings > API Key',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/apikey'),
+                    'Desktop > Workspace > Settings > API Key',
+                  ),
                 ),
                 path: 'apikey',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
-                  'Desktop > Workspace > Settings > OAuth Apps',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
+                    'Desktop > Workspace > Settings > OAuth Apps',
+                  ),
                 ),
                 path: 'oauth-apps',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
-                  'Desktop > Workspace > Settings > OAuth App Detail',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
+                    'Desktop > Workspace > Settings > OAuth App Detail',
+                  ),
                 ),
                 path: 'oauth-apps/:sub',
               },
@@ -1449,9 +1514,11 @@ export const createSharedDesktopRoutes = ({
     // `BootShell` unmounts the moment the cache gate releases, which is often
     // before this chunk resolves. Falling back to the same skeleton keeps the
     // handoff invisible instead of flashing the brand logo a second time.
-    element: dynamicLayout(() => import('@/routes/(main)/_layout'), 'Desktop > Main > Layout', {
-      fallback: <AppShellSkeleton id={APP_SHELL_FALLBACK_ID} />,
-    }),
+    element: customerMainElement(
+      dynamicLayout(() => import('@/routes/(main)/_layout'), 'Desktop > Main > Layout', {
+        fallback: <AppShellSkeleton id={APP_SHELL_FALLBACK_ID} />,
+      }),
+    ),
     errorElement: <ErrorBoundary />,
     path: '/',
   },

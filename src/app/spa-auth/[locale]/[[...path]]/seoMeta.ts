@@ -17,20 +17,40 @@ export async function buildAuthSeoEntry(locale: string, pathname: string): Promi
   const { t } = await translation('auth', normalizeLocale(locale));
   const normalizedPath =
     pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const withBrand = (title: string) => `${title} · ${BRANDING_NAME}`;
 
   switch (normalizedPath) {
     case '/signin': {
       return {
         canonicalPath: '/signin',
         description: t('signin.subtitle', { appName: BRANDING_NAME }),
-        title: t('betterAuth.signin.emailStep.title'),
+        title: withBrand(t('betterAuth.signin.emailStep.title')),
       };
     }
     case '/signup': {
       return {
         canonicalPath: '/signup',
         description: t('betterAuth.signup.subtitle'),
-        title: t('betterAuth.signup.title'),
+        title: withBrand(t('betterAuth.signup.title')),
+      };
+    }
+    case '/verify-email': {
+      return {
+        description: t('betterAuth.verifyEmail.description', { email: '' }),
+        title: withBrand(t('betterAuth.verifyEmail.title')),
+      };
+    }
+    case '/reset-password': {
+      return {
+        description: t('betterAuth.resetPassword.description'),
+        title: withBrand(t('betterAuth.resetPassword.title')),
+      };
+    }
+    case '/auth-error': {
+      const { t: translateError } = await translation('authError', normalizeLocale(locale));
+      return {
+        description: translateError('codes.UNKNOWN'),
+        title: withBrand(translateError('title')),
       };
     }
     default: {

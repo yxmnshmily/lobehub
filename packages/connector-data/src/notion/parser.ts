@@ -94,7 +94,10 @@ const normalizeNotionIdForUrl = (id: string): string => id.replaceAll('-', '');
  * After:
  * - `[{ kind: "page", id: "...", title: "...", sourceUrl: "https://www.notion.so/..." }]`
  */
-export const parseNotionItems = (value: unknown, maxCandidates: number): NotionItem[] | undefined => {
+export const parseNotionItems = (
+  value: unknown,
+  maxCandidates: number,
+): NotionItem[] | undefined => {
   const collection = readCollection(value);
   if (!collection) return;
   const finiteLimit = Number.isFinite(maxCandidates) ? Math.floor(maxCandidates) : 0;
@@ -110,10 +113,7 @@ export const parseNotionItems = (value: unknown, maxCandidates: number): NotionI
     if (!kind) continue;
     const properties = toRecord(record.properties);
     const rawUrl = boundedString(record.url, MAX_URL_LENGTH);
-    const lastEditedAt = boundedString(
-      record.last_edited_time ?? record.lastEditedAt,
-      64,
-    );
+    const lastEditedAt = boundedString(record.last_edited_time ?? record.lastEditedAt, 64);
     items.set(id, {
       id,
       kind,

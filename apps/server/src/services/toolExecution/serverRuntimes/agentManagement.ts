@@ -21,6 +21,10 @@ import {
 import { AgentModel } from '@/database/models/agent';
 import { PluginModel } from '@/database/models/plugin';
 import { DiscoverService } from '@/server/services/discover';
+import {
+  assertDefaultTravelServiceMutationAllowed,
+  assertNoReservedTravelServiceIdentity,
+} from '@/server/services/user/travelServiceGroupMutationGuard';
 
 import { type ToolExecutionContext, type ToolExecutionResult } from '../types';
 import { type ServerRuntimeRegistration } from './types';
@@ -39,8 +43,10 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
       throw new Error('userId and serverDB are required for Agent Management execution');
     }
 
-    const agentModel = new AgentModel(context.serverDB, context.userId, context.workspaceId);
-    const pluginModel = new PluginModel(context.serverDB, context.userId, context.workspaceId);
+    const serverDB = context.serverDB;
+    const userId = context.userId;
+    const agentModel = new AgentModel(serverDB, userId, context.workspaceId);
+    const pluginModel = new PluginModel(serverDB, userId, context.workspaceId);
     const discoverService = new DiscoverService();
 
     return {
@@ -148,6 +154,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
 
       deleteAgent: async (params: DeleteAgentParams): Promise<ToolExecutionResult> => {
         try {
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           await agentModel.delete(params.agentId);
           return {
             content: `Successfully deleted agent ${params.agentId}`,
@@ -161,6 +173,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
 
       duplicateAgent: async (params: DuplicateAgentParams): Promise<ToolExecutionResult> => {
         try {
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [params.agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           const result = await agentModel.duplicate(params.agentId, params.newTitle);
           if (!result) {
             return { content: `Agent "${params.agentId}" not found.`, success: false };
@@ -234,6 +252,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
       installPlugin: async (params: InstallPluginParams): Promise<ToolExecutionResult> => {
         try {
           const { agentId, identifier } = params;
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           const agent = await agentModel.getAgentConfigById(agentId);
           if (!agent) {
             return { content: `Agent "${agentId}" not found.`, success: false };
@@ -250,6 +274,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
           // object) as-is and flips a disabled entry back to pinned in place,
           // instead of blindly pushing a duplicate bare-string identifier.
           if (getPluginMode(agent.plugins ?? undefined, identifier) !== 'pinned') {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.updateConfig(agentId, {
               plugins: upsertPluginMode(
                 agent.plugins ?? undefined,
@@ -361,6 +391,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
         try {
           const { agentId } = params;
           let { config, meta } = params;
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
 
           // Guard against LLM double-encoding: parse strings if needed
           if (typeof config === 'string') {
@@ -377,15 +413,33 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
               meta = undefined;
             }
           }
+          assertNoReservedTravelServiceIdentity({
+            agentClientId: (meta as Record<string, unknown> | undefined)?.clientId as
+              string | null | undefined,
+            agentSlug: (meta as Record<string, unknown> | undefined)?.slug as
+              string | null | undefined,
+          });
 
           const updatedParts: string[] = [];
 
           if (config && Object.keys(config).length > 0) {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.updateConfig(agentId, config as Record<string, unknown>);
             updatedParts.push(`config: ${Object.keys(config).join(', ')}`);
           }
 
           if (meta && Object.keys(meta).length > 0) {
+            await assertDefaultTravelServiceMutationAllowed(serverDB, {
+              actorUserId: userId,
+              agentIds: [agentId],
+              kind: 'agent',
+              workspaceId: context.workspaceId,
+            });
             await agentModel.update(agentId, meta as Record<string, unknown>);
             updatedParts.push(`meta: ${Object.keys(meta).join(', ')}`);
           }
@@ -407,6 +461,12 @@ export const agentManagementRuntime: ServerRuntimeRegistration = {
       updatePrompt: async (params: UpdatePromptParams): Promise<ToolExecutionResult> => {
         try {
           const { agentId, prompt } = params;
+          await assertDefaultTravelServiceMutationAllowed(serverDB, {
+            actorUserId: userId,
+            agentIds: [agentId],
+            kind: 'agent',
+            workspaceId: context.workspaceId,
+          });
           await agentModel.update(agentId, { editorData: null, systemRole: prompt } as Record<
             string,
             unknown

@@ -13,9 +13,10 @@ tags:
 <div style={{display:"flex", gap: 4}}>
   [![][docker-release-shield]][docker-release-link]
 
-  [![][docker-size-shield]][docker-size-link]
+[![][docker-size-shield]][docker-size-link]
 
-  [![][docker-pulls-shield]][docker-pulls-link]
+[![][docker-pulls-shield]][docker-pulls-link]
+
 </div>
 
 ## 快速启动
@@ -23,14 +24,14 @@ tags:
 <Callout type="info">
   **系统兼容性说明**
 
-  - 支持 Unix 环境（Linux/macOS）的一键部署
+- 支持 Unix 环境（Linux/macOS）的一键部署
 
-  - Windows 用户需通过 [WSL 2](https://aka.ms/wsl) 运行
+- Windows 用户需通过 [WSL 2](https://aka.ms/wsl) 运行
 
-  - 一键启动脚本为首次部署专用，非首次部署请参考 [自定义部署](#自定义部署) 章节
+- 一键启动脚本为首次部署专用，非首次部署请参考 [自定义部署](#自定义部署) 章节
 
-  - 端口占用检查：确保 `3210`、`9000`、`9001` 端口可用
-</Callout>
+- 端口占用检查：确保 `3210`、`9000`、`9001` 端口可用
+  </Callout>
 
 执行以下命令初始化部署环境，目录 `lobehub` 将用于存放你的配置文件和后续的数据库文件。
 
@@ -60,51 +61,52 @@ bash <(curl -fsSL https://lobe.li/setup.sh) -l zh_CN
 <Steps>
   ### 在交互式脚本中完成剩余配置
 
-  持续回车采用默认配置。
+持续回车采用默认配置。
 
-  ### 查看配置生成报告
+### 查看配置生成报告
 
-  你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
+你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
 
-  ```log
-  安全密钥生成结果如下：
-  LobeHub:
-    - URL: http://localhost:3210
-  RustFS:
-    - URL: http://localhost:9000
-    - Username: admin
-    - Password: 8c82ea41
-  ```
+```log
+安全密钥生成结果如下：
+LobeHub:
+  - URL: http://localhost:3210
+RustFS:
+  - URL: http://localhost:9000
+  - Username: admin
+  - Password: 8c82ea41
+```
 
-  ### 启动 Docker
+### 启动 Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### 检查日志
+### 检查日志
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  如果你在容器中看到了以下日志，则说明已经启动成功：
+如果你在容器中看到了以下日志，则说明已经启动成功：
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        http://localhost:3210
-    - Network:      http://0.0.0.0:3210
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        http://localhost:3210
+  - Network:      http://0.0.0.0:3210
 
-   ✓ Starting...
-   ✓ Ready in 95ms
-  ```
+ ✓ Starting...
+ ✓ Ready in 95ms
+```
 
-  ### 访问应用
+### 访问应用
 
-  通过 [http://localhost:3210](http://localhost:3210) 访问你的 LobeHub 服务。
+通过 [http://localhost:3210](http://localhost:3210) 访问你的 LobeHub 服务。
+
 </Steps>
 
 ### 端口模式
@@ -112,53 +114,54 @@ bash <(curl -fsSL https://lobe.li/setup.sh) -l zh_CN
 <Steps>
   ### 在交互式脚本中完成剩余配置
 
-  在端口模式中，你需要根据脚本提示完成：
+在端口模式中，你需要根据脚本提示完成：
 
-  - 服务器 IP 地址设置：以便局域网 / 公网访问。
-  - 安全密钥重新生成：我们强烈建议你重新生成安全密钥，如果你缺少脚本所需的密钥生成库，我们建议你参考 [自定义部署](#自定义部署) 章节对密钥进行修改。
+- 服务器 IP 地址设置：以便局域网 / 公网访问。
+- 安全密钥重新生成：我们强烈建议你重新生成安全密钥，如果你缺少脚本所需的密钥生成库，我们建议你参考 [自定义部署](#自定义部署) 章节对密钥进行修改。
 
-  ### 查看配置生成报告
+### 查看配置生成报告
 
-  你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
+你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
 
-  ```log
-  安全密钥生成结果如下：
-  LobeHub:
-    - URL: http://your_server_ip:3210
-  RustFS:
-    - URL: http://your_server_ip:9000
-    - Username: admin
-    - Password: dbac8440
-  ```
+```log
+安全密钥生成结果如下：
+LobeHub:
+  - URL: http://your_server_ip:3210
+RustFS:
+  - URL: http://your_server_ip:9000
+  - Username: admin
+  - Password: dbac8440
+```
 
-  ### 启动 Docker
+### 启动 Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### 检查日志
+### 检查日志
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  如果你在容器中看到了以下日志，则说明已经启动成功：
+如果你在容器中看到了以下日志，则说明已经启动成功：
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        http://your_server_ip:3210
-    - Network:      http://0.0.0.0:3210
-   ✓ Starting...
-   ✓ Ready in 95ms
-  ```
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        http://your_server_ip:3210
+  - Network:      http://0.0.0.0:3210
+ ✓ Starting...
+ ✓ Ready in 95ms
+```
 
-  ### 访问应用
+### 访问应用
 
-  你可以通过 `http://your_server_ip:3210` 访问你的 LobeHub 服务。
+你可以通过 `http://your_server_ip:3210` 访问你的 LobeHub 服务。
+
 </Steps>
 
 ### 域名模式
@@ -166,22 +169,22 @@ bash <(curl -fsSL https://lobe.li/setup.sh) -l zh_CN
 <Steps>
   ### 完成反向代理配置
 
-  在域名模式中，你需要完成反向代理配置，并确保局域网 / 公网能访问到以下服务。请使用反向代理将以下服务端口映射到域名：
+在域名模式中，你需要完成反向代理配置，并确保局域网 / 公网能访问到以下服务。请使用反向代理将以下服务端口映射到域名：
 
-  | 域名                  | 反代端口   | 是否必选 |
-  | ------------------- | ------ | ---- |
-  | `lobe.example.com`  | `3210` | 必选   |
-  | `s3.example.com`    | `9000` | 必选   |
-  | `s3-ui.example.com` | `9001` |      |
+| 域名                | 反代端口 | 是否必选 |
+| ------------------- | -------- | -------- |
+| `lobe.example.com`  | `3210`   | 必选     |
+| `s3.example.com`    | `9000`   | 必选     |
+| `s3-ui.example.com` | `9001`   |          |
 
-  ### 在交互式脚本中完成剩余配置
+### 在交互式脚本中完成剩余配置
 
-  在域名模式中，你需要根据脚本提示完成：
+在域名模式中，你需要根据脚本提示完成：
 
-  - LobeHub 服务的域名设置：`lobe.example.com`
-  - S3 服务的域名设置：`s3.example.com`
-  - 选择访问协议：`http` 或 `https`
-  - 安全密钥重新生成：我们强烈建议你重新生成安全密钥，如果你缺少脚本所需的密钥生成库，我们建议你参考 [自定义部署](#自定义部署) 章节对密钥进行修改。
+- LobeHub 服务的域名设置：`lobe.example.com`
+- S3 服务的域名设置：`s3.example.com`
+- 选择访问协议：`http` 或 `https`
+- 安全密钥重新生成：我们强烈建议你重新生成安全密钥，如果你缺少脚本所需的密钥生成库，我们建议你参考 [自定义部署](#自定义部署) 章节对密钥进行修改。
 
   <Callout type="tip">
     **单域名部署方案**
@@ -193,6 +196,7 @@ bash <(curl -fsSL https://lobe.li/setup.sh) -l zh_CN
       **端口模式 vs 域名模式：**
     - 端口模式：一键安装脚本自动使用默认端口（3210/9000/9001）
     - 域名模式：可自定义端口（通过反向代理配置）
+
   </Callout>
 
   <Callout type="warning">
@@ -203,50 +207,52 @@ bash <(curl -fsSL https://lobe.li/setup.sh) -l zh_CN
     - 如果你使用 Cloudflare 的域名解析服务并开启了 `全程代理`，请使用 `https` 协议。
 
     - 如果你使用了 HTTPS 协议，请确保你的域名证书已经正确配置，一键部署默认不支持自签发证书。
+
   </Callout>
 
-  ### 查看配置生成报告
+### 查看配置生成报告
 
-  你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
+你需要在脚本运行结束后查看配置生成报告，包括各服务的访问地址和密码。
 
-  ```log
-  安全密钥生成结果如下：
-  LobeHub:
-    - URL: https://lobe.example.com
-  RustFS:
-    - URL: https://s3.example.com
-    - Username: admin
-    - Password: dbac8440
-  ```
+```log
+安全密钥生成结果如下：
+LobeHub:
+  - URL: https://lobe.example.com
+RustFS:
+  - URL: https://s3.example.com
+  - Username: admin
+  - Password: dbac8440
+```
 
-  ### 启动 Docker
+### 启动 Docker
 
-  ```sh
-  docker compose up -d
-  ```
+```sh
+docker compose up -d
+```
 
-  ### 检查日志
+### 检查日志
 
-  ```sh
-  docker logs -f lobehub
-  ```
+```sh
+docker logs -f lobehub
+```
 
-  如果你在容器中看到了以下日志，则说明已经启动成功：
+如果你在容器中看到了以下日志，则说明已经启动成功：
 
-  ```log
-  [Database] Start to migration...
-  ✅ database migration pass.
-  -------------------------------------
-    ▲ Next.js 16.x.x
-    - Local:        https://localhost:3210
-    - Network:      http://0.0.0.0:3210
-    ✓ Starting...
-    ✓ Ready in 95ms
-  ```
+```log
+[Database] Start to migration...
+✅ database migration pass.
+-------------------------------------
+  ▲ Next.js 16.x.x
+  - Local:        https://localhost:3210
+  - Network:      http://0.0.0.0:3210
+  ✓ Starting...
+  ✓ Ready in 95ms
+```
 
-  ### 访问应用
+### 访问应用
 
-  你可以通过 `https://lobe.example.com` 访问你的 LobeHub 服务。
+你可以通过 `https://lobe.example.com` 访问你的 LobeHub 服务。
+
 </Steps>
 
 ## 自定义部署
@@ -284,7 +290,8 @@ mv .env.zh-CN.example .env
 LobeHub 需要为 LLM 服务提供商提供文件对象的公网访问地址，因此你需要配置 S3 的 Endpoint：
 
 <Callout type="warning">
-  直接使用 `S3_ENDPOINT=http://rustfs:9000` 会导致对话内上传图片不可用（浏览器无法直接访问容器内网），但是头像上传不受影响
+  直接使用 `S3_ENDPOINT=http://rustfs:9000`
+  会导致对话内上传图片不可用（浏览器无法直接访问容器内网），但是头像上传不受影响
 </Callout>
 
 ```env
@@ -305,7 +312,10 @@ services:
 3. 内部通信地址 (`INTERNAL_APP_URL`)
 
 <Callout type="warning">
-  Docker Compose 部署时**必须配置** `INTERNAL_APP_URL`。LobeHub 的异步功能（如 AI 生图）需要容器内部发起 HTTP 请求调用自身。如果未设置 `INTERNAL_APP_URL`，系统将使用 `APP_URL` 作为回退。当 `APP_URL` 是宿主机 IP（如 `http://10.1.7.146:8080`）时，容器内部无法访问该地址，导致生图等异步功能静默失败。
+  Docker Compose 部署时**必须配置** `INTERNAL_APP_URL`。LobeHub 的异步功能（如 AI
+  生图）需要容器内部发起 HTTP 请求调用自身。如果未设置 `INTERNAL_APP_URL`，系统将使用 `APP_URL`
+  作为回退。当 `APP_URL` 是宿主机 IP（如
+  `http://10.1.7.146:8080`）时，容器内部无法访问该地址，导致生图等异步功能静默失败。
 </Callout>
 
 ```env
@@ -316,7 +326,8 @@ INTERNAL_APP_URL=http://localhost:3210
 - `INTERNAL_APP_URL`：用于容器内部服务间通信（绕过 CDN / 代理 / 宿主机网络）
 
 <Callout type="tip">
-  对于 Docker Compose 部署，推荐使用 `http://localhost:3210`（容器调用自身）或 `http://lobe:3210`（使用服务名称进行容器间通信）。
+  对于 Docker Compose 部署，推荐使用 `http://localhost:3210`（容器调用自身）或
+  `http://lobe:3210`（使用服务名称进行容器间通信）。
 </Callout>
 
 ## 常见问题
@@ -381,10 +392,10 @@ lobehub.example.com {
 
 ```yaml
 labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.lobehub.rule=Host(`lobehub.example.com`)"
-  - "traefik.http.routers.lobehub.entrypoints=websecure"
-  - "traefik.http.routers.lobehub.tls.certresolver=letsencrypt"
+  - 'traefik.enable=true'
+  - 'traefik.http.routers.lobehub.rule=Host(`lobehub.example.com`)'
+  - 'traefik.http.routers.lobehub.entrypoints=websecure'
+  - 'traefik.http.routers.lobehub.tls.certresolver=letsencrypt'
 ```
 
 ## 管理命令

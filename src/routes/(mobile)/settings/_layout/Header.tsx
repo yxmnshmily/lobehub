@@ -1,11 +1,14 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
 import { ChatHeader } from '@lobehub/ui/mobile';
+import { ChevronLeft } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMatch, useParams } from 'react-router';
+import { useMatch, useMatches, useParams } from 'react-router';
 
+import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useShowMobileWorkspace } from '@/hooks/useShowMobileWorkspace';
 import { SettingsTabs } from '@/store/global/initialState';
@@ -18,13 +21,16 @@ import { mobileHeaderSticky } from '@/styles/mobileHeader';
 //   Without an explicit entry, `setting:tab.${tab}` would resolve to a missing key and render the raw string.
 // - Profile: prefer shorter "Profile" (`auth:profile.title`) over "My Account" (`auth:tab.profile`) on mobile.
 const TAB_TITLE_KEY: Partial<Record<SettingsTabs, string>> = {
-  [SettingsTabs.Billing]: 'subscription:tab.billing',
-  [SettingsTabs.Credits]: 'subscription:tab.credits',
+  [SettingsTabs.Billing]: 'Credits 明细与服务订单',
+  [SettingsTabs.Credits]: 'Credits 余额',
+  [SettingsTabs.Creds]: 'setting:tab.creds',
   [SettingsTabs.Labs]: 'labs:title',
+  [SettingsTabs.OAuthApps]: 'auth:tab.oauthApps',
   [SettingsTabs.Plans]: 'subscription:tab.plans',
   [SettingsTabs.Profile]: 'auth:profile.title',
   [SettingsTabs.Referral]: 'subscription:tab.referral',
   [SettingsTabs.ServiceModel]: 'setting:tab.serviceModel',
+  [SettingsTabs.ServiceOperations]: '平台用户运营',
   [SettingsTabs.Stats]: 'auth:tab.stats',
   [SettingsTabs.SystemTools]: 'setting:tab.systemTools',
 };
@@ -35,18 +41,33 @@ const WORKSPACE_TAB_TITLE_KEY: Record<string, string> = {
   members: 'setting:workspaceSetting.tab.members',
 };
 
+interface SettingsRouteHandle {
+  settingsTab?: SettingsTabs;
+}
+
+const getSettingsTabFromMatches = (matches: ReturnType<typeof useMatches>) => {
+  for (const match of [...matches].reverse()) {
+    const handle = match.handle as SettingsRouteHandle | undefined;
+    if (handle?.settingsTab) return handle.settingsTab;
+  }
+};
+
 const Header = memo(() => {
   const { t } = useTranslation(['setting', 'auth', 'labs', 'subscription']);
   const showMobileWorkspace = useShowMobileWorkspace();
   const navigate = useWorkspaceAwareNavigate();
   const params = useParams<{ providerId?: string; tab?: string }>();
+  const matches = useMatches();
   const workspaceSettingsMatch = useMatch('/:workspaceSlug/settings/:workspaceTab/*');
 
   const isSessionActive = useSessionStore((s) => !!s.activeId);
   const isProvider = params.providerId && params.providerId !== 'all';
 
   const handleBackClick = () => {
-    if (isSessionActive && showMobileWorkspace) {
+    const workspaceSlug = workspaceSettingsMatch?.params.workspaceSlug;
+    if (workspaceSlug) {
+      navigate(`/${workspaceSlug}`, { escape: true });
+    } else if (isSessionActive && showMobileWorkspace) {
       navigate('/agent');
     } else if (isProvider) {
       navigate('/settings/provider/all', { escape: true });
@@ -56,7 +77,8 @@ const Header = memo(() => {
   };
 
   const workspaceTab = workspaceSettingsMatch?.params.workspaceTab;
-  const tab = (params.tab ?? workspaceTab) as SettingsTabs | undefined;
+  const tab = (params.tab ?? workspaceTab ?? getSettingsTabFromMatches(matches)) as
+    SettingsTabs | undefined;
   const tabTitleKey = tab
     ? (WORKSPACE_TAB_TITLE_KEY[workspaceTab ?? ''] ?? TAB_TITLE_KEY[tab] ?? `setting:tab.${tab}`)
     : 'setting:tab.all';
@@ -67,7 +89,6 @@ const Header = memo(() => {
 
   return (
     <ChatHeader
-      showBackButton
       style={mobileHeaderSticky}
       center={
         <ChatHeader.Title
@@ -78,7 +99,15 @@ const Header = memo(() => {
           }
         />
       }
-      onBackClick={handleBackClick}
+      left={
+        <ActionIcon
+          aria-label={t('back', { ns: 'common' })}
+          icon={ChevronLeft}
+          size={MOBILE_HEADER_ICON_SIZE}
+          title={t('back', { ns: 'common' })}
+          onClick={handleBackClick}
+        />
+      }
     />
   );
 });

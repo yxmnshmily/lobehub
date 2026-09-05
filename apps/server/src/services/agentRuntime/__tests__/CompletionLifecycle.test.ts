@@ -9,6 +9,7 @@ import * as verifyServices from '@/server/services/verify';
 import { registerWorksForOperation } from '@/server/services/workRegistration';
 
 import {
+  buildHostedGroupMemberFinalMarker,
   CompletionLifecycle,
   CriticalAgentInterventionPersistenceError,
   isSuccessLikeCompletionReason,
@@ -50,6 +51,145 @@ vi.mock('@/server/services/workRegistration', () => ({
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const buildLifecycle = () => new CompletionLifecycle({} as any, 'user-1');
+
+describe('buildHostedGroupMemberFinalMarker', () => {
+  const hostedState = {
+    messages: [
+      { content: '用户请求', id: 'message-user', role: 'user' },
+      { content: '工具过程', id: 'message-tool', role: 'tool' },
+      { content: '最终西藏旅游文案', id: 'message-final', role: 'assistant' },
+    ],
+    metadata: {
+      billingActorUserId: 'invited-member',
+      groupId: 'private-travel-group',
+      hostedGroupRun: {
+        actorUserIdSnapshot: 'invited-member',
+        expiresAt: '2099-09-04T00:00:00.000Z',
+        groupId: 'private-travel-group',
+        handleHash: 'a'.repeat(64),
+        membershipVersion: 4,
+        ownerUserIdSnapshot: 'group-owner',
+        version: 1,
+      },
+      orchestrationRole: 'supervisor',
+      resourceOwnerUserId: 'group-owner',
+    },
+    status: 'done',
+  };
+
+  it('binds only the exact final assistant message of a successful hosted supervisor run', () => {
+    expect(buildHostedGroupMemberFinalMarker('operation-1', hostedState, 'done')).toEqual({
+      actorUserIdSnapshot: 'invited-member',
+      assistantMessageId: 'message-final',
+      contentHash: '82d86b15f474d891e6687517585f5e9f61100761d4376645829329c8b00a1102',
+      groupId: 'private-travel-group',
+      membershipVersion: 4,
+      operationId: 'operation-1',
+      ownerUserIdSnapshot: 'group-owner',
+      publishedAt: expect.any(String),
+      version: 1,
+    });
+  });
+
+  it('hashes the trimmed UTF-8 final assistant text', () => {
+    const state = {
+      ...hostedState,
+      messages: [
+        {
+          content: '  最终西藏旅游文案\n',
+          id: 'message-final',
+          role: 'assistant',
+        },
+      ],
+    };
+
+    expect(buildHostedGroupMemberFinalMarker('operation-1', state, 'done')).toMatchObject({
+      contentHash: '82d86b15f474d891e6687517585f5e9f61100761d4376645829329c8b00a1102',
+    });
+  });
+
+  it('persists the hosted final marker with the terminal operation update', async () => {
+    const lifecycle = buildLifecycle();
+    const recordCompletion = vi.fn().mockResolvedValue(true);
+    (lifecycle as any).agentOperationModel = {
+      recordCompletion,
+      sumChildUsage: vi.fn().mockResolvedValue({
+        llmCalls: 0,
+        toolCalls: 0,
+        totalCost: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalTokens: 0,
+      }),
+    };
+
+    await (lifecycle as any).persistCompletion('operation-1', hostedState, 'done');
+
+    expect(recordCompletion).toHaveBeenCalledWith(
+      'operation-1',
+      expect.objectContaining({
+        hostedGroupMemberFinal: expect.objectContaining({
+          assistantMessageId: 'message-final',
+          contentHash: '82d86b15f474d891e6687517585f5e9f61100761d4376645829329c8b00a1102',
+          operationId: 'operation-1',
+        }),
+      }),
+    );
+  });
+
+  it('propagates hosted terminal persistence failures so the queue can retry the marker', async () => {
+    const lifecycle = buildLifecycle();
+    (lifecycle as any).agentOperationModel = {
+      recordCompletion: vi.fn().mockRejectedValue(new Error('database unavailable')),
+      sumChildUsage: vi.fn().mockResolvedValue({
+        llmCalls: 0,
+        toolCalls: 0,
+        totalCost: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalTokens: 0,
+      }),
+    };
+
+    await expect(
+      (lifecycle as any).persistCompletion('operation-1', hostedState, 'done'),
+    ).rejects.toThrow('database unavailable');
+  });
+
+  it.each([
+    ['failed run', { ...hostedState, status: 'error' }, 'error'],
+    ['interrupted run', { ...hostedState, status: 'interrupted' }, 'interrupted'],
+    [
+      'member child run',
+      {
+        ...hostedState,
+        metadata: { ...hostedState.metadata, orchestrationRole: 'member' },
+      },
+      'done',
+    ],
+    [
+      'tool message after an intermediate assistant',
+      {
+        ...hostedState,
+        messages: [
+          { content: '中间回答', id: 'message-intermediate', role: 'assistant' },
+          { content: '工具结果', id: 'message-tool-last', role: 'tool' },
+        ],
+      },
+      'done',
+    ],
+    [
+      'mismatched server principal',
+      {
+        ...hostedState,
+        metadata: { ...hostedState.metadata, billingActorUserId: 'attacker' },
+      },
+      'done',
+    ],
+  ])('does not mark a %s', (_name, state, reason) => {
+    expect(buildHostedGroupMemberFinalMarker('operation-1', state, reason)).toBeUndefined();
+  });
+});
 
 describe('isSuccessLikeCompletionReason', () => {
   // Regression: file-Work registration was gated on `reason === 'done'` alone,

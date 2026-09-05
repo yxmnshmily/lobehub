@@ -9,10 +9,8 @@ import {
   Coins,
   CreditCard,
   Database,
-  HandCoins,
   KeyIcon,
   KeyRound,
-  Map,
   MonitorSmartphoneIcon,
   ScrollText,
   Sparkles,
@@ -50,7 +48,6 @@ export interface WorkspaceSettingCategoryGroup {
 export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] => {
   const { t } = useTranslation('setting');
   const { t: tAuth } = useTranslation('auth');
-  const { t: tSubscription } = useTranslation('subscription');
   const { allowed: canManageWorkspace } = usePermission('manage_settings');
   const { allowed: canViewBilling } = usePermission('view_billing');
   // API keys act as the member who issued them, so the tab follows the same
@@ -96,15 +93,10 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
         },
         {
           items: [
-            {
-              icon: Map,
-              key: WorkspaceSettingsTabs.Plans,
-              label: tSubscription('tab.plans'),
-            },
-            {
+            canViewBilling && {
               icon: ChartColumnBigIcon,
               key: WorkspaceSettingsTabs.Usage,
-              label: t('tab.usage'),
+              label: '用量与异常',
             },
             // Credits / Billing are readable by Admin-or-higher; the pages
             // themselves keep the money-moving controls (top-up, payment
@@ -112,23 +104,16 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
             canViewBilling && {
               icon: Coins,
               key: WorkspaceSettingsTabs.Credits,
-              label: tSubscription('tab.credits'),
-            },
-            // Spend governance (budget pools + member caps) — admin task,
-            // same visibility gate as the other money pages.
-            canViewBilling && {
-              icon: HandCoins,
-              key: WorkspaceSettingsTabs.Budget,
-              label: tSubscription('tab.budget'),
+              label: '用户与服务余额',
             },
             canViewBilling && {
               icon: CreditCard,
               key: WorkspaceSettingsTabs.Billing,
-              label: tSubscription('tab.billing'),
+              label: '订单与账本运营',
             },
           ].filter(Boolean) as WorkspaceSettingCategoryItem[],
           key: WorkspaceSettingsGroupKey.Subscription,
-          title: t('group.subscription'),
+          title: '旅行服务费',
         },
         {
           items: [
@@ -211,14 +196,6 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
           title: t('workspaceSetting.group.admin'),
         },
       ].filter(Boolean) as WorkspaceSettingCategoryGroup[],
-    [
-      t,
-      tAuth,
-      tSubscription,
-      enableOAuthApps,
-      canManageWorkspace,
-      canViewBilling,
-      canCreateContent,
-    ],
+    [t, tAuth, enableOAuthApps, canManageWorkspace, canViewBilling, canCreateContent],
   );
 };

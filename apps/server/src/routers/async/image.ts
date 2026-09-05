@@ -22,13 +22,15 @@ import { GenerationBatchModel } from '@/database/models/generationBatch';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { GenerationService } from '@/server/services/generation';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
+import { PlatformUsageReservationService } from '@/server/services/platformUsageBilling/reservation';
+import { buildPlatformImageSettlementIdentity } from '@/server/services/travelGeneration/platformImageSettlementIdentity';
+import { recoverPlatformImageReservation } from '@/server/services/travelGeneration/settlement';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
 
 import { categorizeImageGenerationError } from './imageError';
 
 const log = debug('lobe-image:async');
-
-const IMAGE_URL_PREVIEW_LENGTH = 100;
 
 const imageProcedure = asyncAuthedProcedure.use(async (opts) => {
   const { ctx } = opts;
@@ -74,6 +76,32 @@ const checkAbortSignal = (signal: AbortSignal) => {
   }
 };
 
+type PlatformImageUsageReservationHandle = {
+  budgetId: string;
+  leaseVersion: number;
+  reservationId: string;
+};
+
+const readPlatformImageUsageReservationHandle = (
+  value: unknown,
+): PlatformImageUsageReservationHandle => {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Platform image usage reservation is unavailable.');
+  }
+  const handle = value as Record<string, unknown>;
+  if (
+    typeof handle.budgetId !== 'string' ||
+    !handle.budgetId ||
+    !Number.isSafeInteger(handle.leaseVersion) ||
+    (handle.leaseVersion as number) <= 0 ||
+    typeof handle.reservationId !== 'string' ||
+    !handle.reservationId
+  ) {
+    throw new Error('Platform image usage reservation is invalid.');
+  }
+  return handle as PlatformImageUsageReservationHandle;
+};
+
 export const imageRouter = router({
   createImage: imageProcedure
     .use(createImageBusinessMiddleware)
@@ -94,24 +122,10 @@ export const imageRouter = router({
       const generationModel = new GenerationModel(ctx.serverDB, ctx.userId, workspaceId);
       const generationService = new GenerationService(ctx.serverDB, ctx.userId, workspaceId);
 
-      log('Starting async image generation: %O', {
-        generationId,
-        imageParams: {
-          cfg: params.cfg,
-          height: params.height,
-          steps: params.steps,
-          width: params.width,
-        },
-        model,
-        prompt: params.prompt,
-        provider,
-        taskId,
-      });
-
       // Check if generationBatch exists before processing
       const generationBatch = await generationBatchModel.findById(generationBatchId);
       if (!generationBatch) {
-        log('Generation batch not found: %s, skipping image generation', generationBatchId);
+        log('Image generation batch unavailable');
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Invalid Request!' });
       }
 
@@ -123,10 +137,54 @@ export const imageRouter = router({
       // undefined even though it defaults to the raw model id.
       let requestedModelId: string | undefined = model;
       let resolvedModelId = model;
+      let platformManagedExecution = false;
       let prechargeResult: unknown;
+      let platformReservationHandle: PlatformImageUsageReservationHandle | undefined;
+      let platformReservationOwned = false;
+      let platformProviderClaimAttempted = false;
 
-      log('Updating task status to Processing: %s', taskId);
-      await asyncTaskModel.update(taskId, { status: AsyncTaskStatus.Processing });
+      log('Claiming pending image task');
+      const claimed = await asyncTaskModel.transitionStatus(
+        taskId,
+        [AsyncTaskStatus.Pending],
+        AsyncTaskStatus.Processing,
+      );
+      if (!claimed) {
+        const existingTask = await asyncTaskModel.findById(taskId);
+        if (!existingTask) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Invalid Request!' });
+        }
+        const metadata = existingTask.metadata as
+          { platformAiRuntime?: unknown; platformUsageReservation?: unknown } | undefined;
+        if (ctx.modelRuntimeMode === 'platform-managed' && metadata?.platformAiRuntime === true) {
+          const reservations = new PlatformUsageReservationService(ctx.serverDB, ctx.userId);
+          const recovery = await recoverPlatformImageReservation({
+            allowReleaseReserved: existingTask.status === AsyncTaskStatus.Error,
+            identity: { generationId, provider, workspaceId },
+            metadata,
+            runtime: {
+              findPlatformImageReservation: (id) => reservations.getReservation(id),
+              releasePlatformImageReservation: async (reservation) =>
+                (await reservations.releaseUnclaimed(reservation)).reservation,
+              settlePlatformImageReservation: async (reservation) =>
+                (
+                  await reservations.completeAndSettle({
+                    ...reservation,
+                    completeRequest: true,
+                  })
+                ).reservation,
+            },
+          });
+          if (recovery.state === 'settled') {
+            const generation = await generationModel.findByIdAndTransform(generationId);
+            if (generation?.asset?.type === 'image' && generation.asset.url) {
+              await asyncTaskModel.update(taskId, { status: AsyncTaskStatus.Success });
+            }
+          }
+        }
+        log('Image task already claimed: %s', existingTask.status);
+        return { success: true };
+      }
 
       // Use AbortController to prevent resource leaks
       const abortController = new AbortController();
@@ -142,7 +200,60 @@ export const imageRouter = router({
         // billing. Loaded before the model mapping so the handle is available
         // for reconciliation even when mapping resolution throws.
         const asyncTask = await asyncTaskModel.findById(taskId);
-        prechargeResult = (asyncTask?.metadata as { precharge?: unknown } | undefined)?.precharge;
+        const taskMetadata = asyncTask?.metadata as
+          | {
+              platformAiRuntime?: unknown;
+              platformUsageReservation?: unknown;
+              precharge?: unknown;
+            }
+          | undefined;
+        prechargeResult = taskMetadata?.precharge;
+        const requestedPlatformManagedExecution =
+          ctx.modelRuntimeMode === 'platform-managed' && taskMetadata?.platformAiRuntime === true;
+        platformManagedExecution = requestedPlatformManagedExecution;
+
+        const platformUsageReservationService = platformManagedExecution
+          ? new PlatformUsageReservationService(ctx.serverDB, ctx.userId)
+          : undefined;
+        if (platformUsageReservationService) {
+          platformReservationHandle = readPlatformImageUsageReservationHandle(
+            taskMetadata?.platformUsageReservation,
+          );
+          const reservation = await platformUsageReservationService.getReservation(
+            platformReservationHandle.reservationId,
+          );
+          const settlementIdentity = buildPlatformImageSettlementIdentity(generationId);
+          if (
+            !reservation ||
+            reservation.id !== platformReservationHandle.reservationId ||
+            reservation.budgetId !== platformReservationHandle.budgetId ||
+            reservation.leaseVersion !== platformReservationHandle.leaseVersion ||
+            reservation.generationId !== settlementIdentity.generationId ||
+            reservation.generationType !== settlementIdentity.generationType ||
+            reservation.callKind !== 'image' ||
+            reservation.provider !== provider ||
+            (reservation.workspaceId ?? null) !== (workspaceId ?? null) ||
+            reservation.status !== 'reserved'
+          ) {
+            throw new Error('Platform image usage reservation does not match this task.');
+          }
+          platformReservationOwned = true;
+        }
+        if (requestedPlatformManagedExecution && prechargeResult !== undefined) {
+          // A business precharge plus the platform Credits ledger would create
+          // two billing authorities for one image. The platform reservation is
+          // validated first so the error path can safely release it without
+          // ever invoking legacy completion billing.
+          throw new Error('Platform-managed image billing cannot reuse a business precharge.');
+        }
+
+        log('Starting async image generation: %O', {
+          imageParams: {
+            height: params.height,
+            steps: params.steps,
+            width: params.width,
+          },
+        });
 
         // Resolve model mapping up front so both the success and error billing
         // paths can reference the resolved model id.
@@ -151,19 +262,42 @@ export const imageRouter = router({
           model,
         ));
 
+        if (platformUsageReservationService && platformReservationHandle) {
+          const reservation = await platformUsageReservationService.getReservation(
+            platformReservationHandle.reservationId,
+          );
+          if (!reservation || reservation.model !== resolvedModelId) {
+            throw new Error('Platform image usage reservation does not match the resolved model.');
+          }
+        }
+
         const imageGenerationPromise = async (signal: AbortSignal) => {
-          log('Initializing agent runtime for provider: %s', provider);
+          log('Initializing image model runtime');
 
           // Read user's provider config from database
-          const modelRuntime = await initModelRuntimeFromDB(
-            ctx.serverDB,
-            ctx.userId,
-            provider,
-            workspaceId,
-          );
+          const modelRuntime = platformManagedExecution
+            ? await new PlatformAiRuntime(ctx.serverDB).init({
+                actorUserId: ctx.userId,
+                provider,
+                workspaceId,
+              })
+            : await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider, workspaceId);
 
           // Check if operation has been cancelled
           checkAbortSignal(signal);
+          let settlementLeaseVersion = platformReservationHandle?.leaseVersion;
+          if (platformUsageReservationService && platformReservationHandle) {
+            platformProviderClaimAttempted = true;
+            const claim = await platformUsageReservationService.claim({
+              leaseVersion: platformReservationHandle.leaseVersion,
+              reservationId: platformReservationHandle.reservationId,
+            });
+            if (!claim.shouldCallProvider) {
+              log('Platform image provider call already claimed');
+              return { success: true };
+            }
+            settlementLeaseVersion = claim.reservation.leaseVersion;
+          }
           log('Agent runtime initialized, calling createImage');
           const runtimeOptions: CreateImageMethodOptions = {
             metadata: {
@@ -186,23 +320,40 @@ export const imageRouter = router({
             throw new Error('Create image response is empty');
           }
 
-          log('Create image response: %O', {
-            ...response,
-            imageUrl: response.imageUrl?.startsWith('data:')
-              ? response.imageUrl.slice(0, IMAGE_URL_PREVIEW_LENGTH) + '...'
-              : response.imageUrl,
+          log('Create image response received: %O', {
+            hasActualUsage: Boolean(response.modelUsage),
+            height: response.height,
+            width: response.width,
           });
 
           const { modelUsage } = response;
+
+          if (
+            platformUsageReservationService &&
+            platformReservationHandle &&
+            settlementLeaseVersion
+          ) {
+            const settlementInput = {
+              completeRequest: true,
+              leaseVersion: settlementLeaseVersion,
+              reservationId: platformReservationHandle.reservationId,
+              ...(modelUsage === undefined ? {} : { usage: modelUsage }),
+            } as const;
+            try {
+              await platformUsageReservationService.completeAndSettle(settlementInput);
+            } catch {
+              // The settlement primitives are idempotent. One bounded replay
+              // recovers an interrupted ledger write without calling the image
+              // provider a second time.
+              await platformUsageReservationService.completeAndSettle(settlementInput);
+            }
+          }
 
           // Check if operation has been cancelled
           checkAbortSignal(signal);
 
           log('Image generation successful: %O', {
             height: response.height,
-            imageUrl: response.imageUrl.startsWith('data:')
-              ? response.imageUrl.slice(0, IMAGE_URL_PREVIEW_LENGTH) + '...'
-              : response.imageUrl,
             width: response.width,
           });
 
@@ -215,11 +366,6 @@ export const imageRouter = router({
             // Use the public interface method to get auth headers
             // This avoids accessing private members and exposing credentials
             authHeaders = modelRuntime.getAuthHeaders();
-            if (authHeaders) {
-              log('Using authentication headers for ComfyUI image download');
-            } else {
-              log('No authentication configured for ComfyUI');
-            }
           }
 
           const { image, thumbnailImage } = await generationService.transformImageForGeneration(
@@ -242,8 +388,12 @@ export const imageRouter = router({
             generationId,
             {
               height: height ?? image.height,
-              // If imageUrl is base64 data, use uploadedImageUrl instead to avoid storing large base64 in DB
-              originalUrl: imageUrl.startsWith('data:') ? uploadedImageUrl : imageUrl,
+              // Platform-managed provider URLs can contain short-lived signatures or credentials.
+              // Persist only the controlled uploaded locator for those executions.
+              originalUrl:
+                platformManagedExecution || imageUrl.startsWith('data:')
+                  ? uploadedImageUrl
+                  : imageUrl,
               thumbnailUrl: thumbnailImageUrl,
               type: 'image',
               url: uploadedImageUrl,
@@ -266,7 +416,7 @@ export const imageRouter = router({
 
           const duration = Date.now() - generationBatch.createdAt.getTime();
 
-          log('Updating task status to Success: %s, duration: %dms', taskId, duration);
+          log('Updating image task status to success');
           await asyncTaskModel.update(taskId, {
             duration,
             status: AsyncTaskStatus.Success,
@@ -282,11 +432,11 @@ export const imageRouter = router({
               userId: ctx.userId,
               workspaceId,
             });
-          } catch (err) {
-            console.error('[image-async] notification failed:', err);
+          } catch {
+            console.error('[image-async] notification failed');
           }
 
-          if (ENABLE_BUSINESS_FEATURES) {
+          if (ENABLE_BUSINESS_FEATURES && !platformManagedExecution) {
             // Contain success-billing errors: the image is already delivered and
             // the task marked Success, so a billing failure here must not fall
             // into the outer catch and be reconciled as a generation failure.
@@ -310,18 +460,18 @@ export const imageRouter = router({
                 userId: ctx.userId,
                 workspaceId,
               });
-            } catch (chargeError) {
-              console.error('[image-async] success billing failed:', chargeError);
+            } catch {
+              console.error('[image-async] success billing failed');
             }
           }
 
-          log('Async image generation completed successfully: %s', taskId);
+          log('Async image generation completed successfully');
           return { success: true };
         };
 
         // Set timeout to cancel operation and prevent resource leaks
         timeoutId = setTimeout(() => {
-          log('Image generation timeout, aborting operation: %s', taskId);
+          log('Image generation timeout, aborting operation');
           abortController.abort();
         }, ASYNC_TASK_TIMEOUT);
 
@@ -340,12 +490,6 @@ export const imageRouter = router({
           clearTimeout(timeoutId);
         }
 
-        log('Async image generation failed: %O', {
-          error: error.message || error,
-          generationId,
-          taskId,
-        });
-
         // Improved error categorization logic
         const providerContentPolicyMessage = await getProviderContentPolicyErrorMessage({
           error,
@@ -360,16 +504,35 @@ export const imageRouter = router({
           providerContentPolicyMessage,
         });
 
+        log('Async image generation failed: %s', errorType);
+
         await asyncTaskModel.update(taskId, {
           error: new AsyncTaskError(errorType, errorMessage),
           status: AsyncTaskStatus.Error,
         });
 
-        log('Task status updated to Error: %s, errorType: %s', taskId, errorType);
+        log('Image task status updated to error: %s', errorType);
+
+        if (
+          platformManagedExecution &&
+          platformReservationOwned &&
+          !platformProviderClaimAttempted &&
+          platformReservationHandle
+        ) {
+          try {
+            await new PlatformUsageReservationService(ctx.serverDB, ctx.userId).releaseUnclaimed({
+              completeRequest: true,
+              leaseVersion: platformReservationHandle.leaseVersion,
+              reservationId: platformReservationHandle.reservationId,
+            });
+          } catch {
+            console.error('[image-async] failed to release unclaimed platform reservation');
+          }
+        }
 
         // Reconcile the pre-submission billing on failure. Wrapped so a billing
         // error never masks the original failure report.
-        if (ENABLE_BUSINESS_FEATURES) {
+        if (ENABLE_BUSINESS_FEATURES && !platformManagedExecution) {
           try {
             await chargeAfterGenerate({
               isError: true,
@@ -388,8 +551,8 @@ export const imageRouter = router({
               userId: ctx.userId,
               workspaceId,
             });
-          } catch (chargeError) {
-            console.error('[image-async] Failed to reconcile billing on error:', chargeError);
+          } catch {
+            console.error('[image-async] failed to reconcile billing on error');
           }
         }
 

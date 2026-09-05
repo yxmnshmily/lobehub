@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,12 +31,14 @@ vi.mock('@lobehub/ui/base-ui', () => ({
     children,
     disabled,
     loading,
+    onClick,
   }: {
     children?: ReactNode;
     disabled?: boolean;
     loading?: boolean;
+    onClick?: () => void;
   }) => (
-    <button aria-busy={loading || undefined} disabled={disabled} type="button">
+    <button aria-busy={loading || undefined} disabled={disabled} type="button" onClick={onClick}>
       {children}
     </button>
   ),
@@ -109,6 +111,37 @@ describe('ErrorContent dismiss behavior', () => {
     const button = screen.getByRole('button', { name: /regenerate/i });
 
     expect(button).not.toBeDisabled();
+    expect(button).not.toHaveAttribute('aria-busy');
+  });
+
+  it('keeps a nested group-step retry pending until its async handler settles', async () => {
+    let finishRetry: (() => void) | undefined;
+    const onRegenerate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRetry = resolve;
+        }),
+    );
+    render(
+      <ErrorContent
+        error={{ message: 'boom' } as any}
+        id="group-child-block"
+        onRegenerate={onRegenerate}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: /regenerate/i });
+    fireEvent.click(button);
+
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+
+    fireEvent.click(button);
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+
+    finishRetry?.();
+    await waitFor(() => expect(button).not.toBeDisabled());
     expect(button).not.toHaveAttribute('aria-busy');
   });
 });

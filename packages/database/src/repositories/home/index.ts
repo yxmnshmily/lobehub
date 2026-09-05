@@ -1,4 +1,5 @@
 import {
+  resolveAgentGroupManagementPolicy,
   type SidebarAgentItem,
   type SidebarAgentLabel,
   type SidebarAgentListResponse,
@@ -115,6 +116,7 @@ export class HomeRepository {
       .select({
         avatar: chatGroups.avatar,
         backgroundColor: chatGroups.backgroundColor,
+        clientId: chatGroups.clientId,
         description: chatGroups.description,
         groupId: chatGroups.groupId,
         groupUserId: chatGroups.userId,
@@ -378,6 +380,7 @@ export class HomeRepository {
           groupId: g.groupId,
           id: g.id,
           isPrivate: visibility === 'private',
+          managementPolicy: resolveAgentGroupManagementPolicy(g.clientId),
           pinned: g.pinned ?? false,
           sessionId: null,
           title: g.title,

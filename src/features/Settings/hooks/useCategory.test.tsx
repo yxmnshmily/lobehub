@@ -9,6 +9,21 @@ import { useUserStore } from '@/store/user';
 
 import { SettingsGroupKey, useCategory } from './useCategory';
 
+const platformAccess = vi.hoisted(() => ({ isLoading: false, isPlatformAdmin: false }));
+
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: {
+    platformAccess: {
+      isPlatformAdmin: {
+        useQuery: () => ({
+          data: platformAccess.isPlatformAdmin,
+          isLoading: platformAccess.isLoading,
+        }),
+      },
+    },
+  },
+}));
+
 vi.hoisted(() => {
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -37,6 +52,7 @@ const createWrapper = (showProvider: boolean) => {
             }),
             showProvider,
           },
+          serverConfig: { aiProvider: {}, enableBusinessFeatures: true, telemetry: {} },
         })
       }
     >
@@ -59,43 +75,105 @@ const initialUserStoreState = useUserStore.getState();
 
 afterEach(() => {
   cleanup();
+  platformAccess.isLoading = false;
+  platformAccess.isPlatformAdmin = false;
   useUserStore.setState(initialUserStoreState, true);
 });
 
 describe('settings useCategory', () => {
-  it('keeps Provider visible when provider settings are enabled', () => {
-    expect(getItemKeys()).toContain(SettingsTabs.Provider);
-  });
-
-  it('hides Provider when provider settings are disabled', () => {
-    const { result } = renderHook(() => useCategory(), {
-      wrapper: createWrapper(false),
-    });
-
-    const keys = result.current.flatMap((group) => group.items.map((item) => item.key));
-
-    expect(keys).not.toContain(SettingsTabs.Provider);
-  });
-
-  it('hides OAuth Apps by default', () => {
-    expect(getItemKeys()).not.toContain(SettingsTabs.OAuthApps);
-  });
-
-  it('shows OAuth Apps when the Labs preference is enabled', () => {
+  it('limits the customer center to account, security, service ledger, records, and works', () => {
     useUserStore.setState({
-      preference: {
-        ...initialUserStoreState.preference,
-        lab: { ...initialUserStoreState.preference.lab, enableOAuthApps: true },
-      },
+      isSignedIn: true,
+      user: { avatar: '/avatar.png', fullName: '桂林旅行者', id: 'customer-1' } as any,
     });
-
     const { result } = renderHook(() => useCategory(), {
       wrapper: createWrapper(true),
     });
-    const developerGroup = result.current.find((group) => group.key === SettingsGroupKey.Developer);
-    const systemGroup = result.current.find((group) => group.key === SettingsGroupKey.System);
 
-    expect(developerGroup?.items.map((item) => item.key)).toContain(SettingsTabs.OAuthApps);
-    expect(systemGroup?.items.map((item) => item.key)).not.toContain(SettingsTabs.OAuthApps);
+    const itemKeys = result.current.flatMap((group) => group.items.map((item) => item.key));
+
+    expect(itemKeys).toEqual([
+      SettingsTabs.Profile,
+      SettingsTabs.Security,
+      SettingsTabs.Credits,
+      SettingsTabs.Billing,
+      SettingsTabs.Usage,
+      SettingsTabs.Works,
+    ]);
+    expect(result.current.flatMap((group) => group.items.map((item) => item.href))).toEqual(
+      expect.arrayContaining([
+        '/settings/credits?section=balance-usage',
+        '/settings/credits?section=my-creations',
+      ]),
+    );
+    expect(result.current.flatMap((group) => group.items.map((item) => item.href))).not.toContain(
+      '/settings/credits?section=private-group',
+    );
+    expect(result.current[0].items[0].label).toBe('桂林旅行者');
+    expect(result.current[1].items.map((item) => item.label)).toEqual([
+      'Credits 余额',
+      'Credits 明细与服务订单',
+      'Token 用量',
+      '本人生成记录',
+    ]);
+  });
+
+  it('does not expose provider, plans, referrals, or developer settings', () => {
+    expect(getItemKeys()).not.toEqual(
+      expect.arrayContaining([
+        SettingsTabs.Provider,
+        SettingsTabs.ServiceModel,
+        SettingsTabs.Skill,
+        SettingsTabs.Plans,
+        SettingsTabs.Referral,
+        SettingsTabs.APIKey,
+        SettingsTabs.OAuthApps,
+        SettingsTabs.Storage,
+        SettingsTabs.Labs,
+        SettingsTabs.ServiceOperations,
+      ]),
+    );
+  });
+
+  it('restores the complete platform settings navigation for a super_admin', () => {
+    platformAccess.isPlatformAdmin = true;
+    const { result } = renderHook(() => useCategory(), { wrapper: createWrapper(true) });
+    const items = result.current.flatMap((group) => group.items);
+    const itemKeys = items.map((item) => item.key);
+
+    expect(result.current.map((group) => group.key)).toEqual([
+      SettingsGroupKey.General,
+      SettingsGroupKey.Subscription,
+      SettingsGroupKey.Agent,
+      SettingsGroupKey.System,
+      SettingsGroupKey.Developer,
+      SettingsGroupKey.Operations,
+    ]);
+
+    expect(itemKeys).toEqual(
+      expect.arrayContaining([
+        SettingsTabs.Appearance,
+        SettingsTabs.Devices,
+        SettingsTabs.Provider,
+        SettingsTabs.ServiceModel,
+        SettingsTabs.Skill,
+        SettingsTabs.Creds,
+        SettingsTabs.Storage,
+        SettingsTabs.Advanced,
+        SettingsTabs.ServiceOperations,
+      ]),
+    );
+    expect(items.find((item) => item.key === SettingsTabs.ServiceOperations)).toMatchObject({
+      href: '/settings/service-operations',
+      label: '服务运营 / 客户账户',
+    });
+  });
+
+  it('does not flash platform navigation while the role is loading', () => {
+    platformAccess.isLoading = true;
+    platformAccess.isPlatformAdmin = true;
+
+    expect(getItemKeys()).not.toContain(SettingsTabs.Provider);
+    expect(getItemKeys()).not.toContain(SettingsTabs.ServiceOperations);
   });
 });

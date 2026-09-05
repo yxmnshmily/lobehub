@@ -1,7 +1,7 @@
 import { Skeleton } from '@lobehub/ui';
 import { Alert, Button } from '@lobehub/ui/base-ui';
 import { RotateCcw } from 'lucide-react';
-import { memo, Suspense } from 'react';
+import { memo, Suspense, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -16,7 +16,7 @@ export interface ErrorContentProps {
   customErrorRender?: ChatItemProps['customErrorRender'];
   error: ChatItemProps['error'];
   id?: string;
-  onRegenerate?: () => void;
+  onRegenerate?: () => Promise<void> | void;
 }
 
 const ErrorContent = memo<ErrorContentProps>(({ customErrorRender, error, id, onRegenerate }) => {
@@ -31,9 +31,24 @@ const ErrorContent = memo<ErrorContentProps>(({ customErrorRender, error, id, on
   // The retry can take a while to produce anything visible (branch switch plus a
   // transport round trip), so the button has to own its own pending state —
   // otherwise a click reads as "nothing happened" and invites a second one.
-  const retrying = useConversationStore((s) =>
+  const operationRetrying = useConversationStore((s) =>
     id ? messageStateSelectors.isMessageRegenerating(id)(s) : false,
   );
+  const [retryPending, setRetryPending] = useState(false);
+  const retryPendingRef = useRef(false);
+  const retrying = operationRetrying || retryPending;
+  const handleRegenerate = useCallback(async () => {
+    if (!onRegenerate || operationRetrying || retryPendingRef.current) return;
+
+    retryPendingRef.current = true;
+    setRetryPending(true);
+    try {
+      await onRegenerate();
+    } finally {
+      retryPendingRef.current = false;
+      setRetryPending(false);
+    }
+  }, [onRegenerate, operationRetrying]);
 
   if (!error) return;
 
@@ -58,7 +73,7 @@ const ErrorContent = memo<ErrorContentProps>(({ customErrorRender, error, id, on
             loading={retrying}
             size="small"
             type="fill"
-            onClick={onRegenerate}
+            onClick={handleRegenerate}
           >
             {t('regenerate')}
           </Button>

@@ -2,7 +2,7 @@ import { type IconProps } from '@lobehub/ui';
 import { Flexbox, Icon } from '@lobehub/ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { ChevronRight } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { type KeyboardEventHandler, type ReactNode } from 'react';
 import { memo } from 'react';
 
 import Divider from './Divider';
@@ -30,6 +30,15 @@ export interface CellProps {
 const Cell = memo<CellProps>(({ label, icon, onClick, type }) => {
   if (type === 'divider') return <Divider />;
 
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> | undefined = onClick
+    ? (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        event.preventDefault();
+        onClick();
+      }
+    : undefined;
+
   return (
     <Flexbox
       horizontal
@@ -38,7 +47,10 @@ const Cell = memo<CellProps>(({ label, icon, onClick, type }) => {
       gap={12}
       justify={'space-between'}
       padding={16}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
     >
       <Flexbox horizontal align={'center'} gap={12}>
         {icon && <Icon color={cssVar.colorPrimaryBorder} icon={icon} size={{ size: 20 }} />}

@@ -10,6 +10,7 @@ import { mutate, useClientDataSWR } from '@/libs/swr';
 import { projectService } from '@/services/project';
 import { createDevtools } from '@/store/middleware/createDevtools';
 import { expose } from '@/store/middleware/expose';
+import type { ResetableStore } from '@/store/utils/resetableStore';
 
 type ProjectListResponse = Awaited<ReturnType<typeof projectService.listAll>>;
 type ProjectDetailResponse = Awaited<ReturnType<typeof projectService.detail>>;
@@ -21,7 +22,7 @@ const detailKey = (id: string) => ['project/detail', id] as const;
 const PERSONAL_SCOPE = 'personal';
 const projectScopeKey = (workspaceId: string | null) => workspaceId ?? PERSONAL_SCOPE;
 
-interface ProjectStore {
+interface ProjectStore extends ResetableStore {
   createProject: (input: {
     identifier: string;
     name: string;
@@ -52,6 +53,7 @@ export const useProjectStore = createWithEqualityFn<ProjectStore>()(
     projectDetails: {},
     projectLists: {},
     refreshProjectList: async () => mutate(LIST_KEY),
+    reset: () => set({ projectDetails: {}, projectLists: {} }, false, 'resetProjectStore'),
     updateProject: async (id, input) => {
       const response = await projectService.update(id, input);
       const project = response.data;

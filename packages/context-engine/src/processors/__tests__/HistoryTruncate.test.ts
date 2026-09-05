@@ -210,7 +210,13 @@ describe('HistoryTruncateProcessor', () => {
       it('should count Compare group as a single unit', () => {
         const messagesWithCompare = [
           { id: '1', content: 'User message', role: 'user' },
-          { content: 'Compare message', id: '2', metadata: { compare: true }, parentId: '1', role: 'user' },
+          {
+            content: 'Compare message',
+            id: '2',
+            metadata: { compare: true },
+            parentId: '1',
+            role: 'user',
+          },
           { content: 'Column 1', id: '3', parentId: '2', role: 'assistant' },
           { content: 'Column 2', id: '4', parentId: '2', role: 'assistant' },
         ];
@@ -239,7 +245,13 @@ describe('HistoryTruncateProcessor', () => {
             tools: [{ id: '5' }],
           },
           { id: '5', parentId: '4', role: 'tool' },
-          { agentId: 'agent-1', content: 'Final assistant', id: '6', parentId: '5', role: 'assistant' },
+          {
+            agentId: 'agent-1',
+            content: 'Final assistant',
+            id: '6',
+            parentId: '5',
+            role: 'assistant',
+          },
           { id: '7', content: 'User 3', role: 'user' },
         ];
 

@@ -931,6 +931,47 @@ describe('parse', () => {
       ]);
     });
 
+    it('keeps each member council attached to its own user turn', () => {
+      const firstTurn = inputs.agentCouncil.withSupervisorReply;
+      const firstSummaryId = 'msg-supervisor-summary';
+      const secondIds = new Map(firstTurn.map((message) => [message.id, `turn-2-${message.id}`]));
+      const secondTurn = firstTurn.map((message, index) => ({
+        ...message,
+        createdAt: Number(message.createdAt) + 20_000,
+        id: secondIds.get(message.id)!,
+        parentId:
+          index === 0
+            ? firstSummaryId
+            : message.parentId
+              ? secondIds.get(message.parentId)
+              : message.parentId,
+        updatedAt: Number(message.updatedAt) + 20_000,
+      }));
+
+      const result = parse([...firstTurn, ...secondTurn] as any);
+      const councils = result.flatList.flatMap(
+        (message) =>
+          (message as any).children?.filter(
+            (block: any) => Array.isArray(block?.council) && block.council.length > 0,
+          ) ?? [],
+      );
+
+      expect(councils).toHaveLength(2);
+      expect(councils[0].council.map((member: any) => member.id)).toEqual([
+        'msg-agent-backend-1',
+        'msg-agent-devops-1',
+        'msg-agent-architect-1',
+      ]);
+      expect(councils[1].council.map((member: any) => member.id)).toEqual([
+        'turn-2-msg-agent-backend-1',
+        'turn-2-msg-agent-devops-1',
+        'turn-2-msg-agent-architect-1',
+      ]);
+      expect(result.flatList.filter((message) => message.role === 'user').map((m) => m.id)).toEqual(
+        ['msg-user-1', 'turn-2-msg-user-1'],
+      );
+    });
+
     // Regression (server runtime tree): the server-side group orchestration parents
     // per-member completion anchors (`role: 'tool'`) under the broadcast tool message
     // for its K=N barrier, alongside the member assistant responses. Those anchors are

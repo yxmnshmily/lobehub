@@ -7,10 +7,12 @@ import { UserService, userService } from './index';
 const mockLambdaClient = vi.hoisted(() => ({
   user: {
     confirmOnboardingUnderstanding: { mutate: vi.fn() },
+    getOnboardingAgentContext: { query: vi.fn() },
     getOnboardingUnderstanding: { query: vi.fn() },
     getUserRegistrationDuration: { query: vi.fn() },
     getUserState: { query: vi.fn() },
     getUserSSOProviders: { query: vi.fn() },
+    prepareOnboardingAgentContext: { mutate: vi.fn() },
     retryOnboardingUnderstandingSource: { mutate: vi.fn() },
     reviseOnboardingUnderstanding: { mutate: vi.fn() },
     startOnboardingUnderstanding: { mutate: vi.fn() },
@@ -40,6 +42,22 @@ describe('UserService', () => {
       expect(mockLambdaClient.user.getUserRegistrationDuration.query).toHaveBeenCalled();
       expect(result).toEqual(mockResult);
     });
+  });
+
+  it('keeps onboarding reads as queries and send preparation as a mutation', async () => {
+    const context = {
+      personaContent: null,
+      phaseGuidance: 'phase',
+      soulContent: null,
+    };
+    mockLambdaClient.user.getOnboardingAgentContext.query.mockResolvedValueOnce(context);
+    mockLambdaClient.user.prepareOnboardingAgentContext.mutate.mockResolvedValueOnce(context);
+
+    await userService.getOnboardingAgentContext();
+    await userService.prepareOnboardingAgentContext();
+
+    expect(mockLambdaClient.user.getOnboardingAgentContext.query).toHaveBeenCalledOnce();
+    expect(mockLambdaClient.user.prepareOnboardingAgentContext.mutate).toHaveBeenCalledOnce();
   });
 
   /**

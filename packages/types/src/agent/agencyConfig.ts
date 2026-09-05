@@ -780,6 +780,16 @@ export type ExecutionTargetSelectionPolicy = 'fixed' | 'member';
 export type AgentModelSelectionPolicy = 'fixed' | 'member';
 
 /**
+ * Selects the server-side credential principal used by an agent run.
+ *
+ * `actor` (and an omitted value) keeps the legacy user-owned provider config.
+ * `platform-managed` resolves a deployment-owned credential principal on the
+ * server while all conversation, tracing, billing and asset ownership remains
+ * attached to the actor.
+ */
+export type AgentModelRuntimeMode = 'actor' | 'platform-managed';
+
+/**
  * Controls who may publish a share link for the topics a workspace agent
  * holds.
  *
@@ -870,6 +880,12 @@ export interface LobeAgentAgencyConfig {
    */
   localSandboxNetwork?: boolean;
   /**
+   * Server credential mode for this managed agent. The platform-managed value
+   * is provisioned by trusted bootstrap code and is never accepted as a
+   * browser-supplied credential owner id.
+   */
+  modelRuntimeMode?: AgentModelRuntimeMode;
+  /**
    * Workspace model-selection policy. `fixed` keeps the shared agent model
    * authoritative; `member` enables a per-user model override stored in
    * `workspace_user_settings.preference`. Missing values on public Workspace
@@ -949,6 +965,7 @@ export interface LobeAgentAgencyConfig {
  */
 export const AGENT_PERMISSION_POLICY_KEYS = [
   'executionTargetSelectionPolicy',
+  'modelRuntimeMode',
   'modelSelectionPolicy',
   'topicSharePolicy',
 ] as const satisfies readonly (keyof LobeAgentAgencyConfig)[];

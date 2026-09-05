@@ -146,6 +146,7 @@ type ResponseCreateParamsWithPromptCacheKey = (
 export type CreateImageOptions = Omit<ClientOptions, 'apiKey' | 'provider'> &
   ModelIdMappingOptions & {
     apiKey: string;
+    pricingContext?: CreateImageMethodOptions['pricingContext'];
     provider: string;
   };
 
@@ -925,6 +926,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
           ...this._options,
           apiKey: this._options.apiKey!,
           modelIdMapping: this.modelIdMappingOptions.modelIdMapping,
+          pricingContext: options?.pricingContext,
           provider,
         });
       }

@@ -38,6 +38,7 @@ const prefixes = {
   threads: 'thd',
   topicComments: 'tcm',
   topics: 'tpc',
+  travelGenerationTasks: 'tgt',
   user: 'user',
   workspaceAuditLogs: 'wal',
   workspaceInvitations: 'wsi',

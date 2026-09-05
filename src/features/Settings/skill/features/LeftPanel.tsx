@@ -3,7 +3,7 @@
 import { DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { GithubIcon } from '@lobehub/ui/icons';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import { FileArchive, Grid2x2Plus, Link, Store } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,6 +56,7 @@ interface LeftPanelProps {
 const LeftPanel = memo<LeftPanelProps>(
   ({ onDeleteSelected, onSelect, selectedIdentifier, viewMode }) => {
     const { t } = useTranslation('setting');
+    const { mobile = false } = useResponsive();
     const [showAddConnector, setShowAddConnector] = useState(false);
 
     const handleOpenStore = useCallback(() => {
@@ -66,7 +67,10 @@ const LeftPanel = memo<LeftPanelProps>(
 
     return (
       <>
-        <div className={styles.root}>
+        <div
+          className={styles.root}
+          style={mobile ? { borderInlineEnd: 0, minWidth: 0, width: '100%' } : undefined}
+        >
           <div className={styles.header}>
             <Text strong style={{ fontSize: 14 }}>
               {isConnectorView
@@ -80,6 +84,11 @@ const LeftPanel = memo<LeftPanelProps>(
                 <Button
                   icon={Grid2x2Plus}
                   size="small"
+                  style={mobile ? { height: 44, width: 44 } : undefined}
+                  aria-label={t('connector.add.title', {
+                    defaultValue: 'Add Custom Connector',
+                    ns: 'tool',
+                  })}
                   title={t('connector.add.title', {
                     defaultValue: 'Add Custom Connector',
                     ns: 'tool',
@@ -133,10 +142,21 @@ const LeftPanel = memo<LeftPanelProps>(
                     },
                   ]}
                 >
-                  <Button icon={Grid2x2Plus} size="small" />
+                  <Button
+                    aria-label={t('tab.importFromUrl')}
+                    icon={Grid2x2Plus}
+                    size="small"
+                    style={mobile ? { height: 44, width: 44 } : undefined}
+                  />
                 </DropdownMenu>
               )}
-              <Button icon={<Icon icon={Store} />} size="small" onClick={handleOpenStore} />
+              <Button
+                aria-label={t('skillStore.button')}
+                icon={<Icon icon={Store} />}
+                size="small"
+                style={mobile ? { height: 44, width: 44 } : undefined}
+                onClick={handleOpenStore}
+              />
             </div>
           </div>
 

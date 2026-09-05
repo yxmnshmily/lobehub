@@ -18,15 +18,13 @@ describe('extract - regex', () => {
 
 describe('extract - delimiter', () => {
   it('should extract after delimiter (last segment)', () => {
-    expect(
-      extract('Step 1... Step 2... #### 42', { type: 'delimiter', delimiter: '####' }),
-    ).toBe('42');
+    expect(extract('Step 1... Step 2... #### 42', { type: 'delimiter', delimiter: '####' })).toBe(
+      '42',
+    );
   });
 
   it('should extract first segment after delimiter', () => {
-    expect(
-      extract('a|b|c', { type: 'delimiter', delimiter: '|', position: 'first' }),
-    ).toBe('b');
+    expect(extract('a|b|c', { type: 'delimiter', delimiter: '|', position: 'first' })).toBe('b');
   });
 
   it('should return original if delimiter not found', () => {
@@ -55,7 +53,11 @@ describe('extract - choice-index', () => {
 
   it('should use custom labels', () => {
     expect(
-      extract('Answer: 2', { type: 'choice-index', labels: ['1', '2', '3', '4'], pattern: '[1-4]' }),
+      extract('Answer: 2', {
+        type: 'choice-index',
+        labels: ['1', '2', '3', '4'],
+        pattern: '[1-4]',
+      }),
     ).toBe('1');
   });
 

@@ -7,6 +7,7 @@ import type { OpenAIChatMessage } from '@lobechat/types';
 
 import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 
 export interface AiGenerationObjectInput {
   messages: OpenAIChatMessage[] | GenerateObjectPayload['messages'];
@@ -33,6 +34,10 @@ export interface AiGenerationObjectOptions {
   tracing?: Record<string, unknown>;
 }
 
+export interface AiGenerationServiceOptions {
+  modelRuntimeMode?: 'actor' | 'platform-managed';
+}
+
 /**
  * Thin wrapper around `initModelRuntimeFromDB` + `ModelRuntime.generateObject`.
  *
@@ -49,20 +54,34 @@ export class AiGenerationService {
   private readonly db: LobeChatDatabase;
   private readonly userId: string;
   private readonly workspaceId?: string;
+  private readonly options: AiGenerationServiceOptions;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    options: AiGenerationServiceOptions = {},
+  ) {
     this.db = db;
     this.userId = userId;
     this.workspaceId = workspaceId;
+    this.options = options;
   }
 
   async generateObject<T = unknown>(
     input: AiGenerationObjectInput,
     options: AiGenerationObjectOptions = {},
   ): Promise<T> {
-    const runtime = this.workspaceId
-      ? await initModelRuntimeFromDB(this.db, this.userId, input.provider, this.workspaceId)
-      : await initModelRuntimeFromDB(this.db, this.userId, input.provider);
+    const runtime =
+      this.options.modelRuntimeMode === 'platform-managed'
+        ? await new PlatformAiRuntime(this.db).init({
+            actorUserId: this.userId,
+            provider: input.provider,
+            workspaceId: this.workspaceId,
+          })
+        : this.workspaceId
+          ? await initModelRuntimeFromDB(this.db, this.userId, input.provider, this.workspaceId)
+          : await initModelRuntimeFromDB(this.db, this.userId, input.provider);
     return (await runtime.generateObject(
       {
         messages: input.messages as GenerateObjectPayload['messages'],

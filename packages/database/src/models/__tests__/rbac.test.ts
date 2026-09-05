@@ -92,6 +92,21 @@ beforeEach(async () => {
 
 afterEach(cleanup);
 
+describe('RbacModel — platform roles', () => {
+  it('rejects an ordinary user without a globally assigned platform role', async () => {
+    const model = new RbacModel(serverDB, userId);
+
+    await expect(model.hasGlobalRole('super_admin')).resolves.toBe(false);
+  });
+
+  it('accepts a user with the globally assigned super_admin role', async () => {
+    await grantGlobalRole(userId, 'super_admin', ['test:platform:all']);
+    const model = new RbacModel(serverDB, userId);
+
+    await expect(model.hasGlobalRole('super_admin')).resolves.toBe(true);
+  });
+});
+
 describe('RbacModel — workspace mode (membership.role is the source of truth)', () => {
   const readCode = `${PERMISSION_ACTIONS.WORKSPACE_READ}:all`;
   const updateCode = `${PERMISSION_ACTIONS.WORKSPACE_UPDATE}:all`;

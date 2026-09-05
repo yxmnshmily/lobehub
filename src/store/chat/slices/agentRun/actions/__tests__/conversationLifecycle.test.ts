@@ -1717,6 +1717,41 @@ describe('ConversationLifecycle actions', () => {
         );
       });
 
+      it('forwards hosted group billing to the gateway without changing the topic', async () => {
+        const { result } = renderHook(() => useChatStore());
+        const context = {
+          agentId: TEST_IDS.SESSION_ID,
+          groupId: 'group-1',
+          scope: 'group' as const,
+          threadId: null,
+          topicId: TEST_IDS.TOPIC_ID,
+        };
+        const executeGatewayAgent = vi.fn().mockResolvedValue({
+          assistantMessageId: TEST_IDS.ASSISTANT_MESSAGE_ID,
+          operationId: 'gateway-operation',
+          topicId: TEST_IDS.TOPIC_ID,
+          userMessageId: TEST_IDS.USER_MESSAGE_ID,
+        });
+        act(() => {
+          useChatStore.setState({ executeGatewayAgent, isGatewayModeEnabled: () => true });
+        });
+
+        await act(async () => {
+          await result.current.sendMessage({
+            billing: { idempotencyKey: 'request-1', maxCredits: 40 },
+            context,
+            message: '写一篇西藏旅游文案',
+          });
+        });
+
+        expect(executeGatewayAgent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billing: { idempotencyKey: 'request-1', maxCredits: 40 },
+            context,
+          }),
+        );
+      });
+
       it('should keep the sidebar spinner on through a hetero new-topic run and stop it at the end', async () => {
         mockConstEnv.isDesktop = true;
         setupMockSelectors({

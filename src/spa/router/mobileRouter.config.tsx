@@ -8,8 +8,18 @@ import {
 } from '@/business/client/BusinessMobileRoutes';
 import AppsSkeleton from '@/components/Skeleton/Apps';
 import { acceptanceRouteMeta } from '@/features/Acceptance/routeMeta';
+import { customerMainElement, platformAdminElement } from '@/features/PlatformAdminRouteGuard';
+import {
+  CUSTOMER_SETTINGS_TAB_PATHS,
+  PLATFORM_SETTINGS_TAB_PATHS,
+} from '@/features/PlatformAdminRouteGuard/access';
 import { mobileAgentSettingsRouteMeta } from '@/features/RouteMeta/mobileRouteMeta';
 import { agentRouteMeta } from '@/routes/(main)/agent/features/routeMeta';
+import {
+  groupPermissionRouteMeta,
+  groupProfileRouteMeta,
+  groupRouteMeta,
+} from '@/routes/(main)/group/features/routeMeta';
 import { loadRouteWithBuiltinToolSurfaces } from '@/spa/initialize/toolSurfaces';
 import { dynamicElement, dynamicLayout, ErrorBoundary, redirectElement } from '@/utils/router';
 
@@ -17,6 +27,18 @@ const mobileChatElement = dynamicElement(
   () => loadRouteWithBuiltinToolSurfaces(() => import('@/routes/(mobile)/chat')),
   'Mobile > Chat',
   { preloadId: 'mobile-agent' },
+);
+
+const mobileGroupChatElement = dynamicElement(
+  () => loadRouteWithBuiltinToolSurfaces(() => import('@/routes/(main)/group')),
+  'Mobile > Group',
+  { preloadId: 'mobile-group' },
+);
+
+const mobileSettingsElement = dynamicElement(
+  () => import('@/routes/(mobile)/settings'),
+  'Mobile > Settings > Content',
+  { preloadId: 'mobile-settings' },
 );
 
 /**
@@ -63,6 +85,55 @@ export const sharedMainAreaChildren: RouteObject[] = [
       },
     ],
     path: 'agent',
+  },
+
+  // Group conversation routes use the responsive group surface without the
+  // desktop NavPanel host; the sidebar portal is therefore inert on mobile.
+  {
+    children: [
+      {
+        element: redirectElement('..'),
+        index: true,
+      },
+      {
+        children: [
+          {
+            element: mobileGroupChatElement,
+            handle: { meta: groupRouteMeta },
+            index: true,
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/group/profile'),
+              'Mobile > Agent Group > Profile',
+            ),
+            handle: { meta: groupProfileRouteMeta },
+            path: 'profile',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/group/permission'),
+              'Mobile > Agent Group > Permission',
+            ),
+            handle: { meta: groupPermissionRouteMeta },
+            path: 'permission',
+          },
+          {
+            element: mobileGroupChatElement,
+            handle: { meta: groupRouteMeta },
+            path: ':topicId',
+          },
+        ],
+        element: dynamicLayout(
+          () => import('@/routes/(main)/group/_layout'),
+          'Mobile > Group > Layout',
+          { preloadId: 'mobile-group' },
+        ),
+        errorElement: <ErrorBoundary />,
+        path: ':gid',
+      },
+    ],
+    path: 'group',
   },
 
   // Discover routes with nested structure
@@ -116,6 +187,13 @@ export const sharedMainAreaChildren: RouteObject[] = [
             path: 'provider',
           },
           {
+            element: dynamicElement(
+              () => import('@/routes/(main)/community/(list)/skill'),
+              'Mobile > Discover > List > Skill',
+            ),
+            path: 'skill',
+          },
+          {
             children: [
               {
                 element: dynamicElement(
@@ -159,6 +237,16 @@ export const sharedMainAreaChildren: RouteObject[] = [
           {
             element: dynamicElement(
               () =>
+                import('@/routes/(main)/community/(detail)/group_agent').then(
+                  (m) => m.MobileGroupAgentDetailPage,
+                ),
+              'Mobile > Discover > Detail > Group Agent',
+            ),
+            path: 'group_agent/:slug',
+          },
+          {
+            element: dynamicElement(
+              () =>
                 import('@/routes/(main)/community/(detail)/model').then((m) => m.MobileModelPage),
               'Mobile > Discover > Detail > Model',
             ),
@@ -173,6 +261,14 @@ export const sharedMainAreaChildren: RouteObject[] = [
               'Mobile > Discover > Detail > Provider',
             ),
             path: 'provider/:slug',
+          },
+          {
+            element: dynamicElement(
+              () =>
+                import('@/routes/(main)/community/(detail)/skill').then((m) => m.MobileSkillPage),
+              'Mobile > Discover > Detail > Skill',
+            ),
+            path: 'skill/:slug',
           },
           {
             element: dynamicElement(
@@ -280,6 +376,136 @@ export const sharedMainAreaChildren: RouteObject[] = [
     ),
   },
 
+  // Customer-created pages are workspace-aware on desktop, so the mobile
+  // router must expose the same paths under both `/page` and `/:slug/page`.
+  {
+    children: [
+      {
+        element: dynamicElement(() => import('@/routes/(main)/page'), 'Mobile > Page'),
+        index: true,
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/page/[id]'),
+          'Mobile > Page > Detail',
+        ),
+        path: ':id',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/page/[id]/permission'),
+          'Mobile > Page > Permission',
+        ),
+        path: ':id/permission',
+      },
+    ],
+    element: dynamicLayout(() => import('@/routes/(main)/page/_layout'), 'Mobile > Page > Layout'),
+    errorElement: <ErrorBoundary />,
+    path: 'page',
+  },
+
+  // Resource routes reuse the responsive main surfaces. Static `page` stays
+  // before `:category`, otherwise `/resource/page` is swallowed as a category.
+  {
+    children: [
+      {
+        children: [
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/(home)'),
+              'Mobile > Resource > Home',
+            ),
+            index: true,
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/(home)'),
+              'Mobile > Resource > Home > Pages',
+            ),
+            path: 'page',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/(home)'),
+              'Mobile > Resource > Home > Category',
+            ),
+            path: ':category',
+          },
+        ],
+        element: dynamicElement(
+          () => import('@/routes/(main)/resource/(home)/_layout'),
+          'Mobile > Resource > Home > Layout',
+        ),
+      },
+      {
+        children: [
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/library'),
+              'Mobile > Resource > Library',
+            ),
+            index: true,
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/library/permission'),
+              'Mobile > Resource > Library > Permission',
+            ),
+            path: 'permission',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/resource/library/[slug]'),
+              'Mobile > Resource > Library > Slug',
+            ),
+            path: ':slug',
+          },
+        ],
+        element: dynamicElement(
+          () => import('@/routes/(main)/resource/library/_layout'),
+          'Mobile > Resource > Library > Layout',
+        ),
+        path: 'library/:id',
+      },
+    ],
+    element: dynamicElement(
+      () => import('@/routes/(main)/resource/_layout'),
+      'Mobile > Resource > Layout',
+      { preloadId: 'resource' },
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'resource',
+  },
+
+  {
+    children: [
+      {
+        element: dynamicElement(() => import('@/routes/(main)/(create)/image'), 'Mobile > Image'),
+        index: true,
+      },
+    ],
+    element: dynamicLayout(
+      () => import('@/routes/(main)/(create)/image/_layout'),
+      'Mobile > Image > Layout',
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'image',
+  },
+  {
+    children: [
+      {
+        element: dynamicElement(() => import('@/routes/(main)/(create)/video'), 'Mobile > Video'),
+        index: true,
+      },
+    ],
+    element: dynamicLayout(
+      () => import('@/routes/(main)/(create)/video/_layout'),
+      'Mobile > Video > Layout',
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'video',
+  },
+
   ...BusinessMobileRoutesWithMainLayout,
 ];
 
@@ -302,11 +528,7 @@ export const mobileRoutes: RouteObject[] = [
       {
         children: [
           {
-            element: dynamicElement(
-              () => import('@/routes/(mobile)/settings'),
-              'Mobile > Settings',
-              { preloadId: 'mobile-settings' },
-            ),
+            element: redirectElement('/settings/profile'),
             index: true,
           },
           // Provider routes with nested structure
@@ -325,9 +547,11 @@ export const mobileRoutes: RouteObject[] = [
                 path: ':providerId',
               },
             ],
-            element: dynamicLayout(
-              () => import('@/routes/(mobile)/settings/provider/_layout'),
-              'Mobile > Settings > Provider > Layout',
+            element: platformAdminElement(
+              dynamicLayout(
+                () => import('@/routes/(mobile)/settings/provider/_layout'),
+                'Mobile > Settings > Provider > Layout',
+              ),
             ),
             path: 'provider',
           },
@@ -335,21 +559,41 @@ export const mobileRoutes: RouteObject[] = [
             element: redirectElement('/settings/credential'),
             path: 'creds',
           },
+          {
+            element: redirectElement('/page'),
+            path: 'works',
+          },
+          ...CUSTOMER_SETTINGS_TAB_PATHS.flatMap((tab) => [
+            {
+              element: mobileSettingsElement,
+              handle: { settingsTab: tab },
+              path: tab,
+            },
+            {
+              element: mobileSettingsElement,
+              handle: { settingsTab: tab },
+              path: `${tab}/:sub`,
+            },
+          ]),
+          ...PLATFORM_SETTINGS_TAB_PATHS.flatMap((tab) => [
+            {
+              element: platformAdminElement(mobileSettingsElement),
+              handle: { settingsTab: tab },
+              path: tab,
+            },
+            {
+              element: platformAdminElement(mobileSettingsElement),
+              handle: { settingsTab: tab },
+              path: `${tab}/:sub`,
+            },
+          ]),
           // Other settings tabs (common, agent, memory, tts, about, etc.)
           {
-            element: dynamicElement(
-              () => import('@/routes/(main)/settings'),
-              'Mobile > Settings > Tab',
-              { preloadId: 'mobile-settings' },
-            ),
+            element: platformAdminElement(mobileSettingsElement),
             path: ':tab',
           },
           {
-            element: dynamicElement(
-              () => import('@/routes/(main)/settings'),
-              'Mobile > Settings > Tab > Sub',
-              { preloadId: 'mobile-settings' },
-            ),
+            element: platformAdminElement(mobileSettingsElement),
             path: ':tab/:sub',
           },
         ],
@@ -528,16 +772,20 @@ export const mobileRoutes: RouteObject[] = [
                 path: 'audit-log',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
-                  'Mobile > Workspace > Settings > OAuth Apps',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
+                    'Mobile > Workspace > Settings > OAuth Apps',
+                  ),
                 ),
                 path: 'oauth-apps',
               },
               {
-                element: dynamicElement(
-                  () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
-                  'Mobile > Workspace > Settings > OAuth App Detail',
+                element: platformAdminElement(
+                  dynamicElement(
+                    () => import('@/routes/(main)/[workspaceSlug]/settings/oauth-apps'),
+                    'Mobile > Workspace > Settings > OAuth App Detail',
+                  ),
                 ),
                 path: 'oauth-apps/:sub',
               },
@@ -552,10 +800,10 @@ export const mobileRoutes: RouteObject[] = [
           // Legacy `/:slug/billing/*` URLs — redirect to `/:slug/settings/*`.
           {
             children: [
-              { element: redirectElement('../settings/plans'), path: 'plans' },
-              { element: redirectElement('../settings/usage'), path: 'usage' },
-              { element: redirectElement('../settings/credits'), path: 'credits' },
-              { element: redirectElement('../settings/billing'), path: 'billing' },
+              { element: redirectElement('../../settings/plans'), path: 'plans' },
+              { element: redirectElement('../../settings/usage'), path: 'usage' },
+              { element: redirectElement('../../settings/credits'), path: 'credits' },
+              { element: redirectElement('../../settings/billing'), path: 'billing' },
             ],
             path: 'billing',
           },
@@ -574,7 +822,9 @@ export const mobileRoutes: RouteObject[] = [
         path: '*',
       },
     ],
-    element: dynamicLayout(() => import('@/routes/(mobile)/_layout'), 'Mobile > Main > Layout'),
+    element: customerMainElement(
+      dynamicLayout(() => import('@/routes/(mobile)/_layout'), 'Mobile > Main > Layout'),
+    ),
     errorElement: <ErrorBoundary />,
     path: '/',
   },

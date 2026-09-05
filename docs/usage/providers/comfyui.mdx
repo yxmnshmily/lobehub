@@ -1,8 +1,7 @@
 ---
 title: Using ComfyUI in LobeHub for Image Generation
 description: >-
-  Learn how to configure and use the ComfyUI service in LobeHub to support
-  high-quality image generation and editing with the FLUX model series.
+  Learn how to configure and use the ComfyUI service in LobeHub to support high-quality image generation and editing with the FLUX model series.
 tags:
   - ComfyUI
   - FLUX
@@ -13,7 +12,11 @@ tags:
 
 # Using ComfyUI in LobeHub
 
-<Image alt={'Using ComfyUI in LobeHub'} cover src={'https://hub-apac-1.lobeobjects.space/docs/e9b811f248a1db2bd1be1af888cf9b9d.png'} />
+<Image
+  alt={'Using ComfyUI in LobeHub'}
+  cover
+  src={'https://hub-apac-1.lobeobjects.space/docs/e9b811f248a1db2bd1be1af888cf9b9d.png'}
+/>
 
 This guide will walk you through how to use [ComfyUI](https://github.com/comfyanonymous/ComfyUI) in LobeHub for high-quality AI image generation and editing.
 
@@ -26,7 +29,7 @@ ComfyUI is a powerful GUI for Stable Diffusion and Flow Diffusion, offering a no
 - **Extensive Model Support**: Supports 223 models, including 130 FLUX and 93 SD models
 - **Config-Driven Architecture**: Registry system enables intelligent model selection
 - **Multi-Format Support**: Compatible with .safetensors and .gguf formats, with various quantization levels
-- **Dynamic Precision Options**: Supports default, fp8\_e4m3fn, fp8\_e5m2, and fp8\_e4m3fn\_fast
+- **Dynamic Precision Options**: Supports default, fp8_e4m3fn, fp8_e5m2, and fp8_e4m3fn_fast
 - **Multiple Authentication Methods**: Supports None, Basic Auth, Bearer Token, and Custom Headers
 - **Smart Component Selection**: Automatically selects optimal T5, CLIP, and VAE encoders
 - **Enterprise-Grade Optimizations**: Includes NF4, SVDQuant, TorchAO, MFLUX variants
@@ -40,7 +43,11 @@ ComfyUI is a powerful GUI for Stable Diffusion and Flow Diffusion, offering a no
 - Go to the `Settings` panel in LobeHub
 - Under `AI Providers`, find the `ComfyUI` section
 
-<Image alt={'ComfyUI Settings Panel'} inStep src={'/blog/assets17870709/3f31bc33-509f-4ad2-ba81-280c2a6ec5fa.webp'} />
+<Image
+  alt={'ComfyUI Settings Panel'}
+  inStep
+  src={'/blog/assets17870709/3f31bc33-509f-4ad2-ba81-280c2a6ec5fa.webp'}
+/>
 
 #### 2. Set Connection Parameters
 
@@ -58,7 +65,11 @@ In the chat interface:
 - Click the model selection button
 - Choose your desired FLUX model from the ComfyUI category
 
-<Image alt={'Select FLUX Model'} inStep src={'/blog/assets17870709/ff7ebacf-27f0-42d7-810b-00314499a084.webp'} />
+<Image
+  alt={'Select FLUX Model'}
+  inStep
+  src={'/blog/assets17870709/ff7ebacf-27f0-42d7-810b-00314499a084.webp'}
+/>
 
 #### 2. Text-to-Image Generation
 
@@ -85,7 +96,8 @@ Edit this image: Change the background to a starry night sky, keep the main subj
 Then upload the original image you want to edit.
 
 <Callout type={'info'}>
-  Image editing requires uploading the original image first, followed by a description of the desired changes.
+  Image editing requires uploading the original image first, followed by a description of the
+  desired changes.
 </Callout>
 
 ## Authentication Configuration Guide
@@ -194,51 +206,51 @@ Comfy-Manager is an extension manager for ComfyUI that simplifies installing and
 <details>
   <summary><b>📦 Steps to Install Comfy-Manager</b></summary>
 
-  #### Method 1: Manual Installation (Recommended)
+#### Method 1: Manual Installation (Recommended)
 
-  ```bash
-  # Navigate to ComfyUI's custom_nodes directory
-  cd ComfyUI/custom_nodes
+```bash
+# Navigate to ComfyUI's custom_nodes directory
+cd ComfyUI/custom_nodes
 
-  # Clone the Comfy-Manager repository
-  git clone https://github.com/ltdrdata/ComfyUI-Manager.git
+# Clone the Comfy-Manager repository
+git clone https://github.com/ltdrdata/ComfyUI-Manager.git
 
-  # Restart the ComfyUI server
-  # After restarting, you should see a "Manager" button in the UI
-  ```
+# Restart the ComfyUI server
+# After restarting, you should see a "Manager" button in the UI
+```
 
-  #### Method 2: One-Click Install Script
+#### Method 2: One-Click Install Script
 
-  ```bash
-  # Run from the ComfyUI root directory
-  curl -fsSL https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/install.sh | bash
-  ```
+```bash
+# Run from the ComfyUI root directory
+curl -fsSL https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/install.sh | bash
+```
 
-  #### Verify Installation
+#### Verify Installation
 
-  1. Restart the ComfyUI server
-  2. Visit `http://localhost:8000`
-  3. You should see a "Manager" button in the bottom-right corner
+1. Restart the ComfyUI server
+2. Visit `http://localhost:8000`
+3. You should see a "Manager" button in the bottom-right corner
 
-  #### Using Comfy-Manager
+#### Using Comfy-Manager
 
-  **Install Models**:
+**Install Models**:
 
-  1. Click the "Manager" button
-  2. Select "Install Models"
-  3. Search for the desired model (e.g., FLUX, SD3.5)
-  4. Click "Install" to download automatically
+1. Click the "Manager" button
+2. Select "Install Models"
+3. Search for the desired model (e.g., FLUX, SD3.5)
+4. Click "Install" to download automatically
 
-  **Install Node Extensions**:
+**Install Node Extensions**:
 
-  1. Click the "Manager" button
-  2. Select "Install Custom Nodes"
-  3. Search for nodes (e.g., ControlNet, AnimateDiff)
-  4. Click "Install" and restart the server
+1. Click the "Manager" button
+2. Select "Install Custom Nodes"
+3. Search for nodes (e.g., ControlNet, AnimateDiff)
+4. Click "Install" and restart the server
 
-  **Manage Installed Content**:
+**Manage Installed Content**:
 
-  1. Click the "Manager" button
-  2. Select "Installed" to view installed extensions
-  3. You can update, disable, or uninstall extensions
-</details>
+1. Click the "Manager" button
+2. Select "Installed" to view installed extensions
+3. You can update, disable, or uninstall extensions
+   </details>

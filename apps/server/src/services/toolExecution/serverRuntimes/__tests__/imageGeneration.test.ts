@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
+
 import { imageGenerationRuntime } from '../imageGeneration';
 
 const callerMocks = vi.hoisted(() => ({
@@ -8,6 +11,12 @@ const callerMocks = vi.hoisted(() => ({
   generation: vi.fn(() => ({})),
   generationTopic: vi.fn(() => ({})),
   image: vi.fn(() => ({})),
+  listPlatformModels: vi.fn(),
+  markPlatformAiRuntime: vi.fn((value, capability) => ({
+    ...value,
+    capability,
+    trustedPlatformRuntime: true,
+  })),
 }));
 
 vi.mock('@/server/routers/lambda/aiModel', () => ({
@@ -25,6 +34,12 @@ vi.mock('@/server/routers/lambda/generationTopic', () => ({
 vi.mock('@/server/routers/lambda/image', () => ({
   imageRouter: { createCaller: callerMocks.image },
 }));
+vi.mock('@/server/services/platformAiRuntime', () => ({
+  markPlatformAiRuntime: callerMocks.markPlatformAiRuntime,
+  PlatformAiRuntime: vi.fn().mockImplementation(() => ({
+    listEnabledModels: callerMocks.listPlatformModels,
+  })),
+}));
 
 describe('imageGenerationRuntime', () => {
   beforeEach(() => {
@@ -34,6 +49,7 @@ describe('imageGenerationRuntime', () => {
     callerMocks.generation.mockReturnValue({});
     callerMocks.generationTopic.mockReturnValue({});
     callerMocks.image.mockReturnValue({});
+    callerMocks.listPlatformModels.mockReset();
   });
 
   it('passes the request and workspace scope to every router caller', () => {
@@ -203,5 +219,74 @@ describe('imageGenerationRuntime', () => {
       success: true,
     });
     expect(getAiProviderModelList).not.toHaveBeenCalled();
+  });
+
+  it('lists platform-managed models without querying the customer provider catalog', async () => {
+    const serverDB = {} as any;
+    callerMocks.listPlatformModels.mockResolvedValue({
+      providers: [{ id: 'platform-provider', models: [{ id: 'platform-image-model' }] }],
+    });
+    const runtime = imageGenerationRuntime.factory({
+      modelRuntimeMode: 'platform-managed',
+      serverDB,
+      toolManifestMap: {},
+      userId: 'customer-1',
+      workspaceId: 'customer-workspace',
+    });
+
+    const result = await runtime.listImageModels({});
+
+    expect(result).toMatchObject({
+      state: {
+        providers: [{ id: 'platform-provider', models: [{ id: 'platform-image-model' }] }],
+        totalModels: 1,
+      },
+      success: true,
+    });
+    expect(PlatformAiRuntime).toHaveBeenCalledWith(serverDB);
+    expect(callerMocks.aiProvider).toHaveBeenCalledTimes(1);
+    expect(callerMocks.aiModel).toHaveBeenCalledTimes(1);
+    expect(callerMocks.aiProvider.mock.results[0]?.value).toEqual({});
+    expect(callerMocks.aiModel.mock.results[0]?.value).toEqual({});
+  });
+
+  it('forwards the trusted Credits capability to the platform router context without serializing it', () => {
+    const context = grantPlatformManagedExecution(
+      {
+        modelRuntimeMode: 'platform-managed' as const,
+        serverDB: {} as any,
+        toolManifestMap: {},
+        userId: 'customer-1',
+        workspaceId: 'workspace-1',
+      },
+      { maxCredits: 4321 },
+    );
+
+    imageGenerationRuntime.factory(context);
+
+    expect(callerMocks.markPlatformAiRuntime).toHaveBeenCalledWith(
+      {
+        clientIp: undefined,
+        userId: 'customer-1',
+        workspaceId: 'workspace-1',
+      },
+      { maxCredits: 4321 },
+    );
+    expect(JSON.stringify(callerMocks.markPlatformAiRuntime.mock.calls[0]?.[0])).not.toContain(
+      'maxCredits',
+    );
+  });
+
+  it('fails closed when platform-managed image discovery has no server database', async () => {
+    const runtime = imageGenerationRuntime.factory({
+      modelRuntimeMode: 'platform-managed',
+      toolManifestMap: {},
+      userId: 'customer-1',
+    });
+
+    const result = await runtime.listImageModels({});
+
+    expect(result.success).toBe(false);
+    expect(callerMocks.listPlatformModels).not.toHaveBeenCalled();
   });
 });

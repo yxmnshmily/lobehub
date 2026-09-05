@@ -1,32 +1,63 @@
 import { Flexbox } from '@lobehub/ui';
 import { type FC } from 'react';
-import { Outlet } from 'react-router';
+import { Outlet, useParams } from 'react-router';
 
+import AsyncError from '@/components/AsyncError';
+import SurfaceSkeleton from '@/components/Skeleton/Surface';
 import { isDesktop } from '@/const/version';
-import { GroupNotFoundGuard } from '@/features/GroupNotFound';
+import { GroupNotFound, GroupNotFoundGuard } from '@/features/GroupNotFound';
 import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
-import { useInitGroupConfig } from '@/hooks/useInitGroupConfig';
+import { useServerConfigStore } from '@/store/serverConfig';
 
+import MemberConversation from '../features/MemberConversation';
 import GroupIdSync from './GroupIdSync';
+import MobileTopics from './MobileTopics';
 import RegisterHotkeys from './RegisterHotkeys';
 import Sidebar from './Sidebar';
 import { styles } from './style';
+import { useGroupRouteAccess } from './useGroupRouteAccess';
 
 const Layout: FC = () => {
-  useInitGroupConfig();
+  const { gid } = useParams<{ gid?: string }>();
+  const access = useGroupRouteAccess();
+  const isMobile =
+    useServerConfigStore((state) => state.isMobile) ??
+    (typeof __MOBILE__ !== 'undefined' ? __MOBILE__ : false);
+  const showDesktopControls = !isMobile && access.kind !== 'member';
+
+  let content;
+  if (access.kind === 'loading') {
+    content = <SurfaceSkeleton variant={'detail'} />;
+  } else if (access.kind === 'error') {
+    content = <AsyncError error={access.error} variant={'page'} onRetry={access.retry} />;
+  } else if (access.kind === 'unavailable') {
+    content = <GroupNotFound />;
+  } else if (access.kind === 'member') {
+    content = <MemberConversation group={access.group} onUnavailable={access.markUnavailable} />;
+  } else if (gid) {
+    content = (
+      <GroupNotFoundGuard>
+        <Outlet />
+      </GroupNotFoundGuard>
+    );
+  }
 
   return (
     <>
-      <Sidebar />
-      <Flexbox className={styles.mainContainer} flex={1} height={'100%'}>
-        {/* Keep the sidebar interactive when the routed group is gone (deleted
-            or made private) — only the content area collapses to the 404 card. */}
-        <GroupNotFoundGuard>
-          <Outlet />
-        </GroupNotFoundGuard>
+      {showDesktopControls && <Sidebar />}
+      <Flexbox
+        className={styles.mainContainer}
+        flex={1}
+        height={'100%'}
+        style={{ minWidth: 0 }}
+        width={'100%'}
+      >
+        {/* Keep the sidebar interactive while the routed group is loading or unavailable. */}
+        {content}
       </Flexbox>
-      <RegisterHotkeys />
-      {isDesktop && <ProtocolUrlHandler />}
+      {showDesktopControls && <RegisterHotkeys />}
+      {isMobile && access.kind === 'owner' && <MobileTopics />}
+      {isDesktop && access.kind !== 'member' && <ProtocolUrlHandler />}
       <GroupIdSync />
     </>
   );

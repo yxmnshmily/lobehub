@@ -69,6 +69,8 @@ import {
   sendMessengerPush,
 } from '@/server/services/messenger/push';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const platformEnum = z.enum([
   'telegram',
   'slack',
@@ -188,7 +190,9 @@ const messengerProcedure = authedProcedure.use(serverDatabase).use(async (opts) 
     },
   });
 });
-const messengerWriteProcedure = messengerProcedure.use(withScopedPermission('agent:update'));
+const messengerWriteProcedure = messengerProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('agent:update'));
 
 /**
  * Resolve the workspace scope of an agent the user wants to route the System
@@ -298,7 +302,7 @@ export const messengerRouter = router({
   }),
 
   /** Start a user-bound, one-shot WeChat iLink QR session. */
-  createWechatQrSession: messengerProcedure.mutation(async ({ ctx }) => {
+  createWechatQrSession: messengerWriteProcedure.mutation(async ({ ctx }) => {
     if (!(await isMessengerPlatformEnabled('wechat'))) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
@@ -340,7 +344,7 @@ export const messengerRouter = router({
    * once when WeChat confirms it. The browser never receives the raw QR token
    * or bot credential bundle.
    */
-  pollWechatQrSession: messengerProcedure
+  pollWechatQrSession: messengerWriteProcedure
     .input(z.object({ sessionId: z.string().min(8) }))
     .mutation(async ({ ctx, input }) => {
       if (!(await isMessengerPlatformEnabled('wechat'))) {
@@ -630,7 +634,7 @@ export const messengerRouter = router({
    * required so the user's first IM message has somewhere to land — they can
    * always change it later via `/agents` (tap to switch) or the per-agent UI.
    */
-  confirmLink: messengerProcedure
+  confirmLink: messengerWriteProcedure
     .input(
       z.object({
         initialAgentId: z.string().min(1, 'messenger.error.pickDefaultAgent'),
@@ -843,7 +847,7 @@ export const messengerRouter = router({
    * the caller gets `queued`, never a silent drop. This is the low-level
    * capability the notification-channel integration will build on.
    */
-  sendMessengerPush: messengerProcedure
+  sendMessengerPush: messengerWriteProcedure
     .input(
       z
         .object({
@@ -932,7 +936,7 @@ export const messengerRouter = router({
    * the active agent (next inbound message will get the "/agents to pick"
    * prompt). Pass `tenantId` to scope to a specific Slack workspace.
    */
-  setActiveAgent: messengerProcedure
+  setActiveAgent: messengerWriteProcedure
     .input(
       z.object({
         agentId: z.string().nullable(),

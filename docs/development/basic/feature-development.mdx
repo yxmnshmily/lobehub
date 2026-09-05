@@ -110,7 +110,11 @@ The project is divided into multiple frontend and backend layers by responsibili
 
 ```typescript
 export class SessionService {
-  updateSessionConfig = (id: string, config: PartialDeep<LobeAgentConfig>, signal?: AbortSignal) => {
+  updateSessionConfig = (
+    id: string,
+    config: PartialDeep<LobeAgentConfig>,
+    signal?: AbortSignal,
+  ) => {
     return lambdaClient.session.updateSessionConfig.mutate({ id, value: config }, { signal });
   };
 }

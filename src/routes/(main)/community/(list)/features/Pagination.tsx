@@ -2,7 +2,7 @@
 
 import { Pagination as Page } from 'antd';
 import { createStaticStyles, useResponsive } from 'antd-style';
-import { memo } from 'react';
+import { cloneElement, isValidElement, memo, type ReactElement } from 'react';
 import { useLocation } from 'react-router';
 
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -60,6 +60,13 @@ const Pagination = memo<PaginationProps>(({ tab, currentPage, total, pageSize })
       current={page ? Number(page) : currentPage}
       data-testid="pagination"
       pageSize={pageSize}
+      itemRender={(_, type, element) =>
+        (type === 'prev' || type === 'next') && isValidElement(element)
+          ? cloneElement(element as ReactElement<{ 'aria-label'?: string }>, {
+              'aria-label': type === 'prev' ? 'previous' : 'next',
+            })
+          : element
+      }
       showSizeChanger={false}
       total={total}
       style={{

@@ -5,6 +5,7 @@ import { ActionIcon, Drawer } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { MenuIcon } from 'lucide-react';
 import { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import Menu from '@/components/Menu';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -44,14 +45,26 @@ const Nav = memo(() => {
   const [open, setOpen] = useState(false);
   const { items, activeKey, activeItem } = useNav();
   const navigate = useWorkspaceAwareNavigate();
+  const { t } = useTranslation('discover');
+  const activeLabel =
+    activeKey === DiscoverTab.Assistants
+      ? t('tab.assistant')
+      : activeKey === DiscoverTab.Mcp
+        ? `MCP ${t('tab.plugin')}`
+        : activeKey === DiscoverTab.Models
+          ? t('tab.model')
+          : activeKey === DiscoverTab.Providers
+            ? t('tab.provider')
+            : t('tab.home');
 
   return (
     <>
       <Flexbox horizontal align={'center'} className={styles.title} gap={4}>
         <ActionIcon
+          aria-label={activeLabel}
           color={cssVar.colorText}
           icon={MenuIcon}
-          size={{ blockSize: 32, size: 18 }}
+          size={{ blockSize: 44, size: 18 }}
           onClick={() => {
             setOpen(true);
           }}

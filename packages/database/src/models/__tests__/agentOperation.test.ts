@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { matchesAgentInterventionContinuationProvenance } from '@/business/server/agent-run/agentInterventionIdentity';
 
 import { getTestDB } from '../../core/getTestDB';
-import { agentOperations, users } from '../../schemas';
+import {
+  agentOperations,
+  agents,
+  chatGroups,
+  chatGroupUserMemberships,
+  users,
+} from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import { AgentOperationModel } from '../agentOperation';
 
@@ -25,6 +31,99 @@ afterEach(async () => {
 });
 
 describe('AgentOperationModel', () => {
+  describe('getWebsiteAiActivitySnapshot', () => {
+    it('counts only the customer group supervisor and keeps active and recent windows separate', async () => {
+      const model = new AgentOperationModel(serverDB, userId);
+      const recentSince = new Date('2026-09-02T10:00:00.000Z');
+      await serverDB.insert(agents).values([
+        { id: 'website-supervisor', userId },
+        { id: 'website-specialist', userId },
+        { id: 'other-supervisor', userId: otherUserId },
+      ]);
+      await serverDB.insert(chatGroups).values([
+        { id: 'website-group', title: 'Website group', userId },
+        { id: 'other-group', title: 'Other group', userId: otherUserId },
+      ]);
+      await serverDB.insert(agentOperations).values([
+        {
+          agentId: 'website-supervisor',
+          chatGroupId: 'website-group',
+          createdAt: new Date('2026-09-02T10:00:10.000Z'),
+          id: 'website-running-recent',
+          status: 'running',
+          trigger: 'website_ai_admission',
+          userId,
+        },
+        {
+          agentId: 'website-supervisor',
+          chatGroupId: 'website-group',
+          createdAt: new Date('2026-09-02T10:00:20.000Z'),
+          id: 'website-done-recent',
+          status: 'done',
+          trigger: 'website_ai_admission',
+          userId,
+        },
+        {
+          agentId: 'website-supervisor',
+          chatGroupId: 'website-group',
+          createdAt: new Date('2026-09-02T09:50:00.000Z'),
+          id: 'website-running-old',
+          status: 'waiting_for_async_tool',
+          userId,
+        },
+        {
+          agentId: 'website-specialist',
+          chatGroupId: 'website-group',
+          createdAt: new Date('2026-09-02T10:00:30.000Z'),
+          id: 'website-child-specialist',
+          status: 'running',
+          userId,
+        },
+        {
+          agentId: 'other-supervisor',
+          chatGroupId: 'other-group',
+          createdAt: new Date('2026-09-02T10:00:30.000Z'),
+          id: 'other-user-operation',
+          status: 'running',
+          userId: otherUserId,
+        },
+      ]);
+
+      await expect(
+        model.getWebsiteAiActivitySnapshot({
+          agentId: 'website-supervisor',
+          chatGroupId: 'website-group',
+          recentSince,
+        }),
+      ).resolves.toEqual({ activeCount: 2, recentCount: 2 });
+    });
+
+    it('serializes concurrent reservations on the user row across model instances', async () => {
+      await serverDB.insert(agents).values({ id: 'website-supervisor-reserve', userId });
+      await serverDB
+        .insert(chatGroups)
+        .values({ id: 'website-group-reserve', title: 'Website group', userId });
+      const reserve = (reservationId: string) =>
+        new AgentOperationModel(serverDB, userId).reserveWebsiteAiAdmission({
+          activeLimit: 1,
+          agentId: 'website-supervisor-reserve',
+          chatGroupId: 'website-group-reserve',
+          recentLimit: 10,
+          recentSince: new Date(Date.now() - 60_000),
+          reservationId,
+        });
+
+      const results = await Promise.all([reserve('admission-a'), reserve('admission-b')]);
+
+      expect(results.sort()).toEqual(['active_limit', 'reserved']);
+      const rows = await serverDB
+        .select({ id: agentOperations.id })
+        .from(agentOperations)
+        .where(eq(agentOperations.trigger, 'website_ai_admission'));
+      expect(rows).toHaveLength(1);
+    });
+  });
+
   describe('recordStart', () => {
     it('inserts a row with status=running and the provided ids', async () => {
       const model = new AgentOperationModel(serverDB, userId);
@@ -95,6 +194,148 @@ describe('AgentOperationModel', () => {
         .from(agentOperations)
         .where(eq(agentOperations.id, operationId));
       expect(rows).toHaveLength(1);
+    });
+  });
+
+  describe('hosted sponsored budget locator', () => {
+    const groupId = 'hosted-budget-group';
+    const operationId = 'hosted-budget-operation';
+    const locator = {
+      actorUserId: otherUserId,
+      budgetId: 'sponsored-budget-id',
+      budgetLeaseVersion: 3,
+      expiresAt: '2099-09-04T00:00:00.000Z',
+      groupId,
+      membershipVersion: 7,
+      operationId,
+      payerUserId: userId,
+      policyVersion: 11,
+      resourceOwnerUserId: userId,
+      version: 1 as const,
+    };
+
+    it('persists the exact locator once without replacing other operation metadata', async () => {
+      await serverDB.insert(chatGroups).values({ id: groupId, title: 'Hosted group', userId });
+      const model = new AgentOperationModel(serverDB, userId);
+      await model.recordStart({
+        chatGroupId: groupId,
+        metadata: {
+          hostedGroupRun: {
+            actorUserIdSnapshot: otherUserId,
+            expiresAt: locator.expiresAt,
+            groupId,
+            handleHash: 'a'.repeat(64),
+            membershipVersion: locator.membershipVersion,
+            ownerUserIdSnapshot: userId,
+            version: 1,
+          },
+          preserved: true,
+        },
+        operationId,
+      });
+
+      await expect(model.recordHostedGroupSponsoredBudgetLocator(locator)).resolves.toBe(true);
+      await expect(model.recordHostedGroupSponsoredBudgetLocator(locator)).resolves.toBe(true);
+
+      expect((await model.findById(operationId))?.metadata).toEqual({
+        hostedGroupRun: {
+          actorUserIdSnapshot: otherUserId,
+          expiresAt: locator.expiresAt,
+          groupId,
+          handleHash: 'a'.repeat(64),
+          membershipVersion: locator.membershipVersion,
+          ownerUserIdSnapshot: userId,
+          version: 1,
+        },
+        hostedGroupSponsoredBudgetLocator: locator,
+        preserved: true,
+      });
+      await expect(model.findHostedGroupSponsoredBudgetLocator(operationId)).resolves.toEqual(
+        locator,
+      );
+    });
+
+    it('fails closed for a conflicting locator, owner mismatch, or hosted-run mismatch', async () => {
+      await serverDB.insert(chatGroups).values({ id: groupId, title: 'Hosted group', userId });
+      const model = new AgentOperationModel(serverDB, userId);
+      await model.recordStart({
+        chatGroupId: groupId,
+        metadata: {
+          hostedGroupRun: {
+            actorUserIdSnapshot: otherUserId,
+            expiresAt: locator.expiresAt,
+            groupId,
+            handleHash: 'b'.repeat(64),
+            membershipVersion: locator.membershipVersion,
+            ownerUserIdSnapshot: userId,
+            version: 1,
+          },
+        },
+        operationId,
+      });
+      await expect(model.recordHostedGroupSponsoredBudgetLocator(locator)).resolves.toBe(true);
+
+      await expect(
+        model.recordHostedGroupSponsoredBudgetLocator({ ...locator, budgetId: 'other-budget' }),
+      ).resolves.toBe(false);
+      await expect(
+        new AgentOperationModel(serverDB, otherUserId).recordHostedGroupSponsoredBudgetLocator({
+          ...locator,
+          payerUserId: otherUserId,
+          resourceOwnerUserId: otherUserId,
+        }),
+      ).resolves.toBe(false);
+
+      const mismatchedOperationId = 'hosted-budget-run-mismatch';
+      await model.recordStart({
+        chatGroupId: groupId,
+        metadata: {
+          hostedGroupRun: {
+            actorUserIdSnapshot: 'another-actor',
+            expiresAt: locator.expiresAt,
+            groupId,
+            handleHash: 'c'.repeat(64),
+            membershipVersion: locator.membershipVersion,
+            ownerUserIdSnapshot: userId,
+            version: 1,
+          },
+        },
+        operationId: mismatchedOperationId,
+      });
+      await expect(
+        model.recordHostedGroupSponsoredBudgetLocator({
+          ...locator,
+          operationId: mismatchedOperationId,
+        }),
+      ).resolves.toBe(false);
+
+      expect(
+        (await model.findById(operationId))?.metadata,
+      ).toHaveProperty('hostedGroupSponsoredBudgetLocator.budgetId', locator.budgetId);
+    });
+
+    it('does not return a locator after the operation becomes terminal', async () => {
+      await serverDB.insert(chatGroups).values({ id: groupId, title: 'Hosted group', userId });
+      const model = new AgentOperationModel(serverDB, userId);
+      await model.recordStart({
+        chatGroupId: groupId,
+        metadata: {
+          hostedGroupRun: {
+            actorUserIdSnapshot: otherUserId,
+            expiresAt: locator.expiresAt,
+            groupId,
+            handleHash: 'd'.repeat(64),
+            membershipVersion: locator.membershipVersion,
+            ownerUserIdSnapshot: userId,
+            version: 1,
+          },
+        },
+        operationId,
+      });
+      await expect(model.recordHostedGroupSponsoredBudgetLocator(locator)).resolves.toBe(true);
+      await expect(model.settleRunning(operationId, 'done')).resolves.toBe(true);
+
+      await expect(model.findHostedGroupSponsoredBudgetLocator(operationId)).resolves.toBeNull();
     });
   });
 
@@ -188,6 +429,98 @@ describe('AgentOperationModel', () => {
   });
 
   describe('recordCompletion', () => {
+    it('atomically stores a server-validated hosted member final marker', async () => {
+      const model = new AgentOperationModel(serverDB, userId);
+      const operationId = 'op-hosted-member-final';
+      const hostedGroupRun = {
+        actorUserIdSnapshot: otherUserId,
+        expiresAt: '2099-09-04T00:00:00.000Z',
+        groupId: 'private-travel-group',
+        handleHash: 'a'.repeat(64),
+        membershipVersion: 2,
+        ownerUserIdSnapshot: userId,
+        version: 1,
+      };
+
+      await serverDB.insert(chatGroups).values({
+        id: hostedGroupRun.groupId,
+        title: 'Private travel group',
+        userId,
+      });
+      await serverDB.insert(chatGroupUserMemberships).values({
+        chatGroupId: hostedGroupRun.groupId,
+        invitedByUserId: userId,
+        membershipVersion: hostedGroupRun.membershipVersion,
+        userId: otherUserId,
+      });
+      await model.recordStart({
+        chatGroupId: hostedGroupRun.groupId,
+        metadata: { hostedGroupRun },
+        operationId,
+      });
+      const finalMarker = {
+        actorUserIdSnapshot: otherUserId,
+        assistantMessageId: 'message-final',
+        contentHash: 'a'.repeat(64),
+        groupId: 'private-travel-group',
+        membershipVersion: 2,
+        operationId,
+        ownerUserIdSnapshot: userId,
+        publishedAt: '2026-09-04T00:00:00.000Z',
+        version: 1 as const,
+      };
+      await expect(
+        model.recordCompletion(operationId, {
+          completionReason: 'done',
+          hostedGroupMemberFinal: { ...finalMarker, contentHash: 'A'.repeat(64) },
+          status: 'done',
+        }),
+      ).resolves.toBe(false);
+      expect((await model.findById(operationId))?.status).toBe('running');
+
+      await expect(
+        model.recordCompletion(operationId, {
+          completedAt: new Date(),
+          completionReason: 'done',
+          hostedGroupMemberFinal: finalMarker,
+          status: 'done',
+        }),
+      ).resolves.toBe(true);
+
+      expect((await model.findById(operationId))?.metadata).toMatchObject({
+        hostedGroupMemberFinal: { assistantMessageId: 'message-final', operationId },
+        hostedGroupRun,
+      });
+    });
+
+    it('rejects a hosted final marker when the durable start has no matching hosted run', async () => {
+      const model = new AgentOperationModel(serverDB, userId);
+      const operationId = 'op-forged-hosted-final';
+      await model.recordStart({ operationId });
+
+      await expect(
+        model.recordCompletion(operationId, {
+          completionReason: 'done',
+          hostedGroupMemberFinal: {
+            actorUserIdSnapshot: otherUserId,
+            assistantMessageId: 'message-forged',
+            contentHash: 'a'.repeat(64),
+            groupId: 'private-travel-group',
+            membershipVersion: 2,
+            operationId,
+            ownerUserIdSnapshot: userId,
+            publishedAt: '2026-09-04T00:00:00.000Z',
+            version: 1,
+          },
+          status: 'done',
+        }),
+      ).resolves.toBe(true);
+      expect((await model.findById(operationId))?.status).toBe('done');
+      expect((await model.findById(operationId))?.metadata).not.toHaveProperty(
+        'hostedGroupMemberFinal',
+      );
+    });
+
     it('updates the row to a terminal status with aggregates and trace key', async () => {
       const model = new AgentOperationModel(serverDB, userId);
       const operationId = 'op-complete-1';

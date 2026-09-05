@@ -1,8 +1,7 @@
 ---
 title: Integration Testing Guide
 description: >-
-  Learn how to effectively conduct integration testing to verify module
-  interactions and data integrity.
+  Learn how to effectively conduct integration testing to verify module interactions and data integrity.
 tags:
   - Integration Testing
   - Software Testing
@@ -121,9 +120,7 @@ describe('Your Feature Integration Tests', () => {
     const caller = messageRouter.createCaller(createTestContext(userId));
 
     // 2. Perform operation
-    const result = await caller.someMethod({
-      /* params */
-    });
+    const result = await caller.someMethod({/* params */});
 
     // 3. Assert result
     expect(result).toBeDefined();
@@ -170,9 +167,7 @@ it('should cascade delete messages when session is deleted', async () => {
   const messageCaller = messageRouter.createCaller(createTestContext(userId));
 
   // Create session and messages
-  const sessionId = await sessionCaller.createSession({
-    /* ... */
-  });
+  const sessionId = await sessionCaller.createSession({/* ... */});
   await messageCaller.createMessage({ sessionId /* ... */ });
 
   // Delete session
@@ -197,9 +192,7 @@ it('should handle complete chat flow', async () => {
   const messageCaller = messageRouter.createCaller(createTestContext(userId));
 
   // 1. Create session
-  const sessionId = await sessionCaller.createSession({
-    /* ... */
-  });
+  const sessionId = await sessionCaller.createSession({/* ... */});
 
   // 2. Create topic
   const topicId = await topicCaller.createTopic({ sessionId /* ... */ });
@@ -224,9 +217,9 @@ it('should handle complete chat flow', async () => {
 ```typescript
 it('should prevent cross-user access', async () => {
   // User A creates session
-  const sessionId = await sessionRouter.createCaller(createTestContext(userA)).createSession({
-    /* ... */
-  });
+  const sessionId = await sessionRouter
+    .createCaller(createTestContext(userA))
+    .createSession({/* ... */});
 
   // User B tries to access
   const callerB = messageRouter.createCaller(createTestContext(userB));
@@ -347,9 +340,7 @@ it('test delete');
 ```typescript
 it('debug test', async () => {
   // Perform operation
-  await caller.createMessage({
-    /* ... */
-  });
+  await caller.createMessage({/* ... */});
 
   // Print database state
   const allMessages = await serverDB.select().from(messages);

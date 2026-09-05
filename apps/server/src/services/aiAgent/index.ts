@@ -123,6 +123,7 @@ import {
   MessageModel,
 } from '@/database/models/message';
 import { PluginModel } from '@/database/models/plugin';
+import { RbacModel } from '@/database/models/rbac';
 import { TaskModel } from '@/database/models/task';
 import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
@@ -196,6 +197,12 @@ import type { ConversationHistoryEntry } from '@/server/services/heterogeneousAg
 import { buildCloudHeteroContext } from '@/server/services/heterogeneousAgent/cloudHeteroContext';
 import { buildRemoteDeviceHeteroContext } from '@/server/services/heterogeneousAgent/remoteDeviceHeteroContext';
 import { MarketService } from '@/server/services/market';
+import {
+  bindPlatformUsageSharedBudget,
+  completePlatformUsageSharedBudgetForOperation,
+  createPlatformUsageSharedBudget,
+  getPlatformUsageSharedBudgetForOperation,
+} from '@/server/services/platformUsageBilling/sharedBudget';
 import { isResourceAuthorOrAdmin } from '@/server/services/resourcePermission';
 import {
   buildConnectorOwnershipPrompt,
@@ -211,13 +218,52 @@ import {
   REMOTE_DEVICE_TOOL_IDENTIFIERS,
 } from './deviceToolRegistry';
 import { ingestAttachment } from './ingestAttachment';
+import {
+  getPlatformManagedExecutionContext,
+  grantPlatformManagedExecution,
+  type PlatformManagedExecutionContext,
+} from './platformManagedExecution';
 import { pruneRegeneratedBranch } from './pruneRegeneratedBranch';
 import { resolveDeviceWorkingDirectoryConfig } from './resolveDeviceWorkingDirectory';
 import { resolveServerSearchDecision } from './searchDecision';
 import { acquireTopicStartReservation } from './topicStartReservation';
 import { isWorkspaceCacheFresh, upsertWorkspaceScan } from './workspaceInitCache';
 
-const log = debug('lobe-server:ai-agent-service');
+const debugLog = debug('lobe-server:ai-agent-service');
+
+/**
+ * Keep agent execution telemetry structural. Values supplied to this service can
+ * contain prompts, PII, credentials and tenant-scoped identifiers, while errors
+ * can echo any of those values back from a provider or database. Only numeric
+ * counters are safe to interpolate; every other placeholder is intentionally
+ * redacted before the event reaches the logger.
+ */
+const log = (event: string, ...values: unknown[]) => {
+  const counters = values.filter(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value),
+  );
+  const safeEvent = /aborted|interrupt/i.test(event)
+    ? 'ai_agent.execution.aborted'
+    : /failed|failure|error|denied|invalid|requires|not available/i.test(event)
+      ? 'ai_agent.execution.error'
+      : /request accepted/i.test(event)
+        ? 'ai_agent.request.accepted'
+        : /completed/i.test(event)
+          ? 'ai_agent.execution.completed'
+          : /created operation/i.test(event)
+            ? 'ai_agent.operation.created'
+            : 'ai_agent.lifecycle';
+
+  debugLog(safeEvent, ...counters.slice(0, 6));
+};
+
+const SAFE_AGENT_ABORTED_ERROR = 'Agent execution was aborted.';
+const SAFE_AGENT_RUNTIME_ERROR = 'Agent execution failed.';
+
+type SafeAgentErrorKind = 'aborted' | 'runtime';
+
+const getSafeAgentErrorKind = (error: unknown): SafeAgentErrorKind =>
+  isAbortError(error) ? 'aborted' : 'runtime';
 
 const supportsCloudHeterogeneousSandbox = (type: HeterogeneousAgentType): boolean =>
   type === 'claude-code' || type === 'codex';
@@ -271,21 +317,7 @@ const createGraphAwareAgentFactory =
 function formatErrorForMetadata(error: unknown): Record<string, any> | undefined {
   if (!error) return undefined;
 
-  // Handle Error objects
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      name: error.name,
-    };
-  }
-
-  // Handle objects with message property (like ChatMessageError)
-  if (typeof error === 'object' && 'message' in error) {
-    return error as Record<string, any>;
-  }
-
-  // Fallback: wrap in object
-  return { message: String(error) };
+  return { kind: getSafeAgentErrorKind(error) };
 }
 
 const getMediaAvailabilityFromFileTypes = (fileTypes: string[]) => ({
@@ -632,7 +664,34 @@ const HETERO_DISPATCH_ERROR_HEADLINES: Record<string, string> = {
 };
 
 const humanizeHeteroDispatchError = (raw?: string): string =>
-  (raw && HETERO_DISPATCH_ERROR_HEADLINES[raw]) || raw || 'Device dispatch failed';
+  (raw && HETERO_DISPATCH_ERROR_HEADLINES[raw]) || 'Device dispatch failed';
+
+const SAFE_HETERO_DISPATCH_DETAILS = new Set([
+  HETEROGENEOUS_PROVIDER_BINDING_LOCAL_ONLY_ERROR,
+  'Device dispatch failed',
+  'No device bound. Pick a device in the Execution Device switcher, or switch to Cloud sandbox.',
+  'No device bound. Pick a local or connected device in the Execution Device switcher.',
+  'No local or connected device is available for this agent.',
+  'This sender is not allowed to run agents on a bound device.',
+]);
+
+const SAFE_HETERO_DISPATCH_MESSAGES = new Set([
+  ...Object.values(HETERO_DISPATCH_ERROR_HEADLINES),
+  'Device access denied',
+  'Device dispatch failed',
+  'Hetero sandbox spawn failed',
+  'No bound device for hetero agent',
+  'No execution device for platform agent',
+  'Provider-bound heterogeneous agents do not support this execution target',
+]);
+
+const projectHeteroDispatchDetail = (detail: string): string =>
+  SAFE_HETERO_DISPATCH_DETAILS.has(detail) || detail in HETERO_DISPATCH_ERROR_HEADLINES
+    ? detail
+    : 'Device dispatch failed';
+
+const projectHeteroDispatchMessage = (message: string): string =>
+  SAFE_HETERO_DISPATCH_MESSAGES.has(message) ? message : 'Device dispatch failed';
 
 /**
  * Map a raw dispatch code to a dedicated `ChatErrorType` so the web client renders
@@ -655,6 +714,9 @@ const resolveHeteroDispatchErrorType = (raw?: string): ErrorType =>
  * - Cron jobs / scheduled tasks
  */
 export class AiAgentService {
+  /** Authenticated principal whose action and usage attribution this run represents. */
+  private readonly actorUserId: string;
+  /** Owner of the agents, messages, topics, files and other runtime resources. */
   private readonly userId: string;
   private readonly db: LobeChatDatabase;
   private readonly agentDocumentsService: AgentDocumentsService;
@@ -686,28 +748,35 @@ export class AiAgentService {
     userId: string,
     options?: {
       marketAccessToken?: string;
+      resourceOwnerUserId?: string;
       runtimeOptions?: AgentRuntimeServiceOptions;
       withholdGatewayToken?: boolean;
       workspaceId?: string;
     },
   ) {
-    this.userId = userId;
+    this.actorUserId = userId;
+    this.userId = options?.resourceOwnerUserId ?? userId;
     this.db = db;
     this.workspaceId = options?.workspaceId;
-    this.withholdGatewayToken = options?.withholdGatewayToken ?? false;
+    // A hosted member is authorized to use the owner's fixed group resources,
+    // not to impersonate that owner at the Gateway. Never mint/return an owner
+    // user JWT across that principal boundary, even if a caller forgets the
+    // optional route-level safeguard.
+    this.withholdGatewayToken =
+      options?.withholdGatewayToken === true || this.actorUserId !== this.userId;
     const wsId = this.workspaceId;
-    this.agentDocumentsService = new AgentDocumentsService(db, userId, wsId);
-    this.agentModel = new AgentModel(db, userId, wsId);
-    this.agentOperationModel = new AgentOperationModel(db, userId, wsId);
-    this.agentService = new AgentService(db, userId, wsId);
-    this.messageModel = new MessageModel(db, userId, wsId);
-    this.connectorModel = new ConnectorModel(db, userId, wsId);
-    this.connectorToolModel = new ConnectorToolModel(db, userId, wsId);
-    this.pluginModel = new PluginModel(db, userId, wsId);
-    this.taskModel = new TaskModel(db, userId, wsId);
-    this.threadModel = new ThreadModel(db, userId, wsId);
-    this.topicModel = new TopicModel(db, userId, wsId);
-    this.agentRuntimeService = new AgentRuntimeService(db, userId, {
+    this.agentDocumentsService = new AgentDocumentsService(db, this.userId, wsId);
+    this.agentModel = new AgentModel(db, this.userId, wsId);
+    this.agentOperationModel = new AgentOperationModel(db, this.userId, wsId);
+    this.agentService = new AgentService(db, this.userId, wsId);
+    this.messageModel = new MessageModel(db, this.userId, wsId);
+    this.connectorModel = new ConnectorModel(db, this.userId, wsId);
+    this.connectorToolModel = new ConnectorToolModel(db, this.userId, wsId);
+    this.pluginModel = new PluginModel(db, this.userId, wsId);
+    this.taskModel = new TaskModel(db, this.userId, wsId);
+    this.threadModel = new ThreadModel(db, this.userId, wsId);
+    this.topicModel = new TopicModel(db, this.userId, wsId);
+    this.agentRuntimeService = new AgentRuntimeService(db, this.userId, {
       ...options?.runtimeOptions,
       agentFactory: createGraphAwareAgentFactory(options?.runtimeOptions?.agentFactory),
       // ── Runtime delegate ─────────────────────────────────────────────────
@@ -731,10 +800,10 @@ export class AiAgentService {
     if (options?.marketAccessToken) {
       this._marketService = new MarketService({
         accessToken: options.marketAccessToken,
-        userInfo: { userId },
+        userInfo: { userId: this.userId },
       });
     }
-    this.composioService = new ComposioService({ db, userId, workspaceId: wsId });
+    this.composioService = new ComposioService({ db, userId: this.userId, workspaceId: wsId });
   }
 
   private async getMarketService(): Promise<MarketService> {
@@ -827,12 +896,14 @@ export class AiAgentService {
       operationId,
       topicId,
     } = params;
+    const safeDetail = projectHeteroDispatchDetail(detail);
+    const safeMessage = projectHeteroDispatchMessage(message);
 
     // 1. Error bubble — written first so a stream subscriber reacting to the
     //    end event below re-reads a message that already carries the error.
     await this.messageModel.update(assistantMessageId, {
       content: '',
-      error: { body: { detail }, message, type: errorType },
+      error: { body: { detail: safeDetail }, message: safeMessage, type: errorType },
     });
 
     // 1b. Finalize the run through CompletionLifecycle's single entry — the SAME
@@ -847,7 +918,7 @@ export class AiAgentService {
       {
         agentId,
         assistantMessageId,
-        error: { message, type: errorType },
+        error: { message: safeMessage, type: errorType },
         operationId,
         serializedHooks: hookDispatcher.getSerializedHooks(operationId),
         topicId,
@@ -860,10 +931,10 @@ export class AiAgentService {
     // 2. Close the UI stream.
     try {
       await createStreamEventManager().publishAgentRuntimeEnd({
-        finalState: { error: detail },
+        finalState: { error: safeDetail },
         operationId,
         reason: 'error',
-        reasonDetail: detail,
+        reasonDetail: safeDetail,
         stepIndex: 0,
       });
     } catch (err) {
@@ -1282,6 +1353,44 @@ export class AiAgentService {
   }
 
   /**
+   * A persisted Agent flag selects the credential mode but never grants access to it.
+   * Product-owned server calls carry a non-serializable capability; direct users must
+   * be active global super administrators. The returned context is server-owned
+   * and contains no platform credential owner id.
+   */
+  private async authorizePlatformManagedExecution(
+    agentConfig: Pick<LobeAgentConfig, 'agencyConfig'>,
+    capabilityHolder: unknown,
+  ): Promise<Readonly<PlatformManagedExecutionContext> | undefined> {
+    if (agentConfig.agencyConfig?.modelRuntimeMode !== 'platform-managed') return undefined;
+    const context = getPlatformManagedExecutionContext(capabilityHolder);
+    if (context) {
+      const carriesPrincipal =
+        context.actorUserId !== undefined || context.resourceOwnerUserId !== undefined;
+      if (
+        carriesPrincipal &&
+        (context.actorUserId !== this.actorUserId || context.resourceOwnerUserId !== this.userId)
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Hosted execution principal does not match the service context',
+        });
+      }
+      return context;
+    }
+
+    const isSuperAdmin = await new RbacModel(this.db, this.actorUserId).hasGlobalRole(
+      'super_admin',
+    );
+    if (isSuperAdmin) return {};
+
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'This platform-managed agent is only available through the hosted AI service',
+    });
+  }
+
+  /**
    * Defer an agent run to a future time ("send this in 3 hours").
    *
    * Creates the topic now, `scheduled` and empty, carrying the whole request in
@@ -1548,12 +1657,12 @@ export class AiAgentService {
     // Determine the identifier to use (agentId takes precedence)
     const identifier = agentId || slug!;
 
-    log('execAgent: identifier=%s, prompt=%s', identifier, prompt.slice(0, 50));
+    log('execAgent: request accepted (promptChars=%d)', prompt.length);
 
     const operationTaskId = await this.resolveOperationTaskId(taskId ?? appContext?.taskId);
 
     const assistantMessageRef: { current?: string } = {};
-    const updateAbortedAssistantMessage = async (errorMessage: string) => {
+    const updateAbortedAssistantMessage = async () => {
       if (!assistantMessageRef.current) return;
 
       try {
@@ -1561,25 +1670,21 @@ export class AiAgentService {
           content: '',
           error: {
             body: {
-              detail: errorMessage,
+              detail: SAFE_AGENT_ABORTED_ERROR,
             },
-            message: errorMessage,
+            message: SAFE_AGENT_ABORTED_ERROR,
             type: 'ServerAgentRuntimeError',
           },
         });
-      } catch (error) {
-        log(
-          'execAgent: failed to update aborted assistant message %s: %O',
-          assistantMessageRef.current,
-          error,
-        );
+      } catch {
+        log('execAgent: failed to update aborted assistant message');
       }
     };
     const throwIfExecutionAborted = async (stage: string) => {
       if (!signal?.aborted) return;
 
       const error = getAbortError(signal, `Agent execution aborted during ${stage}`);
-      await updateAbortedAssistantMessage(error.message);
+      await updateAbortedAssistantMessage();
       throw error;
     };
 
@@ -1795,6 +1900,11 @@ export class AiAgentService {
         }
       }
     }
+
+    const platformManagedExecutionAuthorized = await this.authorizePlatformManagedExecution(
+      agentConfig,
+      params,
+    );
 
     if (appContext?.scope !== 'page') {
       activePluginIds = activePluginIds.filter((id) => id !== PageAgentIdentifier);
@@ -3141,7 +3251,7 @@ export class AiAgentService {
             assistantMessageId: assistantMessageRecord.id,
             autoStarted: false,
             createdAt: new Date().toISOString(),
-            error: result.error,
+            error: projectHeteroDispatchDetail(result.error ?? 'Device dispatch failed'),
             message: 'Remote hetero agent dispatch failed',
             operationId,
             status: 'error',
@@ -3315,7 +3425,7 @@ export class AiAgentService {
               assistantMessageId: assistantMessageRecord.id,
               autoStarted: false,
               createdAt: new Date().toISOString(),
-              error: result.error,
+              error: projectHeteroDispatchDetail(result.error ?? 'Device dispatch failed'),
               message: 'Hetero agent device dispatch failed',
               operationId,
               status: 'error',
@@ -3386,7 +3496,7 @@ export class AiAgentService {
             await this.finalizeHeteroDispatchError({
               agentId: resolvedAgentId,
               assistantMessageId: assistantMessageRecord.id,
-              detail: err instanceof Error ? err.message : String(err),
+              detail: SAFE_AGENT_RUNTIME_ERROR,
               message: 'Hetero sandbox spawn failed',
               operationId,
               topicId,
@@ -3446,8 +3556,8 @@ export class AiAgentService {
     try {
       const preference = await new UserModel(this.db, this.userId).getUserPreference();
       enableExpertise = preference?.lab?.enableSelfLearning === true;
-    } catch (error) {
-      console.error('Failed to resolve expertise injection Lab preference:', error);
+    } catch {
+      log('execAgent: failed to resolve expertise injection preference');
     }
     log(
       'execAgent: globalMemoryEnabled=%s, timezone=%s',
@@ -4026,14 +4136,10 @@ export class AiAgentService {
       // this log is the breadcrumb for diagnosing WHY the device was judged
       // offline (lazy WS connect vs getScopedOnlineDevices failing silently).
       if (executionPlan.kind === 'device-unrouted') {
-        console.warn('[AiAgentService] device-unrouted: exec degrades to cloud sandbox', {
-          boundDeviceId,
-          onlineDeviceCount: onlineDevices.length,
-          reason: executionPlan.reason,
-          requestedDeviceId,
-          topicId,
-          userId: this.userId,
-        });
+        log(
+          'execAgent: device-unrouted execution degraded to cloud sandbox (onlineDevices=%d)',
+          onlineDevices.length,
+        );
       }
 
       // Resolve the operation's group context ONCE here and snapshot it into op
@@ -4699,6 +4805,31 @@ export class AiAgentService {
     const operationId =
       continuationOperationId ?? `op_${timestamp}_${resolvedAgentId}_${topicId}_${nanoid(8)}`;
 
+    let platformUsageSharedBudget = platformManagedExecutionAuthorized?.sharedBudget;
+    if (
+      platformManagedExecutionAuthorized &&
+      agentConfig.agencyConfig?.modelRuntimeMode === 'platform-managed'
+    ) {
+      if (!platformUsageSharedBudget && platformManagedExecutionAuthorized.maxCredits) {
+        platformUsageSharedBudget = await createPlatformUsageSharedBudget(
+          this.db,
+          this.actorUserId,
+          {
+            expiresAt: new Date(Date.now() + 15 * 60_000),
+            maxCredits: platformManagedExecutionAuthorized.maxCredits,
+            requestIdentity: `platform-usage-request:${nanoid()}`,
+            workspaceId: this.workspaceId,
+          },
+        );
+      }
+      if (platformUsageSharedBudget) {
+        bindPlatformUsageSharedBudget(operationId, platformUsageSharedBudget, {
+          actorUserId: this.actorUserId,
+          workspaceId: this.workspaceId,
+        });
+      }
+    }
+
     if (params.topicStartOwnerOperationId) {
       const attached = await this.topicModel.appendRunningOperationChild(
         topicId,
@@ -4713,7 +4844,8 @@ export class AiAgentService {
       );
       if (!attached) {
         const errorMessage = 'Group supervisor finished before this member could start.';
-        await updateAbortedAssistantMessage(errorMessage);
+        await completePlatformUsageSharedBudgetForOperation(operationId).catch(() => false);
+        await updateAbortedAssistantMessage();
         return {
           agentId: resolvedAgentId,
           assistantMessageId: assistantMessageRecord.id,
@@ -5150,8 +5282,8 @@ export class AiAgentService {
     try {
       const expertiseModel = new ExpertiseModel(this.db, this.userId, this.workspaceId);
       expertise = await buildExpertiseContextSnapshot(expertiseModel, expertiseAgentId);
-    } catch (error) {
-      console.error('Failed to build expertise snapshot for agent:', expertiseAgentId, error);
+    } catch {
+      log('execAgent: failed to build expertise snapshot');
     }
 
     // 19. Create operation using AgentRuntimeService
@@ -5184,6 +5316,19 @@ export class AiAgentService {
           // context (state.metadata.agentId) targets the reviewed agent; ordinary
           // runs (no marker) fall back to the resolved executing agent.
           agentId: appContext?.agentSignal?.agentId ?? resolvedAgentId,
+          ...(platformManagedExecutionAuthorized
+            ? {
+                billingActorUserId: this.actorUserId,
+                resourceOwnerUserId: this.userId,
+                ...((appContext as typeof appContext & { hostedGroupRun?: unknown })?.hostedGroupRun
+                  ? {
+                      hostedGroupRun: (
+                        appContext as typeof appContext & { hostedGroupRun?: unknown }
+                      ).hostedGroupRun,
+                    }
+                  : {}),
+              }
+            : {}),
           // Propagate the originating request's client IP / user agent into
           // state.metadata (via the `...appContext` spread in createOperation) so
           // downstream LLM-call metadata can carry them for auditing and spend
@@ -5225,6 +5370,7 @@ export class AiAgentService {
           subAgentProgress: appContext?.subAgentProgress,
           taskId: operationTaskId,
           threadId: appContext?.threadId,
+          toolDispatchPolicy: appContext?.toolDispatchPolicy,
           topicId,
           trigger,
         },
@@ -5274,7 +5420,7 @@ export class AiAgentService {
           tools,
         },
         operationSkillSet,
-        userId: this.userId,
+        userId: this.actorUserId,
         userInterventionConfig,
         userMemory,
         workspaceId: this.workspaceId,
@@ -5349,12 +5495,13 @@ export class AiAgentService {
         userMessageId: userMessageRecord?.id ?? parentMessageId ?? '',
       };
     } catch (error) {
+      await completePlatformUsageSharedBudgetForOperation(operationId).catch(() => false);
       if (params.topicStartOwnerOperationId) {
         await this.topicModel.removeRunningOperationChild(topicId, operationId).catch(() => false);
       }
       if (isAbortError(error)) {
-        await updateAbortedAssistantMessage(error.message);
-        log('execAgent: createOperation aborted for %s: %s', operationId, error.message);
+        await updateAbortedAssistantMessage();
+        log('execAgent: createOperation aborted');
         throw error;
       }
       if (providedApprovalResolutionRequestId && approvalClaim.continuationPrepared) {
@@ -5367,19 +5514,15 @@ export class AiAgentService {
 
       // Operation startup failed (e.g., QStash queue service unavailable)
       // Update assistant message with error so user can see what went wrong
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error starting agent';
-      log(
-        'execAgent: createOperation failed, updating assistant message with error: %s',
-        errorMessage,
-      );
+      log('execAgent: createOperation failed');
 
       await this.messageModel.update(assistantMessageRecord.id, {
         content: '',
         error: {
           body: {
-            detail: errorMessage,
+            detail: SAFE_AGENT_RUNTIME_ERROR,
           },
-          message: errorMessage,
+          message: SAFE_AGENT_RUNTIME_ERROR,
           type: 'ServerAgentRuntimeError', // ServiceUnavailable - agent runtime service unavailable
         },
       });
@@ -5390,7 +5533,7 @@ export class AiAgentService {
         assistantMessageId: assistantMessageRecord.id,
         autoStarted: false,
         createdAt: new Date().toISOString(),
-        error: errorMessage,
+        error: SAFE_AGENT_RUNTIME_ERROR,
         message: 'Agent operation failed to start',
         operationId,
         status: 'error',
@@ -5413,13 +5556,46 @@ export class AiAgentService {
    * 2. Delegate to execAgent for the rest
    */
   async execGroupAgent(params: ExecGroupAgentParams): Promise<ExecGroupAgentResult> {
-    const { agentId, groupId, message, topicId: inputTopicId, newTopic } = params;
+    return this.execGroupAgentInternal(params);
+  }
 
-    log(
-      'execGroupAgent: agentId=%s, groupId=%s, message=%s',
+  /** Server-only hosted entry for the current execAgent route. */
+  async execPlatformManagedAgent(
+    params: InternalExecAgentParams,
+    context: PlatformManagedExecutionContext & { maxCredits: number },
+  ): Promise<ExecAgentResult> {
+    return this.execAgent(grantPlatformManagedExecution({ ...params }, context));
+  }
+
+  /** Server-only hosted-product entry point. Its Symbol capability cannot cross tRPC/JSON. */
+  async execPlatformManagedGroupAgent(
+    params: ExecGroupAgentParams,
+    context: PlatformManagedExecutionContext & { maxCredits: number },
+  ): Promise<ExecGroupAgentResult> {
+    return this.execGroupAgentInternal(grantPlatformManagedExecution({ ...params }, context));
+  }
+
+  private async execGroupAgentInternal(
+    params: ExecGroupAgentParams,
+  ): Promise<ExecGroupAgentResult> {
+    const {
       agentId,
       groupId,
-      message.slice(0, 50),
+      message,
+      topicId: inputTopicId,
+      newTopic,
+      suppressSignal,
+      toolDispatchPolicy,
+    } = params;
+
+    log('execGroupAgent: request accepted (messageChars=%d)', message.length);
+
+    // Fail before topic/message creation: a stored credential mode is not an
+    // execution grant, and direct browser calls must not leave side effects.
+    const groupAgentConfig = await this.resolveAgentConfigOrThrow(agentId);
+    const platformManagedExecutionAuthorized = await this.authorizePlatformManagedExecution(
+      groupAgentConfig,
+      params,
     );
 
     // 1. Create topic with groupId if needed
@@ -5450,13 +5626,24 @@ export class AiAgentService {
     // execGroupAgent always runs the group's supervisor, so stamp the
     // orchestration role onto the run — it lands on the assistant message
     // metadata and drives supervisor-flavored UI rendering.
-    const result = await this.execAgent({
+    const execParams: InternalExecAgentParams = {
       agentId,
-      appContext: { groupId, orchestrationRole: 'supervisor', topicId },
+      appContext: {
+        groupId,
+        orchestrationRole: 'supervisor',
+        suppressSignal,
+        toolDispatchPolicy,
+        topicId,
+      },
       autoStart: true,
       prompt: message,
       trigger: RequestTrigger.Chat,
-    });
+    };
+    const result = await this.execAgent(
+      platformManagedExecutionAuthorized
+        ? grantPlatformManagedExecution(execParams, platformManagedExecutionAuthorized)
+        : execParams,
+    );
 
     log(
       'execGroupAgent: delegated to execAgent, operationId=%s, success=%s',
@@ -5603,13 +5790,7 @@ export class AiAgentService {
       topicId,
     } = params;
 
-    log(
-      'execAgentMember: agentId=%s, groupId=%s, topicId=%s, instruction=%s',
-      agentId,
-      groupId,
-      topicId,
-      (instruction ?? '').slice(0, 50),
-    );
+    log('execAgentMember: request accepted (instructionChars=%d)', (instruction ?? '').length);
 
     // Dispatch beforeCallAgent hook on the supervisor operation.
     hookDispatcher
@@ -5638,6 +5819,7 @@ export class AiAgentService {
       groupId,
       orchestrationRole: 'member',
       scope: 'group',
+      toolDispatchPolicy: params.toolDispatchPolicy,
       topicId,
     };
 
@@ -5662,7 +5844,7 @@ export class AiAgentService {
     // client orchestration where the supervisor instruction is virtual. Without
     // this, every server-side speak/broadcast/delegate would leak the
     // orchestration prompt into the group conversation as a real message.
-    const result = await this.execAgent({
+    const execParams: InternalExecAgentParams = {
       agentId,
       appContext,
       autoStart: true,
@@ -5685,7 +5867,14 @@ export class AiAgentService {
       topicStartOwnerOperationId: parentOperationId,
       trigger: inheritedTrigger,
       userInterventionConfig: { approvalMode: 'headless' },
+    };
+    const sharedBudget = getPlatformUsageSharedBudgetForOperation(parentOperationId, {
+      actorUserId: this.actorUserId,
+      workspaceId: this.workspaceId,
     });
+    const result = await this.execAgent(
+      sharedBudget ? grantPlatformManagedExecution(execParams, { sharedBudget }) : execParams,
+    );
 
     log(
       'execAgentMember: delegated to execAgent, operationId=%s, success=%s',
@@ -5741,14 +5930,7 @@ export class AiAgentService {
     const { groupId, topicId, parentMessageId, agentId, instruction, title, parentOperationId } =
       params;
 
-    log(
-      '%s: agentId=%s, groupId=%s, topicId=%s, instruction=%s',
-      options.logScope,
-      agentId,
-      groupId,
-      topicId,
-      instruction.slice(0, 50),
-    );
+    log('%s: request accepted (instructionChars=%d)', options.logScope, instruction.length);
 
     // Dispatch beforeCallAgent hook on parent operation
     if (parentOperationId) {
@@ -5844,7 +6026,7 @@ export class AiAgentService {
     // 4. Delegate to execAgent with threadId in appContext and hooks
     // The instruction will be created as user message in the Thread
     // Use headless mode to skip human approval in async agent execution
-    const result = await this.execAgent({
+    const execParams: InternalExecAgentParams = {
       agentId,
       appContext,
       autoStart: true,
@@ -5857,7 +6039,16 @@ export class AiAgentService {
       provider: options.provider,
       trigger: inheritedTrigger,
       userInterventionConfig: { approvalMode: 'headless' },
-    });
+    };
+    const sharedBudget = parentOperationId
+      ? getPlatformUsageSharedBudgetForOperation(parentOperationId, {
+          actorUserId: this.actorUserId,
+          workspaceId: this.workspaceId,
+        })
+      : undefined;
+    const result = await this.execAgent(
+      sharedBudget ? grantPlatformManagedExecution(execParams, { sharedBudget }) : execParams,
+    );
 
     log(
       '%s: delegated to execAgent, operationId=%s, success=%s',
@@ -5878,7 +6069,7 @@ export class AiAgentService {
         metadata: {
           completedAt,
           duration: Date.now() - new Date(startedAt).getTime(),
-          error: result.error,
+          error: { kind: 'runtime' },
           operationId: result.operationId,
           startedAt,
         },
@@ -5890,7 +6081,7 @@ export class AiAgentService {
         hookDispatcher
           .dispatch(parentOperationId, 'onCallAgentError', {
             agentId,
-            error: result.error || 'Sub-agent execution failed',
+            error: SAFE_AGENT_RUNTIME_ERROR,
             operationId: parentOperationId,
             userId: this.userId,
           })
@@ -5993,7 +6184,7 @@ export class AiAgentService {
 
         // Log error when the isolated run fails
         if (reason === 'error' && finalState.error) {
-          console.error('%s: run failed for thread %s:', logScope, threadId, finalState.error);
+          log('isolatedAgent: run failed (errorKind=runtime)');
         }
 
         try {
@@ -6036,8 +6227,8 @@ export class AiAgentService {
             status,
             reason,
           );
-        } catch (error) {
-          console.error('%s: failed to update thread on completion: %O', logScope, error);
+        } catch {
+          log('isolatedAgent: failed to update thread on completion');
         }
       },
     };
@@ -6117,12 +6308,7 @@ export class AiAgentService {
           }
 
           if (event.reason === 'error' && finalState.error) {
-            console.error(
-              '%s: thread hook onComplete run failed for thread %s:',
-              logScope,
-              threadId,
-              finalState.error,
-            );
+            log('isolatedAgent: completion hook run failed (errorKind=runtime)');
           }
 
           try {
@@ -6162,8 +6348,8 @@ export class AiAgentService {
               status,
               event.reason,
             );
-          } catch (error) {
-            console.error('%s: thread hook onComplete failed to update: %O', logScope, error);
+          } catch {
+            log('isolatedAgent: completion hook failed to update thread');
           }
         },
         id: 'thread-completion',
@@ -6204,12 +6390,8 @@ export class AiAgentService {
             threadId,
             toolMessageId,
           });
-        } catch (error) {
-          console.error(
-            'Sub-agent bridge: failed to complete bridge for parent %s: %O',
-            parentOperationId,
-            error,
-          );
+        } catch {
+          log('subAgentBridge: failed to complete bridge');
         }
       },
       id: 'sub-agent-bridge',
@@ -6274,12 +6456,8 @@ export class AiAgentService {
             reason: event.reason ?? 'done',
             threadId,
           });
-        } catch (error) {
-          console.error(
-            'Group-member bridge: failed to complete bridge for parent %s: %O',
-            parentOperationId,
-            error,
-          );
+        } catch {
+          log('groupMemberBridge: failed to complete bridge');
         }
       },
       id: 'group-member-bridge',

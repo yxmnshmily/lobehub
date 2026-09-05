@@ -68,6 +68,7 @@ import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observab
 import { FileService } from '@/server/services/file';
 import { mcpService } from '@/server/services/mcp';
 import { MessageService } from '@/server/services/message';
+import { parseHostedGroupRunSnapshot } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
 import { QueueService } from '@/server/services/queue';
 import { LocalQueueServiceImpl } from '@/server/services/queue/impls';
 import { ToolExecutionService } from '@/server/services/toolExecution';
@@ -781,6 +782,36 @@ export class AgentRuntimeService {
       workspaceId,
     } = params;
 
+    const serverAppContext = appContext as
+      | (typeof appContext & {
+          billingActorUserId?: unknown;
+          hostedGroupRun?: unknown;
+          resourceOwnerUserId?: unknown;
+        })
+      | undefined;
+    const hasHostedGroupRun = Object.prototype.hasOwnProperty.call(
+      serverAppContext ?? {},
+      'hostedGroupRun',
+    );
+    const hostedGroupRun = parseHostedGroupRunSnapshot(serverAppContext?.hostedGroupRun);
+    if (
+      hasHostedGroupRun &&
+      (!hostedGroupRun ||
+        hostedGroupRun.actorUserIdSnapshot !== serverAppContext?.billingActorUserId ||
+        hostedGroupRun.ownerUserIdSnapshot !== serverAppContext?.resourceOwnerUserId ||
+        hostedGroupRun.actorUserIdSnapshot !== userId ||
+        hostedGroupRun.groupId !== appContext?.groupId ||
+        Date.parse(hostedGroupRun.expiresAt) <= Date.now())
+    ) {
+      throw new Error('Invalid server-derived hosted group run binding');
+    }
+
+    const operationMetadata = {
+      ...(appContext?.agentSignal ? { agentSignal: appContext.agentSignal } : {}),
+      ...(interventionResolution ? { agentInterventionContinuation: interventionResolution } : {}),
+      ...(hostedGroupRun ? { hostedGroupRun } : {}),
+    };
+
     // Persist initial agent_operations row. CompletionLifecycle owns both
     // ends of the persistence lifecycle (start row here, terminal update
     // in dispatchHooks) and swallows DB errors so runtime startup is never
@@ -800,16 +831,7 @@ export class AgentRuntimeService {
       // Persist the Agent Signal run marker on the operation row so server-side
       // self-iteration tools can read it back (metadata.agentSignal) at tool-call
       // time — the trimmed appContext above intentionally drops it.
-      ...(appContext?.agentSignal || interventionResolution
-        ? {
-            metadata: {
-              ...(appContext?.agentSignal ? { agentSignal: appContext.agentSignal } : {}),
-              ...(interventionResolution
-                ? { agentInterventionContinuation: interventionResolution }
-                : {}),
-            },
-          }
-        : {}),
+      ...(Object.keys(operationMetadata).length > 0 ? { metadata: operationMetadata } : {}),
       model: modelRuntimeConfig?.model,
       modelRuntimeConfig,
       operationId,
@@ -823,6 +845,11 @@ export class AgentRuntimeService {
     if (interventionResolution && !operationStartPersisted) {
       throw new Error(
         `Failed to durably persist intervention continuation ${operationId} before dispatch`,
+      );
+    }
+    if (hostedGroupRun && !operationStartPersisted) {
+      throw new Error(
+        `Failed to durably persist hosted group run binding ${operationId} before dispatch`,
       );
     }
 
@@ -3530,6 +3557,20 @@ export class AgentRuntimeService {
       ? this.agentFactory(generalConfig)
       : new GeneralChatAgent(generalConfig);
 
+    const billingActorUserId = metadata?.billingActorUserId;
+    const resourceOwnerUserId = metadata?.resourceOwnerUserId;
+    const hasBillingActor = billingActorUserId !== undefined;
+    const hasResourceOwner = resourceOwnerUserId !== undefined;
+    if (
+      hasBillingActor !== hasResourceOwner ||
+      (hasBillingActor &&
+        (!billingActorUserId?.trim() ||
+          !resourceOwnerUserId?.trim() ||
+          billingActorUserId !== metadata?.userId))
+    ) {
+      throw new Error('Invalid server-derived hosted execution principal');
+    }
+
     // Create streaming executor context
     const executorContext: RuntimeExecutorContext = {
       abortSignal,
@@ -3546,6 +3587,7 @@ export class AgentRuntimeService {
       // cover the export and the card land with `agent_runtime_end`.
       allowEarlyFinalAnswerVisibleOutputEnd:
         agent instanceof GeneralChatAgent && !stateHasEntityFileEdits(agentState),
+      billingActorUserId,
       botContext: metadata?.botContext,
       botPlatformContext: metadata?.botPlatformContext,
       discordContext: metadata?.discordContext,
@@ -3558,6 +3600,15 @@ export class AgentRuntimeService {
       loadAgentState: this.coordinator.loadAgentState.bind(this.coordinator),
       messageModel: this.messageModel,
       operationId,
+      platformManagedExecutionAuthorized:
+        metadata?.platformManagedExecutionAuthorized === true ? true : undefined,
+      platformManagedMaxCredits:
+        metadata?.platformManagedExecutionAuthorized === true &&
+        Number.isSafeInteger(metadata?.platformManagedMaxCredits) &&
+        Number(metadata?.platformManagedMaxCredits) > 0
+          ? Number(metadata?.platformManagedMaxCredits)
+          : undefined,
+      resourceOwnerUserId,
       searchDecision: metadata?.searchDecision,
       serverDB: this.serverDB,
       stepIndex,
@@ -3566,7 +3617,7 @@ export class AgentRuntimeService {
       toolExecutionService: this.toolExecutionService,
       topicId: metadata?.topicId,
       tracingContextEngine,
-      userId: metadata?.userId,
+      userId: resourceOwnerUserId ?? metadata?.userId,
       workspaceId: this.workspaceId,
     };
 

@@ -489,6 +489,11 @@ describe('StreamEventManager', () => {
             schemaVersion: 1,
           },
           messages: [{ role: 'user' }],
+          metadata: {
+            platformManagedExecutionAuthorized: true,
+            platformManagedMaxCredits: 4321,
+            topicId: 'topic-1',
+          },
           operationToolSet: {},
           status: 'done',
           toolManifestMap: {},
@@ -499,9 +504,14 @@ describe('StreamEventManager', () => {
       });
 
       expect(result).toEqual({
-        finalState: { cost: { total: 1 }, status: 'done' },
+        finalState: {
+          cost: { total: 1 },
+          metadata: { topicId: 'topic-1' },
+          status: 'done',
+        },
         reason: 'done',
       });
+      expect(JSON.stringify(result)).not.toContain('platformManagedExecutionAuthorized');
     });
 
     it('handles non-object data defensively', () => {

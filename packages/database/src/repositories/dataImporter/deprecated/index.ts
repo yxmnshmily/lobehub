@@ -14,6 +14,7 @@ import {
   topics,
 } from '../../../schemas';
 import type { LobeChatDatabase } from '../../../type';
+import { sanitizeAgentApiConfig } from '../../../utils/sanitizeAgentApiConfig';
 import { buildWorkspaceWhere } from '../../../utils/workspace';
 
 interface ImportResult {
@@ -144,6 +145,7 @@ export class DeprecatedDataImporterRepos {
             .values(
               shouldInsertSessionAgents.map(({ config, meta }) => ({
                 ...config,
+                agencyConfig: sanitizeAgentApiConfig(config.agencyConfig),
                 // `config` is the `@lobechat/types` LobeAgentConfig shape
                 // (plugins: AgentPluginEntry[]); the `agents` table's
                 // `plugins` column is intentionally left typed `string[]`

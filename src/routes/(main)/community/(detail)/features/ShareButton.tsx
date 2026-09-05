@@ -140,6 +140,7 @@ const ShareButton = memo<ShareButtonProps>(({ meta, ...rest }) => {
   return (
     <>
       <Button
+        aria-label={t('share')}
         icon={<Icon icon={Share2Icon} />}
         size={'large'}
         onClick={() => setOpen(true)}

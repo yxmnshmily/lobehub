@@ -31,6 +31,7 @@ import { SkillStoreManifest } from '@lobechat/builtin-tool-skill-store';
 import { resolveSkillsManifest, SkillsManifest } from '@lobechat/builtin-tool-skills';
 import { TaskManifest } from '@lobechat/builtin-tool-task';
 import { TopicReferenceManifest } from '@lobechat/builtin-tool-topic-reference';
+import { TravelProductionManifest } from '@lobechat/builtin-tool-travel-production';
 import { UserInteractionManifest } from '@lobechat/builtin-tool-user-interaction';
 import { VerifyToolManifest } from '@lobechat/builtin-tool-verify';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
@@ -164,6 +165,13 @@ export const runtimeManagedToolIds = [
 ];
 
 const builtinToolRegistry: LobeBuiltinTool[] = [
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: TravelProductionManifest.identifier,
+    manifest: TravelProductionManifest,
+    type: 'builtin',
+  },
   {
     discoverable: false,
     hidden: true,
@@ -328,6 +336,7 @@ const builtinToolRegistry: LobeBuiltinTool[] = [
     type: 'builtin',
   },
   {
+    discoverable: false,
     hidden: true,
     identifier: AgentManagementManifest.identifier,
     manifest: AgentManagementManifest,

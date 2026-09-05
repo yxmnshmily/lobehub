@@ -1,8 +1,7 @@
 ---
 title: Configuring Keycloak Authentication for LobeHub
 description: >-
-  Learn how to configure Keycloak SSO for LobeHub, including creating a client
-  and setting up environment variables.
+  Learn how to configure Keycloak SSO for LobeHub, including creating a client and setting up environment variables.
 tags:
   - Keycloak
   - Authentication
@@ -17,48 +16,49 @@ tags:
 <Steps>
   ### Create Client in Keycloak
 
-  1. Log in to your Keycloak Admin Console
-  2. Select your realm (or create a new one)
-  3. Go to **Clients** > **Create client**
-  4. Configure the client:
-     - **Client type**: `OpenID Connect`
-     - **Client ID**: `lobechat` (or any name you prefer)
-  5. Click **Next**
-  6. Enable **Client authentication** (On)
-  7. Click **Next** and then **Save**
+1. Log in to your Keycloak Admin Console
+2. Select your realm (or create a new one)
+3. Go to **Clients** > **Create client**
+4. Configure the client:
+   - **Client type**: `OpenID Connect`
+   - **Client ID**: `lobechat` (or any name you prefer)
+5. Click **Next**
+6. Enable **Client authentication** (On)
+7. Click **Next** and then **Save**
 
-  ### Configure Redirect URI
+### Configure Redirect URI
 
-  In the client **Settings** tab:
+In the client **Settings** tab:
 
-  1. Add redirect URI under **Valid redirect URIs**
+1. Add redirect URI under **Valid redirect URIs**
 
   <Callout type={'info'}>
     Callback URL format:
 
     - Local development: `http://localhost:3210/api/auth/callback/keycloak`
     - Production: `https://your-domain.com/api/auth/callback/keycloak`
+
   </Callout>
 
-  ### Get Client Secret
+### Get Client Secret
 
-  Go to the **Credentials** tab and copy the **Client secret**.
+Go to the **Credentials** tab and copy the **Client secret**.
 
-  ### Get Issuer URL
+### Get Issuer URL
 
-  The issuer URL format: `https://your-keycloak-domain/realms/your-realm`
+The issuer URL format: `https://your-keycloak-domain/realms/your-realm`
 
-  For example: `https://keycloak.example.com/realms/master`
+For example: `https://keycloak.example.com/realms/master`
 
-  ### Configure Environment Variables
+### Configure Environment Variables
 
-  | Environment Variable   | Type     | Description                                                     |
-  | ---------------------- | -------- | --------------------------------------------------------------- |
-  | `AUTH_SECRET`          | Required | Session encryption key, generate with `openssl rand -base64 32` |
-  | `AUTH_SSO_PROVIDERS`   | Required | Set to `keycloak`                                               |
-  | `AUTH_KEYCLOAK_ID`     | Required | Client ID                                                       |
-  | `AUTH_KEYCLOAK_SECRET` | Required | Client Secret                                                   |
-  | `AUTH_KEYCLOAK_ISSUER` | Required | `https://your-keycloak-domain/realms/your-realm`                |
+| Environment Variable | Type | Description |
+| --- | --- | --- |
+| `AUTH_SECRET` | Required | Session encryption key, generate with `openssl rand -base64 32` |
+| `AUTH_SSO_PROVIDERS` | Required | Set to `keycloak` |
+| `AUTH_KEYCLOAK_ID` | Required | Client ID |
+| `AUTH_KEYCLOAK_SECRET` | Required | Client Secret |
+| `AUTH_KEYCLOAK_ISSUER` | Required | `https://your-keycloak-domain/realms/your-realm` |
 
   <Callout type={'tip'}>
     Go to [📘 Environment Variables](/docs/self-hosting/environment-variables/auth#keycloak)
@@ -67,8 +67,7 @@ tags:
 </Steps>
 
 <Callout type={'info'}>
-  After successful deployment, users will be able to authenticate with Keycloak
-  and use LobeHub.
+  After successful deployment, users will be able to authenticate with Keycloak and use LobeHub.
 </Callout>
 
 ## Related Resources

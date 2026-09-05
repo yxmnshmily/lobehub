@@ -1,9 +1,5 @@
-'use client';
+import CustomerCenterPage from '@/business/client/BusinessSettingPages/CustomerCenterPage';
 
-import { Navigate } from 'react-router';
-
-const Page = () => {
-  return <Navigate replace to="/settings" />;
-};
+const Page = () => <CustomerCenterPage defaultSection="account-security" />;
 
 export default Page;

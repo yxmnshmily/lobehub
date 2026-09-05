@@ -1,8 +1,7 @@
 ---
 title: Deploy LobeHub with database on Dokploy
 description: >-
-  Learn how to deploy LobeHub with database on Dokploy with ease, including:
-  database, authentication and S3 storage service.
+  Learn how to deploy LobeHub with database on Dokploy with ease, including: database, authentication and S3 storage service.
 tags:
   - Deploy LobeHub
   - Vercel Deployment
@@ -42,7 +41,7 @@ S3_BUCKET=
 S3_ENABLE_PATH_STYLE=
 ```
 
-### Configure KEY\_VAULTS\_SECRET Environment Variable
+### Configure KEY_VAULTS_SECRET Environment Variable
 
 `KEY_VAULTS_SECRET` is used to encrypt sensitive information such as API keys stored by users. Click the button below to generate:
 
@@ -61,7 +60,8 @@ You also need to configure the `JWKS_KEY` environment variable for signing and v
 <GenerateJWKSKey />
 
 <Callout type={'info'}>
-  For advanced features like SSO providers, magic link login, and email verification, see [Authentication Service](/docs/self-hosting/auth).
+  For advanced features like SSO providers, magic link login, and email verification, see
+  [Authentication Service](/docs/self-hosting/auth).
 </Callout>
 
 ## 2. Deploying the database on Dokploy
@@ -118,7 +118,6 @@ S3_SECRET_ACCESS_KEY=
 S3_ENDPOINT=
 S3_BUCKET=
 S3_ENABLE_PATH_STYLE=
-
 ```
 
 After adding the environment variables and saving, click Deploy to initiate the deployment. You can check the deployment progress and log information under Deployments.

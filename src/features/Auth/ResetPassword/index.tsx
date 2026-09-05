@@ -3,8 +3,9 @@
 import { Button } from '@lobehub/ui/base-ui';
 import { ChevronLeftIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import AuthCard from '@/features/AuthCard';
 import { useAuthServerConfigStore } from '@/features/AuthShell';
 
@@ -27,11 +28,9 @@ const ResetPasswordPage = () => {
       subtitle={t('betterAuth.resetPassword.description')}
       title={t('betterAuth.resetPassword.title')}
       footer={
-        <Link to={'/signin'}>
-          <Button block icon={ChevronLeftIcon} size={'large'}>
-            {t('betterAuth.resetPassword.backToSignIn')}
-          </Button>
-        </Link>
+        <Button block href={withLobeHubMountPath('/signin')} icon={ChevronLeftIcon} size={'large'}>
+          {t('betterAuth.resetPassword.backToSignIn')}
+        </Button>
       }
     >
       <ResetPasswordContent

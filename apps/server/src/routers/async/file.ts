@@ -304,14 +304,12 @@ export const fileRouter = router({
           });
 
           // after finish partition, we need to filter out some elements
-          const chunks = chunkResult.chunks.map(
-            ({ text, ...item }): NewChunkItem => ({
-              ...item,
-              text: text ? sanitizeUTF8(text) : '',
-              userId: ctx.userId,
-              workspaceId,
-            }),
-          );
+          const chunks = chunkResult.chunks.map(({ text, ...item }): NewChunkItem => ({
+            ...item,
+            text: text ? sanitizeUTF8(text) : '',
+            userId: ctx.userId,
+            workspaceId,
+          }));
 
           const duration = Date.now() - startAt;
 
@@ -327,14 +325,12 @@ export const fileRouter = router({
           await chunkModel.bulkCreate(chunks, input.fileId);
 
           if (chunkResult.unstructuredChunks) {
-            const unstructuredChunks = chunkResult.unstructuredChunks.map(
-              (item): NewChunkItem => ({
-                ...item,
-                fileId: input.fileId,
-                userId: ctx.userId,
-                workspaceId,
-              }),
-            );
+            const unstructuredChunks = chunkResult.unstructuredChunks.map((item): NewChunkItem => ({
+              ...item,
+              fileId: input.fileId,
+              userId: ctx.userId,
+              workspaceId,
+            }));
             await chunkModel.bulkCreateUnstructuredChunks(unstructuredChunks);
           }
 

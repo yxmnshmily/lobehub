@@ -324,6 +324,223 @@ describe('ChatGroupModel', () => {
       expect(result.id).toBe('custom-group-id');
       expect(result.title).toBe('Custom ID Group');
     });
+
+    it('should return one owned group when ensureByClientId is retried', async () => {
+      const first = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+      const retried = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+
+      expect(retried.id).toBe(first.id);
+      expect((await chatGroupModel.findByClientId('default-travel-service-group'))?.id).toBe(
+        first.id,
+      );
+      expect(await chatGroupModel.query()).toHaveLength(1);
+    });
+
+    it('should upgrade member slots for an existing ensured group and preserve other config', async () => {
+      await serverDB.insert(chatGroups).values({
+        clientId: 'default-travel-service-group',
+        config: { allowDM: false, memberSlots: [] },
+        id: 'legacy-travel-group',
+        title: 'user title',
+        userId,
+      });
+      const memberSlots = [
+        {
+          agentId: 'travel-owner',
+          configurable: true,
+          key: 'travel-owner',
+          label: '旅游群主AI',
+          role: 'supervisor' as const,
+          status: 'configured' as const,
+        },
+      ];
+
+      const upgraded = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        config: { memberSlots },
+        title: '旅游服务超级群组',
+      });
+
+      expect(upgraded.id).toBe('legacy-travel-group');
+      expect(upgraded.title).toBe('user title');
+      expect(upgraded.config).toEqual({ allowDM: false, memberSlots });
+    });
+
+    it('should isolate ensured groups with the same clientId by user', async () => {
+      const otherUserModel = new ChatGroupModel(serverDB, otherUserId);
+      const mine = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+      const theirs = await otherUserModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+
+      expect(theirs.id).not.toBe(mine.id);
+      expect((await chatGroupModel.query()).map(({ id }) => id)).toEqual([mine.id]);
+      expect((await otherUserModel.query()).map(({ id }) => id)).toEqual([theirs.id]);
+    });
+
+    it('should not upgrade another users group with the same clientId', async () => {
+      const otherUserModel = new ChatGroupModel(serverDB, otherUserId);
+      const theirs = await otherUserModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        config: { allowDM: false },
+        title: 'their title',
+      });
+      await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        config: { memberSlots: [] },
+        title: 'my title',
+      });
+
+      expect(await otherUserModel.findById(theirs.id)).toMatchObject({
+        config: { allowDM: false },
+        title: 'their title',
+      });
+    });
+
+    it('should ensure one owned supervisor membership without duplicates', async () => {
+      await serverDB.insert(agentsTable).values({
+        id: 'travel-owner-inbox',
+        slug: INBOX_SESSION_ID,
+        userId,
+        virtual: true,
+      });
+      const group = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+
+      await chatGroupModel.ensureSupervisorAgent(group.id, 'travel-owner-inbox');
+      await chatGroupModel.ensureSupervisorAgent(group.id, 'travel-owner-inbox');
+
+      expect(await chatGroupModel.getSupervisorAgentId(group.id)).toBe('travel-owner-inbox');
+      expect(await chatGroupModel.getGroupAgents(group.id)).toHaveLength(1);
+    });
+
+    it('should reject a supervisor agent owned by another user', async () => {
+      await serverDB.insert(agentsTable).values({
+        id: 'other-user-inbox',
+        slug: INBOX_SESSION_ID,
+        userId: otherUserId,
+        virtual: true,
+      });
+      const group = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+
+      await expect(
+        chatGroupModel.ensureSupervisorAgent(group.id, 'other-user-inbox'),
+      ).rejects.toThrow(/owned group and agent/);
+      expect(await chatGroupModel.getSupervisorAgentId(group.id)).toBeNull();
+    });
+
+    it('should ensure participant memberships without duplicates', async () => {
+      await serverDB.insert(agentsTable).values([
+        { id: 'travel-copy', userId, virtual: true },
+        { id: 'travel-image', userId, virtual: true },
+      ]);
+      const group = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+
+      await chatGroupModel.ensureParticipantAgents(group.id, ['travel-copy', 'travel-image']);
+      await chatGroupModel.ensureParticipantAgents(group.id, ['travel-copy', 'travel-image']);
+
+      expect(await chatGroupModel.getGroupAgents(group.id)).toHaveLength(2);
+    });
+
+    it('should repair only a missing managed member and preserve the existing roster', async () => {
+      await serverDB.insert(agentsTable).values([
+        { id: 'travel-copy', userId, virtual: true },
+        { id: 'travel-image', userId, virtual: true },
+        { id: 'custom-member', userId },
+      ]);
+      const group = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+      await serverDB.insert(chatGroupsAgents).values([
+        { agentId: 'travel-copy', chatGroupId: group.id, order: 1, userId },
+        { agentId: 'custom-member', chatGroupId: group.id, order: 20, userId },
+      ]);
+
+      await chatGroupModel.ensureParticipantAgents(group.id, ['travel-copy', 'travel-image']);
+
+      const rows = toRelationAgents(await chatGroupModel.getGroupAgents(group.id));
+      expect(rows.map(({ agentId }) => agentId).sort()).toEqual(
+        ['custom-member', 'travel-copy', 'travel-image'].sort(),
+      );
+      expect(rows.filter(({ agentId }) => agentId === 'travel-copy')).toHaveLength(1);
+      expect(rows.find(({ agentId }) => agentId === 'custom-member')).toMatchObject({ order: 20 });
+    });
+
+    it('restores only the managed participant rows to enabled participant order', async () => {
+      await serverDB.insert(agentsTable).values([
+        { id: 'travel-copy', userId, virtual: true },
+        { id: 'travel-video', userId, virtual: true },
+        { id: 'custom-member', userId },
+      ]);
+      const group = await chatGroupModel.ensureByClientId({
+        clientId: 'default-travel-service-group',
+        title: '旅游服务超级群组',
+      });
+      await serverDB.insert(chatGroupsAgents).values([
+        {
+          agentId: 'travel-copy',
+          chatGroupId: group.id,
+          enabled: false,
+          order: 90,
+          role: 'observer',
+          userId,
+        },
+        {
+          agentId: 'travel-video',
+          chatGroupId: group.id,
+          enabled: false,
+          order: 91,
+          role: 'observer',
+          userId,
+        },
+        {
+          agentId: 'custom-member',
+          chatGroupId: group.id,
+          enabled: false,
+          order: 77,
+          role: 'custom-role',
+          userId,
+        },
+      ]);
+
+      await chatGroupModel.ensureParticipantAgents(group.id, ['travel-copy', 'travel-video']);
+
+      const rows = toRelationAgents(await chatGroupModel.getGroupAgents(group.id));
+      expect(rows.find(({ agentId }) => agentId === 'travel-copy')).toMatchObject({
+        enabled: true,
+        order: 1,
+        role: 'participant',
+      });
+      expect(rows.find(({ agentId }) => agentId === 'travel-video')).toMatchObject({
+        enabled: true,
+        order: 2,
+        role: 'participant',
+      });
+      expect(rows.find(({ agentId }) => agentId === 'custom-member')).toMatchObject({
+        enabled: false,
+        order: 77,
+        role: 'custom-role',
+      });
+    });
   });
 
   describe('createWithAgents', () => {
@@ -1588,6 +1805,7 @@ describe('ChatGroupModel', () => {
       await serverDB.insert(agentsTable).values([
         {
           avatar: '/pub.png',
+          clientId: 'default-travel-copywriter',
           id: 'agt-public-member',
           title: 'Public member',
           userId,
@@ -1638,6 +1856,7 @@ describe('ChatGroupModel', () => {
 
       const withMeta = await workspaceChatGroupModel.getGroupAgentsWithMeta('demotion-group');
       expect(withMeta.map((a) => a.agentId)).toEqual(['agt-public-member']);
+      expect(withMeta[0].clientId).toBe('default-travel-copywriter');
 
       const avatars = await workspaceChatGroupModel.getMemberAvatarsByGroupIds(['demotion-group']);
       expect(avatars.get('demotion-group')).toEqual([

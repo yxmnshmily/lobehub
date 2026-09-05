@@ -1,6 +1,7 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
+import { useResponsive } from 'antd-style';
 import { memo, useMemo } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
@@ -32,6 +33,7 @@ import { useCheckTaskStatus } from './useCheckTaskStatus';
  * So we depend on context, not props.
  */
 const ResourceExplorer = memo(() => {
+  const { mobile = false } = useResponsive();
   // Sync store state with URL query parameters
   useResourceManagerUrlSync();
 
@@ -136,7 +138,7 @@ const ResourceExplorer = memo(() => {
             isEmpty={showEmptyStatus}
             onRetry={() => mutate()}
           >
-            {viewMode === 'list' ? (
+            {viewMode === 'list' && !mobile ? (
               <ListView
                 isLoading={isLoading}
                 isValidating={isValidating}

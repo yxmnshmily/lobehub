@@ -41,6 +41,7 @@ export const PageAgentProvider = memo<PageAgentProviderProps>(
     );
     const setActiveAgentId = useAgentStore((s) => s.setActiveAgentId);
     const syncedAgentIdRef = useRef<string | undefined>(undefined);
+    const syncedPageIdRef = useRef<string | undefined>(undefined);
 
     useInitBuiltinAgent(BUILTIN_AGENT_SLUGS.pageAgent);
 
@@ -73,13 +74,14 @@ export const PageAgentProvider = memo<PageAgentProviderProps>(
         );
       }
 
-      if (syncedAgentIdRef.current === selectedAgentId) return;
+      if (syncedAgentIdRef.current === selectedAgentId && syncedPageIdRef.current === pageId) return;
       syncedAgentIdRef.current = selectedAgentId;
+      syncedPageIdRef.current = pageId;
 
       if (shouldResetTopic) {
         void chatState.switchTopic(null, { scope: 'page', skipRefreshMessage: true });
       }
-    }, [selectedAgentId, setActiveAgentId, syncActiveAgent]);
+    }, [pageId, selectedAgentId, setActiveAgentId, syncActiveAgent]);
 
     const context = useMemo<ConversationContext>(
       () => ({

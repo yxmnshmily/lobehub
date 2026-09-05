@@ -139,11 +139,7 @@ export interface ResponseUsage {
 // ==================== Error Types ====================
 
 export type ResponseErrorCode =
-  | 'server_error'
-  | 'invalid_request_error'
-  | 'not_found'
-  | 'model_error'
-  | 'rate_limit_error';
+  'server_error' | 'invalid_request_error' | 'not_found' | 'model_error' | 'rate_limit_error';
 
 export interface ResponseError {
   code: ResponseErrorCode;

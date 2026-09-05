@@ -53,6 +53,7 @@ import { TopicModel } from '@/database/models/topic';
 import { UserModel } from '@/database/models/user';
 import { agentOperations, topics, workspaceMembers } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
+import { authEnv } from '@/envs/auth';
 import { heteroAuthedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { signHeteroOperationJWT, signUserJWT } from '@/libs/trpc/utils/internalJwt';
@@ -85,6 +86,17 @@ import {
   HeteroOperationPrincipalError,
   resolveActiveHeteroOperationPrincipal,
 } from '@/server/services/heterogeneousAgent/operationPrincipal';
+import {
+  hostedGroupChatBillingUnavailable,
+  resolveHostedTravelGroupTarget,
+  runHostedGroupChatWithBudget,
+} from '@/server/services/platformUsageBilling/groupChat';
+import {
+  authorizeHostedGroupRun,
+  createHostedGroupRunBinding,
+  projectHostedGroupRunStatus,
+} from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
+import { createTravelToolDispatchPolicy } from '@/server/services/travelOrchestration';
 
 const log = debug('lobe-server:ai-agent-router');
 
@@ -722,10 +734,9 @@ const resolveHeteroTopicWorkspace = async (params: {
 };
 
 /**
- * Workspace `use` guard for operation-keyed endpoints: resolve the operation
- * row to its agent and run the same `use` guard. Operations without an agent
- * (detached / legacy rows) fall through — there is no resource to guard.
- * No-op in personal mode (no workspaceId).
+ * Owner guard for every operation-keyed user endpoint. The model lookup is
+ * scoped to the caller's user/workspace; workspace operations additionally
+ * retain the agent-use permission check.
  */
 const assertCanUseOperationAgent = async (params: {
   db: LobeChatDatabase;
@@ -734,21 +745,21 @@ const assertCanUseOperationAgent = async (params: {
   workspaceId?: string | null;
 }) => {
   const { db, operationId, userId, workspaceId } = params;
-  if (!workspaceId) return;
-
-  const [row] = await db
-    .select({ agentId: agentOperations.agentId })
-    .from(agentOperations)
-    .where(eq(agentOperations.id, operationId))
-    .limit(1);
-  if (!row?.agentId) return;
+  const operation = await new AgentOperationModel(db, userId, workspaceId ?? undefined).findById(
+    operationId,
+  );
+  if (!operation) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Operation not found' });
+  }
+  if (!workspaceId || !operation.agentId) return operation;
 
   await assertCanUseWorkspaceAgent({
-    agentId: row.agentId,
+    agentId: operation.agentId,
     db,
     userId,
     workspaceId,
   });
+  return operation;
 };
 
 /**
@@ -870,6 +881,32 @@ const StartExecutionSchema = z.object({
   priority: z.enum(['high', 'normal', 'low']).optional().default('normal'),
 });
 
+const HostedGroupChatBillingSchema = z
+  .object({
+    idempotencyKey: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[\x20-\x7E]+$/),
+    maxCredits: z.number().int().positive().safe(),
+  })
+  .strict();
+
+const StartHostedTravelGroupTaskSchema = z
+  .object({
+    billing: HostedGroupChatBillingSchema,
+    groupId: z.string().min(1),
+    prompt: z.string().min(1).max(4000),
+  })
+  .strict();
+
+const HostedTravelGroupRunSchema = z
+  .object({
+    groupId: z.string().min(1),
+    runHandle: z.string().regex(/^[\w-]{43}$/),
+  })
+  .strict();
+
 /**
  * Schema for execAgent - execute a single Agent
  */
@@ -877,6 +914,8 @@ const ExecAgentSchema = z
   .object({
     /** The agent ID to run (either agentId or slug is required) */
     agentId: z.string().optional(),
+    /** Customer ceiling and retry identity for the platform-managed default travel group. */
+    billing: HostedGroupChatBillingSchema.optional(),
     /** Application context for message storage */
     appContext: z
       .object({
@@ -1111,25 +1150,29 @@ const ExecAgentSchema = z
 /**
  * Schema for execGroupAgent - execute Supervisor Agent in Group chat
  */
-const ExecGroupAgentSchema = z.object({
-  /** The Supervisor agent ID */
-  agentId: z.string(),
-  /** File IDs attached to the message */
-  files: z.array(z.string()).optional(),
-  /** The Group ID */
-  groupId: z.string(),
-  /** User message content */
-  message: z.string(),
-  /** Optional: Create a new topic */
-  newTopic: z
-    .object({
-      title: z.string().optional(),
-      topicMessageIds: z.array(z.string()).optional(),
-    })
-    .optional(),
-  /** Existing topic ID */
-  topicId: z.string().nullish(),
-});
+const ExecGroupAgentSchema = z
+  .object({
+    /** The Supervisor agent ID */
+    agentId: z.string(),
+    /** Explicit customer ceiling and browser retry key for the hosted default group. */
+    billing: HostedGroupChatBillingSchema.optional(),
+    /** File IDs attached to the message */
+    files: z.array(z.string()).optional(),
+    /** The Group ID */
+    groupId: z.string(),
+    /** User message content */
+    message: z.string(),
+    /** Optional: Create a new topic */
+    newTopic: z
+      .object({
+        title: z.string().optional(),
+        topicMessageIds: z.array(z.string()).optional(),
+      })
+      .optional(),
+    /** Existing topic ID */
+    topicId: z.string().nullish(),
+  })
+  .strict();
 
 /**
  * Schema for execAgents - batch execution of multiple agents
@@ -2029,6 +2072,107 @@ export const aiAgentRouter = router({
       }
     }),
 
+  startHostedTravelGroupTask: aiAgentWriteProcedure
+    .input(StartHostedTravelGroupTaskSchema)
+    .mutation(async ({ input, ctx }) => {
+      const hostedTarget = await resolveHostedTravelGroupTarget({
+        db: ctx.serverDB,
+        groupId: input.groupId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      });
+      if (!hostedTarget || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
+      if (
+        hostedTarget.principal.kind !== 'owner-sponsored-member' ||
+        hostedTarget.principal.actorUserId === hostedTarget.principal.resourceOwnerUserId
+      ) {
+        throw hostedGroupChatBillingUnavailable();
+      }
+
+      const runBinding = createHostedGroupRunBinding({
+        actorUserId: hostedTarget.principal.actorUserId,
+        groupId: hostedTarget.groupId,
+        membershipVersion: hostedTarget.principal.membershipVersion,
+        ownerUserId: hostedTarget.principal.resourceOwnerUserId,
+      });
+
+      const hostedDispatch = createTravelToolDispatchPolicy({
+        members: hostedTarget.routingMembers,
+        message: input.prompt,
+      });
+      const hostedCopyPolicy =
+        hostedDispatch.mode === 'delegate' &&
+        hostedDispatch.route.intents.length === 1 &&
+        hostedDispatch.route.intents[0] === 'copy'
+          ? hostedDispatch.policy
+          : undefined;
+      const service =
+        hostedTarget.principal.resourceOwnerUserId === ctx.userId
+          ? ctx.aiAgentService
+          : new AiAgentService(ctx.serverDB, ctx.userId, {
+              resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+              withholdGatewayToken: true,
+            });
+      const result = await runHostedGroupChatWithBudget({
+        billing: input.billing,
+        db: ctx.serverDB,
+        fingerprint: { groupId: input.groupId, prompt: input.prompt },
+        principal: hostedTarget.principal,
+        secret: authEnv.AUTH_SECRET,
+        start: async (context) => ({
+          internalResult: await service.execPlatformManagedAgent(
+            {
+              agentId: hostedTarget.supervisorId,
+              appContext: {
+                groupId: hostedTarget.groupId,
+                hostedGroupRun: runBinding.snapshot,
+                orchestrationRole: 'supervisor',
+                ...(hostedCopyPolicy ? { toolDispatchPolicy: hostedCopyPolicy } : {}),
+              },
+              clientIp: ctx.clientIp ?? undefined,
+              interactiveStart: true,
+              prompt: input.prompt,
+              trigger: RequestTrigger.Chat,
+              userAgent: ctx.userAgent ?? undefined,
+            },
+            {
+              ...context,
+              actorUserId: hostedTarget.principal.actorUserId,
+              resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+            },
+          ),
+          runHandle: runBinding.runHandle,
+        }),
+      });
+      if (!result.internalResult?.operationId) throw hostedGroupChatBillingUnavailable();
+      return { accepted: true as const, runHandle: result.runHandle };
+    }),
+
+  getHostedTravelGroupRunStatus: aiAgentProcedure
+    .input(HostedTravelGroupRunSchema)
+    .query(async ({ input, ctx }) => {
+      const access = await authorizeHostedGroupRun({
+        db: ctx.serverDB,
+        groupId: input.groupId,
+        runHandle: input.runHandle,
+        userId: ctx.userId,
+      });
+      return projectHostedGroupRunStatus(access);
+    }),
+
+  interruptHostedTravelGroupRun: aiAgentWriteProcedure
+    .input(HostedTravelGroupRunSchema)
+    .mutation(async ({ input, ctx }) => {
+      const access = await authorizeHostedGroupRun({
+        db: ctx.serverDB,
+        groupId: input.groupId,
+        runHandle: input.runHandle,
+        userId: ctx.userId,
+      });
+      const interrupted = await ctx.agentRuntimeService.interruptOperation(access.operationId);
+      return { interrupted };
+    }),
+
   execAgent: aiAgentWriteProcedure.input(ExecAgentSchema).mutation(async ({ input, ctx }) => {
     const {
       agentId,
@@ -2036,6 +2180,7 @@ export const aiAgentRouter = router({
       prompt,
       appContext,
       autoStart = true,
+      billing,
       deviceId,
       localDeviceId,
       existingMessageIds = [],
@@ -2076,6 +2221,41 @@ export const aiAgentRouter = router({
         userId: ctx.userId,
         workspaceId: ctx.workspaceId,
       });
+
+      const hostedTarget =
+        agentId && appContext?.groupId
+          ? await resolveHostedTravelGroupTarget({
+              agentId,
+              db: ctx.serverDB,
+              groupId: appContext.groupId,
+              userId: ctx.userId,
+              workspaceId: ctx.workspaceId,
+            })
+          : undefined;
+      if (
+        hostedTarget &&
+        hostedTarget.principal.actorUserId !== hostedTarget.principal.resourceOwnerUserId
+      ) {
+        // Invited members may only use the narrow server-owned start endpoint.
+        // This prevents owner-topic/message/file IDs and other rich execAgent
+        // context from crossing the principal boundary.
+        throw hostedGroupChatBillingUnavailable();
+      }
+      if (Boolean(hostedTarget) !== Boolean(billing)) {
+        throw hostedGroupChatBillingUnavailable();
+      }
+      if (
+        hostedTarget &&
+        (selectedToolIds?.length ||
+          mentionedAgents?.length ||
+          resumeApproval ||
+          resumeApprovals?.length ||
+          resumeToolResult ||
+          deviceId ||
+          localDeviceId)
+      ) {
+        throw hostedGroupChatBillingUnavailable();
+      }
 
       // Cross-version bridge: older Web clients call execAgent directly with
       // resume payloads and know nothing about the v2 source endpoint. Recover
@@ -2210,9 +2390,25 @@ export const aiAgentRouter = router({
         }
       }
 
-      return await ctx.aiAgentService.execAgent({
+      const hostedDispatch = hostedTarget
+        ? createTravelToolDispatchPolicy({ members: hostedTarget.routingMembers, message: prompt })
+        : undefined;
+      const hostedCopyPolicy =
+        hostedDispatch?.mode === 'delegate' &&
+        hostedDispatch.route.intents.length === 1 &&
+        hostedDispatch.route.intents[0] === 'copy'
+          ? hostedDispatch.policy
+          : undefined;
+      const executeParams = {
         agentId,
-        appContext,
+        appContext: hostedTarget
+          ? {
+              ...appContext,
+              groupId: hostedTarget.groupId,
+              orchestrationRole: 'supervisor' as const,
+              ...(hostedCopyPolicy ? { toolDispatchPolicy: hostedCopyPolicy } : {}),
+            }
+          : appContext,
         autoStart,
         clientIds: input.clientIds,
         // This procedure serves the composer (`aiAgentService.execAgentTask`).
@@ -2242,6 +2438,31 @@ export const aiAgentRouter = router({
         trigger: trigger ?? RequestTrigger.Chat,
         userAgent: ctx.userAgent ?? undefined,
         userInterventionConfig,
+      };
+      if (!hostedTarget) return await ctx.aiAgentService.execAgent(executeParams);
+      if (!billing || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
+      const hostedAiAgentService =
+        hostedTarget.principal.resourceOwnerUserId === ctx.userId
+          ? ctx.aiAgentService
+          : new AiAgentService(ctx.serverDB, ctx.userId, {
+              resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+              withholdGatewayToken:
+                ctx.apiKeyScopes !== undefined && !isFullAccessApiKey(ctx.apiKeyScopes),
+            });
+
+      return await runHostedGroupChatWithBudget({
+        billing,
+        db: ctx.serverDB,
+        fingerprint: executeParams,
+        principal: hostedTarget.principal,
+        secret: authEnv.AUTH_SECRET,
+        start: (context) =>
+          hostedAiAgentService.execPlatformManagedAgent(executeParams, {
+            ...context,
+            actorUserId: hostedTarget.principal.actorUserId,
+            resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+          }),
+        topicId: appContext?.topicId ?? undefined,
       });
     } catch (error: any) {
       console.error('execAgent failed: %O', error);
@@ -2432,7 +2653,7 @@ export const aiAgentRouter = router({
   execGroupAgent: aiAgentWriteProcedure
     .input(ExecGroupAgentSchema)
     .mutation(async ({ input, ctx }) => {
-      const { agentId, groupId, message, files, topicId, newTopic } = input;
+      const { agentId, billing, groupId, message, files, topicId, newTopic } = input;
 
       log('execGroupAgent: agentId=%s, groupId=%s', agentId, groupId);
 
@@ -2451,15 +2672,54 @@ export const aiAgentRouter = router({
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
-        // Execute group agent
-        const result = await ctx.aiAgentService.execGroupAgent({
+        const hostedTarget = await resolveHostedTravelGroupTarget({
           agentId,
-          files,
+          db: ctx.serverDB,
           groupId,
-          message,
-          newTopic,
-          topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
         });
+        if (
+          hostedTarget &&
+          hostedTarget.principal.actorUserId !== hostedTarget.principal.resourceOwnerUserId
+        ) {
+          // The legacy entry accepts caller-selected files/topic/message IDs and therefore cannot
+          // safely cross the invited-member -> owner resource boundary. Members must use the
+          // narrow server-owned startHostedTravelGroupTask entry instead.
+          throw hostedGroupChatBillingUnavailable();
+        }
+        if (Boolean(hostedTarget) !== Boolean(billing)) {
+          throw hostedGroupChatBillingUnavailable();
+        }
+
+        const executeParams = { agentId, files, groupId, message, newTopic, topicId };
+        const result = hostedTarget
+          ? await (async () => {
+              if (!billing || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
+              const hostedAiAgentService =
+                hostedTarget.principal.resourceOwnerUserId === ctx.userId
+                  ? ctx.aiAgentService
+                  : new AiAgentService(ctx.serverDB, ctx.userId, {
+                      resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+                      withholdGatewayToken:
+                        ctx.apiKeyScopes !== undefined && !isFullAccessApiKey(ctx.apiKeyScopes),
+                    });
+              return runHostedGroupChatWithBudget({
+                billing,
+                db: ctx.serverDB,
+                fingerprint: executeParams,
+                principal: hostedTarget.principal,
+                secret: authEnv.AUTH_SECRET,
+                start: (context) =>
+                  hostedAiAgentService.execPlatformManagedGroupAgent(executeParams, {
+                    ...context,
+                    actorUserId: hostedTarget.principal.actorUserId,
+                    resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+                  }),
+                topicId: topicId ?? undefined,
+              });
+            })()
+          : await ctx.aiAgentService.execGroupAgent(executeParams);
 
         // Get messages and topics for UI sync
         // Messages include the assistant message with error if operation failed to start
@@ -2566,6 +2826,15 @@ export const aiAgentRouter = router({
 
       log('Getting operation status for %s', operationId);
 
+      const operation = await new AgentOperationModel(
+        ctx.serverDB,
+        ctx.userId,
+        ctx.workspaceId ?? undefined,
+      ).findById(operationId);
+      if (!operation) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Operation not found' });
+      }
+
       // Get operation status using AgentRuntimeService
       const operationStatus = await ctx.agentRuntimeService.getOperationStatus({
         historyLimit,
@@ -2579,14 +2848,23 @@ export const aiAgentRouter = router({
   getPendingInterventions: aiAgentProcedure
     .input(GetPendingInterventionsSchema)
     .query(async ({ input, ctx }) => {
-      const { operationId, userId } = input;
+      const { operationId } = input;
 
-      log('Getting pending interventions for operationId: %s, userId: %s', operationId, userId);
+      log('Getting pending interventions for operationId: %s, userId: %s', operationId, ctx.userId);
+
+      if (operationId) {
+        await assertCanUseOperationAgent({
+          db: ctx.serverDB,
+          operationId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
+      }
 
       // Get pending interventions using AgentRuntimeService
       const result = await ctx.agentRuntimeService.getPendingInterventions({
         operationId: operationId || undefined,
-        userId: userId || undefined,
+        userId: ctx.userId,
       });
 
       return result;
@@ -2937,6 +3215,14 @@ export const aiAgentRouter = router({
       log('interruptTask: threadId=%s, operationId=%s, topicId=%s', threadId, operationId, topicId);
 
       try {
+        if (operationId) {
+          await assertCanUseOperationAgent({
+            db: ctx.serverDB,
+            operationId,
+            userId: ctx.userId,
+            workspaceId: ctx.workspaceId,
+          });
+        }
         return await ctx.aiAgentService.interruptTask({ operationId, threadId, topicId });
       } catch (error: any) {
         if (error.message === 'Thread not found') {

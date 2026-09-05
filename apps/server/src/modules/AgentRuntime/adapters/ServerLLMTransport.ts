@@ -26,13 +26,18 @@ import {
   trace as otelTrace,
 } from '@lobechat/observability-otel/api';
 import {
-  buildChatRequestAttributes,
   buildChatResponseAttributes,
-  chatSpanName,
   tracer as agentRuntimeTracer,
 } from '@lobechat/observability-otel/modules/agent-runtime';
 
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
+import {
+  getPlatformUsageSharedBudgetForOperation,
+  hashPlatformUsageProviderInput,
+  PlatformUsageSharedBudgetError,
+  runPlatformUsageSharedBudgetStep,
+} from '@/server/services/platformUsageBilling/sharedBudget';
 
 import type { RuntimeExecutorContext } from '../context';
 import { log, sleep } from '../executorHelpers';
@@ -62,6 +67,12 @@ class ServerLLMRetryPolicy implements LLMRetryPolicy {
   constructor(private readonly ctx: RuntimeExecutorContext) {}
 
   classifyError(error: unknown) {
+    // The provider call may already have completed when authoritative usage
+    // settlement fails. Retrying would spend at the provider a second time and
+    // cannot repair the original ledger failure, so stop this runtime step.
+    if (error instanceof PlatformUsageSharedBudgetError) {
+      return { code: error.code, kind: 'stop' as const, message: error.message };
+    }
     return classifyLLMError(error);
   }
 
@@ -69,19 +80,18 @@ class ServerLLMRetryPolicy implements LLMRetryPolicy {
     return resolveLLMMaxAttempts(provider, SERVER_LLM_RETRY_POLICY);
   }
 
-  onError({ error }: LLMCallErrorInput) {
-    console.error(
-      `[StreamingLLMExecutor][${this.ctx.operationId}:${this.ctx.stepIndex}] LLM execution failed:`,
-      error,
-    );
+  onError(_input: LLMCallErrorInput) {
+    console.error('[StreamingLLMExecutor] LLM execution failed', {
+      errorKind: 'runtime-error',
+      stepIndex: this.ctx.stepIndex,
+    });
   }
 
   onRetry({ attempt, delayMs, error, maxAttempts }: LLMRetryInput) {
     log(
-      '[%s:%d] LLM call failed with kind=%s (attempt %d/%d), retrying in %dms ...',
-      this.ctx.operationId,
-      this.ctx.stepIndex,
+      '[call_llm] failed with kind=%s at step %d (attempt %d/%d), retrying in %dms ...',
       error.kind,
+      this.ctx.stepIndex,
       attempt,
       maxAttempts,
       delayMs,
@@ -102,28 +112,17 @@ class ServerLLMTrace implements LLMTrace {
   private readonly chatSpan: ReturnType<typeof agentRuntimeTracer.startSpan>;
   private firstChunkAt?: number;
   private readonly llmStartTime = Date.now();
-  private readonly operationLogId: string;
 
   constructor(
     private readonly ctx: RuntimeExecutorContext,
-    input: LLMTraceInput,
+    _input: LLMTraceInput,
   ) {
-    this.operationLogId = `${ctx.operationId}:${ctx.stepIndex}`;
-    log(
-      '[%s][call_llm] Starting operation with prepared assistant message: %s',
-      this.operationLogId,
-      input.assistantMessageId,
-    );
+    log('[call_llm] starting at step %d', ctx.stepIndex);
 
-    this.chatSpan = agentRuntimeTracer.startSpan(chatSpanName(input.model), {
-      attributes: buildChatRequestAttributes({
-        conversationId: input.conversationId,
-        operationId: ctx.operationId,
-        provider: input.provider,
-        requestModel: input.model,
+    this.chatSpan = agentRuntimeTracer.startSpan('agent_runtime.call_llm', {
+      attributes: {
         stepIndex: ctx.stepIndex,
-        stream: ctx.stream ?? true,
-      }),
+      },
       kind: SpanKind.CLIENT,
     });
     this.chatContext = otelTrace.setSpan(otelContext.active(), this.chatSpan);
@@ -131,10 +130,9 @@ class ServerLLMTrace implements LLMTrace {
 
   close(error?: unknown) {
     if (error) {
-      this.chatSpan.recordException(error as Error);
       this.chatSpan.setStatus({
         code: SpanStatusCode.ERROR,
-        message: error instanceof Error ? error.message : String(error),
+        message: 'runtime-error',
       });
     }
     this.chatSpan.end();
@@ -148,11 +146,10 @@ class ServerLLMTrace implements LLMTrace {
 
   recordResult(output: LLMAttemptOutput) {
     return this.run(async () => {
-      log('[%s] call_llm completed', this.operationLogId);
+      log('[call_llm] completed at step %d', this.ctx.stepIndex);
       this.chatSpan.setAttributes(
         buildChatResponseAttributes({
           cacheReadInputTokens: output.usage?.inputCachedTokens,
-          finishReasons: output.finishReason ? [output.finishReason] : undefined,
           inputTokens: output.usage?.totalInputTokens,
           outputTokens: output.usage?.totalOutputTokens,
           reasoningOutputTokens: output.usage?.outputReasoningTokens,
@@ -186,6 +183,10 @@ export class ServerLLMTransport implements LLMTransport {
     this.retryPolicy = new ServerLLMRetryPolicy(ctx);
   }
 
+  private getBillingActorUserId() {
+    return this.ctx.billingActorUserId ?? this.ctx.userId;
+  }
+
   createTrace(input: LLMTraceInput): LLMTrace {
     return new ServerLLMTrace(this.ctx, input);
   }
@@ -205,41 +206,88 @@ export class ServerLLMTransport implements LLMTransport {
     let usage: LLMStreamResult['usage'];
     let streamError: unknown;
 
-    const response = await runtime.chat(runtimePayload as any, {
-      callback: {
-        onCompletion: async (data: any) => {
-          if (data.usage) usage = data.usage;
+    const providerCall = async () => {
+      const response = await runtime.chat(runtimePayload as any, {
+        callback: {
+          onCompletion: async (data: any) => {
+            if (data.usage) usage = data.usage;
+          },
+          onError: async (errorData: unknown) => {
+            streamError = errorData;
+            handlers?.onError?.(errorData);
+          },
+          onText: async (text: string) => {
+            content += text;
+            handlers?.onText?.(text);
+          },
         },
-        onError: async (errorData: unknown) => {
-          streamError = errorData;
-          handlers?.onError?.(errorData);
-        },
-        onText: async (text: string) => {
-          content += text;
-          handlers?.onText?.(text);
-        },
-      },
-      user: this.ctx.userId,
-    });
-
-    await consumeStreamUntilDone(response);
-
-    if (streamError) {
-      throw new Error(getErrorMessage(streamError));
-    }
-
-    const result = { content, usage };
+        user: this.ctx.userId,
+      });
+      await consumeStreamUntilDone(response);
+      if (streamError) throw new Error(getErrorMessage(streamError));
+      const output = { content, usage };
+      return { output, usage };
+    };
+    const budget = this.getPlatformUsageSharedBudget();
+    const result = budget
+      ? await runPlatformUsageSharedBudgetStep(budget, {
+          actorUserId: this.getBillingActorUserId()!,
+          inputHash: hashPlatformUsageProviderInput(runtimePayload),
+          kind: 'compress_context',
+          model: payload.model,
+          operationId: this.ctx.operationId,
+          provider: payload.provider,
+          providerCall,
+          stepIndex: this.ctx.stepIndex,
+          workspaceId: this.ctx.workspaceId,
+        })
+      : (await providerCall()).output;
     handlers?.onFinish?.(result);
     return result;
   }
 
   private createModelRuntime(provider: string) {
+    if (this.isPlatformManagedExecution()) {
+      this.getPlatformUsageSharedBudget();
+      return new PlatformAiRuntime(this.ctx.serverDB).init({
+        actorUserId: this.getBillingActorUserId()!,
+        provider,
+        workspaceId: this.ctx.workspaceId,
+      });
+    }
+
     return initModelRuntimeFromDB(
       this.ctx.serverDB,
       this.ctx.userId!,
       provider,
       this.ctx.workspaceId,
     );
+  }
+
+  private getPlatformUsageSharedBudget() {
+    if (this.ctx.agentConfig?.agencyConfig?.modelRuntimeMode !== 'platform-managed') return;
+    const actorUserId = this.getBillingActorUserId();
+    if (!actorUserId) {
+      throw new PlatformUsageSharedBudgetError(
+        'INVALID_BUDGET_CONTEXT',
+        'Platform-managed execution requires a valid shared budget context.',
+      );
+    }
+    const budget = getPlatformUsageSharedBudgetForOperation(this.ctx.operationId, {
+      actorUserId,
+      workspaceId: this.ctx.workspaceId,
+    });
+    if (!budget) {
+      throw new PlatformUsageSharedBudgetError(
+        'INVALID_BUDGET_CONTEXT',
+        'Platform-managed execution requires a valid shared budget context.',
+      );
+    }
+    return budget;
+  }
+
+  private isPlatformManagedExecution() {
+    return this.ctx.agentConfig?.agencyConfig?.modelRuntimeMode === 'platform-managed';
   }
 
   private getModelRuntime(provider: string) {
@@ -294,8 +342,26 @@ export class ServerLLMTransport implements LLMTransport {
     });
 
     try {
-      await attempt.execute();
-      return { ok: true, output: attempt.snapshot() };
+      const providerCall = async () => {
+        await attempt.execute();
+        const output = attempt.snapshot();
+        return { output, usage: output.usage };
+      };
+      const budget = this.getPlatformUsageSharedBudget();
+      const output = budget
+        ? await runPlatformUsageSharedBudgetStep(budget, {
+            actorUserId: this.getBillingActorUserId()!,
+            inputHash: hashPlatformUsageProviderInput(chatPayload),
+            kind: 'call_llm',
+            model: input.model,
+            operationId: this.ctx.operationId,
+            provider: input.provider,
+            providerCall,
+            stepIndex: this.ctx.stepIndex,
+            workspaceId: this.ctx.workspaceId,
+          })
+        : (await providerCall()).output;
+      return { ok: true, output };
     } catch (error) {
       attempt.clearBuffers();
       return { error, ok: false, output: attempt.snapshot() };

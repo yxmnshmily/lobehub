@@ -4,6 +4,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GET } from '../route';
 
+const routeMocks = vi.hoisted(() => ({
+  findOperation: vi.fn(),
+  resolveWorkspaceId: vi.fn(),
+}));
+
+vi.mock('@/app/(backend)/middleware/auth', () => ({
+  checkAuth:
+    (handler: any) =>
+    (request: Request, options: Record<string, unknown> = {}) =>
+      handler(request, {
+        ...options,
+        jwtPayload: { userId: 'user-1' },
+        serverDB: {},
+        userId: 'user-1',
+      }),
+}));
+vi.mock('@/database/models/agentOperation', () => ({
+  AgentOperationModel: vi.fn(() => ({ findById: routeMocks.findOperation })),
+}));
+vi.mock('@/app/(backend)/webapi/_utils/workspace', () => ({
+  resolveValidWorkspaceIdFromRequest: routeMocks.resolveWorkspaceId,
+}));
+
 // Mock dependencies first
 const mockStreamEventManager = {
   getStreamHistory: vi.fn(),
@@ -19,6 +42,8 @@ describe('/api/agent/stream route', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    routeMocks.findOperation.mockResolvedValue({ id: 'test-operation' });
+    routeMocks.resolveWorkspaceId.mockResolvedValue(undefined);
     // Mock Date.now to return consistent timestamp
     vi.spyOn(Date, 'now').mockReturnValue(MOCK_TIMESTAMP);
   });
@@ -47,12 +72,22 @@ describe('/api/agent/stream route', () => {
       expect(response.headers.get('Content-Type')).toBe('text/event-stream');
       expect(response.headers.get('Cache-Control')).toBe('no-cache, no-transform');
       expect(response.headers.get('Connection')).toBe('keep-alive');
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET');
-      expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
-        'Cache-Control, Last-Event-ID',
-      );
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
       expect(response.headers.get('X-Accel-Buffering')).toBe('no');
+    });
+
+    it('returns 404 before touching stream storage for another users operation', async () => {
+      routeMocks.findOperation.mockResolvedValue(null);
+      const request = new NextRequest(
+        'https://test.com/api/agent/stream?operationId=other-user-operation&includeHistory=true',
+      );
+
+      const response = await GET(request);
+
+      expect(response.status).toBe(404);
+      await expect(response.json()).resolves.toEqual({ error: 'operation not found' });
+      expect(mockStreamEventManager.getStreamHistory).not.toHaveBeenCalled();
+      expect(mockStreamEventManager.subscribeStreamEvents).not.toHaveBeenCalled();
     });
   });
 
@@ -624,7 +659,7 @@ data: {"type":"stream_end","timestamp":300,"operationId":"test-operation","data"
         },
       );
 
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(capturedCallback).toBeDefined();
       expect(capturedSignal).toBeDefined();

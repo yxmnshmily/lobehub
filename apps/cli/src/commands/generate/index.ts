@@ -201,7 +201,9 @@ export function registerGenerateCommand(program: Command) {
             console.log(
               `${pc.red('✗')} Timed out after ${options.timeout}s. Task still ${result.status}.`,
             );
-            console.log(pc.dim(`Run "lh gen status ${generationId} ${asyncTaskId}" to check later.`));
+            console.log(
+              pc.dim(`Run "lh gen status ${generationId} ${asyncTaskId}" to check later.`),
+            );
             process.exit(1);
           }
 

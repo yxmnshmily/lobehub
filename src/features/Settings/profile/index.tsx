@@ -10,13 +10,10 @@ import { SettingsProfileRowSkeleton } from '@/components/Skeleton/Settings/Profi
 import SettingHeader from '@/features/Settings/features/SettingHeader';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { serverConfigSelectors } from '@/store/serverConfig/selectors';
-import { useToolStore } from '@/store/tool';
-import { ComposioServerStatus } from '@/store/tool/slices/composioStore';
 import { useUserStore } from '@/store/user';
 import { authSelectors, userProfileSelectors } from '@/store/user/selectors';
 
 import AvatarRow from './features/AvatarRow';
-import ComposioAuthorizationList from './features/ComposioAuthorizationList';
 import EmailRow from './features/EmailRow';
 import FullNameRow from './features/FullNameRow';
 import InterestsRow from './features/InterestsRow';
@@ -37,21 +34,11 @@ const ProfileSetting = ({ showSettingHeader = true }: ProfileSettingProps) => {
   ]);
   const isLoadedAuthProviders = useUserStore(authSelectors.isLoadedAuthProviders);
   const fetchAuthProviders = useUserStore((s) => s.fetchAuthProviders);
-  const enableComposio = useServerConfigStore(serverConfigSelectors.enableComposio);
   const disableEmailPassword = useServerConfigStore(serverConfigSelectors.disableEmailPassword);
-  const [servers, isServersInit, useFetchUserComposioConnections] = useToolStore((s) => [
-    s.composioServers,
-    s.isComposioServersInit,
-    s.useFetchUserComposioConnections,
-  ]);
-  const connectedServers = servers.filter((s) => s.status === ComposioServerStatus.ACTIVE);
-
-  // Fetch Composio servers
-  useFetchUserComposioConnections(enableComposio);
 
   // Only the core profile rows (avatar / name / username / email) gate on the
-  // user record itself. Auth-providers (SSO) and Composio are independent, slower
-  // sub-sections that render their own rows when ready — folding them into one
+  // user record itself. Auth providers are an independent, slower sub-section
+  // that renders its own rows when ready — folding it into one
   // composite gate let a single slow/failed dependency skeleton the whole tab.
   const isLoading = !isUserLoaded;
 
@@ -110,18 +97,6 @@ const ProfileSetting = ({ showSettingHeader = true }: ProfileSettingProps) => {
               <Divider style={{ margin: 0 }} />
               <ProfileRow anchor={'profile-connected-accounts'} label={t('profile.sso.providers')}>
                 <SSOProvidersList />
-              </ProfileRow>
-            </>
-          )}
-
-          {enableComposio && isServersInit && connectedServers.length > 0 && (
-            <>
-              <Divider style={{ margin: 0 }} />
-              <ProfileRow
-                anchor={'profile-authorizations'}
-                label={t('profile.authorizations.title')}
-              >
-                <ComposioAuthorizationList servers={connectedServers} />
               </ProfileRow>
             </>
           )}

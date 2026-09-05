@@ -19,6 +19,7 @@ import {
 } from '@/server/services/skill';
 
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 // ===== Error Handling =====
 
@@ -79,13 +80,11 @@ const skillProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   });
 });
 
-// Writes: workspace mode goes through RBAC (`agent:update:all | :owner`),
-// gating viewers out while letting members and owners install/edit skills.
-// Personal mode is unrestricted (middleware passes through when no
-// workspaceId). Replaces the legacy `requireWorkspaceRoleWhenScoped('owner')`
-// which was overly restrictive (member should be able to manage skills they
-// own, per the role-permission matrix in @lobechat/const/rbac).
+// Skill registry writes are platform administration. Workspace RBAC remains a
+// second boundary so a global administrator still needs the scoped grant when
+// operating inside a workspace.
 const skillWriteProcedure = skillProcedure
+  .use(requirePlatformAdmin)
   .use(withScopedPermission('agent:update'))
   // Rebuild the importer AFTER the RBAC middleware so it sees the resolved
   // workspaceRole — the base-procedure instance is constructed before the
@@ -101,7 +100,9 @@ const skillWriteProcedure = skillProcedure
     });
   });
 
-const skillResourceProcedure = skillProcedure.use(async (opts) => {
+const skillReadProcedure = skillProcedure;
+
+const skillResourceProcedure = skillReadProcedure.use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({
@@ -157,11 +158,11 @@ export const agentSkillsRouter = router({
 
   // ===== Query =====
 
-  getById: skillProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+  getById: skillReadProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     return ctx.skillModel.findById(input.id);
   }),
 
-  getByIdWithZipUrl: skillProcedure
+  getByIdWithZipUrl: skillReadProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const skill = await ctx.skillModel.findById(input.id);
@@ -182,15 +183,17 @@ export const agentSkillsRouter = router({
       return { name: skill.name, url: fullUrl || null };
     }),
 
-  getByIdentifier: skillProcedure
+  getByIdentifier: skillReadProcedure
     .input(z.object({ identifier: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.skillModel.findByIdentifier(input.identifier);
     }),
 
-  getByName: skillProcedure.input(z.object({ name: z.string() })).query(async ({ ctx, input }) => {
-    return ctx.skillModel.findByName(input.name);
-  }),
+  getByName: skillReadProcedure
+    .input(z.object({ name: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.skillModel.findByName(input.name);
+    }),
 
   importFromGitHub: skillWriteProcedure
     .input(
@@ -243,7 +246,7 @@ export const agentSkillsRouter = router({
       }
     }),
 
-  list: skillProcedure
+  list: skillReadProcedure
     .input(
       z
         .object({
@@ -302,9 +305,11 @@ export const agentSkillsRouter = router({
       }
     }),
 
-  search: skillProcedure.input(z.object({ query: z.string() })).query(async ({ ctx, input }) => {
-    return ctx.skillModel.search(input.query);
-  }),
+  search: skillReadProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.skillModel.search(input.query);
+    }),
 
   // ===== Update =====
 

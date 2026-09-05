@@ -27,7 +27,7 @@ interface SendAreaProps {
 
 const SendArea = memo<SendAreaProps>(({ hideContextWindow = true }) => {
   const { canShowControls } = useChatInputResourceAccess();
-  const allowExpand = useChatInputStore((s) => s.allowExpand);
+  const [allowExpand, mobile] = useChatInputStore((s) => [s.allowExpand, s.mobile]);
   const rightActions = useChatInputStore((s) => s.rightActions, isEqual);
   const activeAudioInputMode = useChatInputStore((s) => s.activeAudioInputMode);
   const audioInputActive = activeAudioInputMode !== undefined;
@@ -47,7 +47,7 @@ const SendArea = memo<SendAreaProps>(({ hideContextWindow = true }) => {
   );
 
   return (
-    <Flexbox horizontal align={'center'} flex={'none'} gap={12}>
+    <Flexbox horizontal align={'center'} flex={'none'} gap={mobile ? 4 : 12}>
       {canShowControls && allowExpand && !audioInputActive && <ExpandButton />}
       {items}
       {!audioInputActive && <SendButton />}

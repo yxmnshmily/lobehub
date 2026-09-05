@@ -1,8 +1,7 @@
 ---
 title: 将 LobeHub 连接到 LINE
 description: >-
-  学习如何通过 LINE Messaging API 将 LINE 机器人连接到 LobeHub 代理，使您的 AI 助手能够在 LINE
-  私信和群组对话中与用户互动。
+  学习如何通过 LINE Messaging API 将 LINE 机器人连接到 LobeHub 代理，使您的 AI 助手能够在 LINE 私信和群组对话中与用户互动。
 tags:
   - LINE
   - 消息渠道
@@ -27,44 +26,45 @@ tags:
 <Steps>
   ### 创建 LINE Official Account
 
-  打开 [entry.line.biz](https://entry.line.biz/form/entry/unverified)，用 LINE Business ID 登录，按表单填写账号名称、行业、地区等信息提交。完成后到 [LINE Official Account Manager](https://manager.line.biz/) 确认账号已经出现在列表中。
+打开 [entry.line.biz](https://entry.line.biz/form/entry/unverified)，用 LINE Business ID 登录，按表单填写账号名称、行业、地区等信息提交。完成后到 [LINE Official Account Manager](https://manager.line.biz/) 确认账号已经出现在列表中。
 
-  ### 在 Account Manager 中启用 Messaging API
+### 在 Account Manager 中启用 Messaging API
 
-  进入这个 Official Account → **Settings → Messaging API** → 点击 **Enable Messaging API**。系统会让你：
+进入这个 Official Account → **Settings → Messaging API** → 点击 **Enable Messaging API**。系统会让你：
 
-  - 填写开发者信息（首次启用时）。
-  - 选择一个 **Provider**（用来在 Developers Console 中分组 channel）—— 已有的可以复用，没有就新建一个，例如 "LobeHub"。
+- 填写开发者信息（首次启用时）。
+- 选择一个 **Provider**（用来在 Developers Console 中分组 channel）—— 已有的可以复用，没有就新建一个，例如 "LobeHub"。
 
-  > **注意：** Provider 一旦绑定就 **不能修改**。如果同时管理多个不相关业务，建议为每个业务用独立的 Provider。
+> **注意：** Provider 一旦绑定就 **不能修改**。如果同时管理多个不相关业务，建议为每个业务用独立的 Provider。
 
-  ### 在 Developers Console 中找到 channel
+### 在 Developers Console 中找到 channel
 
-  用同一个 LINE Business ID 登录 [LINE Developers Console](https://developers.line.biz/console/)，选中刚才绑的 Provider，对应的 Messaging API channel 会自动出现。
+用同一个 LINE Business ID 登录 [LINE Developers Console](https://developers.line.biz/console/)，选中刚才绑的 Provider，对应的 Messaging API channel 会自动出现。
 
-  ### 记录 channel 的关键标识
+### 记录 channel 的关键标识
 
-  打开 **Basic settings** 选项卡，复制 **Channel secret** —— 用于第四步校验 Webhook 签名。
+打开 **Basic settings** 选项卡，复制 **Channel secret** —— 用于第四步校验 Webhook 签名。
 
-  > **注意：** 同一选项卡里的 **"Your user ID"** 是**你账号自己的** LINE user ID，**不是** bot 的 destination user ID。两者格式完全一样（都以 `U` 开头共 33 位），但 LobeHub 需要的是 bot 的，会在第四步根据 Channel Access Token 自动解析。
+> **注意：** 同一选项卡里的 **"Your user ID"** 是**你账号自己的** LINE user ID，**不是** bot 的 destination user ID。两者格式完全一样（都以 `U` 开头共 33 位），但 LobeHub 需要的是 bot 的，会在第四步根据 Channel Access Token 自动解析。
 
-  然后切到 **Messaging API** 选项卡，记下：
+然后切到 **Messaging API** 选项卡，记下：
 
-  - **Bot basic ID** —— 用户搜索机器人时使用的 `@xxxx` 短 ID。
-</Steps>
+- **Bot basic ID** —— 用户搜索机器人时使用的 `@xxxx` 短 ID。
+  </Steps>
 
 ## 第二步：签发 Channel Access Token
 
 <Steps>
   ### 打开 Messaging API 选项卡
 
-  滚到 **Messaging API** 选项卡底部的 **Channel access token** 区域。
+滚到 **Messaging API** 选项卡底部的 **Channel access token** 区域。
 
-  ### 签发长期 Token
+### 签发长期 Token
 
-  在 "Channel access token (long-lived)" 处点击 **Issue**。立即复制 Token —— LINE 只展示一次。
+在 "Channel access token (long-lived)" 处点击 **Issue**。立即复制 Token —— LINE 只展示一次。
 
-  > **重要提示：** Channel Access Token 与 Channel Secret 都是敏感凭据，切勿提交到代码仓库或在截图中泄露。
+> **重要提示：** Channel Access Token 与 Channel Secret 都是敏感凭据，切勿提交到代码仓库或在截图中泄露。
+
 </Steps>
 
 ## 第三步：关闭 LINE 自带的自动回复与欢迎语
@@ -74,17 +74,18 @@ LINE Official Account Manager 默认会自动回复用户消息并在第一次�
 <Steps>
   ### 打开 LINE Official Account Manager
 
-  在 **Messaging API** 选项卡中，点击 **LINE Official Account Manager** 链接进入对应 Official Account 的管理界面。
+在 **Messaging API** 选项卡中，点击 **LINE Official Account Manager** 链接进入对应 Official Account 的管理界面。
 
-  ### 切换 response 模式
+### 切换 response 模式
 
-  打开 **设置 → Messaging API**（或 **Response settings**），调整为：
+打开 **设置 → Messaging API**（或 **Response settings**），调整为：
 
-  - **Greeting message：** Disabled
-  - **Auto-response messages：** Disabled
-  - **Webhooks：** Enabled
+- **Greeting message：** Disabled
+- **Auto-response messages：** Disabled
+- **Webhooks：** Enabled
 
-  这样所有入站消息都会交给你的机器人处理。
+这样所有入站消息都会交给你的机器人处理。
+
 </Steps>
 
 ## 第四步：在 LobeHub 中配置 LINE
@@ -92,35 +93,36 @@ LINE Official Account Manager 默认会自动回复用户消息并在第一次�
 <Steps>
   ### 打开渠道设置
 
-  在 LobeHub 中，进入您的代理设置，选择 **渠道** 标签。在平台列表中点击 **LINE**。
+在 LobeHub 中，进入您的代理设置，选择 **渠道** 标签。在平台列表中点击 **LINE**。
 
-  ### 填写凭据
+### 填写凭据
 
-  推荐顺序 —— 先粘贴 Token，LobeHub 会帮你自动填入 Destination User ID：
+推荐顺序 —— 先粘贴 Token，LobeHub 会帮你自动填入 Destination User ID：
 
-  1. **Channel Access Token** —— 粘贴第二步签发的长期 Token。
-  2. **Destination User ID** —— 点击该字段旁的 **从 LINE 获取** 按钮。LobeHub 会用刚才填入的 Token 调用 `GET /v2/bot/info`，自动取出 bot 的 `userId`（以 `U` 开头共 33 位）并填入。如果你已经拿到这个值，也可以手动粘贴。
-  3. **Channel Secret** —— 粘贴 **Basic settings** 选项卡的 Channel secret。
+1. **Channel Access Token** —— 粘贴第二步签发的长期 Token。
+2. **Destination User ID** —— 点击该字段旁的 **从 LINE 获取** 按钮。LobeHub 会用刚才填入的 Token 调用 `GET /v2/bot/info`，自动取出 bot 的 `userId`（以 `U` 开头共 33 位）并填入。如果你已经拿到这个值，也可以手动粘贴。
+3. **Channel Secret** —— 粘贴 **Basic settings** 选项卡的 Channel secret。
 
-  > **为什么需要自动获取？** LINE Developers Console 界面**不展示** bot 的 destination user ID，唯一的获取方式就是调用 `/v2/bot/info`。**从 LINE 获取** 按钮会把这一步 `curl` 替你做掉。
-  >
-  > <details>
-  >   <summary>手动备选方案（按钮不可用时）</summary>
-  >
-  >   ```bash
-  >   curl -H "Authorization: Bearer <你的 channel access token" \
-  >     https://api.line.me/v2/bot/info
-  >   ```
-  >
-  >   把返回 JSON 中的 `userId` 字段复制到 **Destination User ID** 即可。
-  >
+> **为什么需要自动获取？** LINE Developers Console 界面**不展示** bot 的 destination user ID，唯一的获取方式就是调用 `/v2/bot/info`。**从 LINE 获取** 按钮会把这一步 `curl` 替你做掉。
+>
+> <details>
+  <summary>手动备选方案（按钮不可用时）</summary>
+>
+> ```bash
+> curl -H "Authorization: Bearer <你的 channel access token" \
+>   https://api.line.me/v2/bot/info
+> ```
+>
+> 把返回 JSON 中的 `userId` 字段复制到 **Destination User ID** 即可。
+
 </details>
 
-  ### 保存配置
+### 保存配置
 
-  点击 **保存配置**。LobeHub 会加密您的凭据，调用一次 `GET /v2/bot/info` 验证 Token 可用、且返回的 bot user ID 与 Destination User ID 一致，并在凭据下方显示 **Webhook URL** 供下一步使用。
+点击 **保存配置**。LobeHub 会加密您的凭据，调用一次 `GET /v2/bot/info` 验证 Token 可用、且返回的 bot user ID 与 Destination User ID 一致，并在凭据下方显示 **Webhook URL** 供下一步使用。
 
-  > **注意：** 与 Telegram 不同，LINE Messaging API 不支持程序化注册 Webhook，LobeHub 无法替您在 LINE Developers Console 中填写 URL，需要您在第五步中自行粘贴。
+> **注意：** 与 Telegram 不同，LINE Messaging API 不支持程序化注册 Webhook，LobeHub 无法替您在 LINE Developers Console 中填写 URL，需要您在第五步中自行粘贴。
+
 </Steps>
 
 ## 第五步：在 LINE Developers Console 配置 Webhook
@@ -128,32 +130,33 @@ LINE Official Account Manager 默认会自动回复用户消息并在第一次�
 <Steps>
   ### 复制 Webhook URL
 
-  在 LobeHub 的 LINE 渠道详情页中，复制凭据区域下方显示的 **Webhook URL**。形如 `https://app.lobehub.com/api/agent/webhooks/line/<your-destination-user-id>`。
+在 LobeHub 的 LINE 渠道详情页中，复制凭据区域下方显示的 **Webhook URL**。形如 `https://app.lobehub.com/api/agent/webhooks/line/<your-destination-user-id>`。
 
-  ### 粘贴到 LINE Developers Console
+### 粘贴到 LINE Developers Console
 
-  回到 channel 的 **Messaging API** 选项卡：
+回到 channel 的 **Messaging API** 选项卡：
 
-  - **Webhook URL：** 粘贴 LobeHub 的 Webhook URL。
-  - 点击 **Update**。
-  - 点击 **Verify**。LINE 会向 LobeHub 发送一个签名后的 `POST`（`events: []`），Channel Secret 匹配时 LobeHub 返回 200。
-  - 将 **Use webhook** 切到 **ON**。
-</Steps>
+- **Webhook URL：** 粘贴 LobeHub 的 Webhook URL。
+- 点击 **Update**。
+- 点击 **Verify**。LINE 会向 LobeHub 发送一个签名后的 `POST`（`events: []`），Channel Secret 匹配时 LobeHub 返回 200。
+- 将 **Use webhook** 切到 **ON**。
+  </Steps>
 
 ## 第六步：测试连接
 
 <Steps>
   ### 添加机器人为好友
 
-  在 LINE Developers Console 的 **Messaging API** 选项卡，使用手机扫描机器人的 **QR code**；也可以直接在 LINE 中搜索 **Bot basic ID**（例如 `@abc1234x`）。
+在 LINE Developers Console 的 **Messaging API** 选项卡，使用手机扫描机器人的 **QR code**；也可以直接在 LINE 中搜索 **Bot basic ID**（例如 `@abc1234x`）。
 
-  ### 发送一条真实消息
+### 发送一条真实消息
 
-  在 LINE 里向机器人发送任意消息。几秒内 LobeHub 代理就会回复。
+在 LINE 里向机器人发送任意消息。几秒内 LobeHub 代理就会回复。
 
-  ### 运行测试连接（可选）
+### 运行测试连接（可选）
 
-  在 LobeHub 渠道设置中点击 **测试连接**，再次校验 Token 与 bot 身份是否匹配，错误信息会透传 LINE 返回的具体内容。
+在 LobeHub 渠道设置中点击 **测试连接**，再次校验 Token 与 bot 身份是否匹配，错误信息会透传 LINE 返回的具体内容。
+
 </Steps>
 
 ## 在群聊中使用机器人
@@ -168,11 +171,11 @@ LINE Official Account Manager 默认会自动回复用户消息并在第一次�
 
 ## 配置参考
 
-| 字段                       | 是否必需 | 描述                                                                                                                                          |
-| ------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Destination User ID**  | 是    | 机器人的用户 ID（`U` + 32 位十六进制）。LobeHub 会通过 **从 LINE 获取** 按钮（背后调用 `GET /v2/bot/info`）自动填入；LINE Developers Console 界面不展示这个值。同时作为机器人标识与 Webhook 路径。 |
-| **Channel Access Token** | 是    | **Messaging API** 选项卡中签发的长期 Token，用作每个 LINE API 调用的 bearer 头。                                                                               |
-| **Channel Secret**       | 是    | **Basic settings** 选项卡中的 Channel secret，用于校验每条入站 Webhook 的 `X-Line-Signature`。                                                              |
+| 字段 | 是否必需 | 描述 |
+| --- | --- | --- |
+| **Destination User ID** | 是 | 机器人的用户 ID（`U` + 32 位十六进制）。LobeHub 会通过 **从 LINE 获取** 按钮（背后调用 `GET /v2/bot/info`）自动填入；LINE Developers Console 界面不展示这个值。同时作为机器人标识与 Webhook 路径。 |
+| **Channel Access Token** | 是 | **Messaging API** 选项卡中签发的长期 Token，用作每个 LINE API 调用的 bearer 头。 |
+| **Channel Secret** | 是 | **Basic settings** 选项卡中的 Channel secret，用于校验每条入站 Webhook 的 `X-Line-Signature`。 |
 
 ## 能力说明
 

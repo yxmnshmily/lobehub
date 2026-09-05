@@ -1,8 +1,7 @@
 ---
 title: Migrate from v1.x Local Database to v2.x
 description: >-
-  Export your data from v1.x and import into v2.x Cloud or self-hosted.
-  Step-by-step guide with troubleshooting.
+  Export your data from v1.x and import into v2.x Cloud or self-hosted. Step-by-step guide with troubleshooting.
 tags:
   - LobeHub
   - Migration
@@ -17,7 +16,9 @@ tags:
 LobeHub v1.x Desktop offered a **local database** mode — your data lived on your device. Starting with v2.x, we moved to a **cloud-first architecture** and removed the local database. The result: a lighter client, faster iteration, and a consistent experience across browser, desktop, and mobile.
 
 <Callout type="info">
-  **Why the change?** The v1.x local database consumed more system resources, and only a small portion of users relied on it. By simplifying the client and focusing on cloud-first, we improve performance and ship new features faster.
+  **Why the change?** The v1.x local database consumed more system resources, and only a small
+  portion of users relied on it. By simplifying the client and focusing on cloud-first, we improve
+  performance and ship new features faster.
 </Callout>
 
 This guide walks you through **exporting from v1.x** and **importing into v2.x**. Your Agents, conversations, and settings can all move over — typically in a few minutes.
@@ -60,14 +61,15 @@ Depending on your v1.x build and export format, you can typically migrate:
 
 ## What Does Not Migrate
 
-| Item                         | Notes                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| **API keys and secrets**     | Re-enter them in v2.x for security. v2.x uses a different storage model. |
-| **Local-only files / cache** | Temporary data that doesn't apply to cloud.                              |
-| **Device-specific settings** | Some settings are tied to the old local setup.                           |
+| Item | Notes |
+| --- | --- |
+| **API keys and secrets** | Re-enter them in v2.x for security. v2.x uses a different storage model. |
+| **Local-only files / cache** | Temporary data that doesn't apply to cloud. |
+| **Device-specific settings** | Some settings are tied to the old local setup. |
 
 <Callout type="warning">
-  If your export contains sensitive content, store the file securely. Do not share it publicly or commit it to version control.
+  If your export contains sensitive content, store the file securely. Do not share it publicly or
+  commit it to version control.
 </Callout>
 
 ## Step 1: Export from v1.x

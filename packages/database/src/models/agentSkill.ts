@@ -62,6 +62,42 @@ export class AgentSkillModel {
     return result;
   };
 
+  ensureByIdentifier = async (
+    data: Omit<NewAgentSkill, 'userId' | 'workspaceId'>,
+  ): Promise<SkillItem> => {
+    const updateExisting = async (id: string) => {
+      const [updated] = await this.db
+        .update(agentSkills)
+        .set({
+          content: data.content,
+          description: data.description,
+          manifest: data.manifest,
+          name: data.name,
+          source: data.source,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(agentSkills.id, id), this.scopeWhere()))
+        .returning(skillItemColumns);
+      return updated;
+    };
+
+    const existing = await this.findByIdentifier(data.identifier);
+    if (existing) return updateExisting(existing.id);
+
+    const [created] = await this.db
+      .insert(agentSkills)
+      .values(buildWorkspacePayload({ userId: this.userId, workspaceId: this.workspaceId }, data))
+      .onConflictDoNothing()
+      .returning(skillItemColumns);
+    if (created) return created;
+
+    const raced = await this.findByIdentifier(data.identifier);
+    if (!raced) {
+      throw new Error(`Failed to ensure agent skill: ${data.identifier}`);
+    }
+    return updateExisting(raced.id);
+  };
+
   // ========== Read ==========
 
   findById = async (id: string): Promise<SkillItem | undefined> => {

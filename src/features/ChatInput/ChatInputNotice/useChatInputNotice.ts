@@ -94,11 +94,10 @@ export type ChatInputNotice = NonNullable<ReturnType<typeof resolveChatInputNoti
   onAction?: () => Promise<void>;
 };
 
-export const useChatInputNotice = (): ChatInputNotice | undefined => {
+const useChatInputNoticeByAgentId = (agentId: string): ChatInputNotice | undefined => {
   const { t } = useTranslation('chat');
   const { allowed: canManageAiInfra, reason: aiInfraPermissionReason } =
     usePermission('manage_provider_key');
-  const agentId = useAgentId();
   const [actionLoading, setActionLoading] = useState(false);
   const [isAgentConfigLoading, isHeterogeneousAgent] = useAgentStore((s) => [
     agentByIdSelectors.isAgentConfigLoadingById(agentId)(s),
@@ -222,8 +221,23 @@ export const useChatInputNotice = (): ChatInputNotice | undefined => {
   };
 };
 
+export const useChatInputNotice = (): ChatInputNotice | undefined => {
+  const agentId = useAgentId();
+
+  return useChatInputNoticeByAgentId(agentId);
+};
+
+export const useChatInputNoticeForAgent = (agentId: string): ChatInputNotice | undefined =>
+  useChatInputNoticeByAgentId(agentId);
+
 export const useIsChatInputModelUnavailable = (): boolean => {
   const notice = useChatInputNotice();
+
+  return notice?.key === 'input.modelUnavailable' || notice?.key === 'input.modelDisabled';
+};
+
+export const useIsChatInputModelUnavailableForAgent = (agentId: string): boolean => {
+  const notice = useChatInputNoticeForAgent(agentId);
 
   return notice?.key === 'input.modelUnavailable' || notice?.key === 'input.modelDisabled';
 };

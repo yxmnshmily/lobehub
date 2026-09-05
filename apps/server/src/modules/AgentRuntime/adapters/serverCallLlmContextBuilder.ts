@@ -45,6 +45,8 @@ import { MarketService } from '@/server/services/market';
 import { OnboardingService } from '@/server/services/onboarding';
 import { toAgentContextDocuments } from '@/utils/agentDocumentContextMapping';
 
+// Product-specific routing is injected through generic operation metadata; keep this builder
+// independent from travel modules so the AgentRuntime remains reusable by every surface.
 import type { RuntimeExecutorContext } from '../context';
 import { buildPostProcessUrl, log, resolveRuntimeHistoryCount } from '../executorHelpers';
 import { loadConnectedComposioIds } from './composioConnectedIds';

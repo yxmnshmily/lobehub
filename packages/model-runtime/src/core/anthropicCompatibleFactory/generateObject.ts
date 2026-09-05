@@ -3,9 +3,15 @@ import debug from 'debug';
 import type { Pricing } from 'model-bank';
 
 import { stripUnsupportedClaudeAssistantPrefill } from '../../providers/anthropic/claudePrefill';
-import type { GenerateObjectOptions, GenerateObjectPayload } from '../../types';
+import type {
+  GenerateObjectBoundedOptions,
+  GenerateObjectOptions,
+  GenerateObjectPayload,
+  PreparedGenerateObjectBounded,
+} from '../../types';
 import { buildAnthropicMessages, buildAnthropicTools } from '../contextBuilders/anthropic';
 import { buildAnthropicInitialUsage } from '../usageConverters/anthropic';
+import { computeChatCost } from '../usageConverters/utils/computeChatCost';
 import { withUsageCost } from '../usageConverters/utils/withUsageCost';
 
 const log = debug('lobe-model-runtime:anthropic:generate-object');
@@ -175,4 +181,187 @@ export const createAnthropicGenerateObject = async (
     log('generateObject error: %O', error);
     throw error;
   }
+};
+
+const assertPositiveSafeInteger = (value: number, name: string) => {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`${name} must be a positive safe integer`);
+  }
+};
+
+const assertCompleteBoundedRoute = (route: GenerateObjectBoundedOptions['route']) => {
+  if (
+    !route ||
+    !route.apiType ||
+    !route.channelId ||
+    !route.model ||
+    !route.providerId ||
+    !route.routerId
+  ) {
+    throw new Error('Bounded generateObject route identity is incomplete');
+  }
+};
+
+function assertBoundedTextPricing(pricing: Pricing | undefined): asserts pricing is Pricing {
+  if (!pricing) throw new Error('Bounded generateObject pricing is unavailable');
+
+  for (const name of ['textInput', 'textOutput'] as const) {
+    const unit = pricing.units.find((item) => item.name === name);
+    if (!unit || unit.unit !== 'millionTokens' || !['fixed', 'tiered'].includes(unit.strategy)) {
+      throw new Error(`Bounded generateObject ${name} pricing is unavailable`);
+    }
+    if (
+      (unit.strategy === 'fixed' && (!Number.isFinite(unit.rate) || unit.rate < 0)) ||
+      (unit.strategy === 'tiered' &&
+        (!unit.tiers?.length ||
+          unit.tiers.some((tier) => !Number.isFinite(tier.rate) || tier.rate < 0)))
+    ) {
+      throw new Error('Bounded generateObject pricing is invalid');
+    }
+  }
+}
+
+const assertBoundedTokenUsage = (usage: Record<string, unknown>) => {
+  for (const [name, value] of Object.entries(usage)) {
+    if (
+      name.endsWith('Tokens') &&
+      value !== undefined &&
+      (!Number.isSafeInteger(value) || (value as number) < 0)
+    ) {
+      throw new Error('Bounded generateObject token usage is invalid');
+    }
+  }
+};
+
+/**
+ * Prepare one exact Anthropic Messages request for hard-bounded structured output.
+ * Counting and execution share the same closed-over request; arbitrary tools, caching,
+ * thinking, request mutation and retries are intentionally outside this contract.
+ */
+export const prepareAnthropicGenerateObjectBounded = async <T = unknown>(
+  client: Anthropic,
+  payload: GenerateObjectPayload,
+  options: GenerateObjectOptions | undefined,
+  pricing: Pricing | undefined,
+  config: Pick<AnthropicGenerateObjectConfig, 'requestModel' | 'schemaToolStrict'> &
+    Pick<GenerateObjectBoundedOptions, 'maxOutputTokens' | 'route'>,
+): Promise<PreparedGenerateObjectBounded<T>> => {
+  const maxOutputTokens = config.maxOutputTokens;
+  const signal = options?.signal;
+  const onUsage = options?.onUsage;
+  assertPositiveSafeInteger(maxOutputTokens, 'maxOutputTokens');
+  assertCompleteBoundedRoute(config.route);
+  const boundedPricing = pricing && structuredClone(pricing);
+  assertBoundedTextPricing(boundedPricing);
+
+  if (!payload.schema || payload.tools) {
+    throw new Error('Bounded Anthropic generateObject requires one schema and no tools');
+  }
+  if (payload.thinking && payload.thinking.type !== 'disabled') {
+    throw new Error('Bounded Anthropic generateObject requires thinking to be disabled');
+  }
+
+  const requestModel = config.requestModel ?? payload.model;
+  if (requestModel !== config.route.model) {
+    throw new Error('Bounded generateObject model identity mismatch');
+  }
+
+  const { requestParams, schemaToolName } = await buildAnthropicGenerateObjectRequest(payload, {
+    maxTokens: maxOutputTokens,
+    requestModel,
+    requestParams: { thinking: { type: 'disabled' } },
+    schemaToolStrict: config.schemaToolStrict,
+  });
+  const finalRequestParams = structuredClone<Anthropic.MessageCreateParamsNonStreaming>({
+    ...requestParams,
+    model: requestModel,
+  });
+  const { max_tokens: _maxTokens, ...countRequestParams } = structuredClone(finalRequestParams);
+  const tokenCount = await client.messages.countTokens(
+    countRequestParams as Anthropic.MessageCountTokensParams,
+    { signal },
+  );
+  const inputTokens = tokenCount?.input_tokens;
+  if (!Number.isSafeInteger(inputTokens) || (inputTokens as number) < 0) {
+    throw new Error('Bounded generateObject input token count is unavailable');
+  }
+  const maximumTotalTokens = (inputTokens as number) + maxOutputTokens;
+  if (!Number.isSafeInteger(maximumTotalTokens)) {
+    throw new Error('Bounded generateObject token budget is invalid');
+  }
+
+  const maximumCost = computeChatCost(boundedPricing, {
+    inputCacheMissTokens: inputTokens,
+    inputTextTokens: inputTokens,
+    outputTextTokens: maxOutputTokens,
+    totalInputTokens: inputTokens,
+    totalOutputTokens: maxOutputTokens,
+    totalTokens: maximumTotalTokens,
+  });
+  if (
+    !maximumCost ||
+    maximumCost.issues.length > 0 ||
+    !Number.isSafeInteger(maximumCost.totalCredits) ||
+    maximumCost.totalCredits <= 0 ||
+    !Number.isFinite(maximumCost.totalCost) ||
+    maximumCost.totalCost < 0
+  ) {
+    throw new Error('Bounded generateObject pricing is invalid');
+  }
+
+  const route = Object.freeze({ ...config.route });
+  const envelope = Object.freeze({
+    inputTokens: inputTokens as number,
+    maxOutputTokens,
+    maximumCredits: maximumCost.totalCredits,
+    route,
+  });
+  let executed = false;
+
+  return Object.freeze({
+    envelope,
+    execute: async () => {
+      if (executed) throw new Error('Bounded generateObject request was already executed');
+      executed = true;
+
+      const response = await client.messages.create(finalRequestParams, {
+        signal,
+      });
+      const initialUsage = buildAnthropicInitialUsage(response.usage);
+      if (!initialUsage) throw new Error('Bounded generateObject usage is unavailable');
+      assertBoundedTokenUsage(initialUsage as unknown as Record<string, unknown>);
+      if (
+        (initialUsage.inputCachedTokens ?? 0) > 0 ||
+        (initialUsage.inputWriteCacheTokens ?? 0) > 0
+      ) {
+        throw new Error('Bounded generateObject cache usage is not allowed');
+      }
+      if ((initialUsage.totalOutputTokens ?? 0) > maxOutputTokens) {
+        throw new Error('Bounded generateObject output exceeded maxOutputTokens');
+      }
+
+      const actualCost = computeChatCost(boundedPricing, initialUsage);
+      if (
+        !actualCost ||
+        actualCost.issues.length > 0 ||
+        !Number.isSafeInteger(actualCost.totalCredits) ||
+        actualCost.totalCredits < 0 ||
+        !Number.isFinite(actualCost.totalCost) ||
+        actualCost.totalCost < 0 ||
+        actualCost.totalCredits > maximumCost.totalCredits
+      ) {
+        throw new Error('Bounded generateObject actual cost exceeded its envelope');
+      }
+      const usage = withUsageCost(initialUsage, boundedPricing);
+      if (typeof usage.cost !== 'number' || !Number.isFinite(usage.cost)) {
+        throw new Error('Bounded generateObject usage pricing is unavailable');
+      }
+      await onUsage?.(usage);
+
+      const output = parseAnthropicGenerateObjectResponse(response, schemaToolName) as T;
+      if (output === undefined)
+        throw new Error('Bounded generateObject returned no structured output');
+      return { output, usage };
+    },
+  });
 };

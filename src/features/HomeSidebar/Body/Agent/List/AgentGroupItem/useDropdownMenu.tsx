@@ -1,3 +1,4 @@
+import type { AgentGroupManagementPolicy } from '@lobechat/types';
 import { type MenuProps } from '@lobehub/ui';
 import { Icon } from '@lobehub/ui';
 import { confirmModal, toast } from '@lobehub/ui/base-ui';
@@ -11,6 +12,7 @@ import { openEditingPopover } from '@/features/EditingPopover/store';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
 import { usePermission } from '@/hooks/usePermission';
 import { useResourceManageable } from '@/hooks/useResourceManageable';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useGlobalStore } from '@/store/global';
 import { useHomeStore } from '@/store/home';
 import { getDeleteErrorMessageKey } from '@/utils/forbiddenError';
@@ -21,6 +23,7 @@ interface UseGroupDropdownMenuParams {
   backgroundColor?: string;
   description?: string | null;
   id: string;
+  managementPolicy?: AgentGroupManagementPolicy;
   memberAvatars?: { avatar?: string; background?: string }[];
   pinned: boolean;
   title: string;
@@ -33,6 +36,7 @@ export const useGroupDropdownMenu = ({
   backgroundColor,
   description,
   id,
+  managementPolicy,
   memberAvatars,
   pinned,
   title,
@@ -44,6 +48,9 @@ export const useGroupDropdownMenu = ({
   const { canEditResource, isAccessResolved } = useResourceAccess('agentGroup', id);
   const canConfigure = canEdit && isAccessResolved && canEditResource;
   const canManage = useResourceManageable(userId);
+  const { data: isPlatformAdmin } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
+  const canConfigureGroup =
+    canConfigure && (managementPolicy !== 'platform' || isPlatformAdmin === true);
 
   const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
   const [pinAgentGroup, duplicateAgentGroup, removeAgentGroup] = useHomeStore((s) => [
@@ -67,7 +74,7 @@ export const useGroupDropdownMenu = ({
   return useMemo(
     () => () =>
       [
-        ...(canConfigure
+        ...(canConfigureGroup
           ? [
               {
                 icon: <Icon icon={pinned ? PinOff : Pin} />,
@@ -118,14 +125,14 @@ export const useGroupDropdownMenu = ({
           },
           sfSymbol: 'macwindow.badge.plus',
         },
-        ...(canConfigure && (transferMenuItems?.length || transferToMemberItem)
+        ...(canConfigureGroup && (transferMenuItems?.length || transferToMemberItem)
           ? [
               { type: 'divider' as const },
               ...(transferMenuItems ?? []),
               ...(transferToMemberItem ? [transferToMemberItem] : []),
             ]
           : []),
-        ...(canConfigure && canManage
+        ...(canConfigureGroup && canManage
           ? [
               { type: 'divider' as const },
               {
@@ -160,7 +167,7 @@ export const useGroupDropdownMenu = ({
       anchor,
       avatar,
       backgroundColor,
-      canConfigure,
+      canConfigureGroup,
       canManage,
       memberAvatars,
       t,

@@ -7,8 +7,7 @@ inputs:
     required: true
   cloud-repository:
     description: >-
-      Overlay repository (owner/name) for commercial desktop builds — pass the
-      OVERLAY_REPOSITORY repository variable; deliberately no hardcoded default.
+      Overlay repository (owner/name) for commercial desktop builds — pass the OVERLAY_REPOSITORY repository variable; deliberately no hardcoded default.
     required: false
     default: ''
   cloud-ref:

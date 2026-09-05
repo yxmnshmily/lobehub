@@ -63,6 +63,15 @@ export class UserService {
     return lambdaClient.user.getOnboardingAgentContext.query();
   };
 
+  prepareOnboardingAgentContext = async (): Promise<{
+    personaContent: string | null;
+    phaseGuidance: string;
+    soulContent: string | null;
+    userInfo?: OnboardingUserInfo;
+  }> => {
+    return lambdaClient.user.prepareOnboardingAgentContext.mutate();
+  };
+
   saveUserQuestion = async (params: SaveUserQuestionInput) => {
     return lambdaClient.user.saveUserQuestion.mutate(
       params as Parameters<typeof lambdaClient.user.saveUserQuestion.mutate>[0],

@@ -26,12 +26,10 @@ import type { SkillAgentDocument } from './types';
 const now = new Date('2026-05-02T00:00:00.000Z');
 const backingDocumentUpdatedAt = new Date('2026-05-03T00:00:00.000Z');
 
-const createSnapshot = vi.fn(
-  async (content: string): Promise<AgentDocumentEditorSnapshot> => ({
-    content,
-    editorData: { markdown: content, root: { children: [{ type: 'paragraph' }], type: 'root' } },
-  }),
-);
+const createSnapshot = vi.fn(async (content: string): Promise<AgentDocumentEditorSnapshot> => ({
+  content,
+  editorData: { markdown: content, root: { children: [{ type: 'paragraph' }], type: 'root' } },
+}));
 
 const expectedEditorData = (content: string) => ({
   markdown: content,

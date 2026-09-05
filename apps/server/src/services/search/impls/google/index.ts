@@ -100,17 +100,15 @@ export class GoogleImpl implements SearchServiceImpl {
 
       log('Parsed Google response: %o', googleResponse);
 
-      const mappedResults = (googleResponse.items || []).map(
-        (result): UniformSearchResult => ({
-          category: 'general', // Default category
-          content: result.snippet || '', // Prioritize content
-          engines: ['google'], // Use 'google' as the engine name
-          parsedUrl: result.link ? new URL(result.link).hostname : '', // Basic URL parsing
-          score: 1, // Default score to 1
-          title: result.title || '',
-          url: result.link,
-        }),
-      );
+      const mappedResults = (googleResponse.items || []).map((result): UniformSearchResult => ({
+        category: 'general', // Default category
+        content: result.snippet || '', // Prioritize content
+        engines: ['google'], // Use 'google' as the engine name
+        parsedUrl: result.link ? new URL(result.link).hostname : '', // Basic URL parsing
+        score: 1, // Default score to 1
+        title: result.title || '',
+        url: result.link,
+      }));
 
       log('Mapped %d results to SearchResult format', mappedResults.length);
 

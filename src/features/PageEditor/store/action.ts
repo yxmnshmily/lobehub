@@ -176,6 +176,12 @@ export const store: (initState?: Partial<State>) => StateCreator<Store> =
             onEmojiChange?.(emoji);
           }
 
+          // The editor store can be reused while navigating between documents.
+          // Keep the completed save scoped to the document that initiated it;
+          // otherwise an older request can overwrite the new document's dirty
+          // baseline and save indicator after navigation.
+          if (get().documentId !== documentId) return;
+
           set({
             isMetaDirty: false,
             lastSavedEmoji: emoji,
@@ -184,7 +190,9 @@ export const store: (initState?: Partial<State>) => StateCreator<Store> =
           });
         } catch (error) {
           console.error('[PageEditor] Failed to save meta:', error);
-          set({ metaSaveStatus: 'idle' });
+          if (get().documentId === documentId) {
+            set({ metaSaveStatus: 'idle' });
+          }
         }
       },
 

@@ -1,21 +1,16 @@
 import { type DropdownMenuProps, type MenuProps } from '@lobehub/ui';
 import { DropdownMenu, Icon } from '@lobehub/ui';
 import { ActionIcon, confirmModal, toast } from '@lobehub/ui/base-ui';
-import { createStaticStyles } from 'antd-style';
 import { MoreVertical, PencilLine, Plus, Settings2, Trash, UsersRound } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { MemberSelectionModal } from '@/components/MemberSelectionModal';
+import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { useSessionStore } from '@/store/session';
 
-const styles = createStaticStyles(({ css }) => ({
-  modalRoot: css`
-    z-index: 2000;
-  `,
-}));
 interface ActionsProps extends Pick<DropdownMenuProps, 'onOpenChange'> {
   id?: string;
   isCustomGroup?: boolean;
@@ -116,65 +111,60 @@ const Actions = memo<ActionsProps>(
       setIsGroupModalOpen(false);
     };
 
-    const customGroupItems: MenuProps['items'] = useMemo(
-      () => [
-        {
-          icon: <Icon icon={PencilLine} />,
-          key: 'rename',
-          label: t('sessionGroup.rename'),
-          onClick: ({ domEvent }) => {
-            domEvent.stopPropagation();
-            openRenameModal?.();
-          },
+    const customGroupItems: MenuProps['items'] = [
+      {
+        icon: <Icon icon={PencilLine} />,
+        key: 'rename',
+        label: t('sessionGroup.rename'),
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          openRenameModal?.();
         },
-        sessionGroupConfigPublicItem,
-        {
-          type: 'divider',
+      },
+      sessionGroupConfigPublicItem,
+      {
+        type: 'divider',
+      },
+      {
+        danger: true,
+        icon: <Icon icon={Trash} />,
+        key: 'delete',
+        label: t('delete', { ns: 'common' }),
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          confirmModal({
+            cancelText: t('cancel', { ns: 'common' }),
+            content: t('sessionGroup.confirmRemoveGroupAlert'),
+            okButtonProps: { danger: true },
+            okText: t('delete', { ns: 'common' }),
+            onOk: async () => {
+              if (!id) return;
+              await removeSessionGroup(id);
+            },
+            title: t('delete', { ns: 'common' }),
+          });
         },
-        {
-          danger: true,
-          icon: <Icon icon={Trash} />,
-          key: 'delete',
-          label: t('delete', { ns: 'common' }),
-          onClick: ({ domEvent }) => {
-            domEvent.stopPropagation();
-            confirmModal({
-              cancelText: t('cancel', { ns: 'common' }),
-              content: t('sessionGroup.confirmRemoveGroupAlert'),
-              okButtonProps: { danger: true },
-              okText: t('delete', { ns: 'common' }),
-              onOk: async () => {
-                if (!id) return;
-                await removeSessionGroup(id);
-              },
-              title: t('delete', { ns: 'common' }),
-            });
-          },
-        },
-      ],
-      [],
-    );
+      },
+    ];
 
-    const defaultItems: MenuProps['items'] = useMemo(() => [sessionGroupConfigPublicItem], []);
-
-    const tailItems = useMemo(
-      () => (isCustomGroup ? customGroupItems : defaultItems),
-      [isCustomGroup, customGroupItems, defaultItems],
-    );
-
-    const menuItems = useMemo(() => {
-      return [newAgentPublicItem, newGroupChatItem, { type: 'divider' as const }, ...tailItems];
-    }, [newAgentPublicItem, newGroupChatItem, tailItems]);
+    const tailItems = isCustomGroup ? customGroupItems : [sessionGroupConfigPublicItem];
+    const menuItems = [
+      newAgentPublicItem,
+      newGroupChatItem,
+      { type: 'divider' as const },
+      ...tailItems,
+    ];
 
     return (
       <>
         <DropdownMenu items={menuItems} onOpenChange={onOpenChange}>
           <ActionIcon
             active={isMobile ? true : false}
+            aria-label={t('more', { ns: 'common' })}
             icon={MoreVertical}
             loading={isCreatingGroup}
-            size={{ blockSize: 22, size: 16 }}
-            style={{ background: isMobile ? 'transparent' : '', marginRight: -8 }}
+            size={isMobile ? MOBILE_HEADER_ICON_SIZE : { blockSize: 22, size: 16 }}
+            style={{ background: isMobile ? 'transparent' : '', marginRight: isMobile ? -4 : -8 }}
             onClick={(e) => {
               e.stopPropagation();
             }}

@@ -43,16 +43,22 @@ const Header = memo<{ mobile?: boolean }>(({ mobile: isMobile }) => {
         <Flexbox horizontal align={'center'}>
           {Boolean(url || modelsUrl) && (
             <a
+              aria-label={`${name} homepage`}
               href={(url || modelsUrl) as string}
               rel="noreferrer"
               target="_blank"
               onClick={stopPropagation}
             >
-              <ActionIcon color={cssVar.colorTextDescription} icon={GlobeIcon} />
+              <ActionIcon
+                aria-label={`${name} homepage`}
+                color={cssVar.colorTextDescription}
+                icon={GlobeIcon}
+              />
             </a>
           )}
 
           <a
+            aria-label={`${name} GitHub`}
             rel="noreferrer"
             target="_blank"
             href={urlJoin(
@@ -61,7 +67,11 @@ const Header = memo<{ mobile?: boolean }>(({ mobile: isMobile }) => {
             )}
             onClick={stopPropagation}
           >
-            <ActionIcon fill={cssVar.colorTextDescription} icon={Github} />
+            <ActionIcon
+              aria-label={`${name} GitHub`}
+              fill={cssVar.colorTextDescription}
+              icon={Github}
+            />
           </a>
         </Flexbox>
       </Flexbox>

@@ -1,4 +1,5 @@
 import { type AgentState } from '@lobechat/agent-runtime';
+import { GroupManagementManifest } from '@lobechat/builtin-tool-group-management';
 import { BRANDING_PROVIDER } from '@lobechat/business-const';
 import { ToolNameResolver } from '@lobechat/context-engine';
 import { consumeStreamUntilDone, ModelEmptyError } from '@lobechat/model-runtime';
@@ -530,6 +531,206 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
       } finally {
         engineSpy.mockRestore();
       }
+    });
+
+    it('forces only the current generic dispatch-policy tool', async () => {
+      const toolName = new ToolNameResolver().generate('lobe-group-management', 'speak');
+      const mockChat = vi.fn().mockImplementation(async (_payload: any, options: any) => {
+        await options?.callback?.onText?.('done');
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat: mockChat } as any);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { plugins: [], systemRole: 'test' },
+      });
+      const state = createMockState({
+        metadata: {
+          agentId: 'agt-owner',
+          groupId: 'group-1',
+          toolDispatchPolicy: {
+            cursor: 0,
+            steps: [
+              {
+                apiName: 'speak',
+                arguments: JSON.stringify({ agentId: 'agt-member', instruction: 'delegate' }),
+                identifier: 'lobe-group-management',
+                toolName,
+              },
+            ],
+            version: 1,
+          },
+          topicId: 'topic-123',
+        },
+        operationToolSet: {
+          enabledToolIds: [GroupManagementManifest.identifier],
+          manifestMap: { [GroupManagementManifest.identifier]: GroupManagementManifest as any },
+          sourceMap: { [GroupManagementManifest.identifier]: 'builtin' },
+          tools: GroupManagementManifest.api.map((api) => ({
+            function: {
+              description: api.description,
+              name: new ToolNameResolver().generate(GroupManagementManifest.identifier, api.name),
+              parameters: api.parameters,
+            },
+            type: 'function' as const,
+          })),
+        },
+      });
+
+      await executors.call_llm!(
+        {
+          payload: {
+            messages: [{ content: 'delegate this request', role: 'user' }],
+            model: 'gpt-4',
+            provider: 'openai',
+            tools: [],
+          },
+          type: 'call_llm',
+        },
+        state,
+      );
+
+      expect(mockChat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_choice: 'required',
+          tools: [
+            expect.objectContaining({ function: expect.objectContaining({ name: toolName }) }),
+          ],
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('removes tools after a finish-after-steps dispatch policy is exhausted', async () => {
+      const toolName = new ToolNameResolver().generate('lobe-group-management', 'speak');
+      const mockChat = vi.fn().mockImplementation(async (_payload: any, options: any) => {
+        await options?.callback?.onText?.('done');
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat: mockChat } as any);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { plugins: [], systemRole: 'test' },
+      });
+      const state = createMockState({
+        metadata: {
+          agentId: 'agt-member',
+          groupId: 'group-1',
+          toolDispatchPolicy: {
+            cursor: 1,
+            finishAfterSteps: true,
+            steps: [
+              {
+                apiName: 'speak',
+                arguments: JSON.stringify({ agentId: 'agt-member', instruction: 'delegate' }),
+                identifier: 'lobe-group-management',
+                toolName,
+              },
+            ],
+            version: 1,
+          },
+          topicId: 'topic-123',
+        },
+        operationToolSet: {
+          enabledToolIds: [GroupManagementManifest.identifier],
+          manifestMap: { [GroupManagementManifest.identifier]: GroupManagementManifest as any },
+          sourceMap: { [GroupManagementManifest.identifier]: 'builtin' },
+          tools: GroupManagementManifest.api.map((api) => ({
+            function: {
+              description: api.description,
+              name: new ToolNameResolver().generate(GroupManagementManifest.identifier, api.name),
+              parameters: api.parameters,
+            },
+            type: 'function' as const,
+          })),
+        },
+      });
+
+      await executors.call_llm!(
+        {
+          payload: {
+            messages: [{ content: 'finish this request', role: 'user' }],
+            model: 'gpt-4',
+            provider: 'openai',
+            tools: [],
+          },
+          type: 'call_llm',
+        },
+        state,
+      );
+
+      const request = mockChat.mock.calls[0][0];
+      expect(request.tools).toBeUndefined();
+      expect(request.tool_choice).toBeUndefined();
+    });
+
+    it('disables DeepSeek V4 thinking while forcing a dispatch-policy tool', async () => {
+      const toolName = new ToolNameResolver().generate('lobe-group-management', 'speak');
+      const mockChat = vi.fn().mockImplementation(async (_payload: any, options: any) => {
+        await options?.callback?.onText?.('done');
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat: mockChat } as any);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { plugins: [], systemRole: 'test' },
+      });
+      const state = createMockState({
+        metadata: {
+          agentId: 'agt-owner',
+          groupId: 'group-1',
+          toolDispatchPolicy: {
+            cursor: 0,
+            steps: [
+              {
+                apiName: 'speak',
+                arguments: JSON.stringify({ agentId: 'agt-member', instruction: 'delegate' }),
+                identifier: 'lobe-group-management',
+                toolName,
+              },
+            ],
+            version: 1,
+          },
+          topicId: 'topic-123',
+        },
+        operationToolSet: {
+          enabledToolIds: [GroupManagementManifest.identifier],
+          manifestMap: { [GroupManagementManifest.identifier]: GroupManagementManifest as any },
+          sourceMap: { [GroupManagementManifest.identifier]: 'builtin' },
+          tools: GroupManagementManifest.api.map((api) => ({
+            function: {
+              description: api.description,
+              name: new ToolNameResolver().generate(GroupManagementManifest.identifier, api.name),
+              parameters: api.parameters,
+            },
+            type: 'function' as const,
+          })),
+        },
+      });
+
+      await executors.call_llm!(
+        {
+          payload: {
+            messages: [{ content: 'delegate this request', role: 'user' }],
+            model: 'deepseek-v4-flash',
+            provider: 'deepseek',
+            tools: [],
+          },
+          type: 'call_llm',
+        },
+        state,
+      );
+
+      expect(mockChat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          thinking: { type: 'disabled' },
+          tool_choice: 'required',
+          tools: [
+            expect.objectContaining({ function: expect.objectContaining({ name: toolName }) }),
+          ],
+        }),
+        expect.anything(),
+      );
     });
 
     it('should keep step-activated tools when allowedToolNames is not set', async () => {
@@ -4932,6 +5133,80 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
       );
     });
 
+    it('does not pass stored platform runtime mode to tools without server authorization', async () => {
+      const executors = createRuntimeExecutors(ctx);
+      const state = createMockState({
+        metadata: {
+          agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+          agentId: 'agent-image',
+          topicId: 'topic-123',
+        },
+      });
+
+      await executors.call_tools_batch!(
+        {
+          payload: {
+            parentMessageId: 'assistant-msg-123',
+            toolsCalling: [
+              {
+                apiName: 'generateImage',
+                arguments: '{"prompt":"A mountain"}',
+                id: 'tool-call-1',
+                identifier: 'lobe-image-generation',
+                type: 'builtin' as const,
+              },
+            ],
+          },
+          type: 'call_tools_batch' as const,
+        },
+        state,
+      );
+
+      expect(mockToolExecutionService.executeTool).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ modelRuntimeMode: undefined }),
+      );
+    });
+
+    it('does not trust serializable platform flags without an operation-bound budget', async () => {
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        platformManagedExecutionAuthorized: true,
+      } as RuntimeExecutorContext);
+      const state = createMockState({
+        metadata: {
+          agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+          agentId: 'agent-production',
+          platformManagedExecutionAuthorized: true,
+          topicId: 'topic-123',
+        },
+      });
+
+      await executors.call_tools_batch!(
+        {
+          payload: {
+            parentMessageId: 'assistant-msg-123',
+            toolsCalling: [
+              {
+                apiName: 'generateVideo',
+                arguments: '{"prompt":"A mountain"}',
+                id: 'tool-call-1',
+                identifier: 'lobe-video-generation',
+                type: 'builtin' as const,
+              },
+            ],
+          },
+          type: 'call_tools_batch' as const,
+        },
+        state,
+      );
+
+      expect(mockToolExecutionService.executeTool).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ modelRuntimeMode: undefined }),
+      );
+    });
+
     it('should pass Agent Signal procedure identity fields to executeTool', async () => {
       const executors = createRuntimeExecutors(ctx);
       const state = createMockState({
@@ -5392,13 +5667,13 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
 
         await rejectionExpectation;
 
-        expect(mockChat).toHaveBeenCalledTimes(6);
+        expect(mockChat).toHaveBeenCalledTimes(2);
 
         const retryEvents = mockStreamManager.publishStreamEvent.mock.calls.filter(
           ([, event]: [string, { type: string }]) => event.type === 'stream_retry',
         );
 
-        expect(retryEvents).toHaveLength(5);
+        expect(retryEvents).toHaveLength(1);
 
         // Error event should be published to stream manager after retries are exhausted
         expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
@@ -5536,7 +5811,7 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
           'op-123',
           expect.objectContaining({
             type: 'stream_retry',
-            data: expect.objectContaining({ attempt: 2, delayMs: 1000, maxAttempts: 6 }),
+            data: expect.objectContaining({ attempt: 2, delayMs: 1000, maxAttempts: 2 }),
           }),
         );
       } finally {
@@ -5618,14 +5893,12 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
       }
     });
 
-    it('should apply exponential backoff across multiple llm retries', async () => {
+    it('should apply the bounded server backoff before its single retry', async () => {
       vi.useFakeTimers();
 
       const mockChat = vi
         .fn()
         .mockRejectedValueOnce(new Error('network timeout-1'))
-        .mockRejectedValueOnce(new Error('network timeout-2'))
-        .mockRejectedValueOnce(new Error('network timeout-3'))
         .mockImplementationOnce(async (_payload: any, options: any) => {
           await options.callback.onText?.('final');
           await options.callback.onCompletion?.({
@@ -5653,35 +5926,17 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
         const resultPromise = executors.call_llm!(instruction, state);
 
         await vi.runOnlyPendingTimersAsync();
-        await Promise.resolve();
-        await vi.runOnlyPendingTimersAsync();
-        await Promise.resolve();
-        await vi.runOnlyPendingTimersAsync();
 
         const result = await resultPromise;
 
-        expect(mockChat).toHaveBeenCalledTimes(4);
+        expect(mockChat).toHaveBeenCalledTimes(2);
         expect(result.nextContext?.phase).toBe('llm_result');
 
         expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
           'op-123',
           expect.objectContaining({
             type: 'stream_retry',
-            data: expect.objectContaining({ attempt: 2, delayMs: 1000, maxAttempts: 6 }),
-          }),
-        );
-        expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
-          'op-123',
-          expect.objectContaining({
-            type: 'stream_retry',
-            data: expect.objectContaining({ attempt: 3, delayMs: 2000, maxAttempts: 6 }),
-          }),
-        );
-        expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
-          'op-123',
-          expect.objectContaining({
-            type: 'stream_retry',
-            data: expect.objectContaining({ attempt: 4, delayMs: 4000, maxAttempts: 6 }),
+            data: expect.objectContaining({ attempt: 2, delayMs: 1000, maxAttempts: 2 }),
           }),
         );
       } finally {
@@ -5897,11 +6152,12 @@ describe('RuntimeExecutors', { timeout: 60_000 }, () => {
         expect(mockDispatcher.dispatch).toHaveBeenCalledWith(
           'op-123',
           'onToolCallError',
-          expect.objectContaining({
+          {
             apiName: 'search_tweets',
-            error: 'Connection refused',
-            identifier: 'twitter',
-          }),
+            callIndex: 1,
+            error: 'runtime-error',
+            stepIndex: 0,
+          },
           undefined,
         );
       });

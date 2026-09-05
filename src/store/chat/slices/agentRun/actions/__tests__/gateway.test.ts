@@ -891,6 +891,45 @@ describe('GatewayActionImpl', () => {
       );
     });
 
+    it('forwards hosted group billing as a dedicated execAgentTask field', async () => {
+      const { action } = createExecuteTestAction();
+
+      vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
+        agentId: 'agent-1',
+        assistantMessageId: 'ast-1',
+        autoStarted: true,
+        createdAt: new Date().toISOString(),
+        message: 'ok',
+        operationId: 'server-op-1',
+        status: 'created',
+        success: true,
+        timestamp: new Date().toISOString(),
+        token: 'test-token',
+        topicId: 'topic-1',
+        userMessageId: 'usr-1',
+      });
+
+      await action.executeGatewayAgent({
+        billing: { idempotencyKey: 'request-1', maxCredits: 32 },
+        context: {
+          agentId: 'agent-1',
+          groupId: 'group-1',
+          scope: 'group',
+          threadId: null,
+          topicId: 'topic-1',
+        },
+        message: '写一篇西藏旅游文案',
+      });
+
+      expect(aiAgentService.execAgentTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          billing: { idempotencyKey: 'request-1', maxCredits: 32 },
+          prompt: '写一篇西藏旅游文案',
+        }),
+        expect.anything(),
+      );
+    });
+
     it('should forward current user intervention config to execAgentTask', async () => {
       const { action } = createExecuteTestAction();
       mockToolInterventionConfig.approvalMode = 'allow-list';

@@ -1,5 +1,3 @@
-import { Flexbox } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui/base-ui';
 import { ChatHeader } from '@lobehub/ui/mobile';
 import { cssVar } from 'antd-style';
 import { ChevronDown } from 'lucide-react';
@@ -27,12 +25,34 @@ const ChatHeaderTitle = memo(() => {
   // id so the title doesn't degrade to the "new topic" placeholder.
   useFetchActiveTopicDetail();
 
-  const displayTitle = isInbox ? 'Lobe AI' : title;
+  const displayTitle = isInbox ? '旅游群主AI' : title;
+  const topicLabel = t('title', { ns: 'topic' });
+  const triggerStyle = {
+    appearance: 'none',
+    background: 'transparent',
+    border: 0,
+    color: 'inherit',
+    cursor: 'pointer',
+    font: 'inherit',
+    minHeight: 44,
+    minWidth: 44,
+    padding: 0,
+  } as const;
 
   return (
     <ChatHeader.Title
       desc={
-        <Flexbox horizontal align={'center'} gap={4} onClick={() => toggleConfig()}>
+        <button
+          aria-label={topicLabel}
+          type={'button'}
+          style={{
+            ...triggerStyle,
+            alignItems: 'center',
+            display: 'flex',
+            gap: 4,
+          }}
+          onClick={() => toggleConfig()}
+        >
           <span
             style={{
               maxWidth: '60vw',
@@ -43,23 +63,29 @@ const ChatHeaderTitle = memo(() => {
           >
             {topic?.title || t('title', { ns: 'topic' })}
           </span>
-          <ActionIcon
-            active
-            icon={ChevronDown}
-            size={{ blockSize: 14, borderRadius: '50%', size: 12 }}
+          <ChevronDown
+            aria-hidden
+            size={12}
             style={{
               background: cssVar.colorFillSecondary,
+              borderRadius: '50%',
               color: cssVar.colorTextDescription,
+              height: 14,
+              width: 14,
             }}
           />
-        </Flexbox>
+        </button>
       }
       title={
-        <div
+        <button
+          aria-label={topicLabel}
+          type={'button'}
           style={{
+            ...triggerStyle,
             marginRight: '8px',
             maxWidth: '64vw',
             overflow: 'hidden',
+            textAlign: 'start',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
@@ -67,7 +93,7 @@ const ChatHeaderTitle = memo(() => {
         >
           {displayTitle}
           {topicCount > 0 ? ` (${topicCount})` : ''}
-        </div>
+        </button>
       }
     />
   );

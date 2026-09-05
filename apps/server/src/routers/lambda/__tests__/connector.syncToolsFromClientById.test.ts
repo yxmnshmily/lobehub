@@ -31,6 +31,9 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
   serverDatabase: async (opts: any) =>
     opts.next({ ctx: { ...opts.ctx, serverDB: opts.ctx.serverDB ?? {} } }),
 }));
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: (opts: any) => opts.next(),
+}));
 
 const CONNECTOR_ID = '9f1f6f30-0000-4000-8000-000000000001';
 

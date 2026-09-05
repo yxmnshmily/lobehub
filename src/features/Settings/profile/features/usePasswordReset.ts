@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { saveToast } from '@/store/utils/saveToast';
 
 export const usePasswordReset = (email?: string | null) => {
@@ -18,7 +19,7 @@ export const usePasswordReset = (email?: string | null) => {
       // throwing, so a failed send would otherwise render as "link sent".
       const { error } = await requestPasswordReset({
         email,
-        redirectTo: `/reset-password?email=${encodeURIComponent(email)}`,
+        redirectTo: withLobeHubMountPath(`/reset-password?email=${encodeURIComponent(email)}`),
       });
       if (error) throw error;
       setSent(true);

@@ -163,7 +163,20 @@ const AiHeatmaps = memo<
       title={t('stats.lastYearActivity')}
     >
       <HeatmapStats />
-      {content}
+      {mobile ? (
+        <div
+          style={{
+            maxWidth: '100%',
+            overflowX: 'auto',
+            overscrollBehaviorInline: 'contain',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {content}
+        </div>
+      ) : (
+        content
+      )}
     </StatsFormGroup>
   );
 });

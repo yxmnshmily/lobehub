@@ -1,8 +1,7 @@
 ---
 title: Using a SuperGrok Subscription in LobeHub
 description: >-
-  Learn how to connect a SuperGrok or eligible X Premium subscription to LobeHub
-  through xAI OAuth, with no API key required.
+  Learn how to connect a SuperGrok or eligible X Premium subscription to LobeHub through xAI OAuth, with no API key required.
 tags:
   - LobeHub
   - SuperGrok
@@ -18,7 +17,9 @@ tags:
 xAI also uses this subscription-based OAuth flow in third-party integrations such as [OpenCode](https://x.ai/news/grok-opencode). LobeHub uses the device authorization flow: it opens xAI in your browser, displays a short code when needed, and waits for you to approve access.
 
 <Callout type={'info'}>
-  `SuperGrok` and `xAI` are separate providers in LobeHub. Choose `SuperGrok` to use an existing subscription through OAuth. Choose `xAI` if you want to use an API key from the xAI Console and pay for metered API usage.
+  `SuperGrok` and `xAI` are separate providers in LobeHub. Choose `SuperGrok` to use an existing
+  subscription through OAuth. Choose `xAI` if you want to use an API key from the xAI Console and
+  pay for metered API usage.
 </Callout>
 
 ## Prerequisites
@@ -33,7 +34,9 @@ Before connecting, make sure you have:
 If your subscription was purchased through X, sign in to [Grok](https://grok.com/), open `Settings` > `Account`, and connect the X account that owns the subscription. xAI uses this link to recognize the X subscription entitlement. See the [Grok account and subscription FAQ](https://docs.x.ai/grok/faq) for details.
 
 <Callout type={'warning'}>
-  Subscription eligibility, model access, usage limits, and regional availability are controlled by xAI and may vary by plan. If authorization succeeds but access is denied, verify your current entitlement on the same account you used to sign in.
+  Subscription eligibility, model access, usage limits, and regional availability are controlled by
+  xAI and may vary by plan. If authorization succeeds but access is denied, verify your current
+  entitlement on the same account you used to sign in.
 </Callout>
 
 ## Connect SuperGrok to LobeHub
@@ -41,35 +44,37 @@ If your subscription was purchased through X, sign in to [Grok](https://grok.com
 <Steps>
   ### Step 1: Open the SuperGrok provider
 
-  - Open `Settings` in LobeHub
-  - Select `AI Providers`
-  - Find and open `SuperGrok`
-  - Enable the provider if it is currently disabled
+- Open `Settings` in LobeHub
+- Select `AI Providers`
+- Find and open `SuperGrok`
+- Enable the provider if it is currently disabled
 
-  ### Step 2: Start authorization
+### Step 2: Start authorization
 
-  Click `Connect with SuperGrok`. LobeHub requests a one-time device code and normally opens the xAI authorization page in a new browser tab.
+Click `Connect with SuperGrok`. LobeHub requests a one-time device code and normally opens the xAI authorization page in a new browser tab.
 
-  If the page does not open automatically, click `Open browser to authorize`. LobeHub also shows the authorization URL and a short code that you can copy manually.
+If the page does not open automatically, click `Open browser to authorize`. LobeHub also shows the authorization URL and a short code that you can copy manually.
 
-  ### Step 3: Approve access with xAI
+### Step 3: Approve access with xAI
 
-  - Sign in with the xAI account that owns your SuperGrok or eligible X Premium subscription
-  - Enter the code shown in LobeHub if xAI asks for it
-  - Review and approve the authorization request
-  - Return to LobeHub and keep the provider page open while it finishes checking the authorization status
+- Sign in with the xAI account that owns your SuperGrok or eligible X Premium subscription
+- Enter the code shown in LobeHub if xAI asks for it
+- Review and approve the authorization request
+- Return to LobeHub and keep the provider page open while it finishes checking the authorization status
 
-  LobeHub will show `Connected` after xAI completes the authorization. The OAuth access and refresh tokens are saved in LobeHub's encrypted provider credential vault and refreshed automatically when necessary.
+LobeHub will show `Connected` after xAI completes the authorization. The OAuth access and refresh tokens are saved in LobeHub's encrypted provider credential vault and refreshed automatically when necessary.
 
-  <Callout type={'info'}>
-    Never paste your xAI account password or an API key into the SuperGrok provider. Account sign-in happens only on xAI's authorization page.
-  </Callout>
+<Callout type={'info'}>
+  Never paste your xAI account password or an API key into the SuperGrok provider. Account sign-in
+  happens only on xAI's authorization page.
+</Callout>
 
-  ### Step 4: Select a Grok model
+### Step 4: Select a Grok model
 
-  Open the model selector in a conversation and choose a model under `SuperGrok`. LobeHub currently enables `grok-4.5` by default and can load additional models made available to your account.
+Open the model selector in a conversation and choose a model under `SuperGrok`. LobeHub currently enables `grok-4.5` by default and can load additional models made available to your account.
 
-  See [xAI's model documentation](https://docs.x.ai/developers/models) for the latest model capabilities and availability.
+See [xAI's model documentation](https://docs.x.ai/developers/models) for the latest model capabilities and availability.
+
 </Steps>
 
 ## Supported Capabilities
@@ -84,18 +89,20 @@ The SuperGrok provider is intended for Grok chat models. Depending on the select
 - Long-context conversations
 
 <Callout type={'warning'}>
-  SuperGrok in LobeHub currently supports chat models only. Grok Imagine image or video generation and Grok Voice are separate products and are not exposed through this provider. Use the appropriate xAI API provider or the official Grok app for those capabilities.
+  SuperGrok in LobeHub currently supports chat models only. Grok Imagine image or video generation
+  and Grok Voice are separate products and are not exposed through this provider. Use the
+  appropriate xAI API provider or the official Grok app for those capabilities.
 </Callout>
 
 ## SuperGrok vs. the xAI API Provider
 
-|                          | SuperGrok provider                          | xAI provider                          |
-| ------------------------ | ------------------------------------------- | ------------------------------------- |
-| Authentication           | Browser sign-in with xAI OAuth              | API key from the xAI Console          |
-| Payment                  | Uses your eligible subscription allowance   | Metered API billing                   |
-| API key required         | No                                          | Yes                                   |
-| Model access             | Determined by your subscription entitlement | Determined by your xAI API account    |
-| LobeHub browser requests | Disabled; requests run through the server   | Depends on the provider configuration |
+|  | SuperGrok provider | xAI provider |
+| --- | --- | --- |
+| Authentication | Browser sign-in with xAI OAuth | API key from the xAI Console |
+| Payment | Uses your eligible subscription allowance | Metered API billing |
+| API key required | No | Yes |
+| Model access | Determined by your subscription entitlement | Determined by your xAI API account |
+| LobeHub browser requests | Disabled; requests run through the server | Depends on the provider configuration |
 
 Use the SuperGrok provider if you already pay for a compatible subscription and want the simplest sign-in flow. Use the [xAI provider guide](/docs/usage/providers/xai) when you need API-key billing, an independently managed API account, or APIs not included in the subscription integration.
 

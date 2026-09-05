@@ -5,8 +5,14 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 GATEWAY_DIR="$(cd "$REPO_ROOT/.." && pwd)/device-gateway"
 APP_ENV="${JWKS_SOURCE:-$REPO_ROOT/.records/env/gateway.env}"
 
-[ -d "$GATEWAY_DIR" ] || { echo "device-gateway repo not found: $GATEWAY_DIR"; exit 1; }
-[ -f "$APP_ENV" ] || { echo "gateway env not found: $APP_ENV"; exit 1; }
+[ -d "$GATEWAY_DIR" ] || {
+  echo "device-gateway repo not found: $GATEWAY_DIR"
+  exit 1
+}
+[ -f "$APP_ENV" ] || {
+  echo "gateway env not found: $APP_ENV"
+  exit 1
+}
 
 set -a
 # shellcheck disable=SC1090

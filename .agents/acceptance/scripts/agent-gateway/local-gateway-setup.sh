@@ -33,12 +33,22 @@ PORT="${GATEWAY_PORT:-8787}"
 APP_ENV="${JWKS_SOURCE:-}"
 if [ -z "$APP_ENV" ]; then
   for cand in "$REPO_ROOT/.records/env/gateway.env" "$REPO_ROOT/.env.local"; do
-    [ -f "$cand" ] && { APP_ENV="$cand"; break; }
+    [ -f "$cand" ] && {
+      APP_ENV="$cand"
+      break
+    }
   done
 fi
 
-[ -d "$GATEWAY_DIR" ] || { echo "❌ sibling agent-gateway repo not found at: $GATEWAY_DIR"; echo "   clone it next to lobehub (same parent dir)."; exit 1; }
-[ -n "$APP_ENV" ] && [ -f "$APP_ENV" ] || { echo "❌ no env file with JWKS_KEY found (set JWKS_SOURCE=<file>, or create .records/env/gateway.env)"; exit 1; }
+[ -d "$GATEWAY_DIR" ] || {
+  echo "❌ sibling agent-gateway repo not found at: $GATEWAY_DIR"
+  echo "   clone it next to lobehub (same parent dir)."
+  exit 1
+}
+[ -n "$APP_ENV" ] && [ -f "$APP_ENV" ] || {
+  echo "❌ no env file with JWKS_KEY found (set JWKS_SOURCE=<file>, or create .records/env/gateway.env)"
+  exit 1
+}
 echo "ℹ️  reading JWKS_KEY + AGENT_GATEWAY_SERVICE_TOKEN from: $APP_ENV"
 
 # Managed agent-testing env files are shell-escaped `export KEY=value` files.
@@ -68,7 +78,7 @@ console.log("   JWKS_PUBLIC_KEY kid =", kid, "(public only, no private d)");
 console.log("   SERVICE_TOKEN head  =", svc.slice(0, 10) + "…");
 ' "$APP_ENV" "$GATEWAY_DIR/.dev.vars"
 
-cat <<EOF
+cat << EOF
 
 ── Next steps ─────────────────────────────────────────────────────────────────
 1) Start the local gateway worker (separate terminal):

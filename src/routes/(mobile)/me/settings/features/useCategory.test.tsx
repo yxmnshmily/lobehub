@@ -1,4 +1,4 @@
-import { cleanup, renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,111 +9,145 @@ import { useUserStore } from '@/store/user';
 
 import { SettingsGroupKey, useCategory } from './useCategory';
 
-vi.hoisted(() => {
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: vi.fn(() => null),
-      removeItem: vi.fn(),
-      setItem: vi.fn(),
-    },
-  });
-});
-
 const navigate = vi.fn();
-
-vi.mock('react-router', () => ({
-  useNavigate: () => navigate,
-}));
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
-
-const createWrapper = (showProvider: boolean) => {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider
-      createStore={() =>
-        initServerConfigStore({
-          featureFlags: {
-            ...mapFeatureFlagsEnvToState({
-              provider_settings: true,
-            }),
-            showProvider,
-          },
-        })
-      }
-    >
-      {children}
-    </Provider>
-  );
-
-  return Wrapper;
-};
-
+const platformAccess = vi.hoisted(() => ({ isLoading: false, isPlatformAdmin: false }));
 const initialUserStoreState = useUserStore.getState();
 
+vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
+  useWorkspaceAwareNavigate: () => navigate,
+}));
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: {
+    platformAccess: {
+      isPlatformAdmin: {
+        useQuery: () => ({
+          data: platformAccess.isPlatformAdmin,
+          isLoading: platformAccess.isLoading,
+        }),
+      },
+    },
+  },
+}));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <Provider
+    createStore={() =>
+      initServerConfigStore({
+        featureFlags: {
+          ...mapFeatureFlagsEnvToState({ provider_settings: true }),
+          showProvider: true,
+        },
+        serverConfig: { aiProvider: {}, enableBusinessFeatures: true, telemetry: {} },
+      })
+    }
+  >
+    {children}
+  </Provider>
+);
+
 afterEach(() => {
-  cleanup();
-  navigate.mockReset();
-  useUserStore.setState(initialUserStoreState, true);
+  navigate.mockClear();
+  platformAccess.isLoading = false;
+  platformAccess.isPlatformAdmin = false;
+  act(() => useUserStore.setState(initialUserStoreState, true));
 });
 
-describe('mobile settings useCategory', () => {
-  it('keeps Provider visible and routes to the provider list when provider settings are enabled', () => {
-    const { result } = renderHook(() => useCategory(), {
-      wrapper: createWrapper(true),
-    });
+describe('mobile customer center categories', () => {
+  it('shows only account, service ledger, records, and works', () => {
+    act(() =>
+      useUserStore.setState({
+        isSignedIn: true,
+        user: { avatar: '/avatar.png', fullName: '桂林旅行者', id: 'customer-1' } as any,
+      }),
+    );
+    const { result } = renderHook(() => useCategory(), { wrapper });
+    const items = result.current.flatMap((group) => group.items);
 
-    const provider = result.current
-      .flatMap((group) => group.items)
-      .find((item) => item.key === SettingsTabs.Provider);
+    expect(items.map((item) => item.key)).toEqual([
+      SettingsTabs.Profile,
+      SettingsTabs.Security,
+      SettingsTabs.Credits,
+      SettingsTabs.Billing,
+      SettingsTabs.Usage,
+      SettingsTabs.Works,
+    ]);
+    expect(items[0].label).toBe('桂林旅行者');
+    expect(result.current[1].items.map((item) => item.label)).toEqual([
+      'Credits 余额',
+      'Credits 明细与服务订单',
+      'Token 用量',
+      '本人生成记录',
+    ]);
 
-    expect(provider).toBeDefined();
-
-    provider?.onClick?.();
-
-    expect(navigate).toHaveBeenCalledWith('/settings/provider/all');
+    items.find((item) => item.key === SettingsTabs.Usage)?.onClick?.();
+    items.find((item) => item.key === SettingsTabs.Works)?.onClick?.();
+    expect(navigate.mock.calls).toEqual([
+      ['/settings/credits?section=balance-usage', { escape: true }],
+      ['/settings/credits?section=my-creations', { escape: true }],
+    ]);
+    expect(items.some((item) => item.key === ('private-group' as SettingsTabs))).toBe(false);
   });
 
-  it('hides Provider when provider settings are disabled', () => {
-    const { result } = renderHook(() => useCategory(), {
-      wrapper: createWrapper(false),
-    });
+  it('restores mobile platform settings and the service-operations entry for super_admin', () => {
+    platformAccess.isPlatformAdmin = true;
+    act(() =>
+      useUserStore.setState({
+        preference: {
+          ...initialUserStoreState.preference,
+          lab: { ...initialUserStoreState.preference.lab, enableOAuthApps: true },
+        },
+      }),
+    );
+    const { result } = renderHook(() => useCategory(), { wrapper });
+    const items = result.current.flatMap((group) => group.items);
 
+    expect(result.current.map((group) => group.key)).toEqual([
+      SettingsGroupKey.General,
+      SettingsGroupKey.Subscription,
+      SettingsGroupKey.Agent,
+      SettingsGroupKey.System,
+      SettingsGroupKey.Developer,
+      SettingsGroupKey.Operations,
+    ]);
+
+    expect(items.map((item) => item.key)).toEqual(
+      expect.arrayContaining([
+        SettingsTabs.Appearance,
+        SettingsTabs.Provider,
+        SettingsTabs.ServiceModel,
+        SettingsTabs.Skill,
+        SettingsTabs.Creds,
+        SettingsTabs.Storage,
+        SettingsTabs.Advanced,
+        SettingsTabs.ServiceOperations,
+      ]),
+    );
+
+    items.find((item) => item.key === SettingsTabs.Provider)?.onClick?.();
+    items.find((item) => item.key === SettingsTabs.ServiceModel)?.onClick?.();
+    items.find((item) => item.key === SettingsTabs.Skill)?.onClick?.();
+    items.find((item) => item.key === SettingsTabs.Labels)?.onClick?.();
+    items.find((item) => item.key === SettingsTabs.ServiceOperations)?.onClick?.();
+
+    expect(navigate.mock.calls).toEqual([
+      ['/settings/provider/all', { escape: true }],
+      ['/settings/service-model', { escape: true }],
+      ['/settings/skill', { escape: true }],
+      ['/settings/labels', { escape: true }],
+      ['/settings/service-operations', { escape: true }],
+    ]);
+  });
+
+  it('keeps the mobile admin menu hidden while role loading is unresolved', () => {
+    platformAccess.isLoading = true;
+    platformAccess.isPlatformAdmin = true;
+    const { result } = renderHook(() => useCategory(), { wrapper });
     const keys = result.current.flatMap((group) => group.items.map((item) => item.key));
 
     expect(keys).not.toContain(SettingsTabs.Provider);
-  });
-
-  it('hides OAuth Apps by default', () => {
-    const { result } = renderHook(() => useCategory(), {
-      wrapper: createWrapper(true),
-    });
-
-    const keys = result.current.flatMap((group) => group.items.map((item) => item.key));
-
-    expect(keys).not.toContain(SettingsTabs.OAuthApps);
-  });
-
-  it('shows OAuth Apps when the Labs preference is enabled', () => {
-    useUserStore.setState({
-      preference: {
-        ...initialUserStoreState.preference,
-        lab: { ...initialUserStoreState.preference.lab, enableOAuthApps: true },
-      },
-    });
-
-    const { result } = renderHook(() => useCategory(), {
-      wrapper: createWrapper(true),
-    });
-
-    const developerGroup = result.current.find((group) => group.key === SettingsGroupKey.Developer);
-    const systemGroup = result.current.find((group) => group.key === SettingsGroupKey.System);
-
-    expect(developerGroup?.items.map((item) => item.key)).toContain(SettingsTabs.OAuthApps);
-    expect(systemGroup?.items.map((item) => item.key)).not.toContain(SettingsTabs.OAuthApps);
+    expect(keys).not.toContain(SettingsTabs.ServiceOperations);
   });
 });

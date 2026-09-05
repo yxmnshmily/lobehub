@@ -40,8 +40,7 @@ export interface SignalProcessorValuedContinueResult<TValue> {
  * @param TValue - Optional value shape produced for the next local processor step.
  */
 export type SignalProcessorContinueResult<TValue = unknown> =
-  | SignalProcessorValuedContinueResult<TValue>
-  | SignalProcessorValuelessContinueResult;
+  SignalProcessorValuedContinueResult<TValue> | SignalProcessorValuelessContinueResult;
 
 /**
  * Represents a processor decision that stops local processing.

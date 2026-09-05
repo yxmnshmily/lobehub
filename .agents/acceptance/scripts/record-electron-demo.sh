@@ -35,10 +35,10 @@ RECORD_PID=""
 
 cleanup() {
   echo "[cleanup] Stopping all processes..."
-  [ -n "$RECORD_PID" ] && kill -INT "$RECORD_PID" 2>/dev/null && sleep 2
-  pkill -f "scripts/dev.mjs" 2>/dev/null || true
-  pkill -f "Electron" 2>/dev/null || true
-  pkill -f "agent-browser" 2>/dev/null || true
+  [ -n "$RECORD_PID" ] && kill -INT "$RECORD_PID" 2> /dev/null && sleep 2
+  pkill -f "scripts/dev.mjs" 2> /dev/null || true
+  pkill -f "Electron" 2> /dev/null || true
+  pkill -f "agent-browser" 2> /dev/null || true
   echo "[cleanup] Done."
 }
 trap cleanup EXIT
@@ -47,7 +47,7 @@ wait_for_electron() {
   echo "[wait] Waiting for Electron to start..."
   for i in $(seq 1 24); do
     sleep 5
-    if strings "$ELECTRON_LOG" 2>/dev/null | grep -q "starting electron"; then
+    if strings "$ELECTRON_LOG" 2> /dev/null | grep -q "starting electron"; then
       echo "[wait] Electron process ready."
       return 0
     fi
@@ -158,7 +158,7 @@ start_recording() {
   RECORD_PID=$!
   sleep 2
 
-  if ! kill -0 "$RECORD_PID" 2>/dev/null; then
+  if ! kill -0 "$RECORD_PID" 2> /dev/null; then
     echo "[error] ffmpeg failed to start. Log:"
     cat /tmp/ffmpeg-record.log
     RECORD_PID=""
@@ -170,8 +170,8 @@ start_recording() {
 stop_recording() {
   if [ -n "$RECORD_PID" ]; then
     echo "[record] Stopping recording..."
-    kill -INT "$RECORD_PID" 2>/dev/null || true
-    wait "$RECORD_PID" 2>/dev/null || true
+    kill -INT "$RECORD_PID" 2> /dev/null || true
+    wait "$RECORD_PID" 2> /dev/null || true
     RECORD_PID=""
     echo "[record] Saved to $OUTPUT"
     ls -lh "$OUTPUT"
@@ -237,7 +237,8 @@ builtin_demo() {
 
   echo "[demo] Step 5: Verify queue has messages"
   local queue_count
-  queue_count=$(agent-browser --cdp "$port" eval --stdin << 'EVALEOF'
+  queue_count=$(
+    agent-browser --cdp "$port" eval --stdin << 'EVALEOF'
 (function() {
   var chat = window.__LOBE_STORES.chat();
   var total = 0;
@@ -316,9 +317,9 @@ echo "=== Electron Demo Recorder ==="
 
 # 1. Kill existing instances
 echo "[setup] Cleaning up existing processes..."
-pkill -f "Electron" 2>/dev/null || true
-pkill -f "scripts/dev.mjs" 2>/dev/null || true
-pkill -f "agent-browser" 2>/dev/null || true
+pkill -f "Electron" 2> /dev/null || true
+pkill -f "scripts/dev.mjs" 2> /dev/null || true
+pkill -f "agent-browser" 2> /dev/null || true
 sleep 3
 
 # 2. Start Electron

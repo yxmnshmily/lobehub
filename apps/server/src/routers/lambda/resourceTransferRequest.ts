@@ -162,17 +162,37 @@ const enrichRequests = async (db: LobeChatDatabase, requests: ResourceTransferRe
   }));
 };
 
+const getManagedMutationRequest = async ({
+  actor,
+  ctx,
+  requestId,
+}: {
+  actor: 'initiatorId' | 'recipientId';
+  ctx: {
+    serverDB: LobeChatDatabase;
+    transferRequestModel: ResourceTransferRequestModel;
+    userId: string;
+  };
+  requestId: string;
+}) => {
+  const request = await ctx.transferRequestModel.findById(requestId);
+  if (!request || request[actor] !== ctx.userId) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Transfer request not found' });
+  }
+  return request;
+};
+
 export const resourceTransferRequestRouter = router({
   /**
    * Recipient accepts: the request flips and ownership is handed over in one
    * transaction.
    */
   accept: transferRequestProcedure.input(requestIdInput).mutation(async ({ ctx, input }) => {
-    const request = await ctx.transferRequestModel.findById(input.requestId);
-    if (!request || request.recipientId !== ctx.userId) {
-      // Same shape for "missing" and "not yours": request ids must not be probeable.
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Transfer request not found' });
-    }
+    const request = await getManagedMutationRequest({
+      actor: 'recipientId',
+      ctx,
+      requestId: input.requestId,
+    });
     // `findById` lazily stamps an overdue pending row `expired` and returns it
     // as such. Surface that as the dedicated expiration outcome here — pushed
     // on into the accept it would surface as the misleading "already
@@ -295,6 +315,7 @@ export const resourceTransferRequestRouter = router({
 
   /** Initiator withdraws a pending request. */
   cancel: transferRequestProcedure.input(requestIdInput).mutation(async ({ ctx, input }) => {
+    await getManagedMutationRequest({ actor: 'initiatorId', ctx, requestId: input.requestId });
     try {
       const request = await ctx.transferRequestModel.cancel(input.requestId, ctx.userId);
       return { data: request, success: true };
@@ -325,6 +346,7 @@ export const resourceTransferRequestRouter = router({
 
   /** Recipient declines; the resource stays with its owner. */
   decline: transferRequestProcedure.input(requestIdInput).mutation(async ({ ctx, input }) => {
+    await getManagedMutationRequest({ actor: 'recipientId', ctx, requestId: input.requestId });
     try {
       const request = await ctx.transferRequestModel.decline(input.requestId, ctx.userId);
       // Best-effort: the outcome notice must not fail the decline.

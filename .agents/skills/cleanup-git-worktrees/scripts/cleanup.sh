@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage:
   cleanup.sh audit [--fetch] [--base <ref>]
   cleanup.sh clean [--base <ref>] --branch <name> [--branch <name> ...] [--apply]
@@ -17,7 +17,7 @@ die() {
   exit 1
 }
 
-repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || die 'not inside a Git worktree'
+repo_root=$(git rev-parse --show-toplevel 2> /dev/null) || die 'not inside a Git worktree'
 common_dir=$(git rev-parse --git-common-dir)
 if [[ "$common_dir" != /* ]]; then
   common_dir="$repo_root/$common_dir"
@@ -25,7 +25,10 @@ fi
 common_dir=$(cd "$common_dir" && pwd -P)
 
 command_name=${1:-}
-[[ -n "$command_name" ]] || { usage; exit 2; }
+[[ -n "$command_name" ]] || {
+  usage
+  exit 2
+}
 shift
 
 base_ref=origin/canary
@@ -53,7 +56,7 @@ while (($#)); do
       fetch_remote=true
       shift
       ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -191,7 +194,7 @@ clean() {
     classification=$(classify "$branch" "$worktree" "$dirty")
 
     case "$classification" in
-      candidate-merged|candidate-gone) ;;
+      candidate-merged | candidate-gone) ;;
       *) die "$branch is $classification; refusing cleanup" ;;
     esac
 
@@ -212,5 +215,8 @@ clean() {
 case "$command_name" in
   audit) audit ;;
   clean) clean ;;
-  *) usage; exit 2 ;;
+  *)
+    usage
+    exit 2
+    ;;
 esac

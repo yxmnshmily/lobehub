@@ -115,7 +115,16 @@ export {
 export type { PageSelection } from '../common/pageSelection';
 export { PageSelectionSchema } from '../common/pageSelection';
 
+export interface HostedGroupChatBilling {
+  /** Stable retry identity for one logical user send. */
+  idempotencyKey: string;
+  /** User-approved maximum Credits for this send. */
+  maxCredits: number;
+}
+
 export interface SendMessageParams {
+  /** Platform billing contract for the managed default travel group only. */
+  billing?: HostedGroupChatBilling;
   /**
    * Additional contextual snippets (e.g., text selections) attached to the request.
    * @deprecated Use pageSelections instead for page editor selections

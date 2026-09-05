@@ -1,7 +1,7 @@
 import { Github, ModelTag, ProviderCombine } from '@lobehub/icons';
-import { Block, Flexbox, MaskShadow, stopPropagation } from '@lobehub/ui';
-import { ActionIcon, Text } from '@lobehub/ui/base-ui';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { Block, Flexbox, Icon, MaskShadow, stopPropagation } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { GlobeIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import urlJoin from 'url-join';
 import { GITHUB } from '@/const/url';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { type DiscoverProviderItem } from '@/types/discover';
 
 const styles = createStaticStyles(({ css, cssVar }) => {
@@ -51,6 +52,40 @@ const ProviderItem = memo<DiscoverProviderItem>(
     const navigate = useWorkspaceAwareNavigate();
     const link = urlJoin('/community/provider', identifier);
     const { t } = useTranslation(['discover', 'providers']);
+    const { mobile: responsiveMobile = false } = useResponsive();
+    const serverMobile = useServerConfigStore(serverConfigSelectors.isMobile);
+    const mobile = serverMobile || responsiveMobile;
+    const modelLinks = models
+      .slice(0, 6)
+      .filter(Boolean)
+      .map((tag: string) => (
+        <WorkspaceLink
+          key={tag}
+          to={urlJoin('/community/model', tag)}
+          style={
+            mobile
+              ? {
+                  alignItems: 'center',
+                  display: 'inline-flex',
+                  maxWidth: '100%',
+                  minHeight: 44,
+                  overflow: 'hidden',
+                }
+              : undefined
+          }
+        >
+          <ModelTag
+            model={tag}
+            style={{
+              height: 'auto',
+              margin: 0,
+              maxWidth: '100%',
+              whiteSpace: mobile ? 'normal' : undefined,
+              wordBreak: mobile ? 'break-all' : undefined,
+            }}
+          />
+        </WorkspaceLink>
+      ));
 
     return (
       <Block
@@ -87,16 +122,45 @@ const ProviderItem = memo<DiscoverProviderItem>(
             <div className={styles.author}>@{name}</div>
           </Flexbox>
           <Flexbox horizontal align={'center'}>
-            <a href={url} rel="noopener noreferrer" target={'_blank'} onClick={stopPropagation}>
-              <ActionIcon color={cssVar.colorTextDescription} icon={GlobeIcon} />
+            <a
+              aria-label={`${name} homepage`}
+              href={url}
+              rel="noopener noreferrer"
+              target={'_blank'}
+              style={
+                mobile
+                  ? {
+                      alignItems: 'center',
+                      display: 'inline-flex',
+                      justifyContent: 'center',
+                      minHeight: 44,
+                      minWidth: 44,
+                    }
+                  : undefined
+              }
+              onClick={stopPropagation}
+            >
+              <Icon color={cssVar.colorTextDescription} icon={GlobeIcon} />
             </a>
             <a
+              aria-label={`${name} GitHub`}
               href={urlJoin(GITHUB, 'blob/main/src/config/modelProviders', `${identifier}.ts`)}
               rel="noopener noreferrer"
               target={'_blank'}
+              style={
+                mobile
+                  ? {
+                      alignItems: 'center',
+                      display: 'inline-flex',
+                      justifyContent: 'center',
+                      minHeight: 44,
+                      minWidth: 44,
+                    }
+                  : undefined
+              }
               onClick={stopPropagation}
             >
-              <ActionIcon fill={cssVar.colorTextDescription} icon={Github} />
+              <Icon fill={cssVar.colorTextDescription} icon={Github} />
             </a>
           </Flexbox>
         </Flexbox>
@@ -119,16 +183,15 @@ const ProviderItem = memo<DiscoverProviderItem>(
           justify={'space-between'}
           padding={16}
         >
-          <MaskShadow horizontal gap={6} position={'right'} size={10} width={'100%'}>
-            {models
-              .slice(0, 6)
-              .filter(Boolean)
-              .map((tag: string) => (
-                <WorkspaceLink key={tag} to={urlJoin('/community/model', tag)}>
-                  <ModelTag model={tag} style={{ margin: 0 }} />
-                </WorkspaceLink>
-              ))}
-          </MaskShadow>
+          {mobile ? (
+            <Flexbox horizontal gap={6} style={{ flexWrap: 'wrap' }} width={'100%'}>
+              {modelLinks}
+            </Flexbox>
+          ) : (
+            <MaskShadow horizontal gap={6} position={'right'} size={10} width={'100%'}>
+              {modelLinks}
+            </MaskShadow>
+          )}
         </Flexbox>
       </Block>
     );

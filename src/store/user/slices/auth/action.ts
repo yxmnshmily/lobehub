@@ -61,6 +61,8 @@ export class UserAuthActionImpl {
   };
 
   logout = async (options?: { redirectTo?: string }): Promise<void> => {
+    const currentUrl = window.location.href;
+
     // Clear the OIDC Provider session for the current browser *before*
     // destroying the better-auth session. This prevents a stale OIDC session
     // from silently issuing tokens for the old account after the user signs
@@ -80,7 +82,8 @@ export class UserAuthActionImpl {
           clearActiveScopeKey();
           // Use window.location.href to trigger a full page reload
           // This ensures all client-side state (React, Zustand, cache) is cleared
-          window.location.href = options?.redirectTo || '/signin';
+          window.location.href =
+            options?.redirectTo || `/signin?callbackUrl=${encodeURIComponent(currentUrl)}`;
         },
       },
     });

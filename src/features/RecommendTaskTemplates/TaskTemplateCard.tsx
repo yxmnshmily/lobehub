@@ -1,5 +1,5 @@
 import type { TaskTemplate } from '@lobechat/const';
-import { Block, Center, Flexbox } from '@lobehub/ui';
+import { Block, Center, Flexbox, Icon, Tooltip } from '@lobehub/ui';
 import { ActionIcon, Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import { cssVar, cx } from 'antd-style';
@@ -141,21 +141,22 @@ export const TaskTemplateCard = memo<TaskTemplateCardProps>(
               <Text ellipsis fontSize={16} weight={500}>
                 {title}
               </Text>
-              <ActionIcon
-                icon={Clock}
-                size={12}
+              <Tooltip
                 title={
                   <Center>
                     <span>{scheduleText}</span>
                     {t('taskTemplate.schedule.editableAfterCreateTooltip')}
                   </Center>
                 }
-              />
+              >
+                <Icon icon={Clock} size={12} />
+              </Tooltip>
             </Flexbox>
           </Flexbox>
 
           <Flexbox horizontal align={'center'} gap={8}>
             <ActionIcon
+              aria-label={t('taskTemplate.action.dismiss.tooltip')}
               className={`${styles.dismissBtn} task-template-dismiss`}
               icon={X}
               size={'small'}

@@ -3,7 +3,7 @@
 import { Github } from '@lobehub/icons';
 import { Block, Flexbox, Icon, stopPropagation, Tooltip } from '@lobehub/ui';
 import { Spotlight } from '@lobehub/ui/awesome';
-import { ActionIcon, Avatar, Tag, Text } from '@lobehub/ui/base-ui';
+import { Avatar, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { ClockIcon } from 'lucide-react';
 import { memo, useCallback } from 'react';
@@ -158,12 +158,21 @@ const McpItem = memo<DiscoverMcpItem>(
             {installationMethods && <InstallationIcon type={installationMethods} />}
             {github && (
               <a
+                aria-label={`${name} GitHub`}
                 href={github.url}
                 rel="noopener noreferrer"
                 target={'_blank'}
+                style={{
+                  alignItems: 'center',
+                  color: cssVar.colorTextDescription,
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                  minHeight: 44,
+                  minWidth: 44,
+                }}
                 onClick={stopPropagation}
               >
-                <ActionIcon fill={cssVar.colorTextDescription} icon={Github} />
+                <Icon fill={cssVar.colorTextDescription} icon={Github} />
               </a>
             )}
           </Flexbox>

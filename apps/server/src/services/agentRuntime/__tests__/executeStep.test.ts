@@ -317,6 +317,48 @@ describe('AgentRuntimeService.executeStep - early exit on terminal state', () =>
     );
   });
 
+  it('threads only the server-derived hosted billing principals into runtime executors', async () => {
+    vi.mocked(createRuntimeExecutors).mockClear();
+    const service = new AgentRuntimeService({} as any, 'group-owner', { queueService: null });
+
+    await (service as any).createAgentRuntime({
+      metadata: {
+        agentConfig: {},
+        billingActorUserId: 'invited-member',
+        modelRuntimeConfig: { model: 'gpt-test', provider: 'lobehub' },
+        resourceOwnerUserId: 'group-owner',
+        userId: 'invited-member',
+      },
+      operationId: 'op-sponsored-principals',
+      stepIndex: 0,
+    });
+
+    expect(createRuntimeExecutors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        billingActorUserId: 'invited-member',
+        resourceOwnerUserId: 'group-owner',
+        userId: 'group-owner',
+      }),
+    );
+  });
+
+  it('fails closed when a persisted hosted principal is incomplete', async () => {
+    const service = new AgentRuntimeService({} as any, 'group-owner', { queueService: null });
+
+    await expect(
+      (service as any).createAgentRuntime({
+        metadata: {
+          agentConfig: {},
+          billingActorUserId: 'invited-member',
+          modelRuntimeConfig: { model: 'gpt-test', provider: 'lobehub' },
+          userId: 'invited-member',
+        },
+        operationId: 'op-incomplete-sponsored-principal',
+        stepIndex: 0,
+      }),
+    ).rejects.toThrow('Invalid server-derived hosted execution principal');
+  });
+
   it('disables early final visible output end for custom multi-step agents', async () => {
     vi.mocked(createRuntimeExecutors).mockClear();
     const service = new AgentRuntimeService({} as any, 'user-1', {

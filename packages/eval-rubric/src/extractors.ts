@@ -15,8 +15,7 @@ export const extract = (output: string, extractor: AnswerExtractor): string => {
     case 'delimiter': {
       const parts = output.split(extractor.delimiter);
       if (parts.length < 2) return output;
-      const segment =
-        extractor.position === 'first' ? parts[1] : parts.at(-1);
+      const segment = extractor.position === 'first' ? parts[1] : parts.at(-1);
       return segment!.trim();
     }
 

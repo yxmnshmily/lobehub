@@ -1,8 +1,7 @@
 ---
 title: Custom MCP
 description: >-
-  Connect your own MCP servers to LobeHub — add private APIs, internal tools,
-  and custom integrations beyond what the MCP Marketplace offers.
+  Connect your own MCP servers to LobeHub — add private APIs, internal tools, and custom integrations beyond what the MCP Marketplace offers.
 tags:
   - Custom MCP
   - LobeHub
@@ -33,43 +32,47 @@ The fastest way to add a custom MCP is to paste a JSON config from the MCP serve
 <Steps>
   ### Open the import panel
 
-  In the "Add custom skill" dialog, click **Import JSON config** at the top of the form. A text area will appear.
+In the "Add custom skill" dialog, click **Import JSON config** at the top of the form. A text area will appear.
 
-  ### Paste your config
+### Paste your config
 
-  Paste either a full `mcpServers` block or a single-server config:
+Paste either a full `mcpServers` block or a single-server config:
 
-  ```json
-  {
-    "mcpServers": {
-      "my-server": {
-        "command": "npx",
-        "args": ["-y", "my-mcp-package"],
-        "type": "stdio"
-      }
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["-y", "my-mcp-package"],
+      "type": "stdio"
     }
   }
-  ```
+}
+```
 
-  Or for an HTTP server:
+Or for an HTTP server:
 
-  ```json
-  {
-    "mcpServers": {
-      "my-api": {
-        "url": "https://mcp.example.com/sse",
-        "type": "http"
-      }
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "url": "https://mcp.example.com/sse",
+      "type": "http"
     }
   }
-  ```
+}
+```
 
-  ### Click Import
+### Click Import
 
-  LobeHub automatically fills in the identifier, connection type, URL or command, and any other detected parameters. Review the auto-filled fields, adjust if needed, then proceed to test the connection.
+LobeHub automatically fills in the identifier, connection type, URL or command, and any other detected parameters. Review the auto-filled fields, adjust if needed, then proceed to test the connection.
+
 </Steps>
 
-<Callout type={'info'}>Most MCP server documentation provides a ready-to-copy JSON config in this format. Quick Import is the recommended starting point.</Callout>
+<Callout type={'info'}>
+  Most MCP server documentation provides a ready-to-copy JSON config in this format. Quick Import is
+  the recommended starting point.
+</Callout>
 
 ## Manual Configuration
 
@@ -92,13 +95,13 @@ Use this for remote MCP servers — cloud-hosted APIs, SaaS tools, or any server
 
 Use this for local MCP servers that run as a process on your machine — command-line tools, scripts, or locally installed packages. **Available on the LobeHub desktop app only; not supported on the web.**
 
-| Field                     | Description                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| **MCP name**              | A unique identifier for this skill                                              |
-| **Command**               | The executable to run (e.g. `npx`, `python`, `uv`)                              |
-| **Arguments**             | Arguments passed to the command (e.g. `-y @modelcontextprotocol/server-github`) |
-| **Environment variables** | Key-value pairs injected into the process environment (API keys, paths, etc.)   |
-| **Description**           | Optional note about what this MCP does                                          |
+| Field | Description |
+| --- | --- |
+| **MCP name** | A unique identifier for this skill |
+| **Command** | The executable to run (e.g. `npx`, `python`, `uv`) |
+| **Arguments** | Arguments passed to the command (e.g. `-y @modelcontextprotocol/server-github`) |
+| **Environment variables** | Key-value pairs injected into the process environment (API keys, paths, etc.) |
+| **Description** | Optional note about what this MCP does |
 
 ## Testing the Connection
 
@@ -133,12 +136,15 @@ Installing a custom MCP makes it available in your workspace, but each agent nee
 
 Skills are per-agent — enabling a skill for one agent doesn't automatically enable it for others.
 
-<Callout type={'info'}>Only install MCP servers from sources you trust. A malicious MCP server could perform unintended actions on your behalf.</Callout>
+<Callout type={'info'}>
+  Only install MCP servers from sources you trust. A malicious MCP server could perform unintended
+  actions on your behalf.
+</Callout>
 
 <Cards>
   <Card href={'/docs/usage/community/mcp-market'} title={'MCP Marketplace'} />
 
-  <Card href={'/docs/usage/community/skill-management'} title={'Skill Management'} />
+<Card href={'/docs/usage/community/skill-management'} title={'Skill Management'} />
 
   <Card href={'/docs/usage/getting-started/agent'} title={'Agent'} />
 </Cards>

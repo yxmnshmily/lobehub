@@ -182,6 +182,18 @@ export class UserModel {
     };
   };
 
+  getAvatar = async (): Promise<string | null> => {
+    const [result] = await this.db
+      .select({ avatar: users.avatar })
+      .from(users)
+      .where(eq(users.id, this.userId))
+      .limit(1);
+
+    if (!result) throw new UserNotFoundError();
+
+    return result.avatar;
+  };
+
   getUserSSOProviders = async (): Promise<SSOProvider[]> => {
     return this.db
       .select({

@@ -11,6 +11,7 @@ import type {
   ChatTopicBotContext,
   EvalToolForwardingConfig,
   ExpertiseContextSnapshot,
+  OperationToolDispatchPolicy,
   UserInterventionConfig,
 } from '@lobechat/types';
 import type { SearchDecision } from 'model-bank';
@@ -316,6 +317,10 @@ export interface ExecGroupMemberParams {
   onComplete: GroupActionOnComplete;
   /** Parent (supervisor) operation id. */
   parentOperationId: string;
+  /** Server-validated capability inherited from the supervisor operation. */
+  platformManagedExecutionAuthorized?: true;
+  /** Trusted generation limit inherited from the supervisor operation. */
+  platformManagedMaxCredits?: number;
   /**
    * Supervisor ASSISTANT message id that owns the group-management tool call.
    * In-group council members parent their response to THIS message — so the
@@ -326,6 +331,8 @@ export interface ExecGroupMemberParams {
   supervisorMessageId?: string;
   /** Per-member timeout (ms), isolated mode. */
   timeout?: number;
+  /** Server-owned deterministic tool policy for this member operation. */
+  toolDispatchPolicy?: OperationToolDispatchPolicy;
   /** Group topic id. */
   topicId: string;
 }
@@ -382,6 +389,10 @@ export interface OperationCreationParams {
      * callSubAgent child (which shares `isSubAgent: true`).
      */
     orchestrationRole?: 'supervisor' | 'member';
+    /** Server-validated capability; never accepted from public execution schemas. */
+    platformManagedExecutionAuthorized?: true;
+    /** Trusted generation limit; never accepted from public execution schemas. */
+    platformManagedMaxCredits?: number;
     scope?: string | null;
     /** Conversation/session locator used to rebuild an authenticated Review route. */
     sessionId?: string;

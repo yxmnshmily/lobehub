@@ -4,12 +4,11 @@ import { ContextMenuHost, ModalHost, TooltipGroup } from '@lobehub/ui';
 import { ModalHost as BaseModalHost, ToastHost } from '@lobehub/ui/base-ui';
 import { StyleProvider } from 'antd-style';
 import { domMax, LazyMotion } from 'motion/react';
-import { Component, type CSSProperties, lazy, memo, type PropsWithChildren, Suspense } from 'react';
+import { type CSSProperties, lazy, memo, type PropsWithChildren, Suspense } from 'react';
 
 import { LobeAnalyticsProviderWrapper } from '@/components/Analytics/LobeAnalyticsProviderWrapper';
 import { DragUploadProvider } from '@/components/DragUploadZone/DragUploadProvider';
 import { isDesktop } from '@/const/version';
-import { useDevDockMounted } from '@/hooks/useDevDockMounted';
 import AuthProvider from '@/layout/AuthProvider';
 import { MarketAuthProvider } from '@/layout/AuthProvider/MarketAuth';
 import AppTheme from '@/layout/GlobalProvider/AppTheme';
@@ -27,7 +26,6 @@ import type { SPAServerConfig } from '@/types/spaServerConfig';
 import Locale from './Locale';
 
 registerNativeContextMenuInterceptor();
-const DevDock = lazy(() => import('@/features/DevDock'));
 const ImperativeMountHost = lazy(() => import('@/components/ImperativeMount'));
 const DynamicFavicon = lazy(() => import('@/layout/GlobalProvider/DynamicFavicon'));
 
@@ -40,34 +38,9 @@ const devDockLayoutStyle: CSSProperties = {
   width: '100%',
 };
 
-class DevDockBoundary extends Component<PropsWithChildren, { failed: boolean }> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
-
-export const DevDockLayout = memo<PropsWithChildren>(({ children }) => {
-  const mounted = useDevDockMounted();
-
-  return (
-    <>
-      <div style={devDockLayoutStyle}>{children}</div>
-      {mounted && (
-        <DevDockBoundary>
-          <Suspense>
-            <DevDock />
-          </Suspense>
-        </DevDockBoundary>
-      )}
-    </>
-  );
-});
+export const DevDockLayout = memo<PropsWithChildren>(({ children }) => (
+  <div style={devDockLayoutStyle}>{children}</div>
+));
 
 DevDockLayout.displayName = 'DevDockLayout';
 
@@ -77,7 +50,7 @@ const SPAGlobalProvider = memo<PropsWithChildren>(({ children }) => {
 
   const locale = document.documentElement.lang || 'en-US';
   const isMobile =
-    (serverConfig?.isMobile ?? typeof __MOBILE__ !== 'undefined') ? __MOBILE__ : false;
+    serverConfig?.isMobile ?? (typeof __MOBILE__ !== 'undefined' ? __MOBILE__ : false);
 
   const content = (
     <AuthProvider>

@@ -10,7 +10,8 @@ import { describeRoute } from 'hono-openapi';
 
 import { SCALAR_CUSTOM_CSS } from './docs-theme';
 // Import user authentication middleware (supports both OIDC and API Key authentication)
-import { userAuthMiddleware } from './middleware/auth';
+import { requireAuth, userAuthMiddleware } from './middleware/auth';
+import { requirePlatformAdmin } from './middleware/platform-admin';
 import { workspaceAuthMiddleware } from './middleware/workspace';
 // Import routes
 import routes from './routes';
@@ -48,12 +49,13 @@ app.get('/health', describeRoute({ summary: 'Health check', tags: ['health'] }),
   });
 });
 
-// API documentation (public, like the API spec itself).
+// API documentation is platform configuration and must not expose the
+// management surface or schema to non-platform administrators.
 // The spec is rebuilt from the live routes on first request and cached, so it
 // can never lag behind the deployed code; `openapi.yml` at the package root is
 // the versioned artifact of the same document for SDK generation and diffing.
 let specCache: Awaited<ReturnType<typeof buildSpecDocument>> | null = null;
-app.get('/openapi.json', async (c) => {
+app.get('/openapi.json', requireAuth, requirePlatformAdmin, async (c) => {
   specCache ??= await buildSpecDocument(app);
   return c.json(specCache);
 });
@@ -87,7 +89,7 @@ const resolveDocsLocale = (c: Context): ScalarLocale | undefined => {
   return undefined;
 };
 
-app.get('/docs', (c, next) => {
+app.get('/docs', requireAuth, requirePlatformAdmin, (c, next) => {
   const locale = resolveDocsLocale(c);
   return Scalar({
     customCss: SCALAR_CUSTOM_CSS,

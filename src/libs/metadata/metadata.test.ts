@@ -89,9 +89,9 @@ describe('Metadata', () => {
         title: 'Twitter Title',
         description: 'Twitter description',
         images: ['https://twitter-image.com'],
-        site: '@lobehub',
         url: 'https://example.com/twitter',
       });
+      expect(result).not.toHaveProperty('site');
     });
   });
 

@@ -56,6 +56,15 @@ export class ActionImpl {
     await mutate(verifyKeys.acceptanceBySubject(subjectType, subjectId));
   };
 
+  reset = (): void => {
+    this.#flush.cancel();
+    this.#pendingCriteria.clear();
+    this.#pendingInstructions.clear();
+    this.#pendingRubricConfigs.clear();
+    this.#pendingRubricTitles.clear();
+    this.#set(initialState, false, 'resetVerifyStore');
+  };
+
   useFetchAcceptanceBundle = (acceptanceId?: string | null) =>
     useClientDataSWR(
       acceptanceId ? verifyKeys.acceptanceBundle(acceptanceId) : null,

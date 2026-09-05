@@ -140,10 +140,12 @@ const ModelList = memo(() => {
                 return (
                   <Flexbox horizontal align="center" gap={4} justify={'flex-end'}>
                     <WorkspaceLink
+                      aria-label={record.displayName || record.id}
                       style={{ color: 'inherit' }}
                       to={urlJoin('/community/model', record.id)}
                     >
                       <ActionIcon
+                        aria-label={record.displayName || record.id}
                         color={cssVar.colorTextDescription}
                         icon={ChevronRightIcon}
                         size={'small'}

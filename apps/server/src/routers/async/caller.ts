@@ -11,12 +11,26 @@ import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { type AsyncRouter } from './index';
 import { asyncRouter } from './index';
 
-export const createAsyncServerClient = async (userId: string) => {
+export interface AsyncServerClientOptions {
+  modelRuntimeMode?: 'platform-managed';
+}
+
+export const createAsyncServerClient = async (
+  userId: string,
+  options: AsyncServerClientOptions = {},
+) => {
   const token = await signInternalJWT();
   const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
   const headers: Record<string, string> = {
     Authorization: token,
-    [LOBE_CHAT_AUTH_HEADER]: await gateKeeper.encrypt(JSON.stringify({ userId })),
+    [LOBE_CHAT_AUTH_HEADER]: await gateKeeper.encrypt(
+      JSON.stringify({
+        ...(options.modelRuntimeMode === 'platform-managed'
+          ? { modelRuntimeMode: 'platform-managed' as const }
+          : {}),
+        userId,
+      }),
+    ),
   };
 
   if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
@@ -40,14 +54,15 @@ export const createAsyncServerClient = async (userId: string) => {
 /**
  * Helper method for inferring caller type, but does not actually call createAsyncCallerFactory. Calling it will throw an error: asyncRouter is not initialized
  */
-const helperFunc = () => {
-  const dummyCreateCaller = createAsyncCallerFactory(asyncRouter);
-  return {} as unknown as ReturnType<typeof dummyCreateCaller>;
+const _helperFunc = () => {
+  const _dummyCreateCaller = createAsyncCallerFactory(asyncRouter);
+  return {} as unknown as ReturnType<typeof _dummyCreateCaller>;
 };
 
-export type UnifiedAsyncCaller = ReturnType<typeof helperFunc>;
+export type UnifiedAsyncCaller = ReturnType<typeof _helperFunc>;
 
 interface CreateCallerOptions {
+  modelRuntimeMode?: 'platform-managed';
   userId: string;
 }
 
@@ -58,9 +73,9 @@ interface CreateCallerOptions {
 export const createAsyncCaller = async (
   options: CreateCallerOptions,
 ): Promise<UnifiedAsyncCaller> => {
-  const { userId } = options;
+  const { modelRuntimeMode, userId } = options;
 
-  const httpClient = await createAsyncServerClient(userId);
+  const httpClient = await createAsyncServerClient(userId, { modelRuntimeMode });
   const createRecursiveProxy = (client: any, path: string[]): any => {
     // The target is a dummy function, so that 'apply' can be triggered.
     return new Proxy(() => {}, {

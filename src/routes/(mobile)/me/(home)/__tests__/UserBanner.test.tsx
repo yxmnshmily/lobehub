@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe('UserBanner', () => {
-  it('should render UserInfo and DataStatistics when user is logged in', () => {
+  it('renders only personal account identity when user is logged in', () => {
     act(() => {
       useUserStore.setState({ isSignedIn: true });
     });
@@ -44,7 +44,7 @@ describe('UserBanner', () => {
     render(<UserBanner />);
 
     expect(screen.getByText('Mocked UserInfo')).toBeInTheDocument();
-    expect(screen.getByText('Mocked DataStatistics')).toBeInTheDocument();
+    expect(screen.queryByText('Mocked DataStatistics')).not.toBeInTheDocument();
     expect(screen.queryByText('Mocked UserLoginOrSignup')).not.toBeInTheDocument();
   });
 

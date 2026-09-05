@@ -21,19 +21,44 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PORT=9222; OUT=""; CHECK=0; PASS=()
+PORT=9222
+OUT=""
+CHECK=0
+PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --port) PORT="$2"; shift 2 ;;
-    --out) OUT="$2"; shift 2 ;;
-    --check) CHECK=1; shift ;;
-    --full|--target-url) PASS+=("$1"); [ "$1" = "--target-url" ] && { PASS+=("$2"); shift; }; shift ;;
-    *) PASS+=("$1"); shift ;;
+    --port)
+      PORT="$2"
+      shift 2
+      ;;
+    --out)
+      OUT="$2"
+      shift 2
+      ;;
+    --check)
+      CHECK=1
+      shift
+      ;;
+    --full | --target-url)
+      PASS+=("$1")
+      [ "$1" = "--target-url" ] && {
+        PASS+=("$2")
+        shift
+      }
+      shift
+      ;;
+    *)
+      PASS+=("$1")
+      shift
+      ;;
   esac
 done
 [ -z "$OUT" ] && OUT="${TMPDIR:-/tmp}/cdp-shot-$PORT.png"
 
-command -v node >/dev/null 2>&1 || { echo "[cdp-shot] node not found"; exit 7; }
+command -v node > /dev/null 2>&1 || {
+  echo "[cdp-shot] node not found"
+  exit 7
+}
 
 # cdp-capture.cjs resolves the `ws` package itself via Node's normal ancestor
 # node_modules lookup from its own file location — no NODE_PATH plumbing needed.
@@ -53,11 +78,13 @@ if [ "$ok" != "true" ]; then
 fi
 
 # blackness verdict (sips + python3; skip silently if unavailable)
-verdict="unknown"; maxv=""
-if command -v sips >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-  sips -z 16 16 "$OUT" --out "$OUT.s.png" >/dev/null 2>&1
-  sips -s format bmp "$OUT.s.png" --out "$OUT.bmp" >/dev/null 2>&1
-  maxv="$(python3 - "$OUT.bmp" <<'PY' 2>/dev/null || echo -1
+verdict="unknown"
+maxv=""
+if command -v sips > /dev/null 2>&1 && command -v python3 > /dev/null 2>&1; then
+  sips -z 16 16 "$OUT" --out "$OUT.s.png" > /dev/null 2>&1
+  sips -s format bmp "$OUT.s.png" --out "$OUT.bmp" > /dev/null 2>&1
+  maxv="$(
+    python3 - "$OUT.bmp" << 'PY' 2> /dev/null || echo -1
 import sys
 d=open(sys.argv[1],'rb').read();off=int.from_bytes(d[10:14],'little');w=int.from_bytes(d[18:22],'little');h=abs(int.from_bytes(d[22:26],'little',signed=True))
 bpp=int.from_bytes(d[28:30],'little') or 24;B=bpp//8;row=((w*bpp+31)//32)*4;mx=0
@@ -67,9 +94,9 @@ for y in range(h):
     if q+2<len(d): mx=max(mx,d[q],d[q+1],d[q+2])
 print(mx)
 PY
-)"
-  rm -f "$OUT.s.png" "$OUT.bmp" 2>/dev/null
-  [[ "$maxv" =~ ^[0-9]+$ ]] && { (( maxv < 12 )) && verdict="black" || verdict="live"; }
+  )"
+  rm -f "$OUT.s.png" "$OUT.bmp" 2> /dev/null
+  [[ "$maxv" =~ ^[0-9]+$ ]] && { ((maxv < 12)) && verdict="black" || verdict="live"; }
 fi
 
 if [ "$verdict" = "black" ]; then
@@ -79,5 +106,8 @@ if [ "$verdict" = "black" ]; then
 fi
 
 echo "[cdp-shot] OK ($res)${maxv:+ maxBrightness=$maxv}"
-[ "$CHECK" = "1" ] && { rm -f "$OUT" 2>/dev/null; echo "[cdp-shot] PREFLIGHT PASS — CDP screenshot works on port $PORT."; }
+[ "$CHECK" = "1" ] && {
+  rm -f "$OUT" 2> /dev/null
+  echo "[cdp-shot] PREFLIGHT PASS — CDP screenshot works on port $PORT."
+}
 exit 0

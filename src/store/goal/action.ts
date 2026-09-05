@@ -6,7 +6,7 @@ import { goalService } from '@/services/goal';
 import { taskService } from '@/services/task';
 import type { StoreSetter } from '@/store/types';
 
-import type { GoalListFilter, GoalState, GoalViewMode } from './initialState';
+import { type GoalListFilter, type GoalState, type GoalViewMode, initialState } from './initialState';
 
 const GOAL_STATUSES: GoalStatus[] = [...goalStatuses];
 
@@ -71,6 +71,10 @@ export class GoalActionImpl {
 
   refreshHomeGoals = async (scope: string): Promise<void> => {
     await mutate(taskKeys.homeGoals(scope));
+  };
+
+  reset = (): void => {
+    this.#set(initialState, false, 'resetGoalStore');
   };
 
   setGoalListFilter = (filter: GoalListFilter): void => {

@@ -234,6 +234,86 @@ describe('ModelRuntime', () => {
       expect(LobeOpenAI.prototype.generateObject).toHaveBeenCalledWith(payload, undefined);
       expect(result).toBe(mockResponse);
     });
+
+    it('wraps a bounded adapter result in an immutable single-use contract', async () => {
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'channel-1',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const adapterExecute = vi.fn().mockResolvedValue({
+        output: { content: 'ok' },
+        usage: { cost: 0.001, totalInputTokens: 10, totalOutputTokens: 5 },
+      });
+      const prepareGenerateObjectBounded = vi.fn().mockResolvedValue({
+        envelope: {
+          inputTokens: 10,
+          maxOutputTokens: 64,
+          maximumCredits: 1000,
+          route,
+        },
+        execute: adapterExecute,
+      });
+      const runtime = new ModelRuntime({ prepareGenerateObjectBounded } as any);
+      const payload = {
+        messages: [{ content: 'Generate', role: 'user' as const }],
+        model: 'claude-versioned',
+        schema: { name: 'result', schema: { properties: {}, type: 'object' as const } },
+      };
+      const options = { maxOutputTokens: 64, route };
+
+      const prepared = await (runtime as any).prepareGenerateObjectBounded(payload, options);
+
+      expect(prepareGenerateObjectBounded).toHaveBeenCalledWith(payload, options);
+      expect(Object.isFrozen(prepared)).toBe(true);
+      expect(Object.isFrozen(prepared.envelope)).toBe(true);
+      expect(Object.isFrozen(prepared.envelope.route)).toBe(true);
+      await expect(prepared.execute()).resolves.toEqual({
+        output: { content: 'ok' },
+        usage: { cost: 0.001, totalInputTokens: 10, totalOutputTokens: 5 },
+      });
+      await expect(prepared.execute()).rejects.toThrow('already executed');
+      expect(adapterExecute).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['fractional', 1.5],
+      ['unsafe', Number.MAX_SAFE_INTEGER + 1],
+    ])('rejects %s bounded adapter input token usage', async (_label, totalInputTokens) => {
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'channel-1',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const runtime = new ModelRuntime({
+        prepareGenerateObjectBounded: vi.fn().mockResolvedValue({
+          envelope: {
+            inputTokens: 10,
+            maxOutputTokens: 64,
+            maximumCredits: 1000,
+            route,
+          },
+          execute: vi.fn().mockResolvedValue({
+            output: { content: 'invalid' },
+            usage: { cost: 0.001, totalInputTokens, totalOutputTokens: 5 },
+          }),
+        }),
+      } as any);
+      const prepared = await (runtime as any).prepareGenerateObjectBounded(
+        {
+          messages: [{ content: 'Generate', role: 'user' }],
+          model: 'claude-versioned',
+          schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+        },
+        { maxOutputTokens: 64, route },
+      );
+
+      await expect(prepared.execute()).rejects.toThrow('usage is incomplete');
+    });
   });
 
   describe('ModelRuntime createImage method', () => {

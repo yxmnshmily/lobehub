@@ -229,6 +229,25 @@ describe('computeImageCost', () => {
 
       expect(result).toBeUndefined();
     });
+
+    it('should convert a CNY image rate to USD before calculating credits', () => {
+      const pricing: Pricing = {
+        currency: 'CNY',
+        units: [
+          {
+            name: 'imageGeneration',
+            rate: 0.22,
+            strategy: 'fixed',
+            unit: 'image',
+          },
+        ],
+      };
+
+      const result = computeImageCost(pricing, {}, 1);
+
+      expect(result?.totalCost).toBeCloseTo(0.22 / 7.12, 10);
+      expect(result?.totalCredits).toBe(Math.ceil((0.22 / 7.12) * 1_000_000));
+    });
   });
 
   describe('tiered pricing strategy', () => {

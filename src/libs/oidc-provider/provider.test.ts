@@ -118,6 +118,14 @@ describe('OIDC Provider - Market Client Integration', () => {
 
       vi.doUnmock('@/envs/app');
     }, 10000);
+
+    it('renders provider errors with the customer-facing brand', async () => {
+      const module = await import('./provider');
+      const html = module.renderOIDCErrorPage?.({ error: 'invalid_request' }, new Error('failed'));
+
+      expect(html).toContain('旅游群网 OIDC Error');
+      expect(html).not.toContain('LobeHub OIDC Error');
+    });
   });
 
   describe('Name Resolution Priority', () => {

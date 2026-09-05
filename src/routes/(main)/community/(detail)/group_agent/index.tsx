@@ -76,8 +76,7 @@ const GroupAgentDetailPage = memo<GroupAgentDetailPageProps>(({ mobile }) => {
     locale: (data as any)?.locale,
     memberAgents: (data as any)?.memberAgents || [],
     ownerType: ((data as any)?.author?.type === 'organization' ? 'organization' : 'user') as
-      | 'organization'
-      | 'user',
+      'organization' | 'user',
     status: (data as any)?.group?.status,
     summary: (data as any)?.summary,
     tags: (data as any)?.currentVersion?.tags,
@@ -102,5 +101,7 @@ const GroupAgentDetailPage = memo<GroupAgentDetailPageProps>(({ mobile }) => {
     </TocProvider>
   );
 });
+
+export const MobileGroupAgentDetailPage = () => <GroupAgentDetailPage mobile />;
 
 export default GroupAgentDetailPage;

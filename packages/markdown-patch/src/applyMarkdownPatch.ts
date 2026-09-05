@@ -28,9 +28,7 @@ const getMode = (hunk: MarkdownPatchHunk) => hunk.mode ?? 'replace';
 const isLineBased = (
   hunk: MarkdownPatchHunk,
 ): hunk is
-  | MarkdownPatchDeleteLinesHunk
-  | MarkdownPatchInsertAtHunk
-  | MarkdownPatchReplaceLinesHunk =>
+  MarkdownPatchDeleteLinesHunk | MarkdownPatchInsertAtHunk | MarkdownPatchReplaceLinesHunk =>
   getMode(hunk) === 'deleteLines' ||
   getMode(hunk) === 'insertAt' ||
   getMode(hunk) === 'replaceLines';
@@ -91,8 +89,7 @@ const validateLineHunk = (
   }
 
   const { startLine, endLine } = hunk as
-    | MarkdownPatchDeleteLinesHunk
-    | MarkdownPatchReplaceLinesHunk;
+    MarkdownPatchDeleteLinesHunk | MarkdownPatchReplaceLinesHunk;
 
   if (!Number.isInteger(startLine) || !Number.isInteger(endLine)) {
     return { code: 'LINE_OUT_OF_RANGE', hunkIndex, totalLines };
@@ -151,8 +148,7 @@ const applyLineHunk = (
   }
 
   const { startLine, endLine } = hunk as
-    | MarkdownPatchDeleteLinesHunk
-    | MarkdownPatchReplaceLinesHunk;
+    MarkdownPatchDeleteLinesHunk | MarkdownPatchReplaceLinesHunk;
   const removeCount = endLine - startLine + 1;
   const next = lines.slice();
 

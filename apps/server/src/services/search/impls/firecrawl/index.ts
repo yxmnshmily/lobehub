@@ -106,43 +106,37 @@ export class FirecrawlImpl implements SearchServiceImpl {
       const newsResults = firecrawlResponse.data.news || [];
 
       // Map web results
-      const mappedWebResults = webResults.map(
-        (result): UniformSearchResult => ({
-          category: 'general',
-          content: result.description || result.markdown || '',
-          engines: ['firecrawl'],
-          parsedUrl: result.url ? new URL(result.url).hostname : '',
-          score: 1,
-          title: result.title || '',
-          url: result.url,
-        }),
-      );
+      const mappedWebResults = webResults.map((result): UniformSearchResult => ({
+        category: 'general',
+        content: result.description || result.markdown || '',
+        engines: ['firecrawl'],
+        parsedUrl: result.url ? new URL(result.url).hostname : '',
+        score: 1,
+        title: result.title || '',
+        url: result.url,
+      }));
 
       // Map news results
-      const mappedNewsResults = newsResults.map(
-        (result): UniformSearchResult => ({
-          category: 'news',
-          content: result.snippet || result.markdown || '',
-          engines: ['firecrawl'],
-          parsedUrl: result.url ? new URL(result.url).hostname : '',
-          score: 1,
-          title: result.title || '',
-          url: result.url,
-        }),
-      );
+      const mappedNewsResults = newsResults.map((result): UniformSearchResult => ({
+        category: 'news',
+        content: result.snippet || result.markdown || '',
+        engines: ['firecrawl'],
+        parsedUrl: result.url ? new URL(result.url).hostname : '',
+        score: 1,
+        title: result.title || '',
+        url: result.url,
+      }));
 
       // Map image results
-      const mappedImageResults = imageResults.map(
-        (result): UniformSearchResult => ({
-          category: 'images',
-          content: result.title || '',
-          engines: ['firecrawl'],
-          parsedUrl: result.url ? new URL(result.url).hostname : '',
-          score: 1,
-          title: result.title || '',
-          url: result.imageUrl, // Use imageUrl for images
-        }),
-      );
+      const mappedImageResults = imageResults.map((result): UniformSearchResult => ({
+        category: 'images',
+        content: result.title || '',
+        engines: ['firecrawl'],
+        parsedUrl: result.url ? new URL(result.url).hostname : '',
+        score: 1,
+        title: result.title || '',
+        url: result.imageUrl, // Use imageUrl for images
+      }));
 
       // Combine all results
       const allResults = [...mappedWebResults, ...mappedNewsResults, ...mappedImageResults];

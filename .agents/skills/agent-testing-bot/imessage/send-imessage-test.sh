@@ -33,7 +33,7 @@ echo "[send-test] target=${TARGET}  marker=${MARKER}"
 
 # 1) Fire the send. apple-script on a new chat may hang the HTTP response, so we
 #    cap it short and ignore a timeout — step 2 is the source of truth.
-python3 - "$BB_PASS" "$BB_URL" "$CHAT_GUID" "$MESSAGE" <<'PY' || true
+python3 - "$BB_PASS" "$BB_URL" "$CHAT_GUID" "$MESSAGE" << 'PY' || true
 import json,sys,urllib.request,urllib.parse,uuid
 pw,base,guid,msg=sys.argv[1:5]
 url=base+"/api/v1/message/text?password="+urllib.parse.quote(pw)
@@ -52,7 +52,7 @@ PY
 # 2) Source of truth: find our marker in the message store and read its error.
 echo "[send-test] verifying via message/query (the HTTP timeout above is expected)…"
 sleep 3
-python3 - "$BB_PASS" "$BB_URL" "$MARKER" <<'PY'
+python3 - "$BB_PASS" "$BB_URL" "$MARKER" << 'PY'
 import json,sys,time,urllib.request,urllib.parse
 pw,base,marker=sys.argv[1:4]
 url=base+"/api/v1/message/query?password="+urllib.parse.quote(pw)

@@ -31,11 +31,13 @@ import type {
   CreateVideoResponse,
   EmbeddingsOptions,
   EmbeddingsPayload,
+  GenerateObjectBoundedOptions,
   GenerateObjectOptions,
   GenerateObjectPayload,
   HandleCreateVideoWebhookPayload,
   HandleCreateVideoWebhookResult,
   ILobeAgentRuntimeErrorType,
+  PreparedGenerateObjectBounded,
   TextToSpeechPayload,
 } from '../../types';
 import { AgentRuntimeError } from '../../utils/createError';
@@ -955,6 +957,55 @@ export const createRouterRuntime = ({
           user: options?.user,
         },
       );
+    }
+
+    async prepareGenerateObjectBounded(
+      payload: GenerateObjectPayload,
+      options: GenerateObjectBoundedOptions,
+    ) {
+      const matchedRouter = await this.resolveMatchedRouter(payload.model, options.pricingContext);
+      const routerId = matchedRouter.id ?? this._id;
+      const candidates = this.normalizeRouterOptions(matchedRouter).filter((optionItem) => {
+        const apiType = optionItem.apiType ?? matchedRouter.apiType;
+        return (
+          options.route?.providerId === this._id &&
+          options.route.routerId === routerId &&
+          options.route.model === payload.model &&
+          options.route.apiType === apiType &&
+          Boolean(optionItem.id) &&
+          options.route.channelId === optionItem.id
+        );
+      });
+
+      if (candidates.length !== 1) {
+        throw new Error('Bounded generateObject route identity mismatch');
+      }
+
+      const { runtime } = await this.createRuntimeFromOption(matchedRouter, candidates[0]);
+      const boundedRuntime = runtime as LobeRuntimeAI & {
+        prepareGenerateObjectBounded?: (
+          input: GenerateObjectPayload,
+          inputOptions: GenerateObjectBoundedOptions,
+        ) => Promise<PreparedGenerateObjectBounded>;
+      };
+      if (typeof boundedRuntime.prepareGenerateObjectBounded !== 'function') {
+        throw new Error('Bounded generateObject is not supported by this route');
+      }
+
+      const prepared = await boundedRuntime.prepareGenerateObjectBounded(payload, options);
+      const actualRoute = prepared?.envelope?.route;
+      if (
+        !actualRoute ||
+        Object.entries(options.route).some(
+          ([key, value]) => actualRoute[key as keyof typeof options.route] !== value,
+        )
+      ) {
+        throw new Error('Bounded generateObject prepared route identity mismatch');
+      }
+
+      // Deliberately return the selected leaf closure. No runWithFallback wrapper exists
+      // here, so a provider error can never dispatch the prepared request to another route.
+      return prepared;
     }
 
     async embeddings(payload: EmbeddingsPayload, options?: EmbeddingsOptions) {

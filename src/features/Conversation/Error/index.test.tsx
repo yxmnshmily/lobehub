@@ -5,8 +5,8 @@ import { AgentRuntimeErrorType } from '@lobechat/model-runtime';
 import type * as lobechatTypesModule from '@lobechat/types';
 import { ChatErrorType } from '@lobechat/types';
 import type * as lobehubUiModule from '@lobehub/ui';
-import { fireEvent, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { type ReactNode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ErrorMessageExtra, { useErrorContent } from './index';
@@ -105,19 +105,35 @@ vi.mock('@/business/client/hooks/useRenderBusinessChatErrorMessageExtra', () => 
 }));
 
 vi.mock('@/features/Conversation/ChatItem/components/ErrorContent', () => ({
-  default: ({
+  default: function ErrorContentMock({
     error,
     onRegenerate,
   }: {
     error?: { extra?: ReactNode; message?: string };
-    onRegenerate?: () => void;
-  }) => (
-    <div>
-      <div>{error?.message}</div>
-      {error?.extra}
-      {onRegenerate && <button onClick={onRegenerate}>card-retry</button>}
-    </div>
-  ),
+    onRegenerate?: () => Promise<void> | void;
+  }) {
+    const [pending, setPending] = useState(false);
+    return (
+      <div>
+        <div>{error?.message}</div>
+        {error?.extra}
+        {onRegenerate && (
+          <button
+            disabled={pending}
+            onClick={() => {
+              const result = onRegenerate();
+              if (result) {
+                setPending(true);
+                void result.finally(() => setPending(false));
+              }
+            }}
+          >
+            card-retry
+          </button>
+        )}
+      </div>
+    );
+  },
 }));
 
 vi.mock('@/features/Electron/HeterogeneousAgent/StatusGuide', () => ({
@@ -348,6 +364,37 @@ describe('ErrorMessageExtra', () => {
     fireEvent.click(screen.getByRole('button', { name: 'dynamic-retry' }));
 
     expect(onRegenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the group error card pending until its nested retry promise settles', async () => {
+    let finishRetry: (() => void) | undefined;
+    const onRegenerate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRetry = resolve;
+        }),
+    );
+
+    render(
+      <ErrorMessageExtra
+        error={{ message: 'provider exploded' }}
+        retryScopeId="group-parent"
+        data={{
+          error: { body: { provider: 'openai' }, type: 'ProviderBizError' } as any,
+          id: 'group-child-step',
+        }}
+        onRegenerate={onRegenerate}
+      />,
+    );
+
+    const retry = screen.getByRole('button', { name: 'card-retry' });
+    fireEvent.click(retry);
+
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+    expect(retry).toBeDisabled();
+
+    finishRetry?.();
+    await waitFor(() => expect(retry).not.toBeDisabled());
   });
 
   it('hands the group retry to the business card so a multi-step run can resume', () => {

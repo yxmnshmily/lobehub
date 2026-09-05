@@ -2,7 +2,7 @@
 
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Segmented, type SegmentedOptions, Select, type SelectProps } from '@lobehub/ui/base-ui';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import { ImageIcon, Video } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,10 @@ const styles = createStaticStyles(({ css }) => ({
     height: 30px;
     padding-inline: 0;
   `,
+  toolbarItemMobile: css`
+    min-width: 44px;
+    min-height: 44px;
+  `,
   toolbarLabel: css`
     display: none;
   `,
@@ -39,6 +43,7 @@ const styles = createStaticStyles(({ css }) => ({
 const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
   ({ mode, layout = 'toolbar' }) => {
     const { t } = useTranslation('common');
+    const { mobile = false } = useResponsive();
     const navigate = useWorkspaceAwareNavigate();
     const isHero = layout === 'hero';
 
@@ -112,10 +117,13 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
     if (!isHero)
       return (
         <Segmented<'image' | 'video'>
-          classNames={{ item: styles.toolbarItem, itemLabel: styles.toolbarLabel }}
           options={toolbarOptions}
-          size={'small'}
+          size={mobile ? 'large' : 'small'}
           value={mode}
+          classNames={{
+            item: mobile ? styles.toolbarItemMobile : styles.toolbarItem,
+            itemLabel: styles.toolbarLabel,
+          }}
           onChange={handleChange}
         />
       );

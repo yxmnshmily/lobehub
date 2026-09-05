@@ -153,7 +153,7 @@ describe('CreateImageAction', () => {
       expect(result.current.parameters?.prompt).toBe('');
     });
 
-    it('should throw error when parameters is not initialized', async () => {
+    it('should clear the creating state when parameters are not initialized', async () => {
       const { result } = renderHook(() => useImageStore());
 
       act(() => {
@@ -167,9 +167,11 @@ describe('CreateImageAction', () => {
           await result.current.createImage();
         }),
       ).rejects.toThrow('parameters is not initialized');
+
+      expect(useImageStore.getState().isCreating).toBe(false);
     });
 
-    it('should throw error when prompt is empty', async () => {
+    it('should clear the creating state when the prompt is empty', async () => {
       const { result } = renderHook(() => useImageStore());
 
       act(() => {
@@ -187,6 +189,30 @@ describe('CreateImageAction', () => {
           await result.current.createImage();
         }),
       ).rejects.toThrow('prompt is empty');
+
+      expect(useImageStore.getState().isCreating).toBe(false);
+    });
+
+    it('should clear the creating state when a new topic cannot be created', async () => {
+      const error = new Error('Topic creation failed');
+      const mockCreateGenerationTopic = vi.fn().mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useImageStore());
+
+      act(() => {
+        useImageStore.setState({
+          activeGenerationTopicId: '',
+          createGenerationTopic: mockCreateGenerationTopic,
+        });
+      });
+
+      await expect(
+        act(async () => {
+          await result.current.createImage();
+        }),
+      ).rejects.toThrow('Topic creation failed');
+
+      expect(useImageStore.getState().isCreating).toBe(false);
+      expect(useImageStore.getState().isCreatingWithNewTopic).toBe(false);
     });
 
     it('should handle service error', async () => {
@@ -324,7 +350,7 @@ describe('CreateImageAction', () => {
       expect(mockRefreshGenerationBatches).toHaveBeenCalled();
     });
 
-    it('should throw error when no active topic', async () => {
+    it('should not enter the creating state when no active topic exists', async () => {
       const { result } = renderHook(() => useImageStore());
 
       act(() => {
@@ -338,6 +364,8 @@ describe('CreateImageAction', () => {
           await result.current.recreateImage('batch-id');
         }),
       ).rejects.toThrow('No active generation topic');
+
+      expect(useImageStore.getState().isCreating).toBe(false);
     });
 
     it('should handle service error', async () => {

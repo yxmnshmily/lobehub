@@ -26,7 +26,7 @@
 set -uo pipefail
 
 JSON=0
-for a in "$@"; do case "$a" in --json) JSON=1 ;; esac; done
+for a in "$@"; do case "$a" in --json) JSON=1 ;; esac done
 
 emit() { # $1=ok(true/false) $2=perm $3=capture $4=exit $5=message [$6=app]
   if [[ $JSON == 1 ]]; then
@@ -47,10 +47,12 @@ fi
 responsible_app() {
   local pid=$$ ppid comm
   for _ in $(seq 1 12); do
-    if ! read -r ppid comm < <(ps -o ppid=,comm= -p "$pid" 2>/dev/null); then break; fi
+    if ! read -r ppid comm < <(ps -o ppid=,comm= -p "$pid" 2> /dev/null); then break; fi
     [[ -z "${ppid:-}" ]] && break
     if [[ "$comm" == *.app/Contents/MacOS/* ]]; then
-      local app="${comm%%.app/*}"; echo "${app##*/}.app"; return 0
+      local app="${comm%%.app/*}"
+      echo "${app##*/}.app"
+      return 0
     fi
     [[ "${ppid:-0}" -le 1 ]] && break
     pid=$ppid
@@ -62,39 +64,42 @@ APP="$(responsible_app)"
 # --- layer 1: TCC permission via CGPreflightScreenCaptureAccess (no prompt, no display) ---
 perm="unknown"
 bin="${TMPDIR:-/tmp}/lobehub-scrcheck"
-if [[ ! -x "$bin" ]] && command -v clang >/dev/null 2>&1; then
+if [[ ! -x "$bin" ]] && command -v clang > /dev/null 2>&1; then
   src="${TMPDIR:-/tmp}/lobehub-scrcheck.c"
-  cat > "$src" <<'EOF'
+  cat > "$src" << 'EOF'
 #include <CoreGraphics/CoreGraphics.h>
 #include <stdio.h>
 int main(void){ bool ok = CGPreflightScreenCaptureAccess(); printf(ok?"granted\n":"denied\n"); return ok?0:1; }
 EOF
-  clang -framework CoreGraphics -o "$bin" "$src" 2>/dev/null || rm -f "$bin"
+  clang -framework CoreGraphics -o "$bin" "$src" 2> /dev/null || rm -f "$bin"
 fi
 if [[ -x "$bin" ]]; then
-  perm="$("$bin" 2>/dev/null || echo denied)"
-elif command -v swift >/dev/null 2>&1; then
-  perm="$(swift - <<'EOF' 2>/dev/null || echo denied
+  perm="$("$bin" 2> /dev/null || echo denied)"
+elif command -v swift > /dev/null 2>&1; then
+  perm="$(
+    swift - << 'EOF' 2> /dev/null || echo denied
 import CoreGraphics
 print(CGPreflightScreenCaptureAccess() ? "granted" : "denied")
 EOF
-)"
+  )"
 fi
 
 # --- layer 2: liveness — capture one real frame and detect a fully-black image ---
 # Uses the brightest pixel across a downscaled grid: a live desktop always has some
 # lit chrome (menu bar / cursor / window), a blocked/asleep capture is uniformly ~0.
-capture="unknown"; maxv=""
-if command -v screencapture >/dev/null 2>&1; then
+capture="unknown"
+maxv=""
+if command -v screencapture > /dev/null 2>&1; then
   shot="${TMPDIR:-/tmp}/lobehub-scrlive.png"
   small="${TMPDIR:-/tmp}/lobehub-scrlive.bmp"
   rm -f "$shot" "$small"
-  screencapture -x "$shot" 2>/dev/null || true
-  if [[ -s "$shot" ]] && command -v sips >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-    sips -z 16 16 "$shot" --out "${shot}.s.png" >/dev/null 2>&1
-    sips -s format bmp "${shot}.s.png" --out "$small" >/dev/null 2>&1
+  screencapture -x "$shot" 2> /dev/null || true
+  if [[ -s "$shot" ]] && command -v sips > /dev/null 2>&1 && command -v python3 > /dev/null 2>&1; then
+    sips -z 16 16 "$shot" --out "${shot}.s.png" > /dev/null 2>&1
+    sips -s format bmp "${shot}.s.png" --out "$small" > /dev/null 2>&1
     if [[ -s "$small" ]]; then
-      maxv="$(python3 - "$small" <<'PY' 2>/dev/null || echo -1
+      maxv="$(
+        python3 - "$small" << 'PY' 2> /dev/null || echo -1
 import sys
 d=open(sys.argv[1],'rb').read()
 off=int.from_bytes(d[10:14],'little')
@@ -112,14 +117,14 @@ for y in range(h):
             mx=max(mx, d[p], d[p+1], d[p+2])
 print(mx)
 PY
-)"
+      )"
       if [[ "${maxv:-}" =~ ^[0-9]+$ ]]; then
         # brightest channel < 12/255 across the whole screen ⇒ effectively black
-        if (( maxv < 12 )); then capture="black"; else capture="live"; fi
+        if ((maxv < 12)); then capture="black"; else capture="live"; fi
       fi
     fi
   fi
-  rm -f "$shot" "${shot}.s.png" "$small" 2>/dev/null || true
+  rm -f "$shot" "${shot}.s.png" "$small" 2> /dev/null || true
 fi
 
 # --- decision ---

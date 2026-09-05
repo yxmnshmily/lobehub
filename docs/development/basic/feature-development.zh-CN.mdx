@@ -109,7 +109,11 @@ export interface LobeAgentConfig {
 
 ```typescript
 export class SessionService {
-  updateSessionConfig = (id: string, config: PartialDeep<LobeAgentConfig>, signal?: AbortSignal) => {
+  updateSessionConfig = (
+    id: string,
+    config: PartialDeep<LobeAgentConfig>,
+    signal?: AbortSignal,
+  ) => {
     return lambdaClient.session.updateSessionConfig.mutate({ id, value: config }, { signal });
   };
 }

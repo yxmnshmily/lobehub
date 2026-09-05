@@ -78,8 +78,7 @@ export class LocalSystemToolSnapshotInjector extends BaseProcessor {
       if (message.role !== 'user') continue;
 
       const snapshots = message.metadata?.localSystemToolSnapshots as
-        | LocalSystemToolSnapshot[]
-        | undefined;
+        LocalSystemToolSnapshot[] | undefined;
 
       if (!snapshots?.length) continue;
 

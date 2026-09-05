@@ -66,7 +66,7 @@ cmd_start() {
     while true; do
       local fname
       fname=$(printf "%s/frame_%06d.png" "$frames_dir" "$idx")
-      $AB screenshot "$fname" 2>/dev/null || true
+      $AB screenshot "$fname" 2> /dev/null || true
       idx=$((idx + 1))
       sleep "$VIDEO_FRAME_INTERVAL"
     done
@@ -79,7 +79,7 @@ cmd_start() {
     while true; do
       local fname
       fname=$(printf "%s/%04d.png" "$screenshot_dir" "$idx")
-      $AB screenshot "$fname" 2>/dev/null || true
+      $AB screenshot "$fname" 2> /dev/null || true
       idx=$((idx + 1))
       sleep "$SCREENSHOT_INTERVAL"
     done
@@ -109,14 +109,14 @@ cmd_stop() {
   read -r output_video frames_dir screenshot_dir < "$STATE_FILE"
 
   # Stop both capture loops
-  kill "$frames_pid" 2>/dev/null || true
-  kill "$screenshot_pid" 2>/dev/null || true
-  wait "$frames_pid" 2>/dev/null || true
-  wait "$screenshot_pid" 2>/dev/null || true
+  kill "$frames_pid" 2> /dev/null || true
+  kill "$screenshot_pid" 2> /dev/null || true
+  wait "$frames_pid" 2> /dev/null || true
+  wait "$screenshot_pid" 2> /dev/null || true
 
   # Assemble frames into video
   local frame_count
-  frame_count=$(ls -1 "$frames_dir"/frame_*.png 2>/dev/null | wc -l | tr -d ' ')
+  frame_count=$(ls -1 "$frames_dir"/frame_*.png 2> /dev/null | wc -l | tr -d ' ')
 
   if [ "$frame_count" -gt 0 ]; then
     echo "[record] Assembling $frame_count frames into video..."
@@ -132,12 +132,12 @@ cmd_stop() {
     echo "  [warn] No frames captured."
   fi
 
-  rm -rf "$frames_dir" 2>/dev/null
+  rm -rf "$frames_dir" 2> /dev/null
   rm -f "$PID_FILE" "$STATE_FILE"
 
   local video_size screenshot_count
-  video_size=$(ls -lh "$output_video" 2>/dev/null | awk '{print $5}' || echo "?")
-  screenshot_count=$(ls -1 "$screenshot_dir"/*.png 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+  video_size=$(ls -lh "$output_video" 2> /dev/null | awk '{print $5}' || echo "?")
+  screenshot_count=$(ls -1 "$screenshot_dir"/*.png 2> /dev/null | wc -l | tr -d ' ' || echo "0")
 
   echo "[record] Stopped!"
   echo "  Video:       $output_video ($video_size)"
@@ -155,15 +155,15 @@ cmd_status() {
   read -r frames_pid screenshot_pid < "$PID_FILE"
 
   local frames_ok="no" screenshot_ok="no"
-  kill -0 "$frames_pid" 2>/dev/null && frames_ok="yes"
-  kill -0 "$screenshot_pid" 2>/dev/null && screenshot_ok="yes"
+  kill -0 "$frames_pid" 2> /dev/null && frames_ok="yes"
+  kill -0 "$screenshot_pid" 2> /dev/null && screenshot_ok="yes"
 
   if [ -f "$STATE_FILE" ]; then
     local output_video frames_dir screenshot_dir
     read -r output_video frames_dir screenshot_dir < "$STATE_FILE"
     local frame_count ss_count
-    frame_count=$(ls -1 "$frames_dir"/frame_*.png 2>/dev/null | wc -l | tr -d ' ' || echo "0")
-    ss_count=$(ls -1 "$screenshot_dir"/*.png 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+    frame_count=$(ls -1 "$frames_dir"/frame_*.png 2> /dev/null | wc -l | tr -d ' ' || echo "0")
+    ss_count=$(ls -1 "$screenshot_dir"/*.png 2> /dev/null | wc -l | tr -d ' ' || echo "0")
     echo "[record] Active recording"
     echo "  Frames:      $frame_count captured (running: $frames_ok)"
     echo "  Screenshots: $ss_count captured (running: $screenshot_ok)"
@@ -174,8 +174,11 @@ cmd_status() {
 # ─── Main ───
 
 case "${1:-}" in
-  start)  shift; cmd_start "$@" ;;
-  stop)   cmd_stop ;;
+  start)
+    shift
+    cmd_start "$@"
+    ;;
+  stop) cmd_stop ;;
   status) cmd_status ;;
   *)
     echo "Usage: $0 {start [name] | stop | status}"

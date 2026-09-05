@@ -21,7 +21,7 @@ vi.mock('@lobechat/types', () => ({
   },
 }));
 
-const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+const _consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
 vi.mock('@/utils/errorResponse', () => ({
@@ -34,6 +34,10 @@ vi.mock('@/auth', () => ({
       getSession: vi.fn().mockResolvedValue(null),
     },
   },
+}));
+
+vi.mock('@/libs/better-auth/getActiveSession', () => ({
+  getActiveSession: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/database/core/db-adaptor', () => ({

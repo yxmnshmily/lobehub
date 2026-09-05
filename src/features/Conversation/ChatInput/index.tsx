@@ -1,6 +1,6 @@
 'use client';
 
-import { type VoiceMessageRecording } from '@lobechat/types';
+import { type HostedGroupChatBilling, type VoiceMessageRecording } from '@lobechat/types';
 import { type SlashOptions } from '@lobehub/editor';
 import { type ChatInputActionsProps } from '@lobehub/editor/react';
 import { Flexbox, type MenuProps } from '@lobehub/ui';
@@ -14,8 +14,8 @@ import {
   useBusinessChatInputAlerts,
 } from '@/business/client/hooks/useBusinessChatInputSendAreaPrefix';
 import type { ActionKeys, ChatInputFeature } from '@/features/ChatInput';
-import { ChatInputProvider, DesktopChatInput } from '@/features/ChatInput';
-import { useIsChatInputModelUnavailable } from '@/features/ChatInput/ChatInputNotice/useChatInputNotice';
+import { ChatInputProvider, DesktopChatInput, MobileChatInput } from '@/features/ChatInput';
+import { useIsChatInputModelUnavailableForAgent } from '@/features/ChatInput/ChatInputNotice/useChatInputNotice';
 import {
   type SendButtonHandler,
   type SendButtonProps,
@@ -27,6 +27,7 @@ import { operationSelectors } from '@/store/chat/selectors';
 import { selectCurrentTurnTodosFromMessages } from '@/store/chat/slices/message/selectors/dbMessage';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 import { fileChatSelectors, useFileStore } from '@/store/file';
+import { useServerConfigStore } from '@/store/serverConfig';
 
 import { buildMessageContextSelections } from '../../ChatInput/utils/contextSelections';
 import WideScreenContainer from '../../WideScreenContainer';
@@ -82,6 +83,11 @@ export interface ChatInputProps {
    */
   controlBarSlot?: ReactNode;
   /**
+   * Creates the dedicated billing payload for one logical send. Returning false
+   * blocks the send before the composer is cleared.
+   */
+  createBillingForSend?: () => HostedGroupChatBilling | false;
+  /**
    * Suppress the followUp placeholder variant (e.g. onboarding has no
    * follow-up design). When true, placeholder stays in default variant.
    */
@@ -124,6 +130,10 @@ export interface ChatInputProps {
    * Mention items for @ mentions (for group chat)
    */
   mentionItems?: SlashOptions['items'];
+  /** Called once the billed user message is durably accepted by the server. */
+  onBilledSendAccepted?: () => void;
+  /** Called when the billed send finishes, including pre-accept failures. */
+  onBilledSendSettled?: (result: { accepted: boolean }) => void;
   /**
    * Callback when editor instance is ready
    */
@@ -165,6 +175,7 @@ const ChatInput = memo<ChatInputProps>(
     actionBarStyle,
     allowExpand,
     compact = false,
+    createBillingForSend,
     disableFollowUpVariant,
     disableQueue,
     disableSend,
@@ -182,9 +193,12 @@ const ChatInput = memo<ChatInputProps>(
     sendButtonProps: customSendButtonProps,
     showControlBar = true,
     onEditorReady,
+    onBilledSendAccepted,
+    onBilledSendSettled,
     skipScrollMarginWithList,
   }) => {
     const { t } = useTranslation('chat');
+    const mobile = useServerConfigStore((s) => s.isMobile);
 
     // ConversationStore state
     const storeApi = useConversationStoreApi();
@@ -269,7 +283,10 @@ const ChatInput = memo<ChatInputProps>(
     const hasQueuedMessages = useChatStore(
       (s) => operationSelectors.queuedMessageCount(context)(s) > 0,
     );
-    const isModelUnavailable = useIsChatInputModelUnavailable();
+    // This component creates the ChatInput provider below, so use the agent id
+    // already supplied by ConversationStore instead of reading that provider
+    // before it exists (page copilot has no outer ChatInput provider).
+    const isModelUnavailable = useIsChatInputModelUnavailableForAgent(agentId);
 
     // Detect whether TodoProgress will render (mirrors its own gating) so we
     // can square the top corners of OpStatusTray when it sits flush below.
@@ -386,6 +403,9 @@ const ChatInput = memo<ChatInputProps>(
           return;
         }
 
+        const billing = createBillingForSend?.();
+        if (billing === false) return;
+
         // Clear content immediately for responsive UX
         clearComposer();
 
@@ -393,18 +413,31 @@ const ChatInput = memo<ChatInputProps>(
           buildMessageContextSelections(currentContextList);
 
         // Fire and forget - send with captured message
-        await sendMessage({
-          contextSelections,
-          editorData,
-          files: currentFileList,
-          message,
-          onPreflightFailure: () => {
-            useFileStore.getState().restoreChatContextSelections(contextKey, currentContextList);
-          },
-          pageSelections,
-        });
+        let accepted = false;
+        try {
+          await sendMessage({
+            ...(billing ? { billing } : undefined),
+            contextSelections,
+            editorData,
+            files: currentFileList,
+            message,
+            onMessageAccepted: billing
+              ? () => {
+                  accepted = true;
+                  onBilledSendAccepted?.();
+                }
+              : undefined,
+            onPreflightFailure: () => {
+              useFileStore.getState().restoreChatContextSelections(contextKey, currentContextList);
+            },
+            pageSelections,
+          });
+        } finally {
+          if (billing) onBilledSendSettled?.({ accepted });
+        }
       },
       [
+        createBillingForSend,
         contextKey,
         sendMessage,
         storeApi,
@@ -412,6 +445,8 @@ const ChatInput = memo<ChatInputProps>(
         disableSend,
         isInputQueueBlocked,
         isModelUnavailable,
+        onBilledSendAccepted,
+        onBilledSendSettled,
       ],
     );
 
@@ -488,25 +523,29 @@ const ChatInput = memo<ChatInputProps>(
           </Flexbox>
           {/* Append the armed-goal chip to every composer's action bar. While armed,
               the next message becomes the goal and the placeholder explains that state. */}
-          <DesktopChatInput
-            actionBarStyle={actionBarStyle}
-            borderRadius={12}
-            compact={compact}
-            controlBarSlot={controlBarSlot}
-            hidden={hasPendingInterventions}
-            isConfigLoading={isConfigLoading}
-            leftContent={leftContent}
-            placeholderVariant={placeholderVariant}
-            sendAreaPrefix={businessSendAreaPrefix}
-            showControlBar={showControlBar}
-            extraActionItems={[
-              ...(extraActionItems ?? []),
-              { children: <GoalArmedChip />, key: 'goal-armed-chip' },
-            ]}
-            placeholder={
-              goalArmed ? t('acceptance.tray.goalArmedPlaceholder', { ns: 'verify' }) : undefined
-            }
-          />
+          {mobile ? (
+            <MobileChatInput sendAreaPrefix={businessSendAreaPrefix} />
+          ) : (
+            <DesktopChatInput
+              actionBarStyle={actionBarStyle}
+              borderRadius={12}
+              compact={compact}
+              controlBarSlot={controlBarSlot}
+              hidden={hasPendingInterventions}
+              isConfigLoading={isConfigLoading}
+              leftContent={leftContent}
+              placeholderVariant={placeholderVariant}
+              sendAreaPrefix={businessSendAreaPrefix}
+              showControlBar={showControlBar}
+              extraActionItems={[
+                ...(extraActionItems ?? []),
+                { children: <GoalArmedChip />, key: 'goal-armed-chip' },
+              ]}
+              placeholder={
+                goalArmed ? t('acceptance.tray.goalArmedPlaceholder', { ns: 'verify' }) : undefined
+              }
+            />
+          )}
         </div>
       </WideScreenContainer>
     );
@@ -522,7 +561,8 @@ const ChatInput = memo<ChatInputProps>(
         feature={feature}
         getMessages={getMessages}
         leftActions={leftActions}
-        mentionItems={mentionItems}
+         mentionItems={mentionItems}
+         mobile={mobile}
         resolveSendBlocked={resolveSendBlocked}
         rightActions={rightActions}
         sendButtonProps={sendButtonProps}

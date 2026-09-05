@@ -5,6 +5,7 @@ import { uuid } from '@/utils/uuid';
 
 import * as EXPORT_TABLES from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
+import { sanitizeAgentApiConfig } from '../../utils/sanitizeAgentApiConfig';
 import { buildWorkspaceWhere } from '../../utils/workspace';
 import { DeprecatedDataImporterRepos } from './deprecated';
 
@@ -84,6 +85,7 @@ const IMPORT_TABLE_CONFIG: TableImportConfig[] = [
   },
   {
     fieldProcessors: {
+      agencyConfig: sanitizeAgentApiConfig,
       slug: (value) => (value ? `${value}-${uuid().slice(0, 8)}` : null),
     },
     table: 'agents',

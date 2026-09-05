@@ -17,9 +17,7 @@ jobs:
     timeout-minutes: 5
     # Run on new issues, on a manual `trigger:mcp-triage` label, or manual dispatch.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.action == 'opened' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'trigger:mcp-triage')
+      github.event_name == 'workflow_dispatch' || github.event.action == 'opened' || (github.event.action == 'labeled' && github.event.label.name == 'trigger:mcp-triage')
     permissions:
       contents: read
       issues: write

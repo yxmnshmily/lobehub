@@ -1,6 +1,6 @@
 'use client';
 
-import { ChartColumnBigIcon, LogOut, UserCircle } from 'lucide-react';
+import { LogOut, UserCircle } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,12 +22,6 @@ const Category = memo(() => {
       label: t('profile.title'),
       onClick: () => navigate('/settings/profile'),
     },
-    {
-      icon: ChartColumnBigIcon,
-      key: ProfileTabs.Stats,
-      label: t('tab.stats'),
-      onClick: () => navigate('/settings/stats'),
-    },
     isLogin && {
       type: 'divider',
     },
@@ -36,8 +30,7 @@ const Category = memo(() => {
       key: 'logout',
       label: t('signout', { ns: 'auth' }),
       onClick: () => {
-        signOut();
-        navigate('/signin');
+        void signOut();
       },
     },
   ].filter(Boolean) as CellProps[];

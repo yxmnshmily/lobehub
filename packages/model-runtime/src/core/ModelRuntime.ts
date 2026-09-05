@@ -14,10 +14,12 @@ import type {
   ChatStreamPayload,
   EmbeddingsOptions,
   EmbeddingsPayload,
+  GenerateObjectBoundedOptions,
   GenerateObjectOptions,
   GenerateObjectPayload,
   ModelRequestOptions,
   OnFinishData,
+  PreparedGenerateObjectBounded,
   PullModelParams,
   TextToSpeechPayload,
 } from '../types';
@@ -404,6 +406,78 @@ export class ModelRuntime {
       });
       throw error;
     }
+  }
+
+  async prepareGenerateObjectBounded(
+    payload: GenerateObjectPayload,
+    options: GenerateObjectBoundedOptions,
+  ) {
+    const boundedRuntime = this._runtime as LobeRuntimeAI & {
+      prepareGenerateObjectBounded?: (
+        input: GenerateObjectPayload,
+        inputOptions: GenerateObjectBoundedOptions,
+      ) => Promise<PreparedGenerateObjectBounded>;
+    };
+    if (typeof boundedRuntime.prepareGenerateObjectBounded !== 'function') {
+      throw new Error('Bounded generateObject is not supported by this provider');
+    }
+    if (!Number.isSafeInteger(options.maxOutputTokens) || options.maxOutputTokens <= 0) {
+      throw new TypeError('maxOutputTokens must be a positive safe integer');
+    }
+
+    const prepared = await boundedRuntime.prepareGenerateObjectBounded(payload, options);
+    const envelope = prepared?.envelope;
+    const route = envelope?.route;
+    const expectedRoute = options.route;
+    const identityMatches =
+      route &&
+      expectedRoute &&
+      Object.entries(expectedRoute).every(
+        ([key, value]) => route[key as keyof typeof expectedRoute] === value,
+      );
+    if (
+      !identityMatches ||
+      !Number.isSafeInteger(envelope?.inputTokens) ||
+      (envelope?.inputTokens ?? -1) < 0 ||
+      envelope?.maxOutputTokens !== options.maxOutputTokens ||
+      !Number.isSafeInteger(envelope?.maximumCredits) ||
+      (envelope?.maximumCredits ?? 0) <= 0 ||
+      typeof prepared.execute !== 'function'
+    ) {
+      throw new Error('Bounded generateObject preparation is incomplete');
+    }
+
+    const immutableRoute = Object.freeze({ ...route });
+    const immutableEnvelope = Object.freeze({ ...envelope, route: immutableRoute });
+    let executed = false;
+
+    return Object.freeze({
+      envelope: immutableEnvelope,
+      execute: async () => {
+        if (executed) throw new Error('Bounded generateObject request was already executed');
+        executed = true;
+
+        const result = await prepared.execute();
+        const usage = result?.usage;
+        if (
+          !usage ||
+          typeof usage.cost !== 'number' ||
+          !Number.isFinite(usage.cost) ||
+          usage.cost < 0 ||
+          typeof usage.totalInputTokens !== 'number' ||
+          !Number.isSafeInteger(usage.totalInputTokens) ||
+          usage.totalInputTokens < 0 ||
+          typeof usage.totalOutputTokens !== 'number' ||
+          !Number.isSafeInteger(usage.totalOutputTokens) ||
+          usage.totalOutputTokens < 0 ||
+          usage.totalOutputTokens > immutableEnvelope.maxOutputTokens
+        ) {
+          throw new Error('Bounded generateObject usage is incomplete');
+        }
+
+        return result;
+      },
+    });
   }
 
   async createImage(payload: CreateImagePayload, options?: CreateImageMethodOptions) {

@@ -151,13 +151,30 @@ export class GenerationTopicActionImpl {
     this.#get().internal_updateGenerationTopicLoading(tmpId, true);
 
     // 2. Call backend service
-    const topicId = await generationTopicService.createTopic('image', newGenerationTopicVisibility);
+    let topicId: string;
+    try {
+      topicId = await generationTopicService.createTopic('image', newGenerationTopicVisibility);
+    } catch (error) {
+      this.#get().internal_updateGenerationTopicLoading(tmpId, false);
+      this.#get().internal_dispatchGenerationTopic(
+        { type: 'deleteTopic', id: tmpId },
+        'internal_createGenerationTopic/rollback',
+      );
+      throw error;
+    }
     this.#get().internal_updateGenerationTopicLoading(tmpId, false);
 
     // 3. Refresh data to ensure consistency
     this.#get().internal_updateGenerationTopicLoading(topicId, true);
-    await this.#get().refreshGenerationTopics();
-    this.#get().internal_updateGenerationTopicLoading(topicId, false);
+    try {
+      await this.#get().refreshGenerationTopics();
+    } finally {
+      this.#get().internal_updateGenerationTopicLoading(topicId, false);
+      this.#get().internal_dispatchGenerationTopic(
+        { type: 'deleteTopic', id: tmpId },
+        'internal_createGenerationTopic/cleanup',
+      );
+    }
 
     return topicId;
   };

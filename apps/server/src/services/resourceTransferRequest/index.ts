@@ -10,6 +10,7 @@ import type { ResourceTransferRequestItem } from '@/database/schemas';
 import { workspaceMembers } from '@/database/schemas';
 import type { LobeChatDatabase, Transaction } from '@/database/type';
 import { assertCanPerformResourceAction } from '@/server/services/resourcePermission';
+import { assertDefaultTravelServiceMutationAllowed } from '@/server/services/user/travelServiceGroupMutationGuard';
 import { TransferErrorCode } from '@/types/transferError';
 
 /**
@@ -142,6 +143,14 @@ export const executeAcceptedTransfer = async (params: {
       .for('update');
     assertOwnableMemberRow(member);
 
+    await assertDefaultTravelServiceMutationAllowed(trx as unknown as LobeChatDatabase, {
+      actorUserId: recipientId,
+      ...(resourceType === 'agentGroup'
+        ? { groupId: request.resourceId, kind: 'group' as const }
+        : { agentIds: [request.resourceId], kind: 'agent' as const }),
+      workspaceId,
+    });
+
     // A reassignment request (primary owner moving someone ELSE's resource)
     // borrowed the INITIATOR's authority at creation; that authority must
     // still hold now — workspace ownership can change and the resource can
@@ -183,6 +192,13 @@ export const executeAcceptedTransfer = async (params: {
       }
     }
 
+    await assertDefaultTravelServiceMutationAllowed(trx as unknown as LobeChatDatabase, {
+      actorUserId: recipientId,
+      ...(resourceType === 'agentGroup'
+        ? { groupId: request.resourceId, kind: 'group' as const }
+        : { agentIds: [request.resourceId], kind: 'agent' as const }),
+      workspaceId,
+    });
     await requestModel.accept(request.id, recipientId, trx);
 
     // A null previousOwnerId means the owner's account was deleted after the

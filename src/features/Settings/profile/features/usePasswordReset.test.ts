@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePasswordReset } from './usePasswordReset';
 
@@ -21,6 +21,11 @@ vi.mock('@/store/utils/saveToast', () => ({ saveToast: mocks.saveToast }));
 beforeEach(() => {
   mocks.requestPasswordReset.mockReset();
   mocks.saveToast.mockReset();
+  window.history.replaceState(null, '', '/lobehub/settings/profile');
+});
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
 });
 
 describe('usePasswordReset', () => {
@@ -34,7 +39,10 @@ describe('usePasswordReset', () => {
     });
 
     expect(mocks.requestPasswordReset).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'alex@example.com' }),
+      expect.objectContaining({
+        email: 'alex@example.com',
+        redirectTo: '/lobehub/reset-password?email=alex%40example.com',
+      }),
     );
     expect(result.current.sent).toBe(true);
     expect(mocks.saveToast).not.toHaveBeenCalled();

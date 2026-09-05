@@ -20,12 +20,7 @@ import type { UIChatMessage } from '@lobechat/types';
  *                         (function schema + description)
  */
 export type TokenSourceType =
-  | 'content'
-  | 'toolCalls'
-  | 'thoughtSignature'
-  | 'reasoning'
-  | 'toolCallId'
-  | 'toolDefinition';
+  'content' | 'toolCalls' | 'thoughtSignature' | 'reasoning' | 'toolCallId' | 'toolDefinition';
 
 /**
  * Per-message token breakdown. `bySource` only includes non-zero entries.

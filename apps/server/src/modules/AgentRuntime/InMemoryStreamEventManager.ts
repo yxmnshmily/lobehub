@@ -23,6 +23,11 @@ const getDefaultReasonDetail = (finalState: any, reason?: string): string => {
 
 type EventCallback = (events: StreamEvent[]) => void;
 
+const snapshotWireData = (data: unknown) => {
+  const serialized = JSON.stringify(stripFinalStateInEventData(data));
+  return serialized === undefined ? undefined : JSON.parse(serialized);
+};
+
 /**
  * In-Memory Stream Event Manager
  * In-memory implementation for testing and local development environments
@@ -49,7 +54,7 @@ export class InMemoryStreamEventManager implements IStreamEventManager {
       // event shape stays identical to the production wire format —
       // tests run against this manager and would otherwise mask
       // regressions in the strip behaviour.
-      data: stripFinalStateInEventData(event.data),
+      data: snapshotWireData(event.data),
       id: eventId,
       operationId,
       timestamp: Date.now(),
@@ -184,11 +189,20 @@ export class InMemoryStreamEventManager implements IStreamEventManager {
    */
   async subscribeStreamEvents(
     operationId: string,
-    _lastEventId: string,
+    lastEventId: string,
     onEvents: (events: StreamEvent[]) => void,
     signal?: AbortSignal,
   ): Promise<void> {
     return new Promise<void>((resolve) => {
+      const existing = this.streams.get(operationId) ?? [];
+      const matchedIndex = existing.findIndex((event) => event.id === lastEventId);
+      const replay = existing.slice(lastEventId === '0' ? 0 : Math.max(0, matchedIndex + 1));
+      if (replay.length > 0) onEvents(replay);
+      if (replay.some((event) => event.type === 'agent_runtime_end')) {
+        resolve();
+        return;
+      }
+
       const unsubscribe = this.subscribe(operationId, (events) => {
         onEvents(events);
         // Check if agent_runtime_end was received — caller will handle closing

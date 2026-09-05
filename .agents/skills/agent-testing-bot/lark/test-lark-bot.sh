@@ -34,9 +34,9 @@ SCREENSHOT="${4:-/tmp/lark-bot-test.png}"
 
 # Detect app name — "Lark" or "飞书"
 APP=""
-if osascript -e 'tell application "Lark" to name' &>/dev/null; then
+if osascript -e 'tell application "Lark" to name' &> /dev/null; then
   APP="Lark"
-elif osascript -e 'tell application "飞书" to name' &>/dev/null; then
+elif osascript -e 'tell application "飞书" to name' &> /dev/null; then
   APP="飞书"
 else
   echo "[error] Lark/飞书 app not found. Install Lark or 飞书."

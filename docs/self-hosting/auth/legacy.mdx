@@ -1,8 +1,7 @@
 ---
 title: Legacy Authentication (NextAuth & Clerk)
 description: >-
-  Historical reference for legacy authentication methods NextAuth and Clerk,
-  both of which have been removed from LobeHub. Use Better Auth instead.
+  Historical reference for legacy authentication methods NextAuth and Clerk, both of which have been removed from LobeHub. Use Better Auth instead.
 tags:
   - Authentication Service
   - Next Auth
@@ -13,7 +12,11 @@ tags:
 # Legacy Authentication
 
 <Callout type={'warning'}>
-  **Legacy Notice**: NextAuth and Clerk have been fully removed from LobeHub. Setting removed NextAuth/Clerk variables (`NEXT_AUTH*` / `NEXTAUTH*`, Clerk keys, `AUTH_URL`, `NEXT_PUBLIC_AUTH_URL`, `ACCESS_CODE`, etc.) fails the deployment at build/startup. **`AUTH_SECRET` is not deprecated** — it is still required by [Better Auth](/docs/self-hosting/auth). This page is historical migration reference only.
+  **Legacy Notice**: NextAuth and Clerk have been fully removed from LobeHub. Setting removed
+  NextAuth/Clerk variables (`NEXT_AUTH*` / `NEXTAUTH*`, Clerk keys, `AUTH_URL`,
+  `NEXT_PUBLIC_AUTH_URL`, `ACCESS_CODE`, etc.) fails the deployment at build/startup.
+  **`AUTH_SECRET` is not deprecated** — it is still required by [Better
+  Auth](/docs/self-hosting/auth). This page is historical migration reference only.
 </Callout>
 
 This page documents the legacy authentication methods (NextAuth and Clerk), which have been removed from LobeHub, for historical migration reference only.
@@ -31,47 +34,52 @@ By setting the environment variables `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CL
 </Callout>
 
 <Callout type={'tip'}>
-  To migrate from Clerk to Better Auth, see the [Clerk Migration Guide](/docs/self-hosting/migration/v2/auth/clerk-to-betterauth).
+  To migrate from Clerk to Better Auth, see the [Clerk Migration
+  Guide](/docs/self-hosting/migration/v2/auth/clerk-to-betterauth).
 </Callout>
 
 ## Next Auth
 
 <Callout type={'tip'}>
-  To migrate from NextAuth to Better Auth, see the [NextAuth Migration Guide](/docs/self-hosting/migration/v2/auth/nextauth-to-betterauth).
+  To migrate from NextAuth to Better Auth, see the [NextAuth Migration
+  Guide](/docs/self-hosting/migration/v2/auth/nextauth-to-betterauth).
 </Callout>
 
 Before using NextAuth, please set the following variables in LobeHub's environment variables:
 
-| Environment Variable             | Type                   | Description                                                                                                                                                                                                                    |
-| -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_ENABLE_NEXT_AUTH`   | *(Deprecated)*         | Used to enable the NextAuth service. NextAuth has been removed from LobeHub — setting this variable will cause the deployment to fail at build/startup.                                                                        |
-| `AUTH_SECRET`                    | Required (Better Auth) | Still required by Better Auth (not a removed NextAuth-only var). Session encryption secret — generate with `openssl rand -base64 32` or `https://generate-secret.vercel.app/32`. See [Better Auth](/docs/self-hosting/auth).   |
-| `AUTH_URL`                       | *(Deprecated)*         | Previously specified the callback address for Auth.js when performing OAuth verification. Setting this variable will now cause the deployment to fail at build/startup.                                                        |
-| `NEXT_AUTH_SSO_PROVIDERS`        | *(Deprecated)*         | Previously used to enable multiple identity verification sources simultaneously, separated by commas, e.g. `auth0,microsoft-entra-id,authentik`. Setting this variable will now cause the deployment to fail at build/startup. |
-| `NEXT_AUTH_SSO_SESSION_STRATEGY` | *(Deprecated)*         | The session strategy for Auth.js. Setting this variable will now cause the deployment to fail at build/startup.                                                                                                                |
+| Environment Variable | Type | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_ENABLE_NEXT_AUTH` | _(Deprecated)_ | Used to enable the NextAuth service. NextAuth has been removed from LobeHub — setting this variable will cause the deployment to fail at build/startup. |
+| `AUTH_SECRET` | Required (Better Auth) | Still required by Better Auth (not a removed NextAuth-only var). Session encryption secret — generate with `openssl rand -base64 32` or `https://generate-secret.vercel.app/32`. See [Better Auth](/docs/self-hosting/auth). |
+| `AUTH_URL` | _(Deprecated)_ | Previously specified the callback address for Auth.js when performing OAuth verification. Setting this variable will now cause the deployment to fail at build/startup. |
+| `NEXT_AUTH_SSO_PROVIDERS` | _(Deprecated)_ | Previously used to enable multiple identity verification sources simultaneously, separated by commas, e.g. `auth0,microsoft-entra-id,authentik`. Setting this variable will now cause the deployment to fail at build/startup. |
+| `NEXT_AUTH_SSO_SESSION_STRATEGY` | _(Deprecated)_ | The session strategy for Auth.js. Setting this variable will now cause the deployment to fail at build/startup. |
 
 Currently supported identity verification services include:
 
 <Cards>
   <Card href={'/docs/self-hosting/auth/next-auth/auth0'} title={'Auth0'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/microsoft-entra-id'} title={'Microsoft Entra ID'} />
+<Card href={'/docs/self-hosting/auth/next-auth/microsoft-entra-id'} title={'Microsoft Entra ID'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/authentik'} title={'Authentik'} />
+<Card href={'/docs/self-hosting/auth/next-auth/authentik'} title={'Authentik'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/github'} title={'Github'} />
+<Card href={'/docs/self-hosting/auth/next-auth/github'} title={'Github'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/zitadel'} title={'ZITADEL'} />
+<Card href={'/docs/self-hosting/auth/next-auth/zitadel'} title={'ZITADEL'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/cloudflare-zero-trust'} title={'Cloudflare Zero Trust'} />
+<Card
+  href={'/docs/self-hosting/auth/next-auth/cloudflare-zero-trust'}
+  title={'Cloudflare Zero Trust'}
+/>
 
-  <Card href={'/docs/self-hosting/auth/next-auth/authelia'} title={'Authelia'} />
+<Card href={'/docs/self-hosting/auth/next-auth/authelia'} title={'Authelia'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/logto'} title={'Logto'} />
+<Card href={'/docs/self-hosting/auth/next-auth/logto'} title={'Logto'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/keycloak'} title={'Keycloak'} />
+<Card href={'/docs/self-hosting/auth/next-auth/keycloak'} title={'Keycloak'} />
 
-  <Card href={'/docs/self-hosting/auth/next-auth/google'} title={'Google'} />
+<Card href={'/docs/self-hosting/auth/next-auth/google'} title={'Google'} />
 
   <Card href={'/docs/self-hosting/auth/next-auth/okta'} title={'Okta'} />
 </Cards>

@@ -350,8 +350,7 @@ export type SourceEventAgentSelfFeedbackIntentDeclared =
 
 /** Normalized tool outcome source event. */
 export type SourceEventToolOutcome =
-  | AgentSignalSourceEvent<'tool.outcome.completed'>
-  | AgentSignalSourceEvent<'tool.outcome.failed'>;
+  AgentSignalSourceEvent<'tool.outcome.completed'> | AgentSignalSourceEvent<'tool.outcome.failed'>;
 
 /** Source types accepted by browser producers through the authenticated edge. */
 export const AGENT_SIGNAL_CLIENT_SOURCE_TYPES = [

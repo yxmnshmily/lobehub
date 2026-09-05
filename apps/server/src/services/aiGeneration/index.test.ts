@@ -5,6 +5,12 @@ import * as ModelRuntimeModule from '@/server/modules/ModelRuntime';
 
 import { AiGenerationService } from './index';
 
+const initPlatformRuntime = vi.hoisted(() => vi.fn());
+
+vi.mock('@/server/services/platformAiRuntime', () => ({
+  PlatformAiRuntime: vi.fn().mockImplementation(() => ({ init: initPlatformRuntime })),
+}));
+
 describe('AiGenerationService.generateObject', () => {
   const generateObject = vi.fn();
   const initSpy = vi.spyOn(ModelRuntimeModule, 'initModelRuntimeFromDB');
@@ -13,6 +19,7 @@ describe('AiGenerationService.generateObject', () => {
     generateObject.mockReset();
     initSpy.mockReset();
     initSpy.mockResolvedValue({ generateObject } as any);
+    initPlatformRuntime.mockResolvedValue({ generateObject });
   });
 
   it('initialises the runtime from DB with the caller-supplied provider', async () => {
@@ -24,6 +31,26 @@ describe('AiGenerationService.generateObject', () => {
       provider: 'openai',
     });
     expect(initSpy).toHaveBeenCalledWith({}, 'user-1', 'openai');
+  });
+
+  it('uses platform credentials while preserving the customer as execution actor', async () => {
+    generateObject.mockResolvedValue({ ok: true });
+    const ai = new AiGenerationService({} as any, 'customer', 'workspace-1', {
+      modelRuntimeMode: 'platform-managed',
+    });
+
+    await ai.generateObject({
+      messages: [{ content: 'hi', role: 'user' }],
+      model: 'group-model',
+      provider: 'deepseek',
+    });
+
+    expect(initPlatformRuntime).toHaveBeenCalledWith({
+      actorUserId: 'customer',
+      provider: 'deepseek',
+      workspaceId: 'workspace-1',
+    });
+    expect(initSpy).not.toHaveBeenCalled();
   });
 
   it('forwards messages / model / schema / tools / thinking verbatim to the runtime', async () => {

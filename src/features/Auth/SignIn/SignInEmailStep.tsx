@@ -1,10 +1,9 @@
-import { BRANDING_NAME } from '@lobechat/business-const';
 import { Flexbox, Icon, Input } from '@lobehub/ui';
 import { Alert, Button, Text } from '@lobehub/ui/base-ui';
 import { type FormInstance, type InputRef } from 'antd';
 import { Badge, Divider, Form } from 'antd';
 import { createStaticStyles } from 'antd-style';
-import { Mail } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import { type CSSProperties, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,11 +11,18 @@ import AuthIcons from '@/components/AuthIcons';
 import AuthCard from '@/features/AuthCard';
 import { AuthAgreement, useAuthAgreement } from '@/features/AuthShell';
 
+import { PhoneSignInForm } from './PhoneSignInForm';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   inlineLink: css`
     cursor: pointer;
     color: ${cssVar.colorPrimary};
     text-decoration: underline;
+  `,
+  title: css`
+    display: block;
+    width: 100%;
+    text-align: center;
   `,
 }));
 
@@ -37,7 +43,10 @@ const getProviderName = (provider: string) =>
   provider.toLowerCase().replaceAll(/(^|[_-])([a-z])/g, (_, __, c) => c.toUpperCase());
 
 export interface SignInEmailStepProps {
+  authMode: 'email' | 'phone';
+  callbackUrl?: string;
   disableEmailPassword?: boolean;
+  enablePhoneAuth?: boolean;
   form: FormInstance<{ email: string }>;
   isSocialOnly: boolean;
   lastAuthProvider?: string | null;
@@ -50,17 +59,22 @@ export interface SignInEmailStepProps {
   onSocialSignIn: (provider: string) => void;
   serverConfigInit: boolean;
   sessionExpired?: boolean;
+  setAuthMode: (mode: 'email' | 'phone') => void;
   socialLoading: string | null;
 }
 
 export const SignInEmailStep = ({
+  authMode,
+  callbackUrl = '/lobehub/',
   disableEmailPassword,
+  enablePhoneAuth,
   form,
   isSocialOnly,
   lastAuthProvider,
   loading,
   oAuthSSOProviders,
   serverConfigInit,
+  setAuthMode,
   sessionExpired,
   socialLoading,
   onCheckUser,
@@ -70,9 +84,11 @@ export const SignInEmailStep = ({
   onSocialSignIn,
 }: SignInEmailStepProps) => {
   const { t } = useTranslation('auth');
-  const { agreementChecked, continueWithAgreement, setAgreementChecked } = useAuthAgreement();
+  const { agreementChecked, continueWithAgreement, setAgreementChecked } = useAuthAgreement(
+    undefined,
+    true,
+  );
   const emailInputRef = useRef<InputRef>(null);
-
   useEffect(() => {
     emailInputRef.current?.focus();
   }, []);
@@ -97,7 +113,13 @@ export const SignInEmailStep = ({
   const showEmailForm = !disableEmailPassword && !isSocialOnly;
 
   return (
-    <AuthCard title={t('signin.subtitle', { appName: BRANDING_NAME })}>
+    <AuthCard
+      title={
+        <span className={styles.title}>
+          {t('signin.subtitle', { appName: t('signin.appName') })}
+        </span>
+      }
+    >
       {sessionExpired && (
         <Alert
           showIcon
@@ -137,7 +159,10 @@ export const SignInEmailStep = ({
                 color="var(--ant-color-info)"
                 count={t('betterAuth.signin.lastUsed')}
                 key={provider}
-                styles={{ root: { display: 'block', width: '100%' } }}
+                styles={{
+                  indicator: { insetInlineEnd: 8, transform: 'translateY(-50%)' },
+                  root: { display: 'block', width: '100%' },
+                }}
               >
                 {button}
               </Badge>
@@ -151,7 +176,28 @@ export const SignInEmailStep = ({
       {serverConfigInit && disableEmailPassword && oAuthSSOProviders.length === 0 && (
         <Alert showIcon description={t('betterAuth.signin.ssoOnlyNoProviders')} type="warning" />
       )}
-      {showEmailForm && (
+      {enablePhoneAuth && showEmailForm && (
+        <Flexbox horizontal gap={8} style={{ marginBottom: 16 }}>
+          <Button
+            block
+            icon={<Icon icon={Phone} />}
+            type={authMode === 'phone' ? 'primary' : 'fill'}
+            onClick={() => setAuthMode('phone')}
+          >
+            {t('betterAuth.signin.phoneTab')}
+          </Button>
+          <Button
+            block
+            icon={<Icon icon={Mail} />}
+            type={authMode === 'email' ? 'primary' : 'fill'}
+            onClick={() => setAuthMode('email')}
+          >
+            {t('betterAuth.signin.emailTab')}
+          </Button>
+        </Flexbox>
+      )}
+      {enablePhoneAuth && authMode === 'phone' && <PhoneSignInForm callbackUrl={callbackUrl} />}
+      {showEmailForm && (!enablePhoneAuth || authMode === 'email') && (
         <Form
           form={form}
           layout="vertical"
@@ -239,12 +285,21 @@ export const SignInEmailStep = ({
       )}
       {!showEmailForm && <AuthAgreement />}
       {showEmailForm && (
-        <Text align={'center'} fontSize={13} style={{ marginTop: 16 }} type={'secondary'}>
+        <Text
+          align={'center'}
+          aria-hidden={enablePhoneAuth && authMode === 'phone' ? true : undefined}
+          fontSize={13}
+          type={'secondary'}
+          style={{
+            marginTop: 16,
+            visibility: enablePhoneAuth && authMode === 'phone' ? 'hidden' : undefined,
+          }}
+        >
           {t('betterAuth.signin.noAccount')}{' '}
           <a
             className={styles.inlineLink}
             role="button"
-            tabIndex={0}
+            tabIndex={enablePhoneAuth && authMode === 'phone' ? -1 : 0}
             onClick={onGoToSignup}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

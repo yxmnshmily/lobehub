@@ -1064,6 +1064,90 @@
       "when": 1787815769048,
       "tag": "0151_document_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1788271105450,
+      "tag": "0152_short_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1788281364769,
+      "tag": "0153_travel_service_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1788283521079,
+      "tag": "0154_travel_service_audit_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1788293973465,
+      "tag": "0155_travel_generation_order_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1788338148620,
+      "tag": "0156_platform_credit_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1788341408691,
+      "tag": "0157_platform_moderation_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1788363977209,
+      "tag": "0158_platform_admin_operation_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1788365849636,
+      "tag": "0159_travel_generation_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1788370485428,
+      "tag": "0160_platform_admin_travel_group_repair_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1788371977185,
+      "tag": "0161_platform_credit_reservations",
+      "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1788458734576,
+      "tag": "0162_platform_credit_sponsored_membership_purchase",
+      "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1788460000000,
+      "tag": "0163_group_sponsored_default_member_template",
+      "breakpoints": true
     }
   ],
   "version": "6"

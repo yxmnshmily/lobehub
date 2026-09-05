@@ -2,6 +2,8 @@ import { TRPCError } from '@trpc/server';
 import debug from 'debug';
 import { type Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
+import addressparser from 'nodemailer/lib/addressparser';
+import { z } from 'zod';
 
 import { emailEnv } from '@/envs/email';
 
@@ -9,6 +11,21 @@ import { type EmailPayload, type EmailResponse, type EmailServiceImpl } from '..
 import { type NodemailerConfig } from './type';
 
 const log = debug('lobe-email:Nodemailer');
+const TRANSACTION_MAIL_DISPLAY_NAME = '旅游群网';
+
+const resolveSingleMailbox = (value: string, field: 'From' | 'Reply-To'): string => {
+  const mailboxes = addressparser(value, { flatten: true });
+  const address = mailboxes.length === 1 ? mailboxes[0]?.address : undefined;
+
+  if (!address || !z.email().safeParse(address).success) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: `${field} must contain one valid email address`,
+    });
+  }
+
+  return address;
+};
 
 /**
  * Nodemailer implementation of the email service
@@ -50,8 +67,10 @@ export class NodemailerImpl implements EmailServiceImpl {
   }
 
   async sendMail(payload: EmailPayload): Promise<EmailResponse> {
-    // Use SMTP_FROM as default sender, fallback to SMTP_USER for backward compatibility
-    const from = payload.from || emailEnv.SMTP_FROM || emailEnv.SMTP_USER!;
+    // Transactional mail always uses the configured sender; callers cannot spoof the From mailbox.
+    const senderAddress = resolveSingleMailbox(emailEnv.SMTP_FROM || emailEnv.SMTP_USER!, 'From');
+    const from = { address: senderAddress, name: TRANSACTION_MAIL_DISPLAY_NAME };
+    const replyTo = payload.replyTo ? resolveSingleMailbox(payload.replyTo, 'Reply-To') : undefined;
 
     log('Sending email with payload: %o', {
       from,
@@ -64,7 +83,7 @@ export class NodemailerImpl implements EmailServiceImpl {
         attachments: payload.attachments,
         from,
         html: payload.html,
-        replyTo: payload.replyTo,
+        replyTo,
         subject: payload.subject,
         text: payload.text,
         to: payload.to,

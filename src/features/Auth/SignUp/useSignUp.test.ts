@@ -60,7 +60,7 @@ describe('useSignUp', () => {
     mockEnableEmailVerification = false;
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...originalLocation, href: '' },
+      value: { ...originalLocation, href: '', pathname: '/lobehub/signup' },
       writable: true,
     });
   });
@@ -131,12 +131,15 @@ describe('useSignUp', () => {
         await result.current.onSubmit(validValues);
       });
 
-      expect(window.location.href).toBe('/onboarding');
+      expect(mockSignUpEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ callbackURL: '/lobehub/onboarding' }),
+      );
+      expect(window.location.href).toBe('/lobehub/onboarding');
     });
 
     it('should thread callbackUrl from search params through onboarding', async () => {
       mockSearchParamsGet.mockImplementation((key: string) =>
-        key === 'callbackUrl' ? '/dashboard' : null,
+        key === 'callbackUrl' ? '/index.html' : null,
       );
       mockSignUpEmail.mockResolvedValue({ error: null });
 
@@ -147,9 +150,11 @@ describe('useSignUp', () => {
       });
 
       expect(mockSignUpEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ callbackURL: '/onboarding?callbackUrl=%2Fdashboard' }),
+        expect.objectContaining({
+          callbackURL: '/lobehub/onboarding?callbackUrl=%2Findex.html',
+        }),
       );
-      expect(window.location.href).toBe('/onboarding?callbackUrl=%2Fdashboard');
+      expect(window.location.href).toBe('/lobehub/onboarding?callbackUrl=%2Findex.html');
     });
 
     it('should redirect to verify-email when email verification is enabled', async () => {
@@ -164,6 +169,12 @@ describe('useSignUp', () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.stringContaining('/verify-email?email=new%40example.com'),
+      );
+      expect(mockSignUpEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          callbackURL:
+            '/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=new%40example.com',
+        }),
       );
     });
 
@@ -230,6 +241,24 @@ describe('useSignUp', () => {
       expect(window.location.href).toBe('');
     });
 
+    it('should not expose an unknown backend error message', async () => {
+      mockSignUpEmail.mockResolvedValue({
+        error: {
+          code: 'UNKNOWN_INTERNAL_FAILURE',
+          message: 'postgres://internal-host/users?token=secret-fixture',
+        },
+      });
+
+      const { result } = renderHook(() => useSignUp());
+
+      await act(async () => {
+        await result.current.onSubmit(validValues);
+      });
+
+      expect(mockMessageError).toHaveBeenCalledWith('betterAuth.signup.error');
+      expect(mockMessageError).not.toHaveBeenCalledWith(expect.stringContaining('internal-host'));
+    });
+
     it('should retry sign up with captcha token when captcha is required', async () => {
       mockGetCaptchaTokenOnError.mockResolvedValue('captcha-token');
       mockSignUpEmail
@@ -251,7 +280,7 @@ describe('useSignUp', () => {
         }),
       );
       expect(mockMessageError).not.toHaveBeenCalled();
-      expect(window.location.href).toBe('/onboarding');
+      expect(window.location.href).toBe('/lobehub/onboarding');
     });
 
     it('should stop sign up when captcha modal is cancelled', async () => {
@@ -307,6 +336,34 @@ describe('useSignUp', () => {
       });
 
       expect(result.current.loading).toBe(false);
+    });
+
+    it('should coalesce rapid sign up submissions into one account request', async () => {
+      let resolveSignUp: ((value: { error: null }) => void) | undefined;
+      mockSignUpEmail.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSignUp = resolve;
+          }),
+      );
+      const { result } = renderHook(() => useSignUp());
+      let firstRequest: Promise<void>;
+      let secondRequest: Promise<void>;
+
+      act(() => {
+        firstRequest = result.current.onSubmit(validValues);
+        secondRequest = result.current.onSubmit(validValues);
+      });
+
+      await vi.waitFor(() => expect(mockSignUpEmail).toHaveBeenCalled());
+      expect(mockSignUpEmail).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSignUp?.({ error: null });
+        await Promise.all([firstRequest!, secondRequest!]);
+      });
+      expect(result.current.loading).toBe(false);
+      expect(window.location.href).toBe('/lobehub/onboarding');
     });
   });
 });

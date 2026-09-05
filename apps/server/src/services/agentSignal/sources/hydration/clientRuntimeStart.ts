@@ -9,10 +9,7 @@ import type { LobeChatDatabase } from '@/database/type';
 
 /** Reason a `client.runtime.start` event could not become a feedback source. */
 export type ClientRuntimeStartHydrationSkipReason =
-  | 'empty-content'
-  | 'message-not-found'
-  | 'missing-parent-message-id'
-  | 'non-user-parent';
+  'empty-content' | 'message-not-found' | 'missing-parent-message-id' | 'non-user-parent';
 
 /** Diagnostic emitted while hydrating a client runtime-start source. */
 export interface ClientRuntimeStartHydrationDiagnostic {

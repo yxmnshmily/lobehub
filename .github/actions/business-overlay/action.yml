@@ -1,10 +1,6 @@
 name: Business Overlay
 description: >-
-  Clone the private business-overlay repository and overlay it around this
-  checkout so the workspace parent becomes the overlay root with this repo as
-  its `lobehub/` submodule. Same layout as desktop-build-setup's overlay,
-  extracted so non-desktop workflows (share verify) can build with the business
-  overlay without desktop's install steps.
+  Clone the private business-overlay repository and overlay it around this checkout so the workspace parent becomes the overlay root with this repo as its `lobehub/` submodule. Same layout as desktop-build-setup's overlay, extracted so non-desktop workflows (share verify) can build with the business overlay without desktop's install steps.
 
 inputs:
   overlay-repository:

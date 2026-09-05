@@ -25,6 +25,33 @@ beforeEach(() => {
 });
 
 describe('AiInfraRepos', () => {
+  describe('getAiProviderCatalogState', () => {
+    it('returns model catalog data without loading provider runtime secrets', async () => {
+      const getRuntimeConfig = vi.spyOn(repo.aiProviderModel, 'getAiProviderRuntimeConfig');
+      const enabledProviders = [
+        { id: 'openai', logo: 'logo1', name: 'OpenAI', source: 'builtin' },
+      ] as EnabledProvider[];
+      const enabledModels = [
+        { abilities: {}, enabled: true, id: 'gpt-4', providerId: 'openai', type: 'chat' },
+      ] as EnabledAiModel[];
+      vi.spyOn(repo, 'getUserEnabledProviderList').mockResolvedValue(enabledProviders);
+      vi.spyOn(repo, 'getEnabledModels').mockResolvedValue(enabledModels);
+
+      expect(typeof repo.getAiProviderCatalogState).toBe('function');
+      const result = await repo.getAiProviderCatalogState();
+
+      expect(getRuntimeConfig).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        enabledAiModels: enabledModels,
+        enabledAiProviders: enabledProviders,
+        enabledChatAiProviders: enabledProviders,
+        enabledImageAiProviders: [],
+        enabledVideoAiProviders: [],
+        runtimeConfig: {},
+      });
+    });
+  });
+
   describe('getAiProviderRuntimeState', () => {
     it('should return complete runtime state', async () => {
       const mockRuntimeConfig = {

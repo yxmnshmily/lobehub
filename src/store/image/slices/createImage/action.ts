@@ -24,8 +24,6 @@ export class CreateImageActionImpl {
   }
 
   async createImage() {
-    this.#set({ isCreating: true }, false, 'createImage/startCreateImage');
-
     const store = this.#get();
     const imageNum = imageGenerationConfigSelectors.imageNum(store);
     const parameters = imageGenerationConfigSelectors.parameters(store);
@@ -42,27 +40,27 @@ export class CreateImageActionImpl {
       throw new TypeError('prompt is empty');
     }
 
+    this.#set({ isCreating: true }, false, 'createImage/startCreateImage');
+
     // Track the final topic ID to use for image creation
     let finalTopicId = activeGenerationTopicId;
-
-    // 1. Create generation topic if not exists
-    const generationTopicId = activeGenerationTopicId;
     let isNewTopic = false;
 
-    if (!generationTopicId) {
-      isNewTopic = true;
-      const prompts = [parameters.prompt];
-      const newGenerationTopicId = await createGenerationTopic(prompts);
-      finalTopicId = newGenerationTopicId;
-
-      // 2. Initialize empty batch array to avoid skeleton screen
-      setTopicBatchLoaded(newGenerationTopicId);
-
-      // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
-      switchGenerationTopic(newGenerationTopicId);
-    }
-
     try {
+      // 1. Create generation topic if not exists
+      if (!activeGenerationTopicId) {
+        isNewTopic = true;
+        const prompts = [parameters.prompt];
+        const newGenerationTopicId = await createGenerationTopic(prompts);
+        finalTopicId = newGenerationTopicId;
+
+        // 2. Initialize empty batch array to avoid skeleton screen
+        setTopicBatchLoaded(newGenerationTopicId);
+
+        // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
+        switchGenerationTopic(newGenerationTopicId);
+      }
+
       // 4. If it's a new topic, set the creating state after topic creation
       if (isNewTopic) {
         this.#set(
@@ -113,13 +111,13 @@ export class CreateImageActionImpl {
   }
 
   async recreateImage(generationBatchId: string) {
-    this.#set({ isCreating: true }, false, 'recreateImage/startCreateImage');
-
     const store = this.#get();
     const activeGenerationTopicId = generationTopicSelectors.activeGenerationTopicId(store);
     if (!activeGenerationTopicId) {
       throw new Error('No active generation topic');
     }
+
+    this.#set({ isCreating: true }, false, 'recreateImage/startCreateImage');
 
     const { removeGenerationBatch } = store;
     const batch = generationBatchSelectors.getGenerationBatchByBatchId(generationBatchId)(store)!;

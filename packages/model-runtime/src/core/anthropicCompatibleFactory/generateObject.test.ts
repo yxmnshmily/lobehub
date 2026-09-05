@@ -5,8 +5,662 @@ import {
   buildAnthropicGenerateObjectRequest,
   createAnthropicGenerateObject,
 } from './generateObject';
+import * as anthropicGenerateObject from './generateObject';
 
 describe('Anthropic generateObject', () => {
+  describe('bounded generation', () => {
+    it('counts the final forced-tool input before exposing a single-use execution', async () => {
+      const callOrder: string[] = [];
+      const mockClient = {
+        messages: {
+          countTokens: vi.fn().mockImplementation(async () => {
+            callOrder.push('count');
+            return { input_tokens: 120 };
+          }),
+          create: vi.fn().mockImplementation(async () => {
+            callOrder.push('create');
+            return {
+              content: [
+                {
+                  input: { content: 'Bounded copy' },
+                  name: 'travel_copy',
+                  type: 'tool_use',
+                },
+              ],
+              usage: {
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+                input_tokens: 120,
+                output_tokens: 40,
+              },
+            };
+          }),
+        },
+      };
+      const payload = {
+        messages: [
+          { content: 'You write travel copy.', role: 'system' as const },
+          { content: 'Write one paragraph.', role: 'user' as const },
+        ],
+        model: 'claude-sonnet-4-20250514',
+        schema: {
+          name: 'travel_copy',
+          schema: {
+            additionalProperties: false,
+            properties: { content: { type: 'string' } },
+            required: ['content'],
+            type: 'object' as const,
+          },
+        },
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-sonnet-4-20250514',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const pricing = {
+        units: [
+          { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+        ],
+      };
+      const prepare = (anthropicGenerateObject as any).prepareAnthropicGenerateObjectBounded;
+
+      const prepared = await prepare(mockClient as any, payload, undefined, pricing, {
+        maxOutputTokens: 256,
+        route,
+      });
+
+      expect(callOrder).toEqual(['count']);
+      expect(prepared.envelope).toEqual({
+        inputTokens: 120,
+        maxOutputTokens: 256,
+        maximumCredits: 4200,
+        route,
+      });
+      expect(Object.isFrozen(prepared.envelope)).toBe(true);
+      expect(Object.isFrozen(prepared.envelope.route)).toBe(true);
+      expect(mockClient.messages.countTokens).toHaveBeenCalledWith(
+        {
+          messages: [{ content: 'Write one paragraph.', role: 'user' }],
+          model: 'claude-sonnet-4-20250514',
+          system: [{ text: 'You write travel copy.', type: 'text' }],
+          thinking: { type: 'disabled' },
+          tool_choice: { name: 'travel_copy', type: 'tool' },
+          tools: [
+            {
+              description: 'Generate structured output according to the provided schema',
+              input_schema: {
+                additionalProperties: false,
+                properties: { content: { type: 'string' } },
+                required: ['content'],
+                type: 'object',
+              },
+              name: 'travel_copy',
+            },
+          ],
+        },
+        expect.objectContaining({}),
+      );
+
+      await expect(prepared.execute()).resolves.toEqual({
+        output: { content: 'Bounded copy' },
+        usage: expect.objectContaining({
+          cost: 0.000_96,
+          totalInputTokens: 120,
+          totalOutputTokens: 40,
+        }),
+      });
+      expect(callOrder).toEqual(['count', 'create']);
+      expect(mockClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          max_tokens: 256,
+          model: 'claude-sonnet-4-20250514',
+          thinking: { type: 'disabled' },
+        }),
+        expect.objectContaining({}),
+      );
+      await expect(prepared.execute()).rejects.toThrow('already executed');
+      expect(mockClient.messages.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('executes the exact counted request even when the caller mutates its inputs after prepare', async () => {
+      let countedRequest: Record<string, unknown> | undefined;
+      let createdRequest: Record<string, unknown> | undefined;
+      const client = {
+        messages: {
+          countTokens: vi.fn().mockImplementation(async (request) => {
+            countedRequest = structuredClone(request);
+            return { input_tokens: 10 };
+          }),
+          create: vi.fn().mockImplementation(async (request) => {
+            createdRequest = structuredClone(request);
+            return {
+              content: [{ input: { content: 'ok' }, name: 'result', type: 'tool_use' }],
+              usage: {
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+                input_tokens: 10,
+                output_tokens: 5,
+              },
+            };
+          }),
+        },
+      };
+      const payload = {
+        messages: [{ content: 'Generate', role: 'user' as const }],
+        model: 'claude-versioned',
+        schema: {
+          name: 'result',
+          schema: {
+            additionalProperties: false,
+            properties: { content: { type: 'string' } },
+            type: 'object' as const,
+          },
+        },
+      };
+      const pricing = {
+        units: [
+          { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+        ],
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+
+      const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+        client as any,
+        payload,
+        undefined,
+        pricing as any,
+        { maxOutputTokens: 64, route },
+      );
+      payload.schema.schema.properties.content.type = 'number';
+      payload.schema.schema.properties.injected = { type: 'boolean' };
+
+      await expect(prepared.execute()).resolves.toEqual(
+        expect.objectContaining({ output: { content: 'ok' } }),
+      );
+      expect(createdRequest).toEqual({ ...countedRequest, max_tokens: 64 });
+      expect(
+        (createdRequest?.tools as Array<{ input_schema: { properties: unknown } }>)[0].input_schema
+          .properties,
+      ).toEqual({ content: { type: 'string' } });
+    });
+
+    it.each([
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['negative', -1],
+      ['unsafe', Number.MAX_SAFE_INTEGER],
+    ])('rejects %s Credits pricing before generation', async (_label, rate) => {
+      const create = vi.fn();
+      const client = {
+        messages: {
+          countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+          create,
+        },
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+
+      await expect(
+        anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('pricing is invalid');
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('rejects thinking and caller-supplied tools before token counting', async () => {
+      const countTokens = vi.fn();
+      const client = { messages: { countTokens, create: vi.fn() } };
+      const pricing = {
+        units: [
+          { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+        ],
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const prepare = anthropicGenerateObject.prepareAnthropicGenerateObjectBounded;
+
+      await expect(
+        prepare(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+            thinking: { type: 'enabled' },
+          } as any,
+          undefined,
+          pricing as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('thinking to be disabled');
+
+      await expect(
+        prepare(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+            tools: [{ function: { name: 'external', parameters: {} }, type: 'function' }],
+          } as any,
+          undefined,
+          pricing as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('one schema and no tools');
+
+      await expect(
+        prepare(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+            tools: [{ name: 'web_search', type: 'web_search_20250305' }],
+          } as any,
+          undefined,
+          pricing as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('one schema and no tools');
+
+      expect(countTokens).not.toHaveBeenCalled();
+    });
+
+    it('fails closed before generation when pricing or authoritative count is missing', async () => {
+      const payload = {
+        messages: [{ content: 'Generate', role: 'user' as const }],
+        model: 'claude-versioned',
+        schema: { name: 'result', schema: { properties: {}, type: 'object' as const } },
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const create = vi.fn();
+      const client = {
+        messages: { countTokens: vi.fn().mockResolvedValue({}), create },
+      };
+
+      await expect(
+        anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          client as any,
+          payload,
+          undefined,
+          undefined,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('pricing is unavailable');
+      await expect(
+        anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          client as any,
+          payload,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('input token count is unavailable');
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['negative', -1],
+      ['unsafe', Number.MAX_SAFE_INTEGER + 1],
+    ])('rejects an authoritative %s input token count before generation', async (_label, count) => {
+      const create = vi.fn();
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+
+      await expect(
+        anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          {
+            messages: {
+              countTokens: vi.fn().mockResolvedValue({ input_tokens: count }),
+              create,
+            },
+          } as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('input token count is unavailable');
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a combined input and output token budget above the safe integer range', async () => {
+      const create = vi.fn();
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+
+      await expect(
+        anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          {
+            messages: {
+              countTokens: vi.fn().mockResolvedValue({ input_tokens: Number.MAX_SAFE_INTEGER }),
+              create,
+            },
+          } as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 0.000_000_001, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 0.000_000_001, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 1, route },
+        ),
+      ).rejects.toThrow('token budget is invalid');
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('fails closed after the sole provider call when usage is missing', async () => {
+      const create = vi.fn().mockResolvedValue({
+        content: [{ input: { content: 'ok' }, name: 'result', type: 'tool_use' }],
+      });
+      const client = {
+        messages: {
+          countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+          create,
+        },
+      };
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+        client as any,
+        {
+          messages: [{ content: 'Generate', role: 'user' }],
+          model: 'claude-versioned',
+          schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+        } as any,
+        undefined,
+        {
+          units: [
+            { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+            { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+          ],
+        } as any,
+        { maxOutputTokens: 64, route },
+      );
+
+      await expect(prepared.execute()).rejects.toThrow('usage is unavailable');
+      await expect(prepared.execute()).rejects.toThrow('already executed');
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows only one provider create when execute is replayed concurrently and fails', async () => {
+      const create = vi.fn().mockRejectedValue(new Error('provider failed'));
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'anthropic-primary',
+        model: 'claude-versioned',
+        providerId: 'anthropic',
+        routerId: 'anthropic',
+      };
+      const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+        {
+          messages: {
+            countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+            create,
+          },
+        } as any,
+        {
+          messages: [{ content: 'Generate', role: 'user' }],
+          model: 'claude-versioned',
+          schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+        } as any,
+        undefined,
+        {
+          units: [
+            { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+            { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+          ],
+        } as any,
+        { maxOutputTokens: 64, route },
+      );
+
+      const results = await Promise.allSettled([prepared.execute(), prepared.execute()]);
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          reason: expect.objectContaining({ message: 'provider failed' }),
+        }),
+        expect.objectContaining({
+          reason: expect.objectContaining({ message: expect.stringContaining('already executed') }),
+        }),
+      ]);
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['input', -1, 5],
+      ['output', 10, -1],
+      ['NaN input', Number.NaN, 5],
+      ['infinite output', 10, Number.POSITIVE_INFINITY],
+      ['unsafe input', Number.MAX_SAFE_INTEGER + 1, 5],
+    ])(
+      'rejects invalid provider %s token usage after one create',
+      async (_label, input, output) => {
+        const create = vi.fn().mockResolvedValue({
+          content: [{ input: { content: 'ok' }, name: 'result', type: 'tool_use' }],
+          usage: {
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            input_tokens: input,
+            output_tokens: output,
+          },
+        });
+        const client = {
+          messages: {
+            countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+            create,
+          },
+        };
+        const route = {
+          apiType: 'anthropic',
+          channelId: 'anthropic-primary',
+          model: 'claude-versioned',
+          providerId: 'anthropic',
+          routerId: 'anthropic',
+        };
+        const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        );
+
+        await expect(prepared.execute()).rejects.toThrow('token usage is invalid');
+        await expect(prepared.execute()).rejects.toThrow('already executed');
+        expect(create).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it.each([
+      ['output cap', 10, 65, 'output exceeded maxOutputTokens'],
+      ['Credits envelope', 1_000_000, 5, 'actual cost exceeded its envelope'],
+    ])(
+      'fails closed when actual usage exceeds the %s',
+      async (_label, input, output, expectedError) => {
+        const create = vi.fn().mockResolvedValue({
+          content: [{ input: { content: 'ok' }, name: 'result', type: 'tool_use' }],
+          usage: {
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            input_tokens: input,
+            output_tokens: output,
+          },
+        });
+        const route = {
+          apiType: 'anthropic',
+          channelId: 'anthropic-primary',
+          model: 'claude-versioned',
+          providerId: 'anthropic',
+          routerId: 'anthropic',
+        };
+        const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          {
+            messages: {
+              countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+              create,
+            },
+          } as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        );
+
+        await expect(prepared.execute()).rejects.toThrow(expectedError);
+        expect(create).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it.each([
+      ['write', 1, 0],
+      ['read', 0, 1],
+    ])(
+      'rejects provider-reported cache %s usage in the cache-disabled contract',
+      async (_label, cacheCreation, cacheRead) => {
+        const client = {
+          messages: {
+            countTokens: vi.fn().mockResolvedValue({ input_tokens: 10 }),
+            create: vi.fn().mockResolvedValue({
+              content: [{ input: { content: 'ok' }, name: 'result', type: 'tool_use' }],
+              usage: {
+                cache_creation_input_tokens: cacheCreation,
+                cache_read_input_tokens: cacheRead,
+                input_tokens: 9,
+                output_tokens: 5,
+              },
+            }),
+          },
+        };
+        const route = {
+          apiType: 'anthropic',
+          channelId: 'anthropic-primary',
+          model: 'claude-versioned',
+          providerId: 'anthropic',
+          routerId: 'anthropic',
+        };
+        const prepared = await anthropicGenerateObject.prepareAnthropicGenerateObjectBounded(
+          client as any,
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          } as any,
+          undefined,
+          {
+            units: [
+              { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+              { name: 'textOutput', rate: 15, strategy: 'fixed', unit: 'millionTokens' },
+            ],
+          } as any,
+          { maxOutputTokens: 64, route },
+        );
+
+        await expect(prepared.execute()).rejects.toThrow('cache usage is not allowed');
+        expect(client.messages.create).toHaveBeenCalledTimes(1);
+      },
+    );
+  });
+
   it('should throw error when neither tools nor schema is provided', async () => {
     const mockClient = {
       messages: {

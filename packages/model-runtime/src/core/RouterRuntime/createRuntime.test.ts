@@ -1710,6 +1710,121 @@ describe('createRouterRuntime', () => {
       expect(mockGenerateObject).toHaveBeenCalledWith(payload, { metadata });
       expect(onRouteAttempt).toHaveBeenCalledWith(expect.objectContaining({ metadata }));
     });
+
+    it('prepares and executes a bounded request on exactly one channel without fallback', async () => {
+      const preparedChannels: string[] = [];
+      const executedChannels: string[] = [];
+
+      class MockRuntime implements LobeRuntimeAI {
+        async prepareGenerateObjectBounded(_payload: any, options: any) {
+          const source = getRuntimeSignatureScopeSource(this)!;
+          preparedChannels.push(source.channelId!);
+          return {
+            envelope: {
+              inputTokens: 10,
+              maxOutputTokens: options.maxOutputTokens,
+              maximumCredits: 100,
+              route: options.route,
+            },
+            execute: async () => {
+              executedChannels.push(source.channelId!);
+              throw new Error('provider failed after dispatch');
+            },
+          };
+        }
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        routers: [
+          {
+            apiType: 'anthropic',
+            id: 'anthropic-router',
+            models: ['claude-versioned'],
+            options: [
+              { apiKey: 'first', id: 'channel-1' },
+              { apiKey: 'second', id: 'channel-2' },
+            ],
+            runtime: MockRuntime as any,
+          },
+        ],
+      });
+      const runtime = new Runtime() as any;
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'channel-1',
+        model: 'claude-versioned',
+        providerId: 'test-runtime',
+        routerId: 'anthropic-router',
+      };
+
+      const prepared = await runtime.prepareGenerateObjectBounded(
+        {
+          messages: [{ content: 'Generate', role: 'user' }],
+          model: 'claude-versioned',
+          schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+        },
+        { maxOutputTokens: 64, route },
+      );
+
+      expect(preparedChannels).toEqual(['channel-1']);
+      await expect(prepared.execute()).rejects.toThrow('provider failed after dispatch');
+      expect(executedChannels).toEqual(['channel-1']);
+      expect(preparedChannels).not.toContain('channel-2');
+    });
+
+    it.each([
+      ['providerId', 'other-provider'],
+      ['channelId', 'missing-channel'],
+      ['routerId', 'other-router'],
+      ['apiType', 'openai'],
+      ['model', 'other-model'],
+    ])('rejects bounded %s drift without preparing any fallback channel', async (field, value) => {
+      const preparedChannels: string[] = [];
+
+      class MockRuntime implements LobeRuntimeAI {
+        async prepareGenerateObjectBounded() {
+          preparedChannels.push(getRuntimeSignatureScopeSource(this)?.channelId ?? 'missing');
+          throw new Error('must not prepare');
+        }
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        routers: [
+          {
+            apiType: 'anthropic',
+            id: 'anthropic-router',
+            models: ['claude-versioned'],
+            options: [
+              { apiKey: 'first', id: 'channel-1' },
+              { apiKey: 'second', id: 'channel-2' },
+            ],
+            runtime: MockRuntime as any,
+          },
+        ],
+      });
+      const route = {
+        apiType: 'anthropic',
+        channelId: 'channel-1',
+        model: 'claude-versioned',
+        providerId: 'test-runtime',
+        routerId: 'anthropic-router',
+        [field]: value,
+      };
+
+      await expect(
+        (new Runtime() as any).prepareGenerateObjectBounded(
+          {
+            messages: [{ content: 'Generate', role: 'user' }],
+            model: 'claude-versioned',
+            schema: { name: 'result', schema: { properties: {}, type: 'object' } },
+          },
+          { maxOutputTokens: 64, route },
+        ),
+      ).rejects.toThrow('route identity mismatch');
+      expect(preparedChannels).toEqual([]);
+    });
   });
 
   describe('constructor options handling', () => {

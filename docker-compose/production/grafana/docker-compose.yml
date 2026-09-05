@@ -62,7 +62,6 @@ services:
         wait \$MINIO_PID
       "
 
-
   # version lock ref: https://github.com/lobehub/lobe-chat/pull/7331
   casdoor:
     image: casbin/casdoor:v2.13.0
@@ -232,7 +231,6 @@ services:
         fi
         wait \$LOBE_PID
       "
-
 
 volumes:
   data:

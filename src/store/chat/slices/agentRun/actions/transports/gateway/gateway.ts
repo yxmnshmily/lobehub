@@ -10,6 +10,7 @@ import type {
   ChatTopicStatus,
   ConversationContext,
   ExecAgentResult,
+  HostedGroupChatBilling,
   MessageMetadata,
   RuntimeMentionedAgent,
 } from '@lobechat/types';
@@ -408,6 +409,8 @@ export class GatewayActionImpl {
    * then starts the agent. This method handles topic switching and WebSocket connection.
    */
   executeGatewayAgent = async (params: {
+    /** Customer-approved ceiling and stable retry identity for the hosted travel group. */
+    billing?: HostedGroupChatBilling;
     /**
      * Client-minted ids for the rows this run creates (fresh sends only). The
      * server honours them verbatim, so the optimistic topic / message rows keep
@@ -498,6 +501,7 @@ export class GatewayActionImpl {
     tempMessageIds?: string[];
   }): Promise<ExecAgentResult> => {
     const {
+      billing,
       clientIds,
       context: executionContext,
       fileIds,
@@ -586,6 +590,7 @@ export class GatewayActionImpl {
       (await aiAgentService.execAgentTask(
         {
           agentId: executionContext.agentId,
+          billing,
           // Fresh sends only — resume flows never pass this, and the server drops
           // it defensively on resume-like params anyway.
           clientIds,

@@ -5,7 +5,10 @@ import path from 'node:path';
 import type { MoveFileResultItem, MoveFilesParams } from '../types';
 import { resolveAgainstCwd } from './expandTilde';
 
-export async function moveLocalFiles({ items, cwd }: MoveFilesParams): Promise<MoveFileResultItem[]> {
+export async function moveLocalFiles({
+  items,
+  cwd,
+}: MoveFilesParams): Promise<MoveFileResultItem[]> {
   const results: MoveFileResultItem[] = [];
 
   if (!items || items.length === 0) {

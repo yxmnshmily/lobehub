@@ -12,12 +12,49 @@ import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { SettingsTabs } from '@/store/global/initialState';
 import { isModifierClick } from '@/utils/navigation';
 
-import { SettingsGroupKey, useCategory } from '../../hooks/useCategory';
+import { useCategory } from '../../hooks/useCategory';
+
+interface SettingsCategoryItemLocation {
+  pathname: string;
+  search: string;
+}
+
+interface SettingsCategoryItemIdentity {
+  href?: string;
+  key: string;
+}
+
+const doesSettingsHrefMatch = (href: string, currentLocation: SettingsCategoryItemLocation) => {
+  const [pathname, query = ''] = href.split('?');
+  if (pathname !== currentLocation.pathname) return false;
+
+  const expectedParams = new URLSearchParams(query);
+  if (!query) return currentLocation.search.length === 0;
+
+  const currentParams = new URLSearchParams(currentLocation.search);
+  return [...expectedParams].every(([key, value]) => currentParams.get(key) === value);
+};
+
+export const isSettingsCategoryItemActive = ({
+  activeTab,
+  currentLocation,
+  hasCustomHrefMatch,
+  item,
+}: {
+  activeTab: string;
+  currentLocation: SettingsCategoryItemLocation;
+  hasCustomHrefMatch: boolean;
+  item: SettingsCategoryItemIdentity;
+}) =>
+  item.href
+    ? doesSettingsHrefMatch(item.href, currentLocation)
+    : !hasCustomHrefMatch && activeTab === item.key;
 
 const Body = memo(() => {
   const categoryGroups = useCategory();
   const navigate = useWorkspaceAwareNavigate();
   const location = useActiveLocation();
+  const expandedGroupKeys = useMemo(() => categoryGroups.map(({ key }) => key), [categoryGroups]);
 
   // Extract current tab from pathname: /settings/profile -> profile
   const activeTab = useMemo(() => {
@@ -28,19 +65,23 @@ const Body = memo(() => {
     }
     return SettingsTabs.Profile;
   }, [location.pathname]);
+  const hasCustomHrefMatch = useMemo(
+    () =>
+      categoryGroups.some((group) =>
+        group.items.some(
+          (item) => item.href && doesSettingsHrefMatch(item.href, location),
+        ),
+      ),
+    [categoryGroups, location],
+  );
 
   return (
     <Flexbox gap={4} paddingInline={4}>
       <SearchSection>
         <Accordion
+          defaultExpandedKeys={expandedGroupKeys}
           gap={8}
-          defaultExpandedKeys={[
-            SettingsGroupKey.General,
-            SettingsGroupKey.Subscription,
-            SettingsGroupKey.Agent,
-            SettingsGroupKey.System,
-            SettingsGroupKey.Developer,
-          ]}
+          key={expandedGroupKeys.join(':')}
         >
           {categoryGroups.map((group) => (
             <AccordionItem
@@ -68,9 +109,14 @@ const Body = memo(() => {
                       }}
                     >
                       <NavItem
-                        active={activeTab === item.key}
                         icon={item.icon}
                         title={item.label}
+                        active={isSettingsCategoryItemActive({
+                          activeTab,
+                          currentLocation: location,
+                          hasCustomHrefMatch,
+                          item,
+                        })}
                       />
                     </Link>
                   );

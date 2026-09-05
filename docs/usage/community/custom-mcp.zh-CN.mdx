@@ -31,43 +31,46 @@ MCP 市场提供了数以千计的现成集成，但有时你需要接入私有 
 <Steps>
   ### 打开导入面板
 
-  在「添加自定义技能」对话框中，点击表单顶部的**导入 JSON 配置**，此时会出现一个文本输入框。
+在「添加自定义技能」对话框中，点击表单顶部的**导入 JSON 配置**，此时会出现一个文本输入框。
 
-  ### 粘贴配置
+### 粘贴配置
 
-  粘贴完整的 `mcpServers` 配置块或单个服务器配置：
+粘贴完整的 `mcpServers` 配置块或单个服务器配置：
 
-  ```json
-  {
-    "mcpServers": {
-      "my-server": {
-        "command": "npx",
-        "args": ["-y", "my-mcp-package"],
-        "type": "stdio"
-      }
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["-y", "my-mcp-package"],
+      "type": "stdio"
     }
   }
-  ```
+}
+```
 
-  或者 HTTP 服务器配置：
+或者 HTTP 服务器配置：
 
-  ```json
-  {
-    "mcpServers": {
-      "my-api": {
-        "url": "https://mcp.example.com/sse",
-        "type": "http"
-      }
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "url": "https://mcp.example.com/sse",
+      "type": "http"
     }
   }
-  ```
+}
+```
 
-  ### 点击导入
+### 点击导入
 
-  LobeHub 会自动填入标识符、连接类型、URL 或命令等参数。确认自动填入的内容无误后，即可进行连接测试。
+LobeHub 会自动填入标识符、连接类型、URL 或命令等参数。确认自动填入的内容无误后，即可进行连接测试。
+
 </Steps>
 
-<Callout type={'info'}>大多数 MCP 服务器的文档都会提供这种格式的 JSON 配置，可以直接复制使用。推荐优先使用快速导入功能。</Callout>
+<Callout type={'info'}>
+  大多数 MCP 服务器的文档都会提供这种格式的 JSON 配置，可以直接复制使用。推荐优先使用快速导入功能。
+</Callout>
 
 ## 手动配置
 
@@ -77,26 +80,26 @@ MCP 市场提供了数以千计的现成集成，但有时你需要接入私有 
 
 适用于远程 MCP 服务器 —— 云端托管的 API、SaaS 工具，或任何可通过 HTTPS 访问的服务。Web 端和桌面端均可使用。
 
-| 字段               | 说明                                                    |
-| ---------------- | ----------------------------------------------------- |
-| **MCP 名称**       | 该技能的唯一标识符（仅限字母、数字、连字符）                                |
+| 字段             | 说明                                                              |
+| ---------------- | ----------------------------------------------------------------- |
+| **MCP 名称**     | 该技能的唯一标识符（仅限字母、数字、连字符）                      |
 | **Endpoint URL** | MCP 服务器的完整 HTTPS 地址（例如 `https://mcp.example.com/sse`） |
-| **认证类型**         | 无认证，或 API Key（以 Bearer Token 方式传递）                    |
-| **API Key**      | 选择 API Key 认证时必填                                      |
-| **HTTP 请求头**     | 可选的额外请求头（展开「高级」选项设置）                                  |
-| **描述**           | 可选，备注该 MCP 的用途                                        |
+| **认证类型**     | 无认证，或 API Key（以 Bearer Token 方式传递）                    |
+| **API Key**      | 选择 API Key 认证时必填                                           |
+| **HTTP 请求头**  | 可选的额外请求头（展开「高级」选项设置）                          |
+| **描述**         | 可选，备注该 MCP 的用途                                           |
 
 ### STDIO
 
 适用于在本地作为进程运行的 MCP 服务器 —— 命令行工具、脚本或本地安装的包。**仅支持 LobeHub 桌面客户端，网页版不支持此连接类型。**
 
-| 字段         | 说明                                                    |
-| ---------- | ----------------------------------------------------- |
-| **MCP 名称** | 该技能的唯一标识符                                             |
-| **命令**     | 要运行的可执行程序（例如 `npx`、`python`、`uv`）                     |
+| 字段         | 说明                                                              |
+| ------------ | ----------------------------------------------------------------- |
+| **MCP 名称** | 该技能的唯一标识符                                                |
+| **命令**     | 要运行的可执行程序（例如 `npx`、`python`、`uv`）                  |
 | **参数**     | 传递给命令的参数（例如 `-y @modelcontextprotocol/server-github`） |
-| **环境变量**   | 注入到进程环境中的键值对（API Key、路径等）                             |
-| **描述**     | 可选，备注该 MCP 的用途                                        |
+| **环境变量** | 注入到进程环境中的键值对（API Key、路径等）                       |
+| **描述**     | 可选，备注该 MCP 的用途                                           |
 
 ## 测试连接
 
@@ -131,12 +134,14 @@ MCP 市场提供了数以千计的现成集成，但有时你需要接入私有 
 
 技能的启用是按助理维度的 —— 为某个助理开启技能，不会自动为其他助理开启。
 
-<Callout type={'info'}>请仅安装来源可信的 MCP 服务器。恶意的 MCP 服务器可能会以你的身份执行意外操作。</Callout>
+<Callout type={'info'}>
+  请仅安装来源可信的 MCP 服务器。恶意的 MCP 服务器可能会以你的身份执行意外操作。
+</Callout>
 
 <Cards>
   <Card href={'/zh/docs/usage/community/mcp-market'} title={'MCP 市场'} />
 
-  <Card href={'/zh/docs/usage/community/skill-management'} title={'技能管理'} />
+<Card href={'/zh/docs/usage/community/skill-management'} title={'技能管理'} />
 
   <Card href={'/zh/docs/usage/getting-started/agent'} title={'助理'} />
 </Cards>

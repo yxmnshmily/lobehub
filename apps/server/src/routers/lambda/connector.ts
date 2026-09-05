@@ -37,7 +37,6 @@ import {
 import { syncConnectorToolsById } from '@/server/services/connector/sync';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 import {
-  resolveConnectorAuthorizerId,
   resolveUserDisplayMap,
   withTrustedLinkedByUserId,
 } from '@/server/utils/connectorAttribution';
@@ -46,6 +45,7 @@ import {
   assertWorkspaceRowManageable,
   isWorkspaceNonOwner,
 } from './_helpers/assertWorkspaceRowManageable';
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
 const connectorProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -64,6 +64,7 @@ const connectorProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts
 // Writes: workspace mode requires at least the member role, gating viewers
 // out (read-only role) while personal mode passes through unrestricted.
 const connectorWriteProcedure = connectorProcedure.use(requireWorkspaceRoleWhenScoped('member'));
+const connectorAdminWriteProcedure = connectorWriteProcedure.use(requirePlatformAdmin);
 
 const oidcConfigSchema = z.object({
   authorizationEndpoint: z.string().optional(),
@@ -129,28 +130,26 @@ export const connectorRouter = router({
   // ── Queries ──────────────────────────────────────────────────────────────
 
   list: connectorProcedure.query(async ({ ctx }) => {
-    const connectors = await ctx.connectorModel.query();
+    const connectors = await ctx.connectorModel.queryPublic();
 
     // Attribution — resolve the member who authorized each connector (workspace
     // dimension), so the profile can tag "authorized by X". The ids come from
     // scope-checked rows the caller already sees.
     const authorMap = await resolveUserDisplayMap(
       ctx.serverDB,
-      connectors.map((c) => resolveConnectorAuthorizerId(c)),
+      connectors.map((c) => c.authorizedByUserId),
     );
 
     const toolsByConnector = await Promise.all(
       connectors.map(async (c) => {
         const tools = await ctx.connectorToolModel.queryByConnector(c.id);
-        // Never ship decrypted OAuth tokens or the client secret to the browser.
-        const { credentials: _credentials, oidcConfig, ...rest } = c;
-        const safeOidcConfig = oidcConfig ? { ...oidcConfig, clientSecret: undefined } : oidcConfig;
-        const author = authorMap.get(resolveConnectorAuthorizerId(c) ?? '');
+        const { authorizedByUserId, avatar, description, userId: _userId, ...rest } = c;
+        const author = authorMap.get(authorizedByUserId);
         return {
           ...rest,
           authorizedByAvatar: author?.avatar ?? null,
           authorizedByName: author?.name ?? null,
-          oidcConfig: safeOidcConfig,
+          metadata: avatar || description ? { avatar, description } : null,
           tools,
         };
       }),
@@ -167,28 +166,25 @@ export const connectorRouter = router({
   listByAgent: connectorProcedure
     .input(z.object({ agentId: z.string() }))
     .query(async ({ input, ctx }) => {
-      const connectors = await ctx.connectorModel.queryByAgent(input.agentId);
+      const connectors = await ctx.connectorModel.queryByAgentPublic(input.agentId);
 
       // Attribution — the member who authorized each agent-scoped connector, so
       // a teammate viewing the agent sees "authorized by X" on each chip.
       const authorMap = await resolveUserDisplayMap(
         ctx.serverDB,
-        connectors.map((c) => resolveConnectorAuthorizerId(c)),
+        connectors.map((c) => c.authorizedByUserId),
       );
 
       return Promise.all(
         connectors.map(async (c) => {
           const tools = await ctx.connectorToolModel.queryByConnector(c.id);
-          const { credentials: _credentials, oidcConfig, ...rest } = c;
-          const safeOidcConfig = oidcConfig
-            ? { ...oidcConfig, clientSecret: undefined }
-            : oidcConfig;
-          const author = authorMap.get(resolveConnectorAuthorizerId(c) ?? '');
+          const { authorizedByUserId, avatar, description, userId: _userId, ...rest } = c;
+          const author = authorMap.get(authorizedByUserId);
           return {
             ...rest,
             authorizedByAvatar: author?.avatar ?? null,
             authorizedByName: author?.name ?? null,
-            oidcConfig: safeOidcConfig,
+            metadata: avatar || description ? { avatar, description } : null,
             tools,
           };
         }),
@@ -205,7 +201,7 @@ export const connectorRouter = router({
    * that workspace's agent connectors ( /).
    */
   listAgentBound: connectorProcedure.query(async ({ ctx }) => {
-    const connectors = await ctx.connectorModel.queryAllAgentScoped();
+    const connectors = await ctx.connectorModel.queryAllAgentScopedPublic();
 
     // Resolve owning-agent display info in one scoped query (workspace-aware),
     // instead of loading each agent's config client-side from a page that isn't
@@ -228,17 +224,20 @@ export const connectorRouter = router({
         .filter((c) => !!c.agentId && agentMetaById.has(c.agentId))
         .map(async (c) => {
           const tools = await ctx.connectorToolModel.queryByConnector(c.id);
-          const { credentials: _credentials, oidcConfig, ...rest } = c;
-          const safeOidcConfig = oidcConfig
-            ? { ...oidcConfig, clientSecret: undefined }
-            : oidcConfig;
+          const {
+            authorizedByUserId: _authorizedByUserId,
+            avatar,
+            description,
+            userId: _userId,
+            ...rest
+          } = c;
           const meta = agentMetaById.get(c.agentId!);
           return {
             ...rest,
             agentAvatar: meta?.avatar ?? null,
             agentName: meta?.name ?? null,
             agentTitle: meta?.title ?? null,
-            oidcConfig: safeOidcConfig,
+            metadata: avatar || description ? { avatar, description } : null,
             tools,
           };
         }),
@@ -258,7 +257,7 @@ export const connectorRouter = router({
    */
   // Member-gated even though it's a query: it returns decrypted credentials
   // for edit prefill, so a creator later downgraded to viewer must not reach it.
-  getForEdit: connectorWriteProcedure
+  getForEdit: connectorAdminWriteProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
       const connector = await ctx.connectorModel.findById(input.id);
@@ -285,82 +284,84 @@ export const connectorRouter = router({
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
-  create: connectorWriteProcedure.input(createConnectorSchema).mutation(async ({ input, ctx }) => {
-    const { agentId } = input;
+  create: connectorAdminWriteProcedure
+    .input(createConnectorSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { agentId } = input;
 
-    // Agent-scoped connector: the caller must be able to edit the target agent
-    // before a credential is bound to it — otherwise a user could attach their
-    // account to someone else's agent. Scoped to the caller's user/workspace.
-    if (agentId) {
-      const agentModel = new AgentModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
-      const canEdit = await agentModel.existsOwnedById(agentId);
-      if (!canEdit) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Agent not found or not editable' });
+      // Agent-scoped connector: the caller must be able to edit the target agent
+      // before a credential is bound to it — otherwise a user could attach their
+      // account to someone else's agent. Scoped to the caller's user/workspace.
+      if (agentId) {
+        const agentModel = new AgentModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
+        const canEdit = await agentModel.existsOwnedById(agentId);
+        if (!canEdit) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Agent not found or not editable' });
+        }
       }
-    }
 
-    const fields = {
-      // The model expects the decrypted JSON string and encrypts it at rest.
-      credentials: input.credentials ? JSON.stringify(input.credentials) : null,
-      mcpConnectionType: input.mcpConnectionType ?? null,
-      mcpServerUrl: input.mcpServerUrl ?? null,
-      mcpStdioConfig: input.mcpStdioConfig ?? null,
-      // Drop any client-supplied `composio.linkedByUserId` — it is server-owned
-      // (written by the OAuth connect path), and trusting it here would let a
-      // member spoof connector attribution. No existing row on create → the
-      // field is simply removed.
-      metadata: withTrustedLinkedByUserId(input.metadata, undefined) ?? null,
-      name: input.name,
-      oidcConfig: input.oidcConfig ?? null,
-    };
+      const fields = {
+        // The model expects the decrypted JSON string and encrypts it at rest.
+        credentials: input.credentials ? JSON.stringify(input.credentials) : null,
+        mcpConnectionType: input.mcpConnectionType ?? null,
+        mcpServerUrl: input.mcpServerUrl ?? null,
+        mcpStdioConfig: input.mcpStdioConfig ?? null,
+        // Drop any client-supplied `composio.linkedByUserId` — it is server-owned
+        // (written by the OAuth connect path), and trusting it here would let a
+        // member spoof connector attribution. No existing row on create → the
+        // field is simply removed.
+        metadata: withTrustedLinkedByUserId(input.metadata, undefined) ?? null,
+        name: input.name,
+        oidcConfig: input.oidcConfig ?? null,
+      };
 
-    // Idempotent on (user_id, identifier): re-adding or re-authorizing the same
-    // connector updates the existing row instead of violating the unique index.
-    // Status resets to `disconnected` — the OAuth callback / tool sync promotes
-    // it back to `connected` on success.
-    //
-    // `sourceType` is honored on update so the legacy customPlugin → connector
-    // migration can promote a half-baked `marketplace` row left behind by the
-    // older `syncPluginTools` code path into a proper `custom` row. Without
-    // this the connector would land but never appear in custom-connector
-    // listings (selector filters on sourceType === 'custom'). Safe because the
-    // other callers (`AddConnectorModal`, marketplace bootstrap) always pass
-    // the same sourceType they originally created the row with.
-    // Idempotent within the EXACT scope (this agent's row, or the base row when
-    // no agentId). The exact-scope lookup is critical: creating an agent
-    // connector must not update the personal/workspace row of the same
-    // identifier, and re-adding the same agent connector updates its own row —
-    // enforcing "one connector per identifier per agent" at the app layer (the
-    // DB indexes are non-unique so multiple same-identifier rows can coexist
-    // across scopes).
-    const existing = await ctx.connectorModel.findScopedByIdentifier(input.identifier, agentId);
-    if (existing) {
-      // The upsert path rewrites another creator's config/credentials — only
-      // the creator (or a workspace owner) may re-add over an existing row.
-      assertWorkspaceRowManageable(ctx, existing.userId, 'connector');
-      await ctx.connectorModel.update(existing.id, {
+      // Idempotent on (user_id, identifier): re-adding or re-authorizing the same
+      // connector updates the existing row instead of violating the unique index.
+      // Status resets to `disconnected` — the OAuth callback / tool sync promotes
+      // it back to `connected` on success.
+      //
+      // `sourceType` is honored on update so the legacy customPlugin → connector
+      // migration can promote a half-baked `marketplace` row left behind by the
+      // older `syncPluginTools` code path into a proper `custom` row. Without
+      // this the connector would land but never appear in custom-connector
+      // listings (selector filters on sourceType === 'custom'). Safe because the
+      // other callers (`AddConnectorModal`, marketplace bootstrap) always pass
+      // the same sourceType they originally created the row with.
+      // Idempotent within the EXACT scope (this agent's row, or the base row when
+      // no agentId). The exact-scope lookup is critical: creating an agent
+      // connector must not update the personal/workspace row of the same
+      // identifier, and re-adding the same agent connector updates its own row —
+      // enforcing "one connector per identifier per agent" at the app layer (the
+      // DB indexes are non-unique so multiple same-identifier rows can coexist
+      // across scopes).
+      const existing = await ctx.connectorModel.findScopedByIdentifier(input.identifier, agentId);
+      if (existing) {
+        // The upsert path rewrites another creator's config/credentials — only
+        // the creator (or a workspace owner) may re-add over an existing row.
+        assertWorkspaceRowManageable(ctx, existing.userId, 'connector');
+        await ctx.connectorModel.update(existing.id, {
+          ...fields,
+          isEnabled: input.isEnabled ?? true,
+          sourceType: input.sourceType,
+          status: ConnectorStatus.disconnected,
+        });
+        // `isNew` lets clients tell a fresh row from an updated pre-existing one —
+        // client-side caches can't answer this reliably (the connector list may
+        // not be fetched yet), and rollback-on-sync-failure must never delete a
+        // connector the user already had.
+        return { id: existing.id, isNew: false };
+      }
+
+      const created = await ctx.connectorModel.create({
         ...fields,
+        agentId: agentId ?? null,
+        identifier: input.identifier,
         isEnabled: input.isEnabled ?? true,
         sourceType: input.sourceType,
         status: ConnectorStatus.disconnected,
       });
-      // `isNew` lets clients tell a fresh row from an updated pre-existing one —
-      // client-side caches can't answer this reliably (the connector list may
-      // not be fetched yet), and rollback-on-sync-failure must never delete a
-      // connector the user already had.
-      return { id: existing.id, isNew: false };
-    }
-
-    const created = await ctx.connectorModel.create({
-      ...fields,
-      agentId: agentId ?? null,
-      identifier: input.identifier,
-      isEnabled: input.isEnabled ?? true,
-      sourceType: input.sourceType,
-      status: ConnectorStatus.disconnected,
-    });
-    return { id: created.id, isNew: true };
-  }),
+      return { id: created.id, isNew: true };
+    }),
 
   /**
    * Bind an existing connector to an agent (transfer it into the agent scope).
@@ -370,7 +371,7 @@ export const connectorRouter = router({
    * Guards: the caller must be able to edit the agent; the agent must not
    * already have a connector for this identifier (one per identifier per agent).
    */
-  bindAgent: connectorWriteProcedure
+  bindAgent: connectorAdminWriteProcedure
     .input(z.object({ agentId: z.string(), connectorId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const agentModel = new AgentModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
@@ -404,7 +405,7 @@ export const connectorRouter = router({
    * to keep the base scope single-per-identifier — the caller should delete the
    * agent connector instead of demoting it into a collision.
    */
-  unbindAgent: connectorWriteProcedure
+  unbindAgent: connectorAdminWriteProcedure
     .input(z.object({ connectorId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const connector = await ctx.connectorModel.findById(input.connectorId);
@@ -429,7 +430,7 @@ export const connectorRouter = router({
    * row (own credentials, separately editable). Server-side because the
    * credentials ciphertext never reaches the client (see ConnectorModel).
    */
-  copyToAgent: connectorWriteProcedure
+  copyToAgent: connectorAdminWriteProcedure
     .input(z.object({ agentId: z.string(), connectorId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const agentModel = new AgentModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
@@ -464,7 +465,7 @@ export const connectorRouter = router({
    * The row stays user-owned (keeps syncing with the user's edits) but resolves
    * for this agent and is locked so no other agent can mount the same one.
    */
-  mountToAgent: connectorWriteProcedure
+  mountToAgent: connectorAdminWriteProcedure
     .input(z.object({ agentId: z.string(), connectorId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const agentModel = new AgentModel(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined);
@@ -510,7 +511,7 @@ export const connectorRouter = router({
     }),
 
   /** Unmount a connector from its agent (clears the reference lock). */
-  unmountFromAgent: connectorWriteProcedure
+  unmountFromAgent: connectorAdminWriteProcedure
     .input(z.object({ connectorId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const connector = await ctx.connectorModel.findById(input.connectorId);
@@ -532,7 +533,7 @@ export const connectorRouter = router({
    * authorize URL for the client to open. The PKCE verifier is stashed in Redis
    * keyed by `state`; the callback route completes the exchange.
    */
-  startOAuth: connectorWriteProcedure
+  startOAuth: connectorAdminWriteProcedure
     .input(z.object({ id: z.string().uuid(), returnTo: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const connector = await ctx.connectorModel.findById(input.id);
@@ -618,7 +619,7 @@ export const connectorRouter = router({
       return { authorizationUrl };
     }),
 
-  update: connectorWriteProcedure
+  update: connectorAdminWriteProcedure
     .input(
       z.object({
         id: z.string().uuid(),
@@ -658,14 +659,13 @@ export const connectorRouter = router({
       } as any);
     }),
 
-  delete: connectorWriteProcedure
+  delete: connectorAdminWriteProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const target = await ctx.connectorModel.findById(input.id);
       // Missing row → keep the delete idempotent, nothing to authorize.
       if (!target) return;
       assertWorkspaceRowManageable(ctx, target.userId, 'connector');
-
       const connectedAccountId = target.metadata?.composio?.connectedAccountId;
       if (connectedAccountId) {
         try {
@@ -711,7 +711,7 @@ export const connectorRouter = router({
    * `user_connector_tools`. Manifest-derived fields are overwritten;
    * user permission settings are preserved.
    */
-  syncTools: connectorWriteProcedure
+  syncTools: connectorAdminWriteProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const target = await ctx.connectorModel.findById(input.id);
@@ -762,7 +762,7 @@ export const connectorRouter = router({
   /**
    * Reset all tool permissions for a connector back to 'auto' (fully open).
    */
-  resetPermissions: connectorWriteProcedure
+  resetPermissions: connectorAdminWriteProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       const target = await ctx.connectorModel.findById(input.id);
@@ -779,7 +779,7 @@ export const connectorRouter = router({
       return { toolCount: tools.length };
     }),
 
-  updateToolPermission: connectorWriteProcedure
+  updateToolPermission: connectorAdminWriteProcedure
     .input(
       z.object({
         permission: z.enum([
@@ -807,7 +807,7 @@ export const connectorRouter = router({
   // Bootstrap syncs run on detail-panel open for every role; viewer
   // restrictions are handled inside upsertConnectorEntry (read-only for
   // existing rows, no creation).
-  syncToolsFromClient: connectorProcedure
+  syncToolsFromClient: connectorAdminWriteProcedure
     .input(
       z.object({
         identifier: z.string().min(1),
@@ -856,7 +856,7 @@ export const connectorRouter = router({
    * Also promotes the connector to `connected`, mirroring what
    * `syncConnectorToolsById` does after a successful server-side sync.
    */
-  syncToolsFromClientById: connectorWriteProcedure
+  syncToolsFromClientById: connectorAdminWriteProcedure
     .input(
       z.object({
         id: z.string().uuid(),
@@ -892,7 +892,7 @@ export const connectorRouter = router({
    * by reading its manifest from @lobechat/builtin-tools.
    * Idempotent — safe to call on every open of the detail panel.
    */
-  syncBuiltinTool: connectorProcedure
+  syncBuiltinTool: connectorAdminWriteProcedure
     .input(z.object({ identifier: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const { builtinTools } = await import('@lobechat/builtin-tools');
@@ -940,7 +940,7 @@ export const connectorRouter = router({
    * transport endpoint) and would also collide on the unique `(user_id,
    * identifier)` index when the migration later tries to upsert.
    */
-  syncPluginTools: connectorProcedure
+  syncPluginTools: connectorAdminWriteProcedure
     .input(z.object({ identifier: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const plugin = await ctx.pluginModel.findById(input.identifier);

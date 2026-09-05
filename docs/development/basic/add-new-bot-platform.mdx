@@ -1,9 +1,7 @@
 ---
 title: Adding a New Bot Platform
 description: >-
-  Learn how to add a new bot platform (e.g., Slack, WhatsApp) to LobeHub's
-  channel system, including schema definition, client implementation, and
-  platform registration.
+  Learn how to add a new bot platform (e.g., Slack, WhatsApp) to LobeHub's channel system, including schema definition, client implementation, and platform registration.
 tags:
   - Bot Platform
   - Message Channels
@@ -188,7 +186,7 @@ export class PlatformApi {
     const response = await fetch(`${API_BASE}/${method}`, {
       body: JSON.stringify(body),
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        'Authorization': `Bearer ${this.token}`,
         'Content-Type': 'application/json',
       },
       method: 'POST',
@@ -255,7 +253,7 @@ class MyPlatformClient implements PlatformClient {
   createAdapter(): Record<string, any> {
     // Return a Chat SDK adapter instance for inbound message handling
     return {
-      'platform': createPlatformAdapter({
+      platform: createPlatformAdapter({
         botToken: this.config.credentials.botToken,
         // ... adapter-specific config
       }),
@@ -323,9 +321,9 @@ export class MyPlatformClientFactory extends ClientFactory {
 | `getMessenger()`      | Return outbound messaging interface for a thread            |
 | `extractChatId()`     | Parse platform channel ID from composite thread ID          |
 | `parseMessageId()`    | Convert composite message ID to platform-native format      |
-| `sanitizeUserInput()` | *(Optional)* Strip bot mention artifacts from user input    |
-| `shouldSubscribe()`   | *(Optional)* Control thread auto-subscription behavior      |
-| `formatReply()`       | *(Optional)* Append platform-specific formatting to replies |
+| `sanitizeUserInput()` | _(Optional)_ Strip bot mention artifacts from user input    |
+| `shouldSubscribe()`   | _(Optional)_ Control thread auto-subscription behavior      |
+| `formatReply()`       | _(Optional)_ Append platform-specific formatting to replies |
 
 ## Step 5: Export the Definition (`definition.ts`)
 

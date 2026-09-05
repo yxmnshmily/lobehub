@@ -34,6 +34,8 @@ export interface RuntimeExecutorContext {
    * tools: [] for an intermediate graph node and continue to another node.
    */
   allowEarlyFinalAnswerVisibleOutputEnd?: boolean;
+  /** Server-derived authenticated actor used only for platform Credits attribution. */
+  billingActorUserId?: string;
   botContext?: unknown;
   botPlatformContext?: BotPlatformContext;
   discordContext?: any;
@@ -60,6 +62,12 @@ export interface RuntimeExecutorContext {
   loadAgentState?: (operationId: string) => Promise<AgentState | null>;
   messageModel: MessageModel;
   operationId: string;
+  /** Server-validated capability for platform-managed model and generation credentials. */
+  platformManagedExecutionAuthorized?: true;
+  /** Trusted Website AI generation limit, available only with the capability above. */
+  platformManagedMaxCredits?: number;
+  /** Server-derived owner of agents, messages, files and tool resources. */
+  resourceOwnerUserId?: string;
   searchDecision?: SearchDecision;
   serverDB: LobeChatDatabase;
   stepIndex: number;

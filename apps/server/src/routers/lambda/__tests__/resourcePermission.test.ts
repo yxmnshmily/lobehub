@@ -6,6 +6,10 @@ import { canManageResourcePermission, getResourceMeta } from '@/server/services/
 
 import { resourcePermissionRouter } from '../resourcePermission';
 
+vi.mock('../_helpers/platformAdminGuard', () => ({
+  requirePlatformAdmin: async ({ next }: { next: () => unknown }) => next(),
+}));
+
 // `vi.mock` is hoisted above the imports at runtime, so the mocks are active
 // when the router module is evaluated. Kept below the imports to satisfy
 // `import-x/first`.

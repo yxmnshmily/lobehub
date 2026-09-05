@@ -38,6 +38,8 @@ import {
   normalizeMemoryExtractionPayload,
 } from '@/server/services/memory/userMemory/extract';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
+
 const userMemoryProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
   const wsId = ctx.workspaceId ?? undefined;
@@ -56,7 +58,9 @@ const userMemoryProcedure = wsCompatProcedure.use(serverDatabase).use(async (opt
     },
   });
 });
-const userMemoryWriteProcedure = userMemoryProcedure.use(withScopedPermission('message:create'));
+const userMemoryWriteProcedure = userMemoryProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('message:create'));
 const personalUserMemoryProcedure = userMemoryProcedure.use(async ({ ctx, next }) => {
   if (ctx.workspaceId) {
     throw new TRPCError({
@@ -66,9 +70,9 @@ const personalUserMemoryProcedure = userMemoryProcedure.use(async ({ ctx, next }
   }
   return next();
 });
-const personalUserMemoryWriteProcedure = personalUserMemoryProcedure.use(
-  withScopedPermission('message:create'),
-);
+const personalUserMemoryWriteProcedure = personalUserMemoryProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('message:create'));
 
 const userMemoryExtractionInputSchema = z.object({
   fromDate: z.coerce.date().optional(),

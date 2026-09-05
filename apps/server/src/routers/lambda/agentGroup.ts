@@ -52,6 +52,7 @@ import { after } from '@/server/utils/scheduleAfterResponse';
 import { TransferErrorCode } from '@/types/transferError';
 
 import { isWorkspaceNonOwner } from './_helpers/assertWorkspaceRowManageable';
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 import {
   getResourceConfigAccess,
   redactAgentConfig,
@@ -173,7 +174,9 @@ const agentGroupProcedure = wsCompatProcedure.use(serverDatabase).use(async (opt
 
 // Write variant gates viewers out of chat-group mutations (create/update/
 // delete + member adds/removes). Reads keep the bare proc.
-const agentGroupProcedureWrite = agentGroupProcedure.use(withScopedPermission('agent:update'));
+const agentGroupProcedureWrite = agentGroupProcedure
+  .use(requirePlatformAdmin)
+  .use(withScopedPermission('agent:update'));
 
 /**
  * Write a group's access level onto the group AND the group-owned virtual
@@ -1240,7 +1243,7 @@ export const agentGroupRouter = router({
       return result;
     }),
 
-  getGroupLock: agentGroupProcedureWrite
+  getGroupLock: agentGroupProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.workspaceId) return { expiresAt: null, holderId: null, lockedByOther: false };

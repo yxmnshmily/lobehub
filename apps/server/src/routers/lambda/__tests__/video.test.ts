@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { FileService } from '@/server/services/file';
+import { markPlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import { AsyncTaskStatus } from '@/types/asyncTask';
 
 // ---- hoisted mocks (available inside vi.mock factories) ----
@@ -173,6 +174,25 @@ describe('videoRouter', () => {
     mockFindUserById.mockResolvedValue({ email: 'user@example.com' });
     mockGenerationTopicFindById.mockResolvedValue({ id: 'topic-1' });
     mockIsLobeHubModelAvailable.mockResolvedValue(true);
+  });
+
+  it('fails closed before legacy charging, persistence, or provider calls for platform video', async () => {
+    setupMocks();
+    const { chargeBeforeGenerate } =
+      await import('@/business/server/video-generation/chargeBeforeGenerate');
+    const caller = videoRouter.createCaller(
+      markPlatformAiRuntime({ userId: 'test-user', workspaceId: 'workspace-1' }),
+    );
+
+    await expect(caller.createVideo(defaultInput)).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+      message: '[VIDEO_USAGE_UNAVAILABLE] 平台视频用量结算尚不可用。',
+    });
+
+    expect(chargeBeforeGenerate).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockCreateVideo).not.toHaveBeenCalled();
+    expect(mockProcessBackgroundVideoPolling).not.toHaveBeenCalled();
   });
 
   describe('createVideo - async strategy routing', () => {

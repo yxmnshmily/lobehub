@@ -19,6 +19,15 @@ import { standardizeIdentifier } from '@/utils/identifier';
 const ICON_SIZE = 80;
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
+  actions: css`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 200px);
+    justify-content: center;
+    gap: 12px;
+
+    width: 100%;
+    padding-inline: 16px;
+  `,
   actionTitle: css`
     margin-block-start: 12px;
     font-size: 16px;
@@ -29,12 +38,19 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     position: relative;
 
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 
     width: 200px;
     height: 140px;
+    padding: 16px;
+    border: 0;
     border-radius: ${cssVar.borderRadiusLG};
 
+    appearance: none;
+    color: inherit;
+    font: inherit;
     font-weight: 500;
     text-align: center;
 
@@ -45,6 +61,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     &:hover {
       background: ${cssVar.colorFillSecondary};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
     }
   `,
   glow: css`
@@ -261,11 +287,12 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
               <Text type={'secondary'}>{t('or', { ns: 'common' })}</Text>
             </Flexbox>
           )}
-          <Flexbox horizontal gap={12}>
+          <div className={styles.actions}>
             <Flexbox
+              aria-label={t('pageEditor.empty.createNewDocument')}
+              as={'button'}
               className={styles.card}
-              padding={16}
-              style={canCreate ? undefined : { cursor: 'not-allowed', opacity: 0.5 }}
+              disabled={!canCreate}
               onClick={() => handleCreateDocument('', t('pageList.untitled'))}
             >
               <span className={styles.actionTitle}>{t('pageEditor.empty.createNewDocument')}</span>
@@ -288,12 +315,10 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
               showUploadList={false}
             >
               <Flexbox
+                aria-label={t('pageEditor.empty.uploadFiles')}
+                as={'button'}
                 className={styles.card}
-                padding={16}
-                style={{
-                  cursor: canCreate ? undefined : 'not-allowed',
-                  opacity: !canCreate || isUploading ? 0.5 : 1,
-                }}
+                disabled={!canCreate || isUploading}
               >
                 <span className={styles.actionTitle}>
                   {isUploading ? 'Uploading...' : t('pageEditor.empty.uploadFiles')}
@@ -311,9 +336,10 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
 
             {/* Import from Notion */}
             <Flexbox
+              aria-label={t('pageEditor.empty.importNotion')}
+              as={'button'}
               className={styles.card}
-              padding={16}
-              style={canCreate ? undefined : { cursor: 'not-allowed', opacity: 0.5 }}
+              disabled={!canCreate}
               onClick={() => {
                 if (!canCreate) return;
 
@@ -330,7 +356,7 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
                 type={'file'}
               />
             </Flexbox>
-          </Flexbox>
+          </div>
         </Center>
         <input
           accept=".zip"

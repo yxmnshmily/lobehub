@@ -1,8 +1,7 @@
 ---
 title: Technical Development Getting Started Guide
 description: >-
-  Explore the LobeHub development setup, technology stack, and contribution
-  guidelines.
+  Explore the LobeHub development setup, technology stack, and contribution guidelines.
 tags:
   - LobeHub
   - Next.js
@@ -32,55 +31,49 @@ The core technology stack of LobeHub is as follows:
 
 ## Folder Directory Structure
 
-LobeHub uses a Monorepo architecture
-(`@lobechat/` namespace).
-The top-level directory structure is as follows:
+LobeHub uses a Monorepo architecture (`@lobechat/` namespace). The top-level directory structure is as follows:
 
 ```bash
 lobehub/
 ├── apps/
-│   ├── cli/               # LobeHub CLI
-│   ├── desktop/           # Electron desktop app
-│   └── server/            # Standalone server (tRPC routers, services, modules)
-├── packages/              # Shared packages (@lobechat/*)
-│   ├── database/          # Database schemas, models, repositories
-│   ├── agent-runtime/     # Agent runtime
-│   ├── model-runtime/     # Model runtime
-│   ├── app-config/        # App configuration, client and server env vars
-│   ├── env/               # Env var definitions and validation (analytics, auth, LLM, etc.)
-│   ├── locales/           # Internationalization default language files
-│   ├── builtin-tools/     # Built-in tools registry (inspectors, interventions, etc.)
-│   └── ...                # More shared packages
-├── src/                   # Main application source code
-│   ├── app/               # Next.js App Router: backend API routes + SPA/auth HTML shell serving
-│   ├── components/        # Reusable UI components
-│   ├── const/             # Application constants and enums
-│   ├── features/          # Business feature modules (Agent settings, plugin dev, etc.)
-│   ├── helpers/           # Utility helper functions
-│   ├── hooks/             # Reusable custom Hooks
-│   ├── layout/            # Layout components (AuthProvider, GlobalProvider, etc.)
-│   ├── libs/              # Third-party integrations (better-auth, OIDC, tRPC, etc.)
-│   ├── routes/            # SPA page segments, grouped by platform ((main)/(mobile)/(desktop)/(popup))
-│   ├── server/            # Remaining server-side modules not yet moved to apps/server
-│   ├── services/          # Client-side service interfaces
-│   ├── spa/               # SPA entry points and React Router config
-│   ├── store/             # Zustand state management
-│   ├── styles/            # Global styles and CSS-in-JS configurations
-│   ├── types/             # TypeScript type definitions
-│   └── utils/             # General utility functions
-├── locales/               # i18n translation files (zh-CN, en-US, etc.)
-└── e2e/                   # E2E tests (Cucumber + Playwright)
+│ ├── cli/           # LobeHub CLI
+│ ├── desktop/       # Electron desktop app
+│ └── server/        # Standalone server (tRPC routers, services, modules)
+├── packages/        # Shared packages (@lobechat/*)
+│ ├── database/      # Database schemas, models, repositories
+│ ├── agent-runtime/ # Agent runtime
+│ ├── model-runtime/ # Model runtime
+│ ├── app-config/    # App configuration, client and server env vars
+│ ├── env/           # Env var definitions and validation (analytics, auth, LLM, etc.)
+│ ├── locales/       # Internationalization default language files
+│ ├── builtin-tools/ # Built-in tools registry (inspectors, interventions, etc.)
+│ └── ...            # More shared packages
+├── src/             # Main application source code
+│ ├── app/           # Next.js App Router: backend API routes + SPA/auth HTML shell serving
+│ ├── components/    # Reusable UI components
+│ ├── const/         # Application constants and enums
+│ ├── features/      # Business feature modules (Agent settings, plugin dev, etc.)
+│ ├── helpers/       # Utility helper functions
+│ ├── hooks/         # Reusable custom Hooks
+│ ├── layout/        # Layout components (AuthProvider, GlobalProvider, etc.)
+│ ├── libs/          # Third-party integrations (better-auth, OIDC, tRPC, etc.)
+│ ├── routes/        # SPA page segments, grouped by platform ((main)/(mobile)/(desktop)/(popup))
+│ ├── server/        # Remaining server-side modules not yet moved to apps/server
+│ ├── services/      # Client-side service interfaces
+│ ├── spa/           # SPA entry points and React Router config
+│ ├── store/         # Zustand state management
+│ ├── styles/        # Global styles and CSS-in-JS configurations
+│ ├── types/         # TypeScript type definitions
+│ └── utils/         # General utility functions
+├── locales/         # i18n translation files (zh-CN, en-US, etc.)
+└── e2e/             # E2E tests (Cucumber + Playwright)
 ```
 
 For a detailed introduction to the directory structure, see: [Folder Directory Structure](/docs/development/basic/folder-structure)
 
 ## Local Development Environment Setup
 
-Please refer to the
-[Environment Setup Guide](/docs/development/basic/setup-development)
-for the complete setup process,
-including software installation, project configuration,
-Docker service startup, and database migrations.
+Please refer to the [Environment Setup Guide](/docs/development/basic/setup-development) for the complete setup process, including software installation, project configuration, Docker service startup, and database migrations.
 
 ## Code Style and Contribution Guide
 
@@ -95,14 +88,9 @@ For detailed code style and contribution guidelines, please refer to [Code Style
 
 ## Internationalization Implementation Guide
 
-LobeHub uses `react-i18next` for multilingual support,
-ensuring a global user experience.
+LobeHub uses `react-i18next` for multilingual support, ensuring a global user experience.
 
-Default language files are located in `packages/locales/src/default/`
-(English). Translation files are in the `locales/` directory.
-During development, you only need to edit keys in
-`packages/locales/src/default/` — CI automatically generates
-translation files for other languages.
+Default language files are located in `packages/locales/src/default/` (English). Translation files are in the `locales/` directory. During development, you only need to edit keys in `packages/locales/src/default/` — CI automatically generates translation files for other languages.
 
 If you want to add a new language, follow specific steps detailed in [New Language Addition Guide](/docs/development/internationalization/add-new-locale). We encourage you to participate in our internationalization efforts to provide better services to global users.
 

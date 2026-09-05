@@ -6,34 +6,56 @@ import type * as ModelBankModule from 'model-bank';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createServerAgentToolsEngine } from '@/server/modules/Mecha';
+import { AgentService } from '@/server/services/agent';
 import { AgentRuntimeService } from '@/server/services/agentRuntime';
 
 import { AiAgentService } from '../index';
+import {
+  getPlatformManagedExecutionContext,
+  grantPlatformManagedExecution,
+  hasPlatformManagedExecutionCapability,
+} from '../platformManagedExecution';
 
 const {
+  mockDebugLog,
+  mockBindSharedBudget,
+  mockCompleteSharedBudget,
   mockCreateOperation,
+  mockCreateSharedBudget,
   mockGetAgentConfig,
   mockGetBuiltinAgent,
   mockGetInfoForAIGeneration,
+  mockGetSharedBudget,
+  mockHasGlobalRole,
   mockIsAgentSignalEnabledForUser,
   mockMessageCreate,
   mockMessageQuery,
+  mockMessageUpdate,
   mockResolveTask,
   mockToolsEnv,
 } = vi.hoisted(() => ({
+  mockDebugLog: vi.fn(),
+  mockBindSharedBudget: vi.fn(),
+  mockCompleteSharedBudget: vi.fn(),
   mockCreateOperation: vi.fn(),
+  mockCreateSharedBudget: vi.fn(),
   mockGetAgentConfig: vi.fn(),
   mockGetBuiltinAgent: vi.fn(),
   mockGetInfoForAIGeneration: vi.fn(),
+  mockGetSharedBudget: vi.fn(),
+  mockHasGlobalRole: vi.fn(),
   mockIsAgentSignalEnabledForUser: vi.fn(),
   mockMessageCreate: vi.fn(),
   mockMessageQuery: vi.fn(),
+  mockMessageUpdate: vi.fn(),
   mockResolveTask: vi.fn(),
   mockToolsEnv: {
     MULTIMODAL_UNDERSTANDING_MODEL: undefined as string | undefined,
     MULTIMODAL_UNDERSTANDING_PROVIDER: undefined as string | undefined,
   },
 }));
+
+vi.mock('debug', () => ({ default: () => mockDebugLog }));
 
 vi.mock('@/envs/tools', () => ({
   toolsEnv: mockToolsEnv,
@@ -51,7 +73,13 @@ vi.mock('@/database/models/message', () => ({
     getLatestNonToolMessageId: vi.fn().mockResolvedValue(undefined),
     getLatestSpineMessageId: vi.fn().mockResolvedValue(undefined),
     query: mockMessageQuery,
-    update: vi.fn().mockResolvedValue({}),
+    update: mockMessageUpdate,
+  })),
+}));
+
+vi.mock('@/database/models/rbac', () => ({
+  RbacModel: vi.fn().mockImplementation((_db, principalUserId) => ({
+    hasGlobalRole: (role: string) => mockHasGlobalRole(role, principalUserId),
   })),
 }));
 
@@ -64,8 +92,8 @@ vi.mock('@/database/models/agent', () => ({
 }));
 
 vi.mock('@/server/services/agent', () => ({
-  AgentService: vi.fn().mockImplementation(() => ({
-    getAgentConfig: mockGetAgentConfig,
+  AgentService: vi.fn().mockImplementation((_db, resourceOwnerUserId) => ({
+    getAgentConfig: (identifier: string) => mockGetAgentConfig(identifier, resourceOwnerUserId),
   })),
 }));
 
@@ -143,6 +171,13 @@ vi.mock('@/server/services/agentRuntime', () => ({
   })),
 }));
 
+vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
+  bindPlatformUsageSharedBudget: mockBindSharedBudget,
+  completePlatformUsageSharedBudgetForOperation: mockCompleteSharedBudget,
+  createPlatformUsageSharedBudget: mockCreateSharedBudget,
+  getPlatformUsageSharedBudgetForOperation: mockGetSharedBudget,
+}));
+
 vi.mock('@/server/services/market', () => ({
   MarketService: vi.fn().mockImplementation(() => ({
     getLobehubSkillManifests: vi.fn().mockResolvedValue([]),
@@ -217,12 +252,17 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     vi.clearAllMocks();
     mockMessageCreate.mockResolvedValue({ id: 'msg-1' });
     mockMessageQuery.mockResolvedValue([]);
+    mockMessageUpdate.mockResolvedValue({});
     mockIsAgentSignalEnabledForUser.mockResolvedValue(true);
     mockResolveTask.mockResolvedValue(null);
     mockGetInfoForAIGeneration.mockResolvedValue({
       responseLanguage: 'en-US',
       userName: 'Test User',
     });
+    mockHasGlobalRole.mockResolvedValue(false);
+    mockCompleteSharedBudget.mockResolvedValue(true);
+    mockCreateSharedBudget.mockResolvedValue({});
+    mockGetSharedBudget.mockReturnValue(undefined);
     mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = 'vision-model';
     mockToolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER = 'test-provider';
     mockCreateOperation.mockResolvedValue({
@@ -351,6 +391,461 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
       'Agent not found: does-not-exist',
     );
     expect(mockGetBuiltinAgent).not.toHaveBeenCalled();
+  });
+
+  it('does not log prompt content or caller-controlled agent identifiers', async () => {
+    const secret = 'passenger@example.com sk-private-api-key';
+    mockGetAgentConfig.mockResolvedValue(null);
+
+    await expect(
+      service.execAgent({ agentId: 'agent-private-customer', prompt: secret }),
+    ).rejects.toThrow('Agent not found');
+
+    const logged = JSON.stringify(mockDebugLog.mock.calls);
+    expect(logged).not.toContain(secret);
+    expect(logged).not.toContain('passenger@example.com');
+    expect(logged).not.toContain('sk-private-api-key');
+    expect(logged).not.toContain('agent-private-customer');
+  });
+
+  it('does not log model, provider, operation, topic, message, or user identifiers', async () => {
+    const privateValues = [
+      'agent-private-id',
+      'model-private-id',
+      'provider-private-id',
+      'operation-private-id',
+      'queue-message-private-id',
+      userId,
+    ];
+    mockGetAgentConfig.mockResolvedValue({
+      chatConfig: {},
+      id: privateValues[0],
+      model: privateValues[1],
+      plugins: [],
+      provider: privateValues[2],
+      systemRole: '',
+    });
+    mockCreateOperation.mockResolvedValue({
+      autoStarted: true,
+      messageId: privateValues[4],
+      operationId: privateValues[3],
+      success: true,
+    });
+
+    await service.execAgent({ agentId: privateValues[0], prompt: 'safe request' });
+
+    const logged = JSON.stringify(mockDebugLog.mock.calls);
+    for (const value of privateValues) expect(logged).not.toContain(value);
+    for (const [event, ...fields] of mockDebugLog.mock.calls) {
+      expect([
+        'ai_agent.execution.aborted',
+        'ai_agent.execution.completed',
+        'ai_agent.execution.error',
+        'ai_agent.lifecycle',
+        'ai_agent.operation.created',
+        'ai_agent.request.accepted',
+      ]).toContain(event);
+      expect(fields.every((field) => typeof field === 'number')).toBe(true);
+    }
+  });
+
+  it('does not persist or log a raw provider failure in the assistant error detail', async () => {
+    const maliciousError =
+      'provider=db-internal user=passenger@example.com api_key=sk-private-provider-token';
+    mockGetAgentConfig.mockResolvedValue({
+      chatConfig: {},
+      id: 'agent-safe',
+      model: 'model-safe',
+      plugins: [],
+      provider: 'provider-safe',
+      systemRole: '',
+    });
+    mockCreateOperation.mockRejectedValueOnce(new Error(maliciousError));
+
+    const result = await service.execAgent({ agentId: 'agent-safe', prompt: 'safe request' });
+
+    expect(JSON.stringify(mockDebugLog.mock.calls)).not.toContain(maliciousError);
+    expect(JSON.stringify(mockMessageUpdate.mock.calls)).not.toContain(maliciousError);
+    expect(JSON.stringify(result)).not.toContain(maliciousError);
+    expect(mockMessageUpdate).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        error: {
+          body: { detail: 'Agent execution failed.' },
+          message: 'Agent execution failed.',
+          type: 'ServerAgentRuntimeError',
+        },
+      }),
+    );
+  });
+
+  it('does not expose a database error containing PII through debug or console output', async () => {
+    const maliciousError =
+      'database host=private-db user=traveler@example.com token=private-database-token';
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetInfoForAIGeneration.mockRejectedValueOnce(new Error(maliciousError));
+    mockGetAgentConfig.mockResolvedValue({
+      chatConfig: {},
+      id: 'agent-inbox',
+      model: 'gpt-4',
+      plugins: [],
+      provider: 'openai',
+      slug: 'inbox',
+      systemRole: '',
+    });
+
+    try {
+      await service.execAgent({ agentId: 'agent-inbox', prompt: 'safe request' });
+
+      const emitted = JSON.stringify([
+        mockDebugLog.mock.calls,
+        consoleError.mock.calls,
+        consoleWarn.mock.calls,
+      ]);
+      expect(emitted).not.toContain(maliciousError);
+      expect(emitted).not.toContain('traveler@example.com');
+      expect(emitted).not.toContain('private-database-token');
+    } finally {
+      consoleError.mockRestore();
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it('rejects a customer direct execAgent call for a stored platform-managed agent', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+
+    await expect(
+      service.execAgent({ agentId: 'agent-travel-supervisor', prompt: 'make a poster' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+  });
+
+  it('rejects a customer direct execGroupAgent call before creating a group topic', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+
+    await expect(
+      service.execGroupAgent({
+        agentId: 'agent-travel-supervisor',
+        groupId: 'group-travel',
+        message: 'make a poster',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+  });
+
+  it('does not log group message content or caller-controlled group identifiers', async () => {
+    const secret = '护照号E12345678 token=private-token-value';
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+
+    await expect(
+      service.execGroupAgent({
+        agentId: 'agent-private-supervisor',
+        groupId: 'group-private-customer',
+        message: secret,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    const logged = JSON.stringify(mockDebugLog.mock.calls);
+    expect(logged).not.toContain(secret);
+    expect(logged).not.toContain('E12345678');
+    expect(logged).not.toContain('private-token-value');
+    expect(logged).not.toContain('agent-private-supervisor');
+    expect(logged).not.toContain('group-private-customer');
+  });
+
+  it('does not log in-group member instructions or caller-controlled identifiers', async () => {
+    const secret = 'guest@example.com api_key=private-member-key';
+    vi.spyOn(service, 'execAgent').mockResolvedValue({
+      operationId: 'operation-1',
+      success: true,
+    } as any);
+
+    await service.execGroupMember({
+      agentId: 'agent-private-member',
+      anchorMessageId: 'anchor-private-member',
+      expectedMembers: 1,
+      groupId: 'group-private-member',
+      groupToolMessageId: 'tool-private-member',
+      instruction: secret,
+      mode: 'in_group',
+      onComplete: 'resume',
+      parentOperationId: 'operation-private-parent',
+      topicId: 'topic-private-member',
+    });
+
+    const logged = JSON.stringify(mockDebugLog.mock.calls);
+    expect(logged).not.toContain(secret);
+    expect(logged).not.toContain('guest@example.com');
+    expect(logged).not.toContain('private-member-key');
+    expect(logged).not.toContain('agent-private-member');
+    expect(logged).not.toContain('group-private-member');
+    expect(logged).not.toContain('topic-private-member');
+  });
+
+  it('inherits the parent shared budget into an in-group member only through the Symbol capability', async () => {
+    const sharedBudget = {};
+    mockGetSharedBudget.mockReturnValue(sharedBudget);
+    const execAgent = vi.spyOn(service, 'execAgent').mockResolvedValue({
+      operationId: 'member-operation',
+      success: true,
+    } as any);
+
+    await service.execGroupMember({
+      agentId: 'member-agent',
+      anchorMessageId: 'anchor-message',
+      expectedMembers: 1,
+      groupId: 'travel-group',
+      groupToolMessageId: 'group-tool-message',
+      instruction: 'prepare copy',
+      mode: 'in_group',
+      onComplete: 'resume',
+      parentOperationId: 'parent-operation',
+      topicId: 'topic-1',
+    });
+
+    const childParams = execAgent.mock.calls[0][0];
+    expect(mockGetSharedBudget).toHaveBeenCalledWith('parent-operation', {
+      actorUserId: userId,
+      workspaceId: undefined,
+    });
+    expect(getPlatformManagedExecutionContext(childParams)).toEqual({ sharedBudget });
+    expect(JSON.stringify(childParams)).not.toContain('sharedBudget');
+    expect(JSON.stringify(childParams)).not.toContain('platformManagedMaxCredits');
+  });
+
+  it('allows a server-authorized super_admin to execute a platform-managed agent', async () => {
+    mockHasGlobalRole.mockResolvedValue(true);
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+
+    await service.execAgent({ agentId: 'agent-travel-supervisor', prompt: 'inspect the setup' });
+
+    expect(mockHasGlobalRole).toHaveBeenCalledWith('super_admin', userId);
+    expect(mockCreateOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appContext: expect.not.objectContaining({
+          platformManagedExecutionAuthorized: expect.anything(),
+          platformManagedMaxCredits: expect.anything(),
+        }),
+      }),
+    );
+    expect(mockCreateSharedBudget).not.toHaveBeenCalled();
+  });
+
+  it('creates and binds the hosted limit as an opaque root budget without operation metadata', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+
+    await service.execAgent(
+      grantPlatformManagedExecution(
+        { agentId: 'agent-travel-supervisor', prompt: 'make a document' },
+        { maxCredits: 4321 },
+      ),
+    );
+
+    expect(mockCreateOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appContext: expect.not.objectContaining({
+          platformManagedExecutionAuthorized: expect.anything(),
+          platformManagedMaxCredits: expect.anything(),
+        }),
+      }),
+    );
+    expect(mockCreateSharedBudget).toHaveBeenCalledWith(
+      mockDb,
+      userId,
+      expect.objectContaining({
+        maxCredits: 4321,
+        requestIdentity: expect.stringMatching(/^platform-usage-request:/),
+      }),
+    );
+    expect(mockBindSharedBudget).toHaveBeenCalledWith(
+      expect.stringMatching(/^op_/),
+      {},
+      {
+        actorUserId: userId,
+        workspaceId: undefined,
+      },
+    );
+    expect((service as any).withholdGatewayToken).toBe(false);
+    expect(JSON.stringify(mockDebugLog.mock.calls)).not.toContain('4321');
+  });
+
+  it('reads hosted group resources as the owner while binding usage to the acting member', async () => {
+    const actorUserId = 'invited-member';
+    const resourceOwnerUserId = 'group-owner';
+    const sharedBudget = {};
+    mockGetAgentConfig.mockImplementation(async (_identifier, lookupUserId) =>
+      lookupUserId === resourceOwnerUserId
+        ? {
+            agencyConfig: { modelRuntimeMode: 'platform-managed' },
+            chatConfig: {},
+            id: 'agent-travel-supervisor',
+            model: 'deepseek-chat',
+            plugins: [],
+            provider: 'deepseek',
+            systemRole: 'Coordinate travel work.',
+            userId: resourceOwnerUserId,
+          }
+        : undefined,
+    );
+    service = new AiAgentService(mockDb, actorUserId, { resourceOwnerUserId } as any);
+
+    const result = await service.execPlatformManagedAgent(
+      { agentId: 'agent-travel-supervisor', prompt: 'write travel copy' },
+      {
+        actorUserId,
+        maxCredits: 4321,
+        resourceOwnerUserId,
+        sharedBudget,
+      } as any,
+    );
+
+    expect(vi.mocked(AgentService)).toHaveBeenLastCalledWith(
+      mockDb,
+      resourceOwnerUserId,
+      undefined,
+    );
+    expect(mockBindSharedBudget).toHaveBeenCalledWith(expect.stringMatching(/^op_/), sharedBudget, {
+      actorUserId,
+      workspaceId: undefined,
+    });
+    expect((service as any).withholdGatewayToken).toBe(true);
+    expect(result.token).toBeUndefined();
+  });
+
+  it('does not inherit platform admin authority from the hosted resource owner', async () => {
+    const actorUserId = 'invited-member';
+    const resourceOwnerUserId = 'admin-group-owner';
+    mockHasGlobalRole.mockImplementation(
+      async (_role, principalUserId) => principalUserId === resourceOwnerUserId,
+    );
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId: resourceOwnerUserId,
+    });
+    service = new AiAgentService(mockDb, actorUserId, { resourceOwnerUserId } as any);
+
+    await expect(
+      service.execAgent({ agentId: 'agent-travel-supervisor', prompt: 'bypass hosted billing' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockHasGlobalRole).toHaveBeenCalledWith('super_admin', actorUserId);
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+  });
+
+  it('rejects a hosted capability whose actor identity does not match the service principal', async () => {
+    const actorUserId = 'invited-member';
+    const resourceOwnerUserId = 'group-owner';
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId: resourceOwnerUserId,
+    });
+    service = new AiAgentService(mockDb, actorUserId, { resourceOwnerUserId } as any);
+
+    await expect(
+      service.execPlatformManagedAgent(
+        { agentId: 'agent-travel-supervisor', prompt: 'write travel copy' },
+        {
+          actorUserId: 'attacker',
+          maxCredits: 4321,
+          resourceOwnerUserId,
+          sharedBudget: {},
+        } as any,
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+  });
+
+  it('allows the hosted group entry without granting the browser a serializable capability', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+    const execAgent = vi.spyOn(service, 'execAgent').mockResolvedValue({
+      assistantMessageId: 'assistant-1',
+      operationId: 'operation-1',
+      success: true,
+      topicId: 'topic-1',
+      userMessageId: 'user-message-1',
+    } as any);
+
+    await service.execPlatformManagedGroupAgent(
+      {
+        agentId: 'agent-travel-supervisor',
+        groupId: 'group-travel',
+        message: 'make a poster',
+      },
+      { maxCredits: 4321 },
+    );
+
+    expect(mockHasGlobalRole).not.toHaveBeenCalled();
+    const internalParams = execAgent.mock.calls[0][0];
+    expect(hasPlatformManagedExecutionCapability(internalParams)).toBe(true);
+    expect(getPlatformManagedExecutionContext(internalParams)).toEqual({ maxCredits: 4321 });
+    expect(JSON.stringify(internalParams)).not.toContain('platform-managed-execution-capability');
+    expect(JSON.stringify(internalParams)).not.toContain('4321');
   });
 
   it('should merge runtime systemRole for inbox agent when DB systemRole is empty', async () => {

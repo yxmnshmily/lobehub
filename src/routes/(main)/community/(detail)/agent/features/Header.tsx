@@ -155,6 +155,7 @@ const Header = memo<{ mobile?: boolean }>(({ mobile: isMobile }) => {
             </Flexbox>
             <Tooltip title={isFavorited ? t('assistant.unfavorite') : t('assistant.favorite')}>
               <ActionIcon
+                aria-label={isFavorited ? t('assistant.unfavorite') : t('assistant.favorite')}
                 icon={isFavorited ? BookmarkCheckIcon : BookmarkIcon}
                 loading={favoriteLoading}
                 variant={isFavorited ? 'outlined' : undefined}

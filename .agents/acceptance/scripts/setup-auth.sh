@@ -90,8 +90,8 @@ SEED_PASSWORD="${SEED_PASSWORD:-TestPassword123!}"
 SEED_API_KEY="${SEED_API_KEY:-${AGENT_TESTING_API_KEY:-sk-lh-agenttesting0001}}"
 CLI_ENV_FILE="${CLI_ENV_FILE:-$REPO_ROOT/.records/env/agent-testing-cli.env}"
 
-ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
-bad()  { printf '  \033[31m✘\033[0m %s\n' "$1"; }
+ok() { printf '  \033[32m✔\033[0m %s\n' "$1"; }
+bad() { printf '  \033[31m✘\033[0m %s\n' "$1"; }
 note() { printf '      %s\n' "$1"; }
 
 usage() {
@@ -220,11 +220,11 @@ cmd_status() {
         surface="${1#*=}"
         shift
         ;;
-      all|cli|web|electron)
+      all | cli | web | electron)
         surface="$1"
         shift
         ;;
-      -h|--help)
+      -h | --help)
         usage
         return 0
         ;;
@@ -237,7 +237,7 @@ cmd_status() {
   done
 
   case "$surface" in
-    all|cli|web|electron) ;;
+    all | cli | web | electron) ;;
     "")
       echo "--surface requires one of: all, cli, web, electron" >&2
       return 2
@@ -552,7 +552,7 @@ case "${1:-status}" in
   web-seed) cmd_web_seed ;;
   web) cmd_web ;;
   web-verify) cmd_web_verify ;;
-  -h|--help) usage ;;
+  -h | --help) usage ;;
   *)
     echo "Usage: $0 {status|cli-seed|cli|open-chrome|web-seed|web|web-verify}" >&2
     exit 2

@@ -1,9 +1,11 @@
 import { CLIENT_VERSION_HEADER, CURRENT_VERSION } from '@lobechat/const';
 import {
   adminClient,
+  emailOTPClient,
   genericOAuthClient,
   inferAdditionalFields,
   magicLinkClient,
+  phoneNumberClient,
 } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
@@ -11,6 +13,9 @@ import { type auth } from '@/auth';
 
 export const {
   changeEmail,
+  changePassword,
+  emailOtp,
+  phoneNumber,
   linkSocial,
   oauth2,
   accountInfo,
@@ -31,9 +36,11 @@ export const {
   },
   plugins: [
     adminClient(),
+    emailOTPClient(),
     inferAdditionalFields<typeof auth>(),
     genericOAuthClient(),
     // Always include magicLinkClient - server will reject if not enabled
     magicLinkClient(),
+    phoneNumberClient(),
   ],
 });

@@ -88,8 +88,7 @@ describe('runAgentSignalWorkflow', () => {
     const parentMessageId = `msg_${uuid()}`;
     const baseTimestamp = new Date('2026-01-01T00:00:00.000Z').getTime();
     let capturedSourceEvent:
-      | AgentSignalSourceEvent<typeof AGENT_SIGNAL_SOURCE_TYPES.agentUserMessage>
-      | undefined;
+      AgentSignalSourceEvent<typeof AGENT_SIGNAL_SOURCE_TYPES.agentUserMessage> | undefined;
 
     await db.insert(users).values({ id: userId });
 
@@ -390,8 +389,7 @@ describe('runAgentSignalWorkflow', () => {
     const assistantMessageId = `msg_${uuid()}`;
     const baseTimestamp = new Date('2026-01-03T00:00:00.000Z').getTime();
     let capturedSourceEvent:
-      | AgentSignalSourceEvent<typeof AGENT_SIGNAL_SOURCE_TYPES.agentUserMessage>
-      | undefined;
+      AgentSignalSourceEvent<typeof AGENT_SIGNAL_SOURCE_TYPES.agentUserMessage> | undefined;
 
     await db.insert(users).values({ id: userId });
 

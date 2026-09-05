@@ -26,6 +26,7 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { signWorkspaceDeviceToken } from '@/libs/trpc/utils/internalJwt';
 import { type DeviceAttachment, deviceGateway } from '@/server/services/deviceGateway';
 
+import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 import { preserveWorkspaceCache } from './deviceWorkingDirs';
 import { assertWorkspaceDeviceVisible, assertWorkspaceRootApproved } from './deviceWorkspaceGuard';
 
@@ -85,7 +86,10 @@ const assertDeviceNotBoundToFixedAgent = async (
  * Enrolling a device mutates the shared workspace device pool, so read-only
  * viewers must not pass — `wsProcedure` alone only checks membership.
  */
-const wsWritableProcedure = wsProcedure.use(requireWorkspaceRole('member'));
+const wsWritableProcedure = wsProcedure
+  .use(serverDatabase)
+  .use(requirePlatformAdmin)
+  .use(requireWorkspaceRole('member'));
 
 // Workspace-aware (compat): with an `X-Workspace-Id` header the device list also
 // surfaces the workspace's shared devices; without it, the personal path is
@@ -131,6 +135,8 @@ const workspaceFileProcedure = deviceProcedure.input(workspaceFileInput).use(asy
   await assertWorkspaceRootApproved(opts.ctx.deviceModel, deviceId, workingDirectory);
   return opts.next();
 });
+const deviceWriteProcedure = deviceProcedure.use(requirePlatformAdmin);
+const workspaceFileWriteProcedure = workspaceFileProcedure.use(requirePlatformAdmin);
 
 export const deviceRouter = router({
   /**
@@ -366,7 +372,7 @@ export const deviceRouter = router({
    * Checkout (or create) a branch in a directory on a remote device, via the
    * device's `checkoutGitBranch` RPC.
    */
-  checkoutGitBranch: deviceProcedure
+  checkoutGitBranch: deviceWriteProcedure
     .input(
       z.object({
         branch: z.string(),
@@ -390,7 +396,7 @@ export const deviceRouter = router({
    * Rename a branch in a directory on a remote device, via the device's
    * `renameGitBranch` RPC.
    */
-  renameGitBranch: deviceProcedure
+  renameGitBranch: deviceWriteProcedure
     .input(
       z.object({
         deviceId: z.string(),
@@ -414,7 +420,7 @@ export const deviceRouter = router({
    * Delete a branch in a directory on a remote device, via the device's
    * `deleteGitBranch` RPC.
    */
-  deleteGitBranch: deviceProcedure
+  deleteGitBranch: deviceWriteProcedure
     .input(
       z.object({
         branch: z.string(),
@@ -436,7 +442,7 @@ export const deviceRouter = router({
    * Remove a worktree in a directory's repository on a remote device,
    * via the device's `removeGitWorktree` RPC.
    */
-  removeGitWorktree: deviceProcedure
+  removeGitWorktree: deviceWriteProcedure
     .input(
       z.object({
         deviceId: z.string(),
@@ -463,7 +469,7 @@ export const deviceRouter = router({
    * crafted web call can't ask the device to check out at an arbitrary absolute
    * path — the branch is folded to `-` in the folder name, so it can't traverse.
    */
-  addGitWorktree: deviceProcedure
+  addGitWorktree: deviceWriteProcedure
     .input(
       z.object({
         branch: z.string(),
@@ -486,7 +492,7 @@ export const deviceRouter = router({
    * Pull (`--ff-only`) the current branch of a directory on a remote device, via
    * the device's `pullGitBranch` RPC.
    */
-  pullGitBranch: deviceProcedure
+  pullGitBranch: deviceWriteProcedure
     .input(z.object({ deviceId: z.string(), path: z.string() }))
     .mutation(async ({ ctx, input }) =>
       deviceGateway.pullGitBranch({
@@ -501,7 +507,7 @@ export const deviceRouter = router({
    * Push the current branch of a directory on a remote device, via the device's
    * `pushGitBranch` RPC.
    */
-  pushGitBranch: deviceProcedure
+  pushGitBranch: deviceWriteProcedure
     .input(z.object({ deviceId: z.string(), path: z.string() }))
     .mutation(async ({ ctx, input }) =>
       deviceGateway.pushGitBranch({
@@ -664,7 +670,7 @@ export const deviceRouter = router({
    * Revert a single file in a directory on a remote device, via the device's
    * `revertGitFile` RPC.
    */
-  revertGitFile: deviceProcedure
+  revertGitFile: deviceWriteProcedure
     .input(z.object({ deviceId: z.string(), filePath: z.string(), path: z.string() }))
     .mutation(async ({ ctx, input }) =>
       deviceGateway.revertGitFile({
@@ -680,7 +686,7 @@ export const deviceRouter = router({
    * Move files/folders within a directory on a remote device, via the device's
    * `moveLocalFiles` RPC. Powers the Files tree's drag-to-move in device mode.
    */
-  moveProjectFiles: workspaceFileProcedure
+  moveProjectFiles: workspaceFileWriteProcedure
     .input(
       z.object({
         items: z.array(z.object({ newPath: z.string(), oldPath: z.string() })),
@@ -700,7 +706,7 @@ export const deviceRouter = router({
    * Rename a single file/folder in a directory on a remote device, via the
    * device's `renameLocalFile` RPC.
    */
-  renameProjectFile: workspaceFileProcedure
+  renameProjectFile: workspaceFileWriteProcedure
     .input(
       z.object({
         newName: z.string(),
@@ -722,7 +728,7 @@ export const deviceRouter = router({
    * Save edited content back to a file on a remote device, via the device's
    * `writeLocalFile` RPC. Powers remote save in the LocalFile editor.
    */
-  writeProjectFile: workspaceFileProcedure
+  writeProjectFile: workspaceFileWriteProcedure
     .input(
       z.object({
         content: z.string(),
@@ -1344,7 +1350,7 @@ export const deviceRouter = router({
    * `lh connect`). Upserts on (userId, deviceId); user-owned fields are
    * preserved on conflict.
    */
-  register: deviceProcedure
+  register: deviceWriteProcedure
     .input(
       z.object({
         deviceId: z.string().min(1).max(64),
@@ -1357,7 +1363,7 @@ export const deviceRouter = router({
       return ctx.deviceModel.register(input);
     }),
 
-  removeDevice: deviceProcedure
+  removeDevice: deviceWriteProcedure
     .input(z.object({ deviceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.deviceModel.delete(input.deviceId);
@@ -1369,7 +1375,7 @@ export const deviceRouter = router({
   }),
 
   /** User-editable fields only — never the machine-reported identity columns. */
-  updateDevice: deviceProcedure
+  updateDevice: deviceWriteProcedure
     .input(
       z.object({
         defaultCwd: z.string().nullish(),

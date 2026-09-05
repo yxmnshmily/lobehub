@@ -91,6 +91,7 @@ export enum SettingsTabs {
   Referral = 'referral',
   Security = 'security',
   ServiceModel = 'service-model',
+  ServiceOperations = 'service-operations',
   Skill = 'skill',
 
   Stats = 'stats',
@@ -99,6 +100,7 @@ export enum SettingsTabs {
   /** @deprecated Use ServiceModel instead */
   TTS = 'tts',
   Usage = 'usage',
+  Works = 'works',
 }
 
 /**

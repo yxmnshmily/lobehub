@@ -136,7 +136,7 @@ note() { printf '      %s\n' "$1"; }
 _http_reachable() {
   local url="$1" code
   command -v curl > /dev/null 2>&1 || return 2
-  code="$(curl -s -o /dev/null -m 3 -w '%{http_code}' "$url" 2>/dev/null || true)"
+  code="$(curl -s -o /dev/null -m 3 -w '%{http_code}' "$url" 2> /dev/null || true)"
   [[ -n "$code" && "$code" != "000" ]]
 }
 
@@ -150,11 +150,11 @@ _http_reachable() {
 _qstash_reachable() {
   command -v curl > /dev/null 2>&1 || return 2
   local base="${QSTASH_URL%/}" unauth auth
-  unauth="$(curl -s -o /dev/null -m 3 -w '%{http_code}' "$base/v2/schedules" 2>/dev/null || true)"
+  unauth="$(curl -s -o /dev/null -m 3 -w '%{http_code}' "$base/v2/schedules" 2> /dev/null || true)"
   [[ "$unauth" == "401" ]] || return 1
   auth="$(curl -s -o /dev/null -m 3 \
     -H "Authorization: Bearer ${QSTASH_TOKEN:-}" \
-    -w '%{http_code}' "$base/v2/schedules" 2>/dev/null || true)"
+    -w '%{http_code}' "$base/v2/schedules" 2> /dev/null || true)"
   [[ "$auth" == "200" ]]
 }
 
@@ -348,7 +348,7 @@ seed_user() {
   export AGENT_TESTING_API_KEY
   export AGENT_TESTING_CLI_ENV_FILE="${AGENT_TESTING_CLI_ENV_FILE:-$CLI_ENV_FILE_DEFAULT}"
   cd "$REPO_ROOT"
-  node <<'NODE'
+  node << 'NODE'
 const bcrypt = require('bcryptjs');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -564,8 +564,8 @@ cmd_preflight() {
   local failed=0
   echo "agent-runtime preflight (AGENT_RUNTIME_MODE=$AGENT_RUNTIME_MODE):"
 
-  if command -v docker > /dev/null 2>&1 &&
-    docker ps --format '{{.Names}}' | grep -Fxq "$REDIS_CONTAINER"; then
+  if command -v docker > /dev/null 2>&1 \
+    && docker ps --format '{{.Names}}' | grep -Fxq "$REDIS_CONTAINER"; then
     ok "Redis running: $REDIS_CONTAINER (queue-mode state)"
   else
     bad "Redis not running: $REDIS_CONTAINER"
@@ -615,11 +615,11 @@ cmd_qstash() {
 }
 
 process_start() {
-  ps -p "$1" -o lstart= 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  ps -p "$1" -o lstart= 2> /dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
 process_cwd() {
-  lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1
+  lsof -a -p "$1" -d cwd -Fn 2> /dev/null | sed -n 's/^n//p' | head -1
 }
 
 write_dev_state() {
@@ -657,18 +657,18 @@ collect_descendants() {
     [[ -n "$child" ]] || continue
     collect_descendants "$child"
     printf '%s\n' "$child"
-  done < <(pgrep -P "$parent" 2>/dev/null || true)
+  done < <(pgrep -P "$parent" 2> /dev/null || true)
 }
 
 state_owns_process() {
   local pid="$1" expected_start="$2" expected_root="$3" mode="$4"
   local actual_start actual_cwd command
-  kill -0 "$pid" 2>/dev/null || return 1
+  kill -0 "$pid" 2> /dev/null || return 1
   actual_start="$(process_start "$pid")"
   [[ -n "$actual_start" && "$actual_start" == "$expected_start" ]] || return 1
   actual_cwd="$(process_cwd "$pid")"
   [[ "$actual_cwd" == "$expected_root" || "$actual_cwd" == "$expected_root/"* ]] || return 1
-  command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  command="$(ps -p "$pid" -o command= 2> /dev/null || true)"
   case "$mode" in
     dev) [[ "$command" == *"bun"* && "$command" == *"run dev"* ]] ;;
     dev-next) [[ "$command" == *"next"* && "$command" == *"dev"* ]] ;;
@@ -680,17 +680,17 @@ stop_owned_process_tree() {
   local root_pid="$1" descendants pid
   descendants="$(collect_descendants "$root_pid")"
   for pid in $descendants; do
-    kill -TERM "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2> /dev/null || true
   done
-  kill -TERM "$root_pid" 2>/dev/null || true
+  kill -TERM "$root_pid" 2> /dev/null || true
   for _ in $(seq 1 20); do
-    kill -0 "$root_pid" 2>/dev/null || return 0
+    kill -0 "$root_pid" 2> /dev/null || return 0
     sleep 0.1
   done
   for pid in $descendants; do
-    kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL "$pid" 2> /dev/null || true
   done
-  kill -KILL "$root_pid" 2>/dev/null || true
+  kill -KILL "$root_pid" 2> /dev/null || true
 }
 
 cmd_s3() {
@@ -790,13 +790,19 @@ usage() {
 COMMAND="${1:-status}"
 
 case "$COMMAND" in
-  help|-h|--help) usage; exit 0 ;;
+  help | -h | --help)
+    usage
+    exit 0
+    ;;
   *) guard_no_root_env ;;
 esac
 
 case "$COMMAND" in
   env) print_env ;;
-  write) shift; write_env "${1:-}" ;;
+  write)
+    shift
+    write_env "${1:-}"
+    ;;
   setup-db)
     start_db
     start_redis

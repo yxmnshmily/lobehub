@@ -35,6 +35,27 @@ describe('HomeRepository', () => {
       expect(result.groups).toEqual([]);
     });
 
+    it('marks only the reserved travel service group as platform-managed', async () => {
+      await clientDB.insert(Schema.chatGroups).values([
+        {
+          clientId: 'default-travel-service-group',
+          title: 'User editable title',
+          userId,
+        },
+        {
+          clientId: 'user-created-group',
+          title: '旅游群主AI',
+          userId,
+        },
+      ]);
+
+      const result = await homeRepo.getSidebarAgentList();
+      const byTitle = Object.fromEntries(result.ungrouped.map((item) => [item.title, item]));
+
+      expect(byTitle['User editable title']).toMatchObject({ managementPolicy: 'platform' });
+      expect(byTitle['旅游群主AI']).toMatchObject({ managementPolicy: 'user' });
+    });
+
     it('should return non-virtual agents without agentsToSessions relationship', async () => {
       // Create an agent without session relationship (e.g., duplicated agent)
       const agentId = 'standalone-agent';
