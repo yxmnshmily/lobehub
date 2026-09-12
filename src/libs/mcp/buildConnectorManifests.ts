@@ -101,8 +101,7 @@ function buildMcpParams(connector: DecryptedConnector) {
   // Merge them on top of any header-type credential headers (legacy rows), to
   // mirror the sync/callTool path in services/connector/sync.ts.
   const customHeaders = connector.metadata?.customHeaders as Record<string, string> | undefined;
-  const mergedHeaders =
-    headers || customHeaders ? { ...headers, ...customHeaders } : undefined;
+  const mergedHeaders = headers || customHeaders ? { ...headers, ...customHeaders } : undefined;
 
   return {
     auth,

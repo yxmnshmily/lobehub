@@ -148,7 +148,7 @@ const reviewDiffUnsafeCSS = `
     min-width: 18px !important;
     height: 18px !important;
     margin-right: calc(1ch - 8px) !important;
-    border: 1px solid #0969da !important;
+    border: 0.5px solid #0969da !important;
     border-radius: 4px !important;
     background: #0969da !important;
     background-color: #0969da !important;

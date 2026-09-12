@@ -1,14 +1,14 @@
 import { Block, Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
-import { formatShortenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatShortenNumber } from '@/utils/format';
 
 import { HeatmapType } from '../../types';
 
@@ -34,7 +34,7 @@ const formatDuration = (seconds?: number) => {
  * cards above, so it is intentionally not repeated here.
  */
 const HeatmapStats = memo(() => {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
 
   const { data, isLoading } = useClientDataSWR(statsKeys.heatmaps(HeatmapType.Tokens), () =>
     messageService.getTokenHeatmaps(),
@@ -76,7 +76,10 @@ const HeatmapStats = memo(() => {
   const days = (n: number) => [n, t('stats.days')].join(' ');
 
   const items = [
-    { label: t('stats.heatmapStats.peakTokens'), value: formatShortenNumber(stats.peak) },
+    {
+      label: t('stats.heatmapStats.peakTokens'),
+      value: formatShortenNumber(stats.peak, i18n.language),
+    },
     {
       label: t('stats.heatmapStats.longestTask'),
       loading: maxTaskDuration === undefined,
@@ -104,7 +107,7 @@ const HeatmapStats = memo(() => {
             style={{ minWidth: 0, paddingBlock: 6, paddingInline: 4, textAlign: 'center' }}
           >
             <div style={{ fontSize: 20, fontWeight: 'bold' }}>
-              {loading || item.loading ? <Skeleton height={28} width={56} /> : item.value}
+              {loading || item.loading ? <SkeletonBar height={28} width={56} /> : item.value}
             </div>
             <div
               style={{

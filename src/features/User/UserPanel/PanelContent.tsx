@@ -9,7 +9,6 @@ import Menu, { type MenuProps } from '@/components/Menu';
 import { isDesktop } from '@/const/version';
 import UserInfo from '@/features/User/UserInfo';
 import { useSignOut } from '@/hooks/useSignOut';
-import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/selectors';
 
@@ -19,7 +18,6 @@ import { useMenu } from './useMenu';
 const PanelContent: FC<{ closePopover: () => void }> = ({ closePopover }) => {
   const isLoginWithAuth = useUserStore(authSelectors.isLoginWithAuth);
   const openSignIn = useUserStore((s) => s.openLogin);
-  const enableBusinessFeatures = useServerConfigStore(serverConfigSelectors.enableBusinessFeatures);
   const { mainItems, logoutItems } = useMenu();
   const signOut = useSignOut();
 
@@ -35,12 +33,15 @@ const PanelContent: FC<{ closePopover: () => void }> = ({ closePopover }) => {
   };
 
   return (
-    <Flexbox gap={2} style={{ minWidth: 300 }}>
+    <Flexbox
+      gap={2}
+      style={{ maxWidth: 'calc(100vw - 32px)', minWidth: 'min(300px, 100%)', width: 300 }}
+    >
       {isDesktop || isLoginWithAuth ? (
         <>
           <UserInfo avatarProps={{ clickable: false }} />
           <UserPanelStatistics />
-          {enableBusinessFeatures && <BusinessPanelContent />}
+          {isLoginWithAuth && <BusinessPanelContent onNavigate={closePopover} />}
           <UserPanelWorkspaceSection onSwitch={closePopover} />
         </>
       ) : (

@@ -47,11 +47,24 @@ export const compressContext =
     const { operationId, stepIndex, userId } = operation;
     const events: AgentEvent[] = [];
     const newState = structuredClone(state);
-    const topicId = state.metadata?.topicId ?? operation.topicId;
+    const activeTopicId = state.metadata?.topicId ?? operation.topicId;
     const workspaceId = state.metadata?.workspaceId ?? operation.workspaceId;
     const agentId = operation.agentId ?? state.metadata?.agentId;
     const groupId = operation.groupId ?? state.metadata?.groupId;
     const threadId = operation.threadId ?? state.metadata?.threadId;
+    const groupTimeline = Boolean(groupId && !threadId);
+    // Group timelines span topics, but persisted compression groups belong to one topic.
+    // Compact one older topic at a time and retain the rest of the runtime timeline.
+    const olderTopic = groupTimeline
+      ? messages.find(
+          (message) =>
+            message.topicId &&
+            message.topicId !== activeTopicId &&
+            message.role !== 'system' &&
+            message.role !== 'compressedGroup',
+        )?.topicId
+      : undefined;
+    const topicId = olderTopic ?? activeTopicId;
     const compression = transports.compression;
     const llm = transports.llm;
     // The latest user turn is the active contract even after assistant/tool steps have followed it.
@@ -59,13 +72,15 @@ export const compressContext =
     // Current Work instruction into historical prose or reactivate an older objective.
     const latestUserMessage =
       messages.length > 1 ? messages.findLast((message) => message.role === 'user') : undefined;
-    const preservedMessages = latestUserMessage ? [latestUserMessage] : [];
+    const preservedMessages = latestUserMessage
+      ? groupTimeline
+        ? messages.slice(messages.indexOf(latestUserMessage))
+        : [latestUserMessage]
+      : [];
     const preservedMessageIds = new Set(
       preservedMessages.map((message) => message.id).filter((id): id is string => Boolean(id)),
     );
-    const messagesToCompress = latestUserMessage
-      ? messages.filter((message) => message !== latestUserMessage)
-      : messages;
+    const messagesToCompress = messages.filter((message) => !preservedMessages.includes(message));
     const createNextContext = ({
       groupId,
       parentMessageId,
@@ -153,9 +168,13 @@ export const compressContext =
       }
 
       const latestAssistantMessage = dbMessages.findLast((message) => message.role === 'assistant');
-      const parentMessageId =
-        latestAssistantMessage?.id ??
-        (sourceCompressionGroups.at(-1) as { lastMessageId?: string } | undefined)?.lastMessageId;
+      const parentMessageId = olderTopic
+        ? (messages.findLast(
+            (message) => message.topicId === activeTopicId && message.role === 'assistant',
+          )?.id ?? latestUserMessage?.id)
+        : (latestAssistantMessage?.id ??
+          (sourceCompressionGroups.at(-1) as { lastMessageId?: string } | undefined)
+            ?.lastMessageId);
       const compressionModel =
         newState.modelRuntimeConfig?.compressionModel || newState.modelRuntimeConfig;
 
@@ -174,7 +193,7 @@ export const compressContext =
       createdGroupId = compressionResult.messageGroupId;
 
       const compressionPayload = await compression.buildPrompt({
-        existingSummary: persistedExistingSummary || existingSummary,
+        existingSummary: persistedExistingSummary || (olderTopic ? undefined : existingSummary),
         messages: compressionResult.messagesToSummarize,
       });
 
@@ -203,6 +222,9 @@ export const compressContext =
         abortError.name = 'AbortError';
         throw abortError;
       }
+      if (!summaryResult.content?.trim()) {
+        throw new Error('Context compression returned an empty summary');
+      }
 
       const finalCompression = await compression.finalizeGroup({
         agentId,
@@ -227,7 +249,20 @@ export const compressContext =
         finalCompression.messages ??
         finalizedMessagesFallback ??
         compressionResult.messagesToSummarize;
-      const compressedMessages = [...compressedMessagesBase];
+      const firstTopicIndex = messages.findIndex(
+        (message) => message.topicId === topicId && !preservedMessageIds.has(message.id),
+      );
+      const hasOtherTopics =
+        groupTimeline && messages.some((message) => message.topicId && message.topicId !== topicId);
+      const compressedMessages = hasOtherTopics
+        ? messages.flatMap((message, index) => {
+            if (message.topicId !== topicId || preservedMessageIds.has(message.id))
+              return [message];
+            return index === firstTopicIndex
+              ? compressedMessagesBase.filter((item) => !preservedMessageIds.has(item.id))
+              : [];
+          })
+        : [...compressedMessagesBase];
 
       for (const preservedMessage of preservedMessages) {
         if (

@@ -20,7 +20,9 @@ const List = memo<
   }
 >(({ namespace, useStore, viewModeStatusKey, visibility }) => {
   const isLogin = useUserStore(authSelectors.isLogin);
-  const viewMode = useGlobalStore((s) => systemStatusSelectors[viewModeStatusKey](s));
+  const viewMode = useGlobalStore((s) =>
+    systemStatusSelectors.showLeftPanel(s) ? systemStatusSelectors[viewModeStatusKey](s) : 'list',
+  );
 
   const useFetchGenerationTopics = useStore((s: any) => s.useFetchGenerationTopics);
   const { data, isLoading } = useFetchGenerationTopics(!!isLogin) ?? {};

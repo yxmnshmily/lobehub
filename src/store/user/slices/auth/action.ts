@@ -13,18 +13,19 @@ interface AuthProvidersData {
 const fetchAuthProvidersData = async (): Promise<AuthProvidersData> => {
   const { accountInfo, listAccounts } = await import('@/libs/better-auth/auth-client');
   const result = await listAccounts();
-  const accounts = result.data || [];
+  if (result.error || !Array.isArray(result.data)) throw new Error('Linked accounts unavailable');
+  const accounts = result.data;
   const hasPasswordAccount = accounts.some((account) => account.providerId === 'credential');
   const providers = await Promise.all(
     accounts
       .filter((account) => account.providerId !== 'credential')
       .map(async (account) => {
-        // In theory, the id_token could be decrypted from the accounts table, but I found that better-auth on GitHub does not save the id_token
-        const info = await accountInfo({
-          query: { accountId: account.accountId },
-        });
+        // Provider profile metadata is optional; its failure must not hide a confirmed link.
+        const info = await accountInfo({ query: { accountId: account.accountId } }).catch(
+          () => null,
+        );
         return {
-          email: info.data?.user?.email ?? undefined,
+          email: info?.data?.user?.email ?? undefined,
           provider: account.providerId,
           providerAccountId: account.accountId,
         };
@@ -51,13 +52,7 @@ export class UserAuthActionImpl {
     // Skip if already loaded
     if (this.#get().isLoadedAuthProviders) return;
 
-    try {
-      const { hasPasswordAccount, providers } = await fetchAuthProvidersData();
-      this.#set({ authProviders: providers, hasPasswordAccount, isLoadedAuthProviders: true });
-    } catch (error) {
-      console.error('Failed to fetch auth providers:', error);
-      this.#set({ isLoadedAuthProviders: true });
-    }
+    await this.refreshAuthProviders();
   };
 
   logout = async (options?: { redirectTo?: string }): Promise<void> => {
@@ -103,11 +98,16 @@ export class UserAuthActionImpl {
   };
 
   refreshAuthProviders = async (): Promise<void> => {
+    if (this.#get().isLoadingAuthProviders) return;
+    this.#set({ isLoadingAuthProviders: true, authProvidersError: false });
     try {
       const { hasPasswordAccount, providers } = await fetchAuthProvidersData();
-      this.#set({ authProviders: providers, hasPasswordAccount });
-    } catch (error) {
-      console.error('Failed to refresh auth providers:', error);
+      this.#set({ authProviders: providers, hasPasswordAccount, isLoadedAuthProviders: true });
+    } catch {
+      // Preserve confirmed links and allow retry; never turn a failed request into an empty success.
+      this.#set({ authProvidersError: true, isLoadedAuthProviders: false });
+    } finally {
+      this.#set({ isLoadingAuthProviders: false });
     }
   };
 }

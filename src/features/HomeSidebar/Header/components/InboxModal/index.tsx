@@ -12,6 +12,7 @@ import {
   Tabs,
   Text,
   toast,
+  useModalContext,
 } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import type { LucideIcon } from 'lucide-react';
@@ -27,6 +28,7 @@ import {
   CreditCardIcon,
   ListTodoIcon,
   MoreHorizontalIcon,
+  SettingsIcon,
   SparklesIcon,
   TagIcon,
 } from 'lucide-react';
@@ -39,6 +41,7 @@ import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { PENDING_TRANSFERS_SWR_KEY } from '@/features/ResourceTransferRequest';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import dynamic from '@/libs/next/dynamic';
 import { mutate, useClientDataSWR } from '@/libs/swr';
 import { inboxKeys } from '@/libs/swr/keys';
@@ -71,7 +74,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex: none;
     gap: 0;
     padding: 0;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   headerMain: css`
     min-width: 0;
@@ -101,7 +104,7 @@ const styles = createStaticStyles(({ css }) => ({
     box-sizing: border-box;
     width: clamp(160px, 22vw, 220px);
     padding: 8px;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 
@@ -145,6 +148,8 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 const InboxModalContent = memo(() => {
   const { i18n, t } = useTranslation('notification');
+  const { close } = useModalContext();
+  const navigate = useWorkspaceAwareNavigate();
   const workspaceId = useActiveWorkspaceId();
   const [navigationFilter, setNavigationFilter] = useState(ALL_FILTER);
   const [readStatus, setReadStatus] = useState<ReadStatus>('unread');
@@ -165,7 +170,7 @@ const InboxModalContent = memo(() => {
   } = useClientDataSWR<CategoryCount[]>(
     inboxKeys.navigationCounts(workspaceId),
     () => notificationService.getNavigationCounts(),
-    { revalidateOnFocus: false },
+    { refreshInterval: 15_000, revalidateOnFocus: true },
   );
 
   // Same key Content uses, so this reads the shared cache entry. The server
@@ -361,6 +366,15 @@ const InboxModalContent = memo(() => {
             <DropdownMenu
               placement="bottomRight"
               items={[
+                {
+                  icon: SettingsIcon,
+                  key: 'notification-settings',
+                  label: '通知设置',
+                  onClick: () => {
+                    close();
+                    navigate('/settings/notification');
+                  },
+                },
                 {
                   disabled:
                     archivableTotalCount === 0 ||

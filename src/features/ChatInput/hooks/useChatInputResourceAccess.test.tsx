@@ -34,6 +34,16 @@ vi.mock('@/store/agentGroup/selectors', () => ({
 }));
 
 describe('useChatInputResourceAccess', () => {
+  it('keeps the shared composer usable without exposing centrally managed configuration', () => {
+    const store = createStore({ readOnlyConfig: true });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider createStore={() => store}>{children}</Provider>
+    );
+    const { result } = renderHook(() => useChatInputResourceAccess(), { wrapper });
+    expect(result.current.canConfigureResource).toBe(false);
+    expect(result.current.canUseResource).toBe(true);
+    expect(result.current.canShowControls).toBe(true);
+  });
   afterEach(() => {
     useResourceAccessMock.mockClear();
   });

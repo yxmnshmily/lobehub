@@ -1,7 +1,7 @@
 'use client';
 
 import { SiDiscord, SiGithub, SiRss, SiX, SiYoutube } from '@icons-pack/react-simple-icons';
-import { BRANDING_EMAIL, BRANDING_NAME, SOCIAL_URL } from '@lobechat/business-const';
+import { BRANDING_EMAIL, SOCIAL_URL } from '@lobechat/business-const';
 import { Flexbox, Form } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { createStaticStyles } from 'antd-style';
@@ -21,6 +21,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-weight: bold;
     color: ${cssVar.colorTextSecondary};
   `,
+  /* 已移除标题：把折叠面板的标题栏整条隐藏，连带它下面的那条边线一起去掉 */
+  noHeader: css`
+    .ant-collapse-header {
+      display: none !important;
+    }
+  `,
 }));
 
 const About = memo<{ mobile?: boolean }>(({ mobile }) => {
@@ -28,10 +34,10 @@ const About = memo<{ mobile?: boolean }>(({ mobile }) => {
 
   return (
     <Form.Group
+      className={styles.noHeader}
       collapsible={false}
       gap={16}
-      style={{ maxWidth: '1024px', width: '100%' }}
-      title={`${t('about')} ${BRANDING_NAME}`}
+      style={{ maxWidth: '100%', minWidth: 0, width: '100%' }}
       variant={'filled'}
     >
       <Flexbox gap={20} paddingBlock={20} width={'100%'}>

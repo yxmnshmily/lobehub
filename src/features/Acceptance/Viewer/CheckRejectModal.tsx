@@ -51,7 +51,7 @@ const styles = createStaticStyles(({ css }) => ({
   modalFooter: css`
     flex: none;
     padding-block-start: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   regionIndex: css`
     flex: none;
@@ -113,7 +113,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex: 1;
 
     min-width: 0;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};
@@ -138,7 +138,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 4px;
     padding-inline: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 99px;
 
     background: ${cssVar.colorBgElevated};

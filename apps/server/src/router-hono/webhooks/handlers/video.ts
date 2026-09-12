@@ -4,7 +4,7 @@ import {
   buildMappedBusinessModelFields,
   resolveBusinessModelMapping,
 } from '@lobechat/business-model-runtime';
-import { ModelRuntime } from '@lobechat/model-runtime';
+import { computeVideoCost, getModelPricing, ModelRuntime } from '@lobechat/model-runtime';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -26,6 +26,8 @@ import { GenerationModel } from '@/database/models/generation';
 import { generationBatches } from '@/database/schemas';
 import { getServerDB } from '@/database/server';
 import { VideoGenerationService } from '@/server/services/generation/video';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
+import { PlatformManagedVideoUsageSettlement } from '@/server/services/platformUsageBilling/settlement';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
 
 const log = debug('lobe-video:webhook');
@@ -160,6 +162,13 @@ export const videoWebhook = async (c: Context<BlankEnv, '/video/:provider'>) => 
         error: new AsyncTaskError(AsyncTaskErrorType.ServerError, result.error),
         status: AsyncTaskStatus.Error,
       });
+      await notifyGenerationFailed({
+        kind: 'video',
+        asyncTaskId: asyncTask.id,
+        topicId: batch?.generationTopicId,
+        userId: asyncTask.userId,
+        workspaceId: asyncTask.workspaceId ?? undefined,
+      });
 
       try {
         await chargeAfterGenerate({
@@ -236,6 +245,48 @@ export const videoWebhook = async (c: Context<BlankEnv, '/video/:provider'>) => 
       console.error('[video-webhook] notification failed:', err);
     }
 
+    // Platform-managed runs are charged from the provider's authoritative usage.
+    // A video is never pre-charged, and this callback is the only place its tokens
+    // exist — so the charge is written here, from what the provider reported.
+    // `metadata.platformAiRuntime` marks a platform-paid run; a self-paid run's cost
+    // already sits on the user's own provider key and must not be charged twice.
+    if (
+      (asyncTask.metadata as { platformAiRuntime?: unknown } | undefined)?.platformAiRuntime ===
+        true &&
+      result.usage?.completionTokens
+    ) {
+      try {
+        const pricing = await getModelPricing(resolvedModelId, provider);
+        const cost = pricing
+          ? computeVideoCost(pricing, result.usage.completionTokens, {
+              duration: processResult.duration,
+              generateAudio: (batch?.config as RuntimeVideoGenParams)?.generateAudio,
+              resolution: (batch?.config as RuntimeVideoGenParams)?.resolution,
+            })
+          : undefined;
+
+        if (cost) {
+          await new PlatformManagedVideoUsageSettlement(
+            db,
+            asyncTask.userId,
+            asyncTask.workspaceId ?? undefined,
+          ).settleVideo({
+            asyncTaskId: asyncTask.id,
+            generationId: generation.id,
+            model: resolvedModelId,
+            provider,
+            usage: { cost: cost.totalCost, totalTokens: result.usage.totalTokens },
+            workspaceId: asyncTask.workspaceId ?? undefined,
+          });
+        } else {
+          log('No video pricing resolved for %s/%s; nothing settled', provider, resolvedModelId);
+        }
+      } catch (error) {
+        // The video is already delivered; a missing charge must not fail it.
+        console.error('[video-webhook] Failed to settle platform-managed video usage:', error);
+      }
+    }
+
     // Charge after successful video generation
     try {
       await chargeAfterGenerate({
@@ -275,6 +326,13 @@ export const videoWebhook = async (c: Context<BlankEnv, '/video/:provider'>) => 
           error: new AsyncTaskError(AsyncTaskErrorType.ServerError, (error as Error).message),
           status: AsyncTaskStatus.Error,
         });
+        if (asyncTaskUserId)
+          await notifyGenerationFailed({
+            kind: 'video',
+            asyncTaskId,
+            userId: asyncTaskUserId,
+            workspaceId: asyncTaskWorkspaceId,
+          });
       } catch (updateError) {
         console.error('[video-webhook] Failed to update asyncTask status:', updateError);
       }

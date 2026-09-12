@@ -99,7 +99,7 @@ const ExperienceRightPanel = memo(() => {
                 shape={'square'}
                 size={24}
                 style={{
-                  border: `1px solid ${cssVar.colorBorderSecondary}`,
+                  border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                 }}
               />
             ),
@@ -118,7 +118,7 @@ const ExperienceRightPanel = memo(() => {
                 shape={'square'}
                 size={24}
                 style={{
-                  border: `1px solid ${cssVar.colorBorderSecondary}`,
+                  border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                 }}
               />
             ),
@@ -137,7 +137,7 @@ const ExperienceRightPanel = memo(() => {
                 shape={'square'}
                 size={24}
                 style={{
-                  border: `1px solid ${cssVar.colorBorderSecondary}`,
+                  border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                 }}
               />
             ),
@@ -156,7 +156,7 @@ const ExperienceRightPanel = memo(() => {
                 shape={'square'}
                 size={24}
                 style={{
-                  border: `1px solid ${cssVar.colorBorderSecondary}`,
+                  border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                 }}
               />
             ),

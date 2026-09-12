@@ -33,7 +33,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 8px 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-block-end: none;
     border-start-start-radius: 12px;
     border-start-end-radius: 12px;
@@ -67,7 +67,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   itemRow: css`
     padding-block: 6px;
     padding-inline: 4px;
-    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
     font-size: 13px;
 
     &:last-child {
@@ -87,7 +87,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     margin-block-start: 8px;
     padding-block: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     transition:
       max-height 0.25s ${cssVar.motionEaseInOut},

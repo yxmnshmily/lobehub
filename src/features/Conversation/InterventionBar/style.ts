@@ -4,7 +4,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   actions: css`
     padding-block: 8px 10px;
     padding-inline: 10px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     background: color-mix(in srgb, ${cssVar.colorBgElevated} 92%, ${cssVar.colorFillSecondary});
 
     &:empty {
@@ -52,7 +52,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow-x: auto;
     display: flex;
     align-items: center;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   tabCounter: css`
     font-size: 11px;

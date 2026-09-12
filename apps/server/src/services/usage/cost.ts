@@ -29,8 +29,12 @@ const lookupPricing = (provider?: string | null, model?: string | null): Pricing
 
 // Pricing rates live in the model's currency (per million tokens). Normalize to
 // USD so every aggregate is comparable regardless of the model's listed currency.
-const toUsdRate = (rate: number | undefined, currency?: string): number | undefined =>
-  rate === undefined ? undefined : currency === 'CNY' ? rate / USD_TO_CNY : rate;
+const toUsdRate = (
+  rate: number | undefined,
+  currency?: string,
+  exchangeRate = USD_TO_CNY,
+): number | undefined =>
+  rate === undefined ? undefined : currency === 'CNY' ? rate / exchangeRate : rate;
 
 export interface MessageCostSplit {
   cachedInputCost: number;
@@ -65,11 +69,15 @@ export const computeMessageCostSplit = (
 ): MessageCostSplit => {
   const pricing = lookupPricing(provider, model);
   const currency = pricing?.currency;
+  // Preserve legacy historical estimates; new charges carry their original admission quote.
+  const exchangeRate = usage?.costExchangeRate?.rate ?? USD_TO_CNY;
 
-  const inputRate = toUsdRate(getTextInputUnitRate(pricing), currency);
-  const cachedRate = toUsdRate(getCachedTextInputUnitRate(pricing), currency) ?? inputRate;
-  const writeRate = toUsdRate(getWriteCacheInputUnitRate(pricing), currency) ?? inputRate;
-  const outputRate = toUsdRate(getTextOutputUnitRate(pricing), currency);
+  const inputRate = toUsdRate(getTextInputUnitRate(pricing), currency, exchangeRate);
+  const cachedRate =
+    toUsdRate(getCachedTextInputUnitRate(pricing), currency, exchangeRate) ?? inputRate;
+  const writeRate =
+    toUsdRate(getWriteCacheInputUnitRate(pricing), currency, exchangeRate) ?? inputRate;
+  const outputRate = toUsdRate(getTextOutputUnitRate(pricing), currency, exchangeRate);
 
   const cacheReadTokens = usage?.inputCachedTokens ?? 0;
   const totalInputTokens = usage?.totalInputTokens ?? 0;

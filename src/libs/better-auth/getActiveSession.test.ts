@@ -48,7 +48,9 @@ describe('getActiveSession', () => {
   it('fails closed when a cached session points at a deleted user', async () => {
     mocks.assertUserActive.mockRejectedValueOnce(new Error('missing user'));
 
-    const session = await getActiveSession(new Headers({ cookie: 'better-auth.session_data=stale' }));
+    const session = await getActiveSession(
+      new Headers({ cookie: 'better-auth.session_data=stale' }),
+    );
 
     expect(session).toBeNull();
   });

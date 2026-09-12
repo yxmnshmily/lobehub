@@ -1,0 +1,1361 @@
+diff --git a/node_modules/@lobehub/ui/.bun-tag-88bfba206fc06168 b/.bun-tag-88bfba206fc06168
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@lobehub/ui/.bun-tag-d15ddf103998d800 b/.bun-tag-d15ddf103998d800
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@lobehub/ui/.bun-tag-f7bb04a8f3f2f1c9 b/.bun-tag-f7bb04a8f3f2f1c9
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/es/Alert/style.mjs b/es/Alert/style.mjs
+index 96804c0b1f92804c99da25b42b0a5847037c842b..db586e6b18d15d75d61efb9db40f2a8768e14e0b 100644
+--- a/es/Alert/style.mjs
++++ b/es/Alert/style.mjs
+@@ -40,13 +40,13 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       overflow: hidden;
+ 
+       max-width: 100%;
+-      border: 1px solid;
++      border: 0.5px solid;
+       border-block-start: none;
+       border-end-start-radius: ${cssVar.borderRadiusLG};
+       border-end-end-radius: ${cssVar.borderRadiusLG};
+     `,
+ 		extraHeader: css`
+-      border-block-start: 1px dashed;
++      border-block-start: 0.5px dashed;
+       border-radius: 0;
+       background: transparent !important;
+     `,
+diff --git a/es/Avatar/AvatarGroup/style.mjs b/es/Avatar/AvatarGroup/style.mjs
+index 1759597c4be851036372eccd012e8942f646bbaf..19674f6d2519eb4ef4522e542ba2b846799aa72a 100644
+--- a/es/Avatar/AvatarGroup/style.mjs
++++ b/es/Avatar/AvatarGroup/style.mjs
+@@ -3,7 +3,7 @@ import { createStaticStyles } from "antd-style";
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	return {
+ 		avatar: css`
+-      border: 2px solid ${cssVar.colorBgContainer} !important;
++      border: 0.5px solid ${cssVar.colorBgContainer} !important;
+     `,
+ 		count: css`
+       &[class*='ant-avatar'] {
+diff --git a/es/CodeDiff/style.mjs b/es/CodeDiff/style.mjs
+index 92b5834c26fe7a6d34f4d3f7b66462bf9658f582..932b1c696576e1aaa1a6056398a4567bbe1ecaf0 100644
+--- a/es/CodeDiff/style.mjs
++++ b/es/CodeDiff/style.mjs
+@@ -76,7 +76,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+     `,
+ 		headerOutlined: css`
+       & + .${prefix}-body {
+-        border-block-start: 1px solid ${cssVar.colorFillQuaternary};
++        border-block-start: 0.5px solid ${cssVar.colorFillQuaternary};
+       }
+     `,
+ 		outlined: staticStylish.variantOutlinedWithoutHover,
+diff --git a/es/Collapse/style.mjs b/es/Collapse/style.mjs
+index da4c2de55b398ab4c67a55794d5a15128672dfe9..685f973302703c15d8d7fa575f2aa614a0e285e0 100644
+--- a/es/Collapse/style.mjs
++++ b/es/Collapse/style.mjs
+@@ -57,7 +57,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+         border: none;
+         background: transparent;
+         .${prefixCls}-collapse-item {
+-          border: 1px solid ${cssVar.colorFillSecondary};
++          border: 0.5px solid ${cssVar.colorFillSecondary};
+           background: ${cssVar.colorBgContainer};
+         }
+ 
+@@ -91,17 +91,17 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+     `,
+ 		outlined: css`
+       &.${prefixCls}-collapse {
+-        border: 1px solid ${cssVar.colorFillSecondary};
++        border: 0.5px solid ${cssVar.colorFillSecondary};
+         background: ${cssVar.colorBgContainer};
+         .${prefixCls}-collapse-item .${prefixCls}-collapse-header {
+           transition: none;
+         }
+         .${prefixCls}-collapse-item-active .${prefixCls}-collapse-header {
+-          border-block-end: 1px solid ${cssVar.colorFillTertiary};
++          border-block-end: 0.5px solid ${cssVar.colorFillTertiary};
+         }
+         .${prefixCls}-collapse-item:not(:first-child) {
+           .${prefixCls}-collapse-header {
+-            border-block-start: 1px solid ${cssVar.colorFillTertiary};
++            border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+           }
+         }
+       }
+diff --git a/es/DraggablePanel/components/style.mjs b/es/DraggablePanel/components/style.mjs
+index c1e258e6aa4a45feaa5b4c29d0adf35680bfff4a..f7ee93894e428c1b8f09a2e69e7826b4194c1852 100644
+--- a/es/DraggablePanel/components/style.mjs
++++ b/es/DraggablePanel/components/style.mjs
+@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		footer: css`
+       padding-block: 8px;
+       padding-inline: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		handlerIcon: css`
+       display: flex;
+@@ -24,7 +24,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		header: css`
+       padding-block: 8px;
+       padding-inline: 16px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+       font-weight: 500;
+     `
+ 	};
+diff --git a/es/DraggablePanel/style.mjs b/es/DraggablePanel/style.mjs
+index dcab9dfd8311d3be6603fe767077efeebc72be2b..a419574064c8ba209db01b55079367b782fe36d2 100644
+--- a/es/DraggablePanel/style.mjs
++++ b/es/DraggablePanel/style.mjs
+@@ -10,25 +10,25 @@ const prefix = `ant-draggable-panel`;
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	const borderStyles = {
+ 		borderBottom: css`
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderBottomNone: css`
+       border-block-end-width: 0;
+     `,
+ 		borderLeft: css`
+-      border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderLeftNone: css`
+       border-inline-start-width: 0;
+     `,
+ 		borderRight: css`
+-      border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderRightNone: css`
+       border-inline-end-width: 0;
+     `,
+ 		borderTop: css`
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderTopNone: css`
+       border-block-start-width: 0;
+@@ -131,7 +131,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 
+         position: absolute;
+ 
+-        border: 1px solid ${cssVar.colorBorder};
++        border: 0.5px solid ${cssVar.colorBorder};
+ 
+         color: ${cssVar.colorTextTertiary};
+ 
+diff --git a/es/DraggableSideNav/style.mjs b/es/DraggableSideNav/style.mjs
+index f0275b6f2433b2f40f93e948711e1233315152fe..ca2f5aac76e3b7f25a68cc7c62dcae36e815e137 100644
+--- a/es/DraggableSideNav/style.mjs
++++ b/es/DraggableSideNav/style.mjs
+@@ -50,7 +50,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     flex-direction: column;
+ 
+     height: 100%;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: var(--draggable-side-nav-bg, ${cssVar.colorBgLayout});
+   `,
+@@ -234,7 +234,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+       position: absolute;
+ 
+-      border: 1px solid ${cssVar.colorBorder};
++      border: 0.5px solid ${cssVar.colorBorder};
+ 
+       color: ${cssVar.colorTextTertiary};
+ 
+diff --git a/es/Drawer/Drawer.mjs b/es/Drawer/Drawer.mjs
+index a5e41b7be383995fa805f5dcdabaacf57342af72..e804752e8111fd4e1a9b312e692a28c34df81708 100644
+--- a/es/Drawer/Drawer.mjs
++++ b/es/Drawer/Drawer.mjs
+@@ -11,10 +11,10 @@ const Drawer$1 = memo(({ onClose, containerMaxWidth = 1024, classNames, title, p
+ 	const headerBorder = useMemo(() => {
+ 		if (height === "100%" || width === "100%" || height === "100vh" || width === "100vw") return {};
+ 		switch (placement) {
+-			case "top": return { borderBottom: `1px solid ${cssVar.colorBorder}` };
+-			case "bottom": return { borderTop: `1px solid ${cssVar.colorBorder}` };
+-			case "left": return { borderRight: `1px solid ${cssVar.colorBorder}` };
+-			case "right": return { borderLeft: `1px solid ${cssVar.colorBorder}` };
++			case "top": return { borderBottom: `0.5px solid ${cssVar.colorBorder}` };
++			case "bottom": return { borderTop: `0.5px solid ${cssVar.colorBorder}` };
++			case "left": return { borderRight: `0.5px solid ${cssVar.colorBorder}` };
++			case "right": return { borderLeft: `0.5px solid ${cssVar.colorBorder}` };
+ 			default: return {};
+ 		}
+ 	}, [
+@@ -47,7 +47,7 @@ const Drawer$1 = memo(({ onClose, containerMaxWidth = 1024, classNames, title, p
+ 		width: sidebarWidth,
+ 		style: {
+ 			background: cssVar.colorBgLayout,
+-			borderRight: `1px solid ${cssVar.colorBorderSecondary}`,
++			borderRight: `0.5px solid ${cssVar.colorBorderSecondary}`,
+ 			height: "100vh",
+ 			overflowX: "hidden",
+ 			overflowY: "auto",
+diff --git a/es/EmojiPicker/style.mjs b/es/EmojiPicker/style.mjs
+index 19e96d3788244387388b79ac6cca8b1f4efc80e6..4fe837e8992610256dd359edf463cfae2f3636b3 100644
+--- a/es/EmojiPicker/style.mjs
++++ b/es/EmojiPicker/style.mjs
+@@ -27,7 +27,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     }
+   `,
+ 	tabs: css`
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     .ant-tabs-tab {
+       display: flex;
+diff --git a/es/Footer/style.mjs b/es/Footer/style.mjs
+index d86fca69f86e640936dbca0590ea355991d308ca..c8c0b3929eab6f518a975f844e9d65d3ac9fb1b4 100644
+--- a/es/Footer/style.mjs
++++ b/es/Footer/style.mjs
+@@ -197,7 +197,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		root: css`
+       grid-area: footer;
+       align-self: stretch;
+-      border-block-start: 1px solid ${cssVar.colorSplit};
++      border-block-start: 0.5px solid ${cssVar.colorSplit};
+       color: ${cssVar.colorTextDescription};
+ 
+       ${responsive.sm} {
+diff --git a/es/Form/style.mjs b/es/Form/style.mjs
+index 45b6f983b937f127524f9339a54ce4fe9b6b724c..2019800f93d6be8ca03cae07473f68fcb9ae85b0 100644
+--- a/es/Form/style.mjs
++++ b/es/Form/style.mjs
+@@ -8,7 +8,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     gap: 48px;
+     .${prefixCls}-collapse .${prefixCls}-collapse-header {
+       padding-block-end: 16px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+ 
+     .${prefixCls}-collapse-body {
+@@ -113,7 +113,7 @@ createStaticStyles(({ css, cssVar }) => {
+ 	return { root: css`
+       ${responsive.sm} {
+         padding: 16px;
+-        border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++        border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+         background: ${cssVar.colorBgContainer};
+       }
+     ` };
+@@ -240,7 +240,7 @@ const submitFooterStyles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     width: max-content;
+     padding: 8px;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 48px;
+ 
+     background: ${cssVar.colorBgContainer};
+@@ -250,7 +250,7 @@ const submitFooterStyles = createStaticStyles(({ css, cssVar }) => ({
+     ${responsive.sm} {
+       margin-block-start: calc(-1 * ${cssVar.borderRadius});
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   `
+diff --git a/es/Header/style.mjs b/es/Header/style.mjs
+index ea0140b13d65ede1f643ec9e47447b9356163d4b..50dd028db6dd073a05bcdb5f84b471b3120aceb4 100644
+--- a/es/Header/style.mjs
++++ b/es/Header/style.mjs
+@@ -17,7 +17,7 @@ const styles = createStaticStyles(({ css, cssVar, responsive }) => ({
+         margin-block: 8px;
+         margin-inline: 16px;
+         padding-block-start: 24px;
+-        border-block-start: 1px solid ${cssVar.colorBorder};
++        border-block-start: 0.5px solid ${cssVar.colorBorder};
+       }
+     }
+   `,
+@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar, responsive }) => ({
+     height: 64px;
+     padding-block: 0;
+     padding-inline: 24px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background-color: color-mix(in srgb, ${cssVar.colorBgLayout} 40%, transparent);
+ 
+diff --git a/es/Highlighter/SyntaxHighlighter/style.mjs b/es/Highlighter/SyntaxHighlighter/style.mjs
+index c900be80d45cbc775907b4de9389ebcc66f58075..17b4891e578a4c01a0b881561971725682c968fb 100644
+--- a/es/Highlighter/SyntaxHighlighter/style.mjs
++++ b/es/Highlighter/SyntaxHighlighter/style.mjs
+@@ -88,7 +88,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+           .highlighted-word {
+             padding-block: 0.1em;
+             padding-inline: 0.2em;
+-            border: 1px solid ${cssVar.colorBorderSecondary};
++            border: 0.5px solid ${cssVar.colorBorderSecondary};
+             border-radius: ${cssVar.borderRadius};
+ 
+             background: ${cssVar.colorFillTertiary};
+diff --git a/es/Highlighter/style.mjs b/es/Highlighter/style.mjs
+index e6dac551bab7189ca1b0c2a6acb396b176f5e37e..3715dea89c46d8f758be2a17ebc6777545a50d9f 100644
+--- a/es/Highlighter/style.mjs
++++ b/es/Highlighter/style.mjs
+@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+     `,
+ 		headerOutlined: css`
+       & + .${expandCls} {
+-        border-block-start: 1px solid ${cssVar.colorFillQuaternary};
++        border-block-start: 0.5px solid ${cssVar.colorFillQuaternary};
+       }
+     `,
+ 		headerRoot: css`
+diff --git a/es/HotkeyInput/style.mjs b/es/HotkeyInput/style.mjs
+index ce2e4dfa8b61cb65a8911009e54a3cfe4149ca84..6abe0227521d13fd412c83ce594ca2c1c551e5ad 100644
+--- a/es/HotkeyInput/style.mjs
++++ b/es/HotkeyInput/style.mjs
+@@ -7,7 +7,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		borderless: staticStylish.variantBorderless,
+ 		disabled: staticStylish.disabled,
+ 		error: css`
+-      border: 1px solid ${cssVar.colorError};
++      border: 0.5px solid ${cssVar.colorError};
+     `,
+ 		errorText: css`
+       font-size: 12px;
+diff --git a/es/Image/style.mjs b/es/Image/style.mjs
+index 57e4b79988551d16673788ff82f82f01fa092401..2ea8c88cfb34b676c069b0533928a68b50d535c4 100644
+--- a/es/Image/style.mjs
++++ b/es/Image/style.mjs
+@@ -181,7 +181,8 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 
+       position: absolute;
+       inset-block-start: 50%;
+-      transform: translateY(-50%);
++      /* Keep centering independent of the button press scale animation. */
++      translate: 0 -50%;
+ 
+       filter: ${controlHalo};
+     `,
+diff --git a/es/Image/viewer/ImageViewer.mjs b/es/Image/viewer/ImageViewer.mjs
+index 4037bd66f96e9b4fd2dec7df17b3201c68e4a237..89f958feccf6ab590061ba700ae510e6665419a5 100644
+--- a/es/Image/viewer/ImageViewer.mjs
++++ b/es/Image/viewer/ImageViewer.mjs
+@@ -44,7 +44,7 @@ const ImageViewer = memo(({ entries, index, openerFocusElement, token }) => {
+ 	const isTransitioningIndirectRef = useRef(() => true);
+ 	const isTransitioningIndirect = useCallback(() => isTransitioningIndirectRef.current(), []);
+ 	const fillViewport = Boolean(currentEntry.previewSrc && currentEntry.previewSrc !== currentEntry.src);
+-	const { canZoomIn, canZoomOut, dragBy, dragEnd, escIntent, flipHorizontal, flipVertical, flipX, flipY, getInitialScale, handleDoubleClick, handleWheel, isClean, isZoomed, reset, resetCloseTracking, rotate, rotateLeft, rotateRight, rotation, scale, setNatural: syncZoomNatural, setViewport: syncZoomViewport, toggleActualSize, x, y, zoomIn, zoomOut } = useZoomPan({
++	const { canZoomIn, canZoomOut, dragBy, dragEnd, flipHorizontal, flipVertical, flipX, flipY, getInitialScale, handleDoubleClick, handleWheel, isClean, isZoomed, reset, rotate, rotateLeft, rotateRight, rotation, scale, setNatural: syncZoomNatural, setViewport: syncZoomViewport, toggleActualSize, x, y, zoomIn, zoomOut } = useZoomPan({
+ 		autoZoomThreshold: currentEntry.options.autoZoomThreshold,
+ 		defaultZoom: currentEntry.options.defaultZoom,
+ 		fillViewport,
+@@ -119,17 +119,14 @@ const ImageViewer = memo(({ entries, index, openerFocusElement, token }) => {
+ 	const handleDialogOpenChange = useCallback((open, eventDetails) => {
+ 		if (open) return;
+ 		if (isClosing()) return;
+-		if (eventDetails.reason === "escape-key" && escIntent() === "reset") {
++		if (eventDetails.reason !== "escape-key") {
+ 			eventDetails.cancel();
+-			reset();
+ 			return;
+ 		}
+ 		handleClose();
+ 	}, [
+-		escIntent,
+ 		handleClose,
+ 		isClosing,
+-		reset
+ 	]);
+ 	const gestures = useViewerGestures({
+ 		dragBy,
+@@ -144,13 +141,11 @@ const ImageViewer = memo(({ entries, index, openerFocusElement, token }) => {
+ 		zoomOut
+ 	});
+ 	const { hasNext, hasPrev, next, prev } = useGalleryNav({
+-		cancelPendingClose: gestures.cancelPendingClose,
+ 		currentIndex,
+ 		entries,
+ 		flipX,
+ 		flipY,
+ 		getInitialScale,
+-		resetCloseTracking,
+ 		rotate,
+ 		scale,
+ 		setCurrentIndex,
+@@ -219,7 +214,8 @@ const ImageViewer = memo(({ entries, index, openerFocusElement, token }) => {
+ 						className: styles.viewerBackdrop,
+ 						ref: backdropRef,
+ 						style: zIndex === void 0 ? void 0 : { zIndex },
+-						onClick: gestures.onSurfaceClick
++						onClick: gestures.onSurfaceClick,
++						onPointerDown: gestures.onPointerDown
+ 					}),
+ 					/* @__PURE__ */ jsxs(Dialog.Popup, {
+ 						"aria-label": currentEntry.element.alt || void 0,
+diff --git a/es/Image/viewer/useGalleryNav.mjs b/es/Image/viewer/useGalleryNav.mjs
+index fcdadabb2ff46fdaeb2499b5db54225a9b1d0b11..848f87453e53aa606a56e623893b95e5b03650da 100644
+--- a/es/Image/viewer/useGalleryNav.mjs
++++ b/es/Image/viewer/useGalleryNav.mjs
+@@ -12,22 +12,16 @@ const readNatural = (element) => {
+ 		width: Math.max(rect.width, 1)
+ 	};
+ };
+-const useGalleryNav = ({ cancelPendingClose, currentIndex, entries, flipX, flipY, getInitialScale, resetCloseTracking, rotate, scale, setCurrentIndex, setNatural, setSource, switchTo, syncZoomNatural, x, y }) => {
++const useGalleryNav = ({ currentIndex, entries, flipX, flipY, getInitialScale, rotate, scale, setCurrentIndex, setNatural, setSource, switchTo, syncZoomNatural, x, y }) => {
+ 	const indexRef = useRef(currentIndex);
+ 	indexRef.current = currentIndex;
+ 	const switchingRef = useRef(false);
+ 	const switchToRef = useRef(switchTo);
+ 	switchToRef.current = switchTo;
+-	const cancelPendingCloseRef = useRef(cancelPendingClose);
+-	cancelPendingCloseRef.current = cancelPendingClose;
+-	const resetCloseTrackingRef = useRef(resetCloseTracking);
+-	resetCloseTrackingRef.current = resetCloseTracking;
+ 	const goTo = useCallback((nextIndex) => {
+ 		if (switchingRef.current) return;
+ 		if (nextIndex < 0 || nextIndex >= entries.length || nextIndex === indexRef.current) return;
+ 		switchingRef.current = true;
+-		cancelPendingCloseRef.current();
+-		resetCloseTrackingRef.current();
+ 		switchToRef.current(() => {
+ 			const nextEntry = entries[nextIndex];
+ 			setCurrentIndex(nextIndex);
+diff --git a/es/Image/viewer/useViewerGestures.mjs b/es/Image/viewer/useViewerGestures.mjs
+index b1a56bd92677252fd2dd370c747d964d03d6bb99..341a824075b1406cf6865a5d3fc74e0e676014af 100644
+--- a/es/Image/viewer/useViewerGestures.mjs
++++ b/es/Image/viewer/useViewerGestures.mjs
+@@ -1,7 +1,6 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ //#region src/Image/viewer/useViewerGestures.ts
+ const DRAG_THRESHOLD = 4;
+-const DOUBLE_CLICK_WINDOW = 250;
+ const capturePointer = (node, pointerId) => {
+ 	if (typeof node.setPointerCapture === "function") node.setPointerCapture(pointerId);
+ };
+@@ -16,15 +15,7 @@ const useViewerGestures = ({ dragBy, dragEnd, handleDoubleClick, handleWheel, is
+ 	const imageNodeRef = useRef(null);
+ 	const dragRef = useRef(null);
+ 	const movedRef = useRef(false);
+-	const pendingCloseRef = useRef(null);
+-	const isCleanRef = useRef(isClean);
+-	isCleanRef.current = isClean;
+-	const cancelPendingClose = useCallback(() => {
+-		if (pendingCloseRef.current === null) return;
+-		clearTimeout(pendingCloseRef.current);
+-		pendingCloseRef.current = null;
+-	}, []);
+-	useEffect(() => cancelPendingClose, [cancelPendingClose]);
++	const surfacePressRef = useRef(null);
+ 	const imageRef = useCallback((node) => {
+ 		imageNodeRef.current = node;
+ 	}, []);
+@@ -63,7 +54,7 @@ const useViewerGestures = ({ dragBy, dragEnd, handleDoubleClick, handleWheel, is
+ 	const onPointerDown = useCallback((event) => {
+ 		if (dragRef.current?.panning) return;
+ 		if (event.button !== 0) return;
+-		cancelPendingClose();
++		surfacePressRef.current = event.target === event.currentTarget;
+ 		const start = {
+ 			x: event.clientX,
+ 			y: event.clientY
+@@ -79,7 +70,7 @@ const useViewerGestures = ({ dragBy, dragEnd, handleDoubleClick, handleWheel, is
+ 		if (!panEligible) return;
+ 		capturePointer(event.target, event.pointerId);
+ 		setPanning(true);
+-	}, [cancelPendingClose, isZoomed]);
++	}, [isZoomed]);
+ 	const onPointerMove = useCallback((event) => {
+ 		const drag = dragRef.current;
+ 		if (!drag || drag.id !== event.pointerId) return;
+@@ -102,32 +93,21 @@ const useViewerGestures = ({ dragBy, dragEnd, handleDoubleClick, handleWheel, is
+ 		setPanning(false);
+ 		dragEnd();
+ 	}, [dragEnd]);
+-	const onSurfaceClick = useCallback(() => {
+-		if (movedRef.current) return;
+-		cancelPendingClose();
++	const onSurfaceClick = useCallback((event) => {
++		event?.stopPropagation();
++		if (!event || event.target !== event.currentTarget || surfacePressRef.current === false || movedRef.current) return;
+ 		onClose();
+-	}, [cancelPendingClose, onClose]);
+-	const onImageClick = useCallback((event) => {
+-		event.stopPropagation();
+-		cancelPendingClose();
+-		if (movedRef.current || !isCleanRef.current) return;
+-		pendingCloseRef.current = setTimeout(() => {
+-			pendingCloseRef.current = null;
+-			if (!isCleanRef.current) return;
+-			onClose();
+-		}, DOUBLE_CLICK_WINDOW);
+-	}, [cancelPendingClose, onClose]);
++	}, [onClose]);
++	const onImageClick = useCallback((event) => event.stopPropagation(), []);
+ 	const onImageDoubleClick = useCallback((event) => {
+ 		event.stopPropagation();
+-		cancelPendingClose();
+ 		handleDoubleClick({
+ 			x: event.clientX,
+ 			y: event.clientY
+ 		});
+-	}, [cancelPendingClose, handleDoubleClick]);
++	}, [handleDoubleClick]);
+ 	return {
+-		cancelPendingClose,
+-		cursor: isZoomed ? panning ? "grabbing" : "grab" : "zoom-out",
++		cursor: isZoomed ? panning ? "grabbing" : "grab" : "zoom-in",
+ 		imageRef,
+ 		onImageClick,
+ 		onImageDoubleClick,
+diff --git a/es/Image/viewer/useZoomPan.mjs b/es/Image/viewer/useZoomPan.mjs
+index 0bab44bfab27729322f09a35fa14d668d85cf20e..c5c53602dabd1067cb9e7b8e52f1f071e92ccb09 100644
+--- a/es/Image/viewer/useZoomPan.mjs
++++ b/es/Image/viewer/useZoomPan.mjs
+@@ -2,8 +2,6 @@ import { anchoredZoom, clampPan, clampScale, computeFit, doubleClickTarget, natu
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { animate, motionValue } from "motion/react";
+ //#region src/Image/viewer/useZoomPan.ts
+-const WHEEL_CLOSE_THRESHOLD = 100;
+-const WHEEL_IDLE_MS = 300;
+ const ZOOM_STEP = 1.5;
+ const RESET_TRANSITION = {
+ 	damping: 30,
+@@ -11,7 +9,7 @@ const RESET_TRANSITION = {
+ 	type: "spring"
+ };
+ const CLEAN_EPSILON = .01;
+-const useZoomPan = ({ natural, viewport, maxScale, onCloseRequest, isClosing, isTransitioning, fillViewport, defaultZoom, autoZoomThreshold }) => {
++const useZoomPan = ({ natural, viewport, maxScale, isClosing, isTransitioning, fillViewport, defaultZoom, autoZoomThreshold }) => {
+ 	const naturalRef = useRef(natural);
+ 	const viewportRef = useRef(viewport);
+ 	const maxScaleRef = useRef(maxScale ?? 8);
+@@ -38,23 +36,10 @@ const useZoomPan = ({ natural, viewport, maxScale, onCloseRequest, isClosing, is
+ 		y: motionValue(0)
+ 	}));
+ 	const effectiveMaxScale = useCallback(() => Math.max(maxScaleRef.current, initialScaleRef.current), []);
+-	const onCloseRequestRef = useRef(onCloseRequest);
+-	onCloseRequestRef.current = onCloseRequest;
+ 	const isClosingRef = useRef(isClosing);
+ 	isClosingRef.current = isClosing;
+ 	const isTransitioningRef = useRef(isTransitioning);
+ 	isTransitioningRef.current = isTransitioning;
+-	const closeAccumRef = useRef(0);
+-	const disarmedRef = useRef(false);
+-	const idleTimerRef = useRef(null);
+-	const resetCloseTracking = useCallback(() => {
+-		if (idleTimerRef.current !== null) {
+-			clearTimeout(idleTimerRef.current);
+-			idleTimerRef.current = null;
+-		}
+-		closeAccumRef.current = 0;
+-		disarmedRef.current = false;
+-	}, []);
+ 	const closing = useCallback(() => isClosingRef.current?.() ?? false, []);
+ 	const isAtFitFloor = useCallback(() => scale.get() <= 1.01, [scale]);
+ 	const isOrientationClean = useCallback(() => Math.abs(rotate.get()) < CLEAN_EPSILON && !flipX.get() && !flipY.get(), [
+@@ -203,55 +188,23 @@ const useZoomPan = ({ natural, viewport, maxScale, onCloseRequest, isClosing, is
+ 	const handleWheel = useCallback((event) => {
+ 		event.preventDefault?.();
+ 		if (closing()) return;
+-		if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+-		idleTimerRef.current = setTimeout(() => {
+-			idleTimerRef.current = null;
+-			closeAccumRef.current = 0;
+-			disarmedRef.current = false;
+-		}, WHEEL_IDLE_MS);
+ 		const delta = normalizeWheelDelta(event.deltaY, event.deltaMode, viewportRef.current.height);
+ 		const currentScale = scale.get();
+-		if (!!(event.ctrlKey || event.metaKey) || delta < 0 || !isAtFitFloor()) {
+-			disarmedRef.current = true;
+-			closeAccumRef.current = 0;
+-			const rawTarget = currentScale * wheelZoomFactor(delta);
+-			if (rawTarget <= 1) {
+-				animate(scale, 1, RESET_TRANSITION);
+-				animate(x, 0, RESET_TRANSITION);
+-				animate(y, 0, RESET_TRANSITION);
+-				return;
+-			}
+-			const targetScale = clampScale(rawTarget, effectiveMaxScale());
+-			const fitRect = getFitRect();
+-			const anchor = {
+-				x: event.clientX,
+-				y: event.clientY
+-			};
+-			const next = anchoredZoom({
+-				scale: currentScale,
+-				x: x.get(),
+-				y: y.get()
+-			}, targetScale, anchor, fitRect);
+-			applyTransform(next, fitRect);
++		// At the fit floor, outward scrolling must never dismiss the preview.
++		if (delta >= 0 && isAtFitFloor()) return;
++		const rawTarget = currentScale * wheelZoomFactor(delta);
++		if (rawTarget <= 1) {
++			animate(scale, 1, RESET_TRANSITION);
++			animate(x, 0, RESET_TRANSITION);
++			animate(y, 0, RESET_TRANSITION);
+ 			return;
+ 		}
+-		if (disarmedRef.current || !isOrientationClean()) return;
+-		closeAccumRef.current += Math.abs(delta);
+-		if (closeAccumRef.current >= WHEEL_CLOSE_THRESHOLD) {
+-			closeAccumRef.current = 0;
+-			onCloseRequestRef.current?.();
+-		}
+-	}, [
+-		applyTransform,
+-		closing,
+-		effectiveMaxScale,
+-		getFitRect,
+-		isAtFitFloor,
+-		isOrientationClean,
+-		scale,
+-		x,
+-		y
+-	]);
++		const targetScale = clampScale(rawTarget, effectiveMaxScale());
++		const fitRect = getFitRect();
++		const anchor = { x: event.clientX, y: event.clientY };
++		const next = anchoredZoom({ scale: currentScale, x: x.get(), y: y.get() }, targetScale, anchor, fitRect);
++		applyTransform(next, fitRect);
++	}, [applyTransform, closing, effectiveMaxScale, getFitRect, isAtFitFloor, scale, x, y]);
+ 	const rotateBy = useCallback((delta) => {
+ 		if (closing()) return;
+ 		rotate.jump(normalizeRotation(rotate.get() + delta));
+@@ -382,7 +335,6 @@ const useZoomPan = ({ natural, viewport, maxScale, onCloseRequest, isClosing, is
+ 		isClean: derived.isClean,
+ 		isZoomed: derived.isZoomed,
+ 		reset,
+-		resetCloseTracking,
+ 		rotate,
+ 		rotateLeft,
+ 		rotateRight,
+diff --git a/es/Markdown/markdown.style.mjs b/es/Markdown/markdown.style.mjs
+index 27f39c018ccb46916ef36edd8266fe888972b64a..7dbc834194f60d2c7572ce79f8b778f13fb34b2f 100644
+--- a/es/Markdown/markdown.style.mjs
++++ b/es/Markdown/markdown.style.mjs
+@@ -48,7 +48,7 @@ const styles = createStaticStyles(({ cssVar, css }) => {
+         margin-inline: 0.25em;
+         padding-block: 0.1em;
+         padding-inline: 0.4em;
+-        border: 1px solid var(--lobe-markdown-border-color);
++        border: 0.5px solid var(--lobe-markdown-border-color);
+         border-radius: 0.25em;
+ 
+         font-family: ${cssVar.fontFamilyCode};
+@@ -94,8 +94,8 @@ const styles = createStaticStyles(({ cssVar, css }) => {
+ 
+           width: 0.4em;
+           height: 0.4em;
+-          border-block-end: 1.5px solid ${cssVar.colorTextSecondary};
+-          border-inline-end: 1.5px solid ${cssVar.colorTextSecondary};
++          border-block-end: 0.5px solid ${cssVar.colorTextSecondary};
++          border-inline-end: 0.5px solid ${cssVar.colorTextSecondary};
+ 
+           font-family: ${cssVar.fontFamily};
+ 
+@@ -106,7 +106,7 @@ const styles = createStaticStyles(({ cssVar, css }) => {
+       &[open] {
+         summary {
+           padding-block-end: 0.75em;
+-          border-block-end: 1px dashed ${cssVar.colorBorder};
++          border-block-end: 0.5px dashed ${cssVar.colorBorder};
+ 
+           &::before {
+             transform: rotateZ(45deg);
+@@ -163,7 +163,7 @@ const styles = createStaticStyles(({ cssVar, css }) => {
+       margin-block: calc(var(--lobe-markdown-margin-multiple) * 1.5em);
+       border-color: ${cssVar.colorBorder};
+       border-style: dashed;
+-      border-width: 1px;
++      border-width: 0.5px;
+       border-block-start: none;
+       border-inline-start: none;
+       border-inline-end: none;
+diff --git a/es/Markdown/plugins/rehypeCustomFootnotes.mjs b/es/Markdown/plugins/rehypeCustomFootnotes.mjs
+index 517cbcc57b6cb4aba040f4b1dcc8b67da278a6b4..b05a6f5390f897deb61a930f7b3b4453005a341c 100644
+--- a/es/Markdown/plugins/rehypeCustomFootnotes.mjs
++++ b/es/Markdown/plugins/rehypeCustomFootnotes.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/rehypeCustomFootnotes.ts
+ const rehypeCustomFootnotes = () => (tree, file) => {
+ 	const linksData = file.data.footnoteLinks || {};
+diff --git a/es/Markdown/plugins/rehypeKatexDir.mjs b/es/Markdown/plugins/rehypeKatexDir.mjs
+index 964ee87cde19eb5770db6e9023820e17ab0c2036..69e00f9c4d9ce0f5fcbb69377d3209ff952fdb64 100644
+--- a/es/Markdown/plugins/rehypeKatexDir.mjs
++++ b/es/Markdown/plugins/rehypeKatexDir.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/rehypeKatexDir.ts
+ const rehypeKatexDir = () => (tree) => {
+ 	visit(tree, "element", (node) => {
+diff --git a/es/Markdown/plugins/remarkBr.mjs b/es/Markdown/plugins/remarkBr.mjs
+index 06243d8d069b7ddde3b82f92447ff77bebfe2b6a..e6041a58dcfdcc7a3c6907f318b496794e86d9ad 100644
+--- a/es/Markdown/plugins/remarkBr.mjs
++++ b/es/Markdown/plugins/remarkBr.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkBr.ts
+ /**
+ * Remark plugin to handle <br> and <br/> tags in markdown text
+diff --git a/es/Markdown/plugins/remarkColor.mjs b/es/Markdown/plugins/remarkColor.mjs
+index 7ce25eff1e44584a59f8422b6646937120e04d3b..a45149339f68cd052b48ddeb63faf08260648ad6 100644
+--- a/es/Markdown/plugins/remarkColor.mjs
++++ b/es/Markdown/plugins/remarkColor.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkColor.ts
+ /**
+ * Remark plugin to handle color syntax in markdown code spans
+diff --git a/es/Markdown/plugins/remarkCustomFootnotes.mjs b/es/Markdown/plugins/remarkCustomFootnotes.mjs
+index 72fb0082cd1af038edf3d2a5c1a8f9766cc26b37..47af8d57d9affd388cee0d78b0cdcb940aff9ab1 100644
+--- a/es/Markdown/plugins/remarkCustomFootnotes.mjs
++++ b/es/Markdown/plugins/remarkCustomFootnotes.mjs
+@@ -1,4 +1,4 @@
+-import { SKIP, visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { SKIP, visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkCustomFootnotes.ts
+ const remarkCustomFootnotes = () => (tree, file) => {
+ 	const footnoteLinks = /* @__PURE__ */ new Map();
+diff --git a/es/Markdown/plugins/remarkGfmPlus.mjs b/es/Markdown/plugins/remarkGfmPlus.mjs
+index 75da0b2709e68d840ad367fbbe40d549744dbc91..7a9cd8f15cbfef6442930941328f1d953d6bd877 100644
+--- a/es/Markdown/plugins/remarkGfmPlus.mjs
++++ b/es/Markdown/plugins/remarkGfmPlus.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkGfmPlus.ts
+ const DEFAULT_ALLOW_HTML_TAGS = [
+ 	"sub",
+diff --git a/es/Markdown/plugins/remarkVideo.mjs b/es/Markdown/plugins/remarkVideo.mjs
+index 61ddf8eb0e45c6cfe4c8227f8fa0bbf3fbbb8f59..3bd4a49a87c55a8c3ded03151925e2ef9e05e696 100644
+--- a/es/Markdown/plugins/remarkVideo.mjs
++++ b/es/Markdown/plugins/remarkVideo.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkVideo.ts
+ /**
+ * Remark plugin to handle <video> tags in markdown text
+diff --git a/es/Markdown/style.mjs b/es/Markdown/style.mjs
+index b17d7e60580d32540cc04f2e61f0f2979340d485..c406bac2cd4b2ba3054c2f296bb601fe31c0ea3d 100644
+--- a/es/Markdown/style.mjs
++++ b/es/Markdown/style.mjs
+@@ -155,7 +155,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 
+           width: 0.66em;
+           height: 0.66em;
+-          border: 1px solid ${cssVar.colorFill};
++          border: 0.5px solid ${cssVar.colorFill};
+           border-radius: 50%;
+ 
+           background-color: attr(data-color);
+diff --git a/es/Modal/style.mjs b/es/Modal/style.mjs
+index 10a8791f3c6cc23ebff5c008c7daced69fab3972..52a96553b456ae5ab9e83f970378daa5e8822661 100644
+--- a/es/Modal/style.mjs
++++ b/es/Modal/style.mjs
+@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       [class*='ant-modal-container'] {
+         overflow: hidden;
+         padding: 0;
+-        border: 1px solid ${cssVar.colorSplit};
++        border: 0.5px solid ${cssVar.colorSplit};
+         border-radius: ${cssVar.borderRadiusLG};
+       }
+     `,
+diff --git a/es/Segmented/style.mjs b/es/Segmented/style.mjs
+index 8136c0565e841cd11ca72f96e70aaff613e23bfa..5aa954bb92685608054bb255715bf4c7c64479da 100644
+--- a/es/Segmented/style.mjs
++++ b/es/Segmented/style.mjs
+@@ -6,12 +6,12 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	return {
+ 		borderless: staticStylish.variantBorderlessWithoutHover,
+ 		filled: css`
+-      border: 1px solid ${cssVar.colorFillQuaternary};
++      border: 0.5px solid ${cssVar.colorFillQuaternary};
+       background: ${cssVar.colorBgLayout};
+     `,
+ 		glass: staticStylish.blur,
+ 		outlined: css`
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: transparent;
+     `,
+ 		root: css``,
+diff --git a/es/SideNav/style.mjs b/es/SideNav/style.mjs
+index 639385d8de751e2ba2b0fad92ac1cde6843525e8..f063620cb248d587dd59ae495b7de1f7854e03e6 100644
+--- a/es/SideNav/style.mjs
++++ b/es/SideNav/style.mjs
+@@ -6,7 +6,7 @@ const styles = createStaticStyles(({ css, cssVar }) => css`
+     min-height: 640px;
+     padding-block: 12px;
+     padding-inline: 0;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: ${cssVar.colorBgContainer};
+   `);
+diff --git a/es/Tabs/style.mjs b/es/Tabs/style.mjs
+index f51870175662adecf81b89268cdb654729855831..708e358cf7c67498a89db09989d3eea1824dea01 100644
+--- a/es/Tabs/style.mjs
++++ b/es/Tabs/style.mjs
+@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		dropdown: css`
+       .${prefixCls}-tabs-dropdown-menu {
+         padding: 4px;
+-        border: 1px solid ${cssVar.colorBorderSecondary};
++        border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+         .${prefixCls}-tabs-dropdown-menu-item {
+           border-radius: ${cssVar.borderRadius};
+diff --git a/es/ThemeProvider/GlobalStyle/antdOverride.mjs b/es/ThemeProvider/GlobalStyle/antdOverride.mjs
+index a63e7ea94d504a02da028c7629ab78e88e2147fd..8650037759b36b03e539c1f8ae0c134fe6653259 100644
+--- a/es/ThemeProvider/GlobalStyle/antdOverride.mjs
++++ b/es/ThemeProvider/GlobalStyle/antdOverride.mjs
+@@ -50,7 +50,7 @@ var antdOverride_default = (token) => {
+       min-height: unset;
+       padding-block: 4px;
+       padding-inline: 8px;
+-      border: 1px solid ${token.colorBorderSecondary} !important;
++      border: 0.5px solid ${token.colorBorderSecondary} !important;
+       border-radius: ${token.borderRadiusSM}px !important;
+ 
+       font-size: ${token.fontSizeSM}px;
+@@ -97,7 +97,7 @@ var antdOverride_default = (token) => {
+     }
+ 
+     .${token.prefixCls}-modal-content {
+-      border: 1px solid ${token.colorBorderSecondary} !important;
++      border: 0.5px solid ${token.colorBorderSecondary} !important;
+     }
+ 
+     .${token.prefixCls}-radio-wrapper
+diff --git a/es/Toc/style.mjs b/es/Toc/style.mjs
+index 904377a13e2b5823f3db691c263607fe08781256..3ee94f34476089d2c3a037ee06a1a8afd1339e72 100644
+--- a/es/Toc/style.mjs
++++ b/es/Toc/style.mjs
+@@ -39,7 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+     `,
+ 		expand: cx(staticStylish.blur, css`
+         width: 100%;
+-        border-block-end: 1px solid ${cssVar.colorSplit};
++        border-block-end: 0.5px solid ${cssVar.colorSplit};
+         border-radius: 0;
+ 
+         background-color: color-mix(in srgb, ${cssVar.colorBgLayout} 50%, transparent);
+diff --git a/es/base-ui/Accordion/style.mjs b/es/base-ui/Accordion/style.mjs
+index 05358c25e02ce7e387b565e153049b19fba392d3..9ea4c2c1659856340cd9396558872951d79be501 100644
+--- a/es/base-ui/Accordion/style.mjs
++++ b/es/base-ui/Accordion/style.mjs
+@@ -96,7 +96,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+   `,
+ 	itemOutlined: css`
+     & + & {
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+   `,
+ 	panel: css`
+@@ -120,7 +120,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+   `,
+ 	rootOutlined: css`
+     overflow: hidden;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadiusLG};
+   `,
+ 	trigger: css`
+diff --git a/es/base-ui/Alert/style.mjs b/es/base-ui/Alert/style.mjs
+index 32c704206bda74eaeaad6dfe848ef5b50556ddc2..132f895bcd9321ed076e0e0eac97151da5683381 100644
+--- a/es/base-ui/Alert/style.mjs
++++ b/es/base-ui/Alert/style.mjs
+@@ -129,7 +129,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     min-height: 40px;
+     padding-block: 8px;
+     padding-inline: 14px;
+-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 0;
+ 
+     font-size: 12px;
+diff --git a/es/base-ui/Avatar/AvatarGroup/style.mjs b/es/base-ui/Avatar/AvatarGroup/style.mjs
+index 9f90839c76b6462f25842a1fa0f8221c5faa0d18..1a875f80c90e3e31783254992cb5deb173f133b8 100644
+--- a/es/base-ui/Avatar/AvatarGroup/style.mjs
++++ b/es/base-ui/Avatar/AvatarGroup/style.mjs
+@@ -3,7 +3,7 @@ import { createStaticStyles } from "antd-style";
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	return {
+ 		avatar: css`
+-      border: 2px solid ${cssVar.colorBgContainer} !important;
++      border: 0.5px solid ${cssVar.colorBgContainer} !important;
+     `,
+ 		count: css`
+       font-size: 0.8em;
+diff --git a/es/base-ui/Button/style.mjs b/es/base-ui/Button/style.mjs
+index 9f5c4a49f82aef01052fd8710c43feb7ce6bdb64..5c52c7d6193dd18f58be2a4754c5b4666f29fbc5 100644
+--- a/es/base-ui/Button/style.mjs
++++ b/es/base-ui/Button/style.mjs
+@@ -19,7 +19,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     justify-content: center;
+ 
+     box-sizing: border-box;
+-    border: 1px solid ${cssVar.colorBorder};
++    border: 0.5px solid ${cssVar.colorBorder};
+ 
+     font-weight: 500;
+     line-height: 1;
+@@ -357,7 +357,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     width: 12px;
+     height: 12px;
+-    border: 1.5px solid currentcolor;
++    border: 0.5px solid currentcolor;
+     border-block-start-color: transparent;
+     border-radius: 50%;
+ 
+diff --git a/es/base-ui/Checkbox/style.mjs b/es/base-ui/Checkbox/style.mjs
+index f27599e245bfd0d0825d484a25dc9ffd1760dc50..a51c06509f72d7d0b6b0ac6e1ceca975800d21e8 100644
+--- a/es/base-ui/Checkbox/style.mjs
++++ b/es/base-ui/Checkbox/style.mjs
+@@ -27,7 +27,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     margin: 0;
+     padding: 0;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     color: ${cssVar.colorBgLayout};
+ 
+diff --git a/es/base-ui/Drawer/style.mjs b/es/base-ui/Drawer/style.mjs
+index e814050f13b575d3e5681a6ee88cb82e08db17ff..5f6eab23a0e77841d220a59af406ac1a7acdc243 100644
+--- a/es/base-ui/Drawer/style.mjs
++++ b/es/base-ui/Drawer/style.mjs
+@@ -171,7 +171,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     min-height: 56px;
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-block-end: 1px solid ${cssVar.colorSplit};
++    border-block-end: 0.5px solid ${cssVar.colorSplit};
+   `,
+ 	containerInner: css`
+     display: flex;
+@@ -285,7 +285,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: ${cssVar.colorBgLayout};
+   `,
+@@ -306,7 +306,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-block-start: 1px solid ${cssVar.colorSplit};
++    border-block-start: 0.5px solid ${cssVar.colorSplit};
+   `
+ }));
+ //#endregion
+diff --git a/es/base-ui/DropdownMenu/sharedStyle.mjs b/es/base-ui/DropdownMenu/sharedStyle.mjs
+index e814d058a91b1fde15a198a1740a79686f158e24..1e3a3f159ce543bb1af48a3bd667b889d3816146 100644
+--- a/es/base-ui/DropdownMenu/sharedStyle.mjs
++++ b/es/base-ui/DropdownMenu/sharedStyle.mjs
+@@ -27,13 +27,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     flex-shrink: 0;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-start: 1px solid ${cssVar.colorBorder};
++    border-block-start: 0.5px solid ${cssVar.colorBorder};
+   `,
+ 	header: css`
+     flex-shrink: 0;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-end: 1px solid ${cssVar.colorBorder};
++    border-block-end: 0.5px solid ${cssVar.colorBorder};
+   `,
+ 	groupLabel: css`
+     user-select: none;
+diff --git a/es/base-ui/FloatingPanel/style.mjs b/es/base-ui/FloatingPanel/style.mjs
+index 387f893495757254b6c253853fb63747f1960031..a0b890d83d0aa0cfca46cda69886bdda781ea482 100644
+--- a/es/base-ui/FloatingPanel/style.mjs
++++ b/es/base-ui/FloatingPanel/style.mjs
+@@ -23,12 +23,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+   `,
+ 	footer: css`
+     flex: none;
+-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	header: css`
+     flex: none;
+     min-height: 48px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	headerActions: css`
+     display: flex;
+diff --git a/es/base-ui/FloatingSheet/style.mjs b/es/base-ui/FloatingSheet/style.mjs
+index 1ae202a89a4018bf9e05f30472e669a68a81feab..b540625f1b7f47596c449701ec48ac6790ce2695 100644
+--- a/es/base-ui/FloatingSheet/style.mjs
++++ b/es/base-ui/FloatingSheet/style.mjs
+@@ -19,7 +19,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     box-shadow: ${cssVar.boxShadowSecondary};
+   `,
+ 	embedded: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     box-shadow: none;
+   `,
+ 	overlay: css`
+diff --git a/es/base-ui/Form/style.mjs b/es/base-ui/Form/style.mjs
+index 8f0bf3bb4cc0d5ee9d13234ff5a43bd2369083f4..8a4ab3c5eeac06e16b0acc2b227f3928040f4a85 100644
+--- a/es/base-ui/Form/style.mjs
++++ b/es/base-ui/Form/style.mjs
+@@ -118,7 +118,7 @@ const groupStyles = createStaticStyles(({ css, cssVar }) => ({
+   `,
+ 	headerBorderless: css`
+     padding-block-end: 16px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	headerBoxed: css`
+     padding: 16px;
+@@ -231,7 +231,7 @@ const flatGroupVariants = cva(flatGroupStyles.root, {
+ const footerStyles = createStaticStyles(({ css, cssVar }) => ({ root: css`
+     ${responsive.sm} {
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   ` }));
+@@ -245,7 +245,7 @@ const submitFooterStyles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     width: max-content;
+     padding: 8px;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 48px;
+ 
+     background: ${cssVar.colorBgContainer};
+@@ -255,7 +255,7 @@ const submitFooterStyles = createStaticStyles(({ css, cssVar }) => ({
+     ${responsive.sm} {
+       margin-block-start: calc(-1 * ${cssVar.borderRadius});
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   `
+diff --git a/es/base-ui/Input/style.mjs b/es/base-ui/Input/style.mjs
+index 57ed841bd1c2fa13b426e44f17e733d09b7cb52b..3a2ce925d9d4325074c9d749933d5f050ec9f1f2 100644
+--- a/es/base-ui/Input/style.mjs
++++ b/es/base-ui/Input/style.mjs
+@@ -45,7 +45,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     }
+   `,
+ 	outlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+ 
+     &:hover:not(:focus-within, [data-disabled]) {
+@@ -135,7 +135,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     width: 22px;
+     margin-inline-end: -8px;
+-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	numberInput: css`
+     font-variant-numeric: tabular-nums;
+diff --git a/es/base-ui/Modal/style.mjs b/es/base-ui/Modal/style.mjs
+index 904950153ffbd221bfe385f706c8558c8a855832..59305a20ebcd66b0fddbc3bb6f2a528cd8576659 100644
+--- a/es/base-ui/Modal/style.mjs
++++ b/es/base-ui/Modal/style.mjs
+@@ -128,7 +128,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     width: calc(100% - 32px);
+     max-width: 520px;
+     max-height: calc(100dvh - 64px);
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 12px;
+ 
+     background: ${cssVar.colorBgElevated};
+@@ -169,7 +169,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     width: 14px;
+     height: 14px;
+-    border: 2px solid currentcolor;
++    border: 0.5px solid currentcolor;
+     border-block-start-color: transparent;
+     border-radius: 50%;
+ 
+diff --git a/es/base-ui/Popover/style.mjs b/es/base-ui/Popover/style.mjs
+index 41cdf9d7faaee9a6f68fe1886ac21f0f484b6907..915212d991265979b78b84bbf154615caf0d0a2f 100644
+--- a/es/base-ui/Popover/style.mjs
++++ b/es/base-ui/Popover/style.mjs
+@@ -59,7 +59,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     min-width: 120px;
+     max-width: var(--available-width);
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadius};
+ 
+     color: ${cssVar.colorText};
+diff --git a/es/base-ui/Radio/style.mjs b/es/base-ui/Radio/style.mjs
+index b1f6aca46c095f54e6f39805d15b1ca8cae77054..c9f4cd0825328882cd4eec5f780fdbb096518f8f 100644
+--- a/es/base-ui/Radio/style.mjs
++++ b/es/base-ui/Radio/style.mjs
+@@ -28,7 +28,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+ 
+     margin: 0;
+     padding: 0;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 50%;
+ 
+     color: ${cssVar.colorBgLayout};
+diff --git a/es/base-ui/Segmented/style.mjs b/es/base-ui/Segmented/style.mjs
+index 75adbae066d7d79dc86c578f8e97efea3578fa11..3a5f42331bbcf293317ba75c2501ef96da6f00c3 100644
+--- a/es/base-ui/Segmented/style.mjs
++++ b/es/base-ui/Segmented/style.mjs
+@@ -137,12 +137,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     width: 100%;
+   `,
+ 	listFilled: css`
+-    border: 1px solid ${cssVar.colorFillQuaternary};
++    border: 0.5px solid ${cssVar.colorFillQuaternary};
+     background: ${cssVar.colorBgLayout};
+   `,
+ 	listGlass: staticStylish.blur,
+ 	listOutlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: transparent;
+   `,
+ 	listShadow: staticStylish.shadow,
+diff --git a/es/base-ui/Select/style.mjs b/es/base-ui/Select/style.mjs
+index 15990deb138569f2ab4239a35406316dc02cf9c6..0de7ff3aa0873719f7422e49e9b6645642bca64f 100644
+--- a/es/base-ui/Select/style.mjs
++++ b/es/base-ui/Select/style.mjs
+@@ -139,7 +139,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     margin-inline: -4px;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-end: 1px solid ${cssVar.colorFillSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorFillSecondary};
+   `,
+ 	searchInput: css`
+     flex: 1;
+diff --git a/es/base-ui/Toast/style.mjs b/es/base-ui/Toast/style.mjs
+index 1edf23016c873da2f380e102ec69f21fff79f48d..6b7fd3fb89ec8048ac23fb36c54716fbe9c4c989 100644
+--- a/es/base-ui/Toast/style.mjs
++++ b/es/base-ui/Toast/style.mjs
+@@ -41,7 +41,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     ${focusRingColor(cssVar.colorError)};
+   `,
+ 	actionGhost: css`
+-    border: 1px solid ${cssVar.colorBorder};
++    border: 0.5px solid ${cssVar.colorBorder};
+     color: ${cssVar.colorText};
+     background: transparent;
+ 
+diff --git a/es/base-ui/ToggleGroup/style.mjs b/es/base-ui/ToggleGroup/style.mjs
+index e887d04a0d5d039d0f413a770e33bf8d59fe99fd..782f846a86dc499a5d20fee6234fd8a937ba17ff 100644
+--- a/es/base-ui/ToggleGroup/style.mjs
++++ b/es/base-ui/ToggleGroup/style.mjs
+@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     border-radius: 0;
+ 
+     & + & {
+-      border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+   `,
+ 	root: css`
+@@ -82,7 +82,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+   `,
+ 	rootOutlined: css`
+     overflow: hidden;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadius};
+   `
+ }));
+diff --git a/es/base-ui/Tooltip/style.mjs b/es/base-ui/Tooltip/style.mjs
+index 9f139582462c3ee4a02d4ca9749d4b590e02d418..c224ca3cca99ed0803ca382e23cce1a6fff70151 100644
+--- a/es/base-ui/Tooltip/style.mjs
++++ b/es/base-ui/Tooltip/style.mjs
+@@ -58,7 +58,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
+     transform-origin: var(--transform-origin);
+ 
+     max-width: min(320px, var(--available-width));
+-    border: 1px solid ${cssVar.colorFill};
++    border: 0.5px solid ${cssVar.colorFill};
+     border-radius: ${cssVar.borderRadiusSM};
+ 
+     font-size: ${cssVar.fontSizeSM};
+diff --git a/es/chat/ChatHeader/style.mjs b/es/chat/ChatHeader/style.mjs
+index 0736ad1af5db1a396b2628764aa9c15136316c46..c079e6c33e78870fc41549f66ae77ac2fe846ff5 100644
+--- a/es/chat/ChatHeader/style.mjs
++++ b/es/chat/ChatHeader/style.mjs
+@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       height: 52px;
+       min-height: 52px;
+       max-height: 52px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+       background: ${cssVar.colorBgContainer};
+     `,
+diff --git a/es/chat/ChatItem/style.mjs b/es/chat/ChatItem/style.mjs
+index 1344c1bc4571df9d9085c2849918e852ca11624f..957270bb69d6ab39e28bcfa33f373111b7481600 100644
+--- a/es/chat/ChatItem/style.mjs
++++ b/es/chat/ChatItem/style.mjs
+@@ -4,7 +4,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	const blockStylish = css`
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
++    border: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
+     border-radius: ${cssVar.borderRadiusLG};
+ 
+     background-color: ${cssVar.colorBgContainer};
+@@ -150,7 +150,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       ${editingStylish}
+       padding-block: 8px 12px;
+       padding-inline: 12px;
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+       &:active,
+       &:hover {
+@@ -161,7 +161,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       ${editingStylish}
+       padding-block: 8px 12px;
+       padding-inline: 12px;
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+       border-radius: ${cssVar.borderRadius};
+ 
+       background: ${cssVar.colorFillQuaternary};
+diff --git a/es/mobile/ChatInputArea/style.mjs b/es/mobile/ChatInputArea/style.mjs
+index 56bfbb8db45f2d998b60108802f70c09a5dafe2f..f0515865bea4bb95c6b7a1b19f706feecc1d3ef4 100644
+--- a/es/mobile/ChatInputArea/style.mjs
++++ b/es/mobile/ChatInputArea/style.mjs
+@@ -5,7 +5,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+ 		container: css`
+       flex: none;
+       padding-block: 12px;
+-      border-block-start: 1px solid ${cssVar.colorFillTertiary};
++      border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+       background: ${cssVar.colorFillQuaternary};
+     `,
+ 		expand: css`
+diff --git a/es/mobile/TabBar/style.mjs b/es/mobile/TabBar/style.mjs
+index 8e19f08f33e6df67c59023a0f4982ec70eaf159b..bad15e98a689fdf555cbbf456afc3d5b506c7c2c 100644
+--- a/es/mobile/TabBar/style.mjs
++++ b/es/mobile/TabBar/style.mjs
+@@ -12,7 +12,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
+       flex: none;
+ 
+       width: 100vw;
+-      border-block-start: 1px solid ${cssVar.colorFillTertiary};
++      border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+ 
+       background: ${cssVar.colorBgLayout};
+     `,
+diff --git a/es/node_modules/.pnpm/@types_mdx@2.0.14/node_modules/@types/mdx/types.d.mts b/Users/liujinwang/.bun/install/cache/@lobehub/ui@5.39.2@@@1/es/node_modules/.pnpm/@types_mdx@2.0.14/node_modules/@types/mdx/types.d.mts
+deleted file mode 100644
+index 236117ead15bea16d24db78f085c02e9ca3461ca..0000000000000000000000000000000000000000
+diff --git a/es/node_modules/.pnpm/@types_unist@3.0.3/node_modules/@types/unist/index.d.mts b/Users/liujinwang/.bun/install/cache/@lobehub/ui@5.39.2@@@1/es/node_modules/.pnpm/@types_unist@3.0.3/node_modules/@types/unist/index.d.mts
+deleted file mode 100644
+index 6641485753ba2cae5ba9183e22a67cfa2a4478c9..0000000000000000000000000000000000000000
+diff --git a/es/node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs b/Users/liujinwang/.bun/install/cache/@lobehub/ui@5.39.2@@@1/es/node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs
+deleted file mode 100644
+index b8884f9a0e9184eee1746acf1aa146bb884433b7..0000000000000000000000000000000000000000
+diff --git a/es/node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs.map b/Users/liujinwang/.bun/install/cache/@lobehub/ui@5.39.2@@@1/es/node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs.map
+deleted file mode 100644
+index fc74c9a468bf32c0036ba229193c8d2159c5f927..0000000000000000000000000000000000000000
+diff --git a/es/styles/theme/customStylish.mjs b/es/styles/theme/customStylish.mjs
+index 1a45c25042d532b0bdf0dc67ae71d5493ce247f4..d6a93fe48ee4966b85eacbe4fcaa5cd3f8148b8f 100644
+--- a/es/styles/theme/customStylish.mjs
++++ b/es/styles/theme/customStylish.mjs
+@@ -128,23 +128,23 @@ const generateCustomStylish = ({ css, token, isDarkMode }) => {
+       background: ${token.colorFillTertiary};
+     `,
+ 		variantOutlined: css`
+-      border: 1px solid ${token.colorBorderSecondary};
++      border: 0.5px solid ${token.colorBorderSecondary};
+       background: ${token.colorBgContainer};
+ 
+       &:hover {
+-        border: 1px solid ${token.colorBorder};
++        border: 0.5px solid ${token.colorBorder};
+         background: ${token.colorBgContainer};
+       }
+     `,
+ 		variantOutlinedDanger: css`
+-      border: 1px solid ${token.colorErrorBorder};
++      border: 0.5px solid ${token.colorErrorBorder};
+ 
+       &:hover {
+-        border: 1px solid ${token.colorErrorBorder};
++        border: 0.5px solid ${token.colorErrorBorder};
+       }
+     `,
+ 		variantOutlinedWithoutHover: css`
+-      border: 1px solid ${token.colorBorderSecondary};
++      border: 0.5px solid ${token.colorBorderSecondary};
+       background: ${token.colorBgContainer};
+     `
+ 	};
+diff --git a/es/styles/theme/customStylishStatic.mjs b/es/styles/theme/customStylishStatic.mjs
+index 83aedbe05620c8764c49233693f0ec41960bbd22..79a6ff9c9bdf6a77f6590e57afa11a471def9210 100644
+--- a/es/styles/theme/customStylishStatic.mjs
++++ b/es/styles/theme/customStylishStatic.mjs
+@@ -149,23 +149,23 @@ const staticStylish = createStaticStyles(({ css, cssVar }) => ({
+     background: ${cssVar.colorFillTertiary};
+   `,
+ 	variantOutlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+ 
+     &:hover {
+-      border: 1px solid ${cssVar.colorBorder};
++      border: 0.5px solid ${cssVar.colorBorder};
+       background: ${cssVar.colorBgContainer};
+     }
+   `,
+ 	variantOutlinedDanger: css`
+-    border: 1px solid ${cssVar.colorErrorBorder};
++    border: 0.5px solid ${cssVar.colorErrorBorder};
+ 
+     &:hover {
+-      border: 1px solid ${cssVar.colorErrorBorder};
++      border: 0.5px solid ${cssVar.colorErrorBorder};
+     }
+   `,
+ 	variantOutlinedWithoutHover: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+   `
+ }));

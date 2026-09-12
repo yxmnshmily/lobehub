@@ -20,20 +20,24 @@ export const translateAction = defineAction({
   useBuild: (ctx) => {
     const { t } = useTranslation(['common', 'chat']);
     const translateMessage = useConversationStore((s) => s.translateMessage);
+    const targetId = ctx.role === 'group' ? ctx.contentBlock?.id : ctx.id;
 
     return useMemo(
-      () => ({
-        children: localeOptions.map((i) => ({
-          handleClick: () => translateMessage(ctx.id, i.value),
-          key: i.value,
-          label: t(`lang.${i.value}`, { ns: 'common' }),
-        })),
-        icon: LanguagesIcon,
-        key: 'translate',
-        label: t('translate.action', { ns: 'chat' }),
-        popupClassName: cx(translateStyle),
-      }),
-      [t, ctx.id, translateMessage],
+      () =>
+        targetId
+          ? {
+              children: localeOptions.map((i) => ({
+                handleClick: () => translateMessage(targetId, i.value),
+                key: i.value,
+                label: t(`lang.${i.value}`, { ns: 'common' }),
+              })),
+              icon: LanguagesIcon,
+              key: 'translate',
+              label: t('translate.action', { ns: 'chat' }),
+              popupClassName: cx(translateStyle),
+            }
+          : null,
+      [t, targetId, translateMessage],
     );
   },
 });

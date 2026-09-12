@@ -3,11 +3,12 @@
 import { type UserImageConfig } from '@lobechat/types';
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Form, Icon, Tooltip } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { Loader2Icon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { FormSliderWithInput } from '@/components/FormInput';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { MAX_DEFAULT_IMAGE_NUM, MIN_DEFAULT_IMAGE_NUM } from '@/const/settings';
@@ -26,7 +27,7 @@ const ImageSettings = memo(() => {
   const [setSettings, isUserStateInit] = useUserStore((s) => [s.setSettings, s.isUserStateInit]);
 
   if (!isUserStateInit) {
-    return <Skeleton.Text rows={1} />;
+    return <SkeletonText rows={1} />;
   }
 
   const defaultImageCountSlider = (

@@ -19,6 +19,7 @@ import {
   consumeStreamUntilDone,
   ModelEmptyError,
   type ModelRuntime,
+  type ModelRuntimeDiagnostics,
 } from '@lobechat/model-runtime';
 import {
   context as otelContext,
@@ -36,6 +37,7 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import {
   getPlatformUsageSharedBudgetForOperation,
+  getPlatformUsageSharedBudgetLimit,
   hashPlatformUsageProviderInput,
   PlatformUsageSharedBudgetError,
   runPlatformUsageSharedBudgetStep,
@@ -236,6 +238,18 @@ export class ServerLLMTransport implements LLMTransport {
     return this.ctx.billingActorUserId ?? this.ctx.userId;
   }
 
+  private async preparePlatformChat(
+    params: Parameters<PlatformAiRuntime['prepareChatBounded']>[0],
+  ) {
+    try {
+      return await new PlatformAiRuntime(this.ctx.serverDB).prepareChatBounded(params);
+    } catch (error) {
+      // Preparation failures are not transient provider failures. Retrying cannot fix
+      // an unsupported route or insufficient hold and must never trigger a paid call.
+      throw new PlatformUsageSharedBudgetError('PROVIDER_LIMIT_UNPROVEN', getErrorMessage(error));
+    }
+  }
+
   createTrace(input: LLMTraceInput): LLMTrace {
     return new ServerLLMTrace(this.ctx, input);
   }
@@ -250,13 +264,17 @@ export class ServerLLMTransport implements LLMTransport {
     handlers?: Parameters<LLMTransport['stream']>[1],
   ): Promise<LLMStreamResult> {
     const runtime = await this.createModelRuntime(payload.provider);
+    let executionRuntime: Pick<ModelRuntime, 'chat'> = runtime;
     const { provider: _provider, ...runtimePayload } = payload;
     let content = '';
     let usage: LLMStreamResult['usage'];
     let streamError: unknown;
+    const runtimeDiagnostics: ModelRuntimeDiagnostics = {};
 
-    const providerCall = async () => {
-      const response = await runtime.chat(runtimePayload as any, {
+    const providerCall = async (context?: {
+      recordProviderRequestId: (providerRequestId: string) => Promise<void>;
+    }) => {
+      const response = await executionRuntime.chat(runtimePayload as any, {
         callback: {
           onCompletion: async (data: any) => {
             if (data.usage) usage = data.usage;
@@ -270,14 +288,23 @@ export class ServerLLMTransport implements LLMTransport {
             handlers?.onText?.(text);
           },
         },
+        diagnostics: runtimeDiagnostics,
         user: this.ctx.userId,
       });
+      const providerRequestId = runtimeDiagnostics.providerResponse?.requestId?.trim();
+      if (providerRequestId) await context?.recordProviderRequestId(providerRequestId);
       await consumeStreamUntilDone(response);
       if (streamError) throw new Error(getErrorMessage(streamError));
       const output = { content, usage };
-      return { output, usage };
+      return { output, providerRequestId, usage };
     };
     const budget = this.getPlatformUsageSharedBudget();
+    const budgetLimit = budget
+      ? getPlatformUsageSharedBudgetLimit(budget, {
+          actorUserId: this.getBillingActorUserId()!,
+          workspaceId: this.ctx.workspaceId,
+        })
+      : undefined;
     const result = budget
       ? await runPlatformUsageSharedBudgetStep(budget, {
           actorUserId: this.getBillingActorUserId()!,
@@ -286,7 +313,20 @@ export class ServerLLMTransport implements LLMTransport {
           model: payload.model,
           operationId: this.ctx.operationId,
           provider: payload.provider,
-          providerCall,
+          ...(budgetLimit === undefined
+            ? { providerCall }
+            : {
+                prepareProviderCall: async ({ pricing, remainingCredits }) => {
+                  executionRuntime = await this.preparePlatformChat({
+                    payload: runtimePayload as ChatStreamPayload,
+                    pricing: pricing.pricing,
+                    modelLimits: pricing,
+                    remainingCredits: remainingCredits!,
+                    runtime,
+                  });
+                  return providerCall;
+                },
+              }),
           stepIndex: this.ctx.stepIndex,
           workspaceId: this.ctx.workspaceId,
         })
@@ -350,7 +390,7 @@ export class ServerLLMTransport implements LLMTransport {
 
   private async runAttemptWithRuntime(
     input: LLMAttemptInput,
-    modelRuntime: Pick<ModelRuntime, 'chat'>,
+    modelRuntime: ModelRuntime,
   ): Promise<LLMAttemptExecution> {
     const resolved = input.context.resolvedTools;
     if (!resolved) throw new Error('Resolved tools are required for a server LLM attempt');
@@ -358,15 +398,18 @@ export class ServerLLMTransport implements LLMTransport {
     const tools = resolved.tools.length > 0 ? resolved.tools : undefined;
     const chatPayload = {
       messages: input.context.messages as ChatStreamPayload['messages'],
-      model: input.model,
       stream: this.ctx.stream ?? true,
       tools,
       ...(input.context.modelParameters as Partial<ChatStreamPayload>),
+      model: input.model,
       ...(typeof input.context.preserveThinking === 'boolean' && {
         preserveThinking: input.context.preserveThinking,
       }),
     };
     const operationLogId = `${this.ctx.operationId}:${this.ctx.stepIndex}`;
+    let executionRuntime: Pick<ModelRuntime, 'chat'> = modelRuntime;
+    let observedProviderRequestId: string | undefined;
+    let persistProviderRequestId: ((providerRequestId: string) => Promise<void>) | undefined;
     const attempt = createServerCallLlmAttempt({
       attempt: input.attempt,
       blobStore: this.blobStore,
@@ -376,8 +419,12 @@ export class ServerLLMTransport implements LLMTransport {
       maxAttempts: input.maxAttempts,
       messageCount: chatPayload.messages.length,
       model: input.model,
-      modelRuntime,
+      modelRuntime: { chat: (payload, options) => executionRuntime.chat(payload, options) },
       onFirstChunk: input.onFirstChunk ?? (() => {}),
+      onProviderRequestId: async (providerRequestId) => {
+        observedProviderRequestId = providerRequestId;
+        await persistProviderRequestId?.(providerRequestId);
+      },
       operationLogId,
       provider: input.provider,
       resolved,
@@ -397,12 +444,25 @@ export class ServerLLMTransport implements LLMTransport {
     });
 
     try {
-      const providerCall = async () => {
+      const providerCall = async (context?: {
+        recordProviderRequestId: (providerRequestId: string) => Promise<void>;
+      }) => {
+        persistProviderRequestId = context?.recordProviderRequestId;
         await attempt.execute();
         const output = attempt.snapshot();
-        return { output, usage: output.usage };
+        return {
+          output,
+          providerRequestId: observedProviderRequestId,
+          usage: output.usage,
+        };
       };
       const budget = this.getPlatformUsageSharedBudget();
+      const budgetLimit = budget
+        ? getPlatformUsageSharedBudgetLimit(budget, {
+            actorUserId: this.getBillingActorUserId()!,
+            workspaceId: this.ctx.workspaceId,
+          })
+        : undefined;
       const output = budget
         ? await runPlatformUsageSharedBudgetStep(budget, {
             actorUserId: this.getBillingActorUserId()!,
@@ -411,7 +471,20 @@ export class ServerLLMTransport implements LLMTransport {
             model: input.model,
             operationId: this.ctx.operationId,
             provider: input.provider,
-            providerCall,
+            ...(budgetLimit === undefined
+              ? { providerCall }
+              : {
+                  prepareProviderCall: async ({ pricing, remainingCredits }) => {
+                    executionRuntime = await this.preparePlatformChat({
+                      payload: chatPayload,
+                      pricing: pricing.pricing,
+                      modelLimits: pricing,
+                      remainingCredits: remainingCredits!,
+                      runtime: modelRuntime,
+                    });
+                    return providerCall;
+                  },
+                }),
             stepIndex: this.ctx.stepIndex,
             workspaceId: this.ctx.workspaceId,
           })

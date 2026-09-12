@@ -4,6 +4,7 @@ import {
   CLAUDE_WEEKLY_WINDOW_SECONDS,
 } from '@lobechat/heterogeneous-agents/quota';
 import dayjs from 'dayjs';
+import { formatLocalizedTokens } from '@lobechat/utils/format';
 
 /**
  * Pure read-model helpers for the quota usage calendar: daily token/cost spend
@@ -460,13 +461,7 @@ export const buildMonthGrid = (month: dayjs.Dayjs): CalendarDayCell[] => {
 };
 
 /** Compact token count for a calendar cell: 1.3B / 585M / 340K / 820. */
-export const formatTokens = (tokens: number): string => {
-  if (tokens >= 1_000_000_000)
-    return `${(tokens / 1_000_000_000).toFixed(tokens >= 10_000_000_000 ? 0 : 1)}B`;
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(tokens >= 10_000_000 ? 0 : 1)}M`;
-  if (tokens >= 1000) return `${Math.round(tokens / 1000)}K`;
-  return String(Math.round(tokens));
-};
+export const formatTokens = formatLocalizedTokens;
 
 /** Cost for a summary line: $12.40 / $0.83. */
 export const formatCost = (cost: number): string => `$${cost.toFixed(cost >= 10 ? 0 : 2)}`;

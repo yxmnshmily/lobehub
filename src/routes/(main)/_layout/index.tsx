@@ -38,7 +38,7 @@ import DesktopHome from '../home';
 import DesktopHomeLayout from '../home/_layout';
 import DesktopAutoOidcOnFirstOpen from './DesktopAutoOidcOnFirstOpen';
 import RegisterHotkeys from './RegisterHotkeys';
-import { styles } from './style';
+import { resolveMainContainerHeight, styles } from './style';
 
 const CloudBanner = dynamic(() => import('@/features/AlertBanner/CloudBanner'));
 const GlobalApprovalNotification = dynamic(() => import('@/features/GlobalApprovalNotification'));
@@ -74,13 +74,12 @@ const Layout: FC = () => {
             horizontal
             className={cx(isPWA ? styles.mainContainerPWA : styles.mainContainer)}
             width={'100%'}
-            height={
-              isDesktop
-                ? `calc(100% - ${TITLE_BAR_HEIGHT}px)`
-                : showCloudPromotion
-                  ? `calc(100% - ${BANNER_HEIGHT}px)`
-                  : '100%'
-            }
+            height={resolveMainContainerHeight({
+              bannerHeight: BANNER_HEIGHT,
+              desktop: isDesktop,
+              showCloudPromotion,
+              titleBarHeight: TITLE_BAR_HEIGHT,
+            })}
           >
             {!isShareVisitor && <NavPanelShell />}
             <DesktopLayoutContainer>

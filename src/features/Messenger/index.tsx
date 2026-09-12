@@ -39,7 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   emptyState: css`
     padding-block: 48px;
     padding-inline: 24px;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     color: ${cssVar.colorTextSecondary};

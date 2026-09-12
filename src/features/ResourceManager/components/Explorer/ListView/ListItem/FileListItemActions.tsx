@@ -11,6 +11,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { getChunkTargetId } from '@/store/file';
 
 import DropdownMenu from '../../ItemDropdown/DropdownMenu';
+import { QuickActions } from '../../ItemDropdown/QuickActions';
 import ChunksBadge from './ChunkTag';
 import { styles } from './styles';
 
@@ -138,6 +139,7 @@ const FileListItemActions = ({
             />
           </div>
         ))}
+      <QuickActions menuItems={mergedMenuItems} />
       <DropdownMenu className={styles.hover} items={mergedMenuItems} />
     </Flexbox>
   );

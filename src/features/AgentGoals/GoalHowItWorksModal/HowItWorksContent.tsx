@@ -12,7 +12,7 @@ const styles = createStaticStyles(({ css }) => ({
   loopBack: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   loopIcon: css`

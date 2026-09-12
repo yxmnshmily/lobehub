@@ -62,6 +62,47 @@ const decide = (
   });
 };
 
+describe('blocked_by_given_up', () => {
+  it('surfaces the given-up prerequisite instead of stopping with nothing to answer', () => {
+    const snapshot = graph({
+      edges: [
+        { id: 'e1', kind: 'depends_on', sourceNodeId: 'blocked', targetNodeId: 'given-up' },
+      ] as GoalGraphSnapshot['edges'],
+      nodes: [
+        node('given-up', { status: 'retired', title: '审阅主文案' }),
+        node('blocked', { status: 'proposed', title: '生成封面' }),
+      ],
+    });
+
+    const move = decide(snapshot);
+
+    // Only `resolved` satisfies a dependency, so a given-up prerequisite blocks
+    // its dependents forever — the goal used to just stop here.
+    expect(move).toMatchObject({
+      branch: 'blocked_by_given_up',
+      focusNodeId: 'given-up',
+      outcome: 'waiting_human',
+    });
+    expect(move.message).toContain('生成封面');
+  });
+
+  it('leaves an unfinished prerequisite on the ordinary no_frontier path', () => {
+    const snapshot = graph({
+      edges: [
+        { id: 'e1', kind: 'depends_on', sourceNodeId: 'blocked', targetNodeId: 'running' },
+      ] as GoalGraphSnapshot['edges'],
+      nodes: [node('running', { status: 'active' }), node('blocked', { status: 'proposed' })],
+    });
+
+    const move = decide(snapshot);
+
+    // Still waiting on real work: the prerequisite itself is actionable, so this
+    // must not read as a dead end that needs the user.
+    expect(move.chosenNodeId).toBe('running');
+    expect(move.branch).not.toBe('blocked_by_given_up');
+  });
+});
+
 describe('selectFrontier', () => {
   it('ranks by priority, then by creation order', () => {
     const snapshot = graph({

@@ -216,8 +216,11 @@ export class HostedGroupArtifactAccessModel {
     );
     if (markers.length !== 1) return null;
     const markerPublishedAt =
-      typeof markers[0].publishedAt === 'string' ? canonicalTimestamp(markers[0].publishedAt) : undefined;
-    if (markerPublishedAt === undefined || row.readerJoinedAt.getTime() > markerPublishedAt) return null;
+      typeof markers[0].publishedAt === 'string'
+        ? canonicalTimestamp(markers[0].publishedAt)
+        : undefined;
+    if (markerPublishedAt === undefined || row.readerJoinedAt.getTime() > markerPublishedAt)
+      return null;
 
     return {
       marker: markers[0],

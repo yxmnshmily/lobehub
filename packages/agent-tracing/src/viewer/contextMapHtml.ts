@@ -72,7 +72,7 @@ const STYLE = `
   .label .tokens { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .lanes { flex: 1; min-width: 0; }
 
-  .track { background: var(--track-bg); border: 1.5px solid var(--border); border-radius: 8px; height: 58px; position: relative; }
+  .track { background: var(--track-bg); border: 0.5px solid var(--border); border-radius: 8px; height: 58px; position: relative; }
   .track-inner { inset: 4px; position: absolute; }
   /* Every message uses the same neutral frame. Absolute token coordinates keep the same
      boundary aligned across calls; the visual gap is deducted from the preceding message
@@ -85,7 +85,7 @@ const STYLE = `
      to re-process after a prefix break, so the two cache states never compete visually. */
   .seg.cached { opacity: 0.3; }
   .seg.reprocessed::before { background-image: repeating-linear-gradient(45deg, var(--hatch) 0 3px, transparent 3px 7px); content: ''; inset: 0; position: absolute; }
-  .inject-mark { align-items: center; background: var(--kind-system); border: 1px solid var(--kind-system); border-radius: 999px; color: var(--surface); display: flex; font-size: 7px; font-weight: 700; height: 13px; justify-content: center; letter-spacing: -0.02em; position: absolute; right: -5px; top: -7px; width: 13px; z-index: 12; }
+  .inject-mark { align-items: center; background: var(--kind-system); border: 0.5px solid var(--kind-system); border-radius: 999px; color: var(--surface); display: flex; font-size: 7px; font-weight: 700; height: 13px; justify-content: center; letter-spacing: -0.02em; position: absolute; right: -5px; top: -7px; width: 13px; z-index: 12; }
   .seg .tip { background: var(--tip-bg); border-radius: 6px; bottom: calc(100% + 10px); color: var(--tip-text); display: none; font-size: 12px; left: 0; line-height: 1.5; max-width: 460px; padding: 8px 10px; position: absolute; width: max-content; z-index: 20; }
   .seg:hover .tip { display: block; }
   .seg .tip b { color: var(--kind-injected); }
@@ -111,7 +111,7 @@ const STYLE = `
   .lanetext .new { color: var(--lane-text-new); }
   .lanetext .sep { color: var(--divider); padding: 0 6px; }
 
-  .legend { border-top: 1px solid var(--divider); margin-top: 34px; padding-top: 20px; }
+  .legend { border-top: 0.5px solid var(--divider); margin-top: 34px; padding-top: 20px; }
   .legend h2 { font-size: 13px; letter-spacing: 0.04em; margin: 0 0 14px; text-transform: uppercase; }
   .family { align-items: baseline; display: flex; gap: 14px; margin-bottom: 9px; }
   .family .fname { color: var(--text-dim); flex: 0 0 110px; font-size: 12px; text-align: right; }
@@ -119,13 +119,13 @@ const STYLE = `
   .family .items div { align-items: center; display: flex; font-size: 13px; gap: 7px; }
   .family .items span.num { color: var(--text-dim); }
   .swatch { border-radius: 4px; display: inline-block; height: 14px; width: 26px; }
-  .swatch.frame { background: transparent; border: 2px solid var(--border); }
+  .swatch.frame { background: transparent; border: 0.5px solid var(--border); }
   .swatch.cached { opacity: 0.3; }
   .swatch.hatch { background-image: repeating-linear-gradient(45deg, var(--hatch) 0 3px, transparent 3px 7px); }
   .swatch.injected { position: relative; }
-  .swatch.injected::after { align-items: center; background: var(--kind-system); border: 1px solid var(--kind-system); border-radius: 999px; color: var(--surface); content: 'I'; display: flex; font-size: 6px; font-weight: 700; height: 10px; justify-content: center; position: absolute; right: -4px; top: -5px; width: 10px; }
+  .swatch.injected::after { align-items: center; background: var(--kind-system); border: 0.5px solid var(--kind-system); border-radius: 999px; color: var(--surface); content: 'I'; display: flex; font-size: 6px; font-weight: 700; height: 10px; justify-content: center; position: absolute; right: -4px; top: -5px; width: 10px; }
 
-  .summary { background: var(--surface-raised); border: 1px solid var(--divider); border-radius: 8px; font-size: 13px; line-height: 1.8; margin-top: 28px; padding: 16px 20px; }
+  .summary { background: var(--surface-raised); border: 0.5px solid var(--divider); border-radius: 8px; font-size: 13px; line-height: 1.8; margin-top: 28px; padding: 16px 20px; }
   .summary b { color: var(--lane-text-miss); }
   .summary ul { margin: 8px 0 0; padding-left: 20px; }
 `;

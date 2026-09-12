@@ -35,10 +35,12 @@ const createAction = (overrides: Partial<VideoStore> = {}) => {
     ...overrides,
   } as unknown as VideoStore;
 
-  const set = vi.fn((patch: Partial<VideoStore> | ((current: VideoStore) => Partial<VideoStore>)) => {
-    const next = typeof patch === 'function' ? patch(state) : patch;
-    state = { ...state, ...next };
-  });
+  const set = vi.fn(
+    (patch: Partial<VideoStore> | ((current: VideoStore) => Partial<VideoStore>)) => {
+      const next = typeof patch === 'function' ? patch(state) : patch;
+      state = { ...state, ...next };
+    },
+  );
 
   return {
     action: new CreateVideoActionImpl(set as never, () => state),

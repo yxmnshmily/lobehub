@@ -9,8 +9,8 @@ export const GoalManifest: BuiltinToolManifest = {
   api: [
     {
       description:
-        'Create and immediately start a long-horizon goal with an editable acceptance plan. Use this only when the user explicitly starts their request with /goal. The call pauses for confirmation; after approval it creates the goal, records the acceptance criteria as its requirement, and advances its coordinator once — which dispatches the first task with its own verifier. Once it succeeds, do not execute or reproduce the work in the current conversation; the live result card is the progress and result entry point.',
-      humanIntervention: 'always',
+        'Create and start a long-horizon goal with an editable acceptance plan. Use for /goal, or in a group when the user explicitly requests a deliverable requiring coordinated dependent tasks. Do not turn ordinary questions or brainstorming into goals. It creates the goal in the current group when present, records acceptance criteria, and advances its coordinator. Once it succeeds, do not reproduce the work in this conversation; the goal page owns execution and progress.',
+      humanIntervention: 'never',
       name: GoalApiName.createGoal,
       parameters: {
         additionalProperties: false,

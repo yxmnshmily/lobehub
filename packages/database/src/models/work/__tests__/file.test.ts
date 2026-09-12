@@ -3,6 +3,7 @@ import type { RegisterFileWorkParams } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { works } from '../../../schemas';
+import { FileModel } from '../../file';
 import { WorkModel } from '..';
 import {
   agentId,
@@ -44,6 +45,28 @@ const baseFileParams = (
 });
 
 describe('WorkModel · file', () => {
+  it('removes only works whose current file is deleted', async () => {
+    const fileModel = new FileModel(serverDB, userId);
+    const file = await fileModel.create({
+      name: 'deck.pptx',
+      fileType: 'application/octet-stream',
+      size: 1,
+      url: 'deck.pptx',
+    });
+    const workModel = new WorkModel(serverDB, userId);
+    const deleted = await workModel.registerFile(
+      baseFileParams({ metadata: { ...baseFileParams().metadata, fileId: file.id } }),
+    );
+    const retained = await workModel.registerFile(
+      baseFileParams({ filePath: '/mnt/data/other.pptx', rootOperationId: 'other-op' }),
+    );
+    await new FileModel(serverDB, userId2).delete(file.id);
+    expect((await serverDB.select().from(works)).map((row) => row.id)).toContain(deleted.id);
+    await fileModel.delete(file.id);
+    const remaining = await serverDB.select().from(works);
+    expect(remaining.map((row) => row.id)).not.toContain(deleted.id);
+    expect(remaining.map((row) => row.id)).toContain(retained.id);
+  });
   it('keys resource identity on userId:topicId:filePath and denormalizes path + url', async () => {
     const workModel = new WorkModel(serverDB, userId);
 

@@ -14,7 +14,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin: 0;
     padding-block: 6px;
     padding-inline: 10px;
-    border-inline-start: 2px solid ${cssVar.colorSuccess};
+    border-inline-start: 0.5px solid ${cssVar.colorSuccess};
     border-radius: 0 6px 6px 0;
 
     font-family: ${cssVar.fontFamilyCode};
@@ -67,7 +67,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin: 0;
     padding-block: 6px;
     padding-inline: 10px;
-    border-inline-start: 2px solid ${cssVar.colorError};
+    border-inline-start: 0.5px solid ${cssVar.colorError};
     border-radius: 0 6px 6px 0;
 
     font-family: ${cssVar.fontFamilyCode};

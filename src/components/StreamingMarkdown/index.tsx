@@ -6,6 +6,7 @@ import type { RefObject } from 'react';
 import { memo, useEffect } from 'react';
 
 import { useAutoScroll } from '@/hooks/useAutoScroll';
+import { displayBranding } from '@/utils/displayBranding';
 
 const styles = createStaticStyles(({ css }) => ({
   container: css`
@@ -61,7 +62,7 @@ const StreamingMarkdown = memo<StreamingMarkdownProps>(({ children, maxHeight = 
       }}
     >
       <Markdown animated style={{ overflow: 'unset' }} variant={'chat'}>
-        {children}
+        {typeof children === 'string' ? displayBranding(children) : children}
       </Markdown>
     </ScrollArea>
   );

@@ -51,14 +51,15 @@ const SERVER_CONFIG_PLACEHOLDER =
 async function rewriteViteAssetUrls(
   html: string,
   origin = resolveViteDevOrigin(),
+  pathname = '/',
 ): Promise<string> {
   const { parseHTML } = await import('linkedom');
   const { document } = parseHTML(html);
 
   document.querySelectorAll('script[src]').forEach((el: Element) => {
     const src = el.getAttribute('src');
-    if (src && src.startsWith('/')) {
-      el.setAttribute('src', `${origin}${src}`);
+    if (src && (src.startsWith('/') || src.startsWith('./') || src.startsWith('../'))) {
+      el.setAttribute('src', new URL(src, `${origin}${pathname}`).href);
     }
   });
 
@@ -105,10 +106,11 @@ export async function fetchViteDevTemplate(
   const res = await fetch(`${resolveViteDevOrigin()}${pathname}`);
   const html = await res.text();
 
-  return rewriteViteAssetUrls(html, browserOrigin);
+  return rewriteViteAssetUrls(html, browserOrigin, pathname);
 }
 
 export function buildAnalyticsConfig(options: { desktop?: boolean } = {}): AnalyticsConfig {
+  if (analyticsEnv.TELEMETRY_DISABLED) return {};
   const config: AnalyticsConfig = {};
 
   if (analyticsEnv.ENABLE_GOOGLE_ANALYTICS && analyticsEnv.GOOGLE_ANALYTICS_MEASUREMENT_ID) {

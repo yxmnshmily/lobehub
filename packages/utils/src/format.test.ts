@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatDate,
   formatIntergerNumber,
+  formatLocalizedTokens,
   formatNumber,
   formatPrice,
   formatPriceByCurrency,
@@ -18,6 +19,43 @@ import {
 } from './format';
 
 describe('format', () => {
+  it('uses one localized token format across small and large counts', () => {
+    expect(formatLocalizedTokens(5_200_000, 'zh-CN')).toBe('520万');
+    expect(formatLocalizedTokens(5_200_000, 'en-US')).toBe('5.2M');
+    expect(formatLocalizedTokens(120_000_000, 'zh-CN')).toBe('1.2亿');
+    expect(formatLocalizedTokens(120_000_000, 'en-US')).toBe('120M');
+    expect(formatLocalizedTokens(520, 'zh-CN')).toBe('520');
+    expect(formatLocalizedTokens(0, 'en-US')).toBe('0');
+  });
+
+  it('follows the current document language when switching languages', () => {
+    const originalLanguage = document.documentElement.lang;
+    try {
+      document.documentElement.lang = 'zh-CN';
+      expect(formatLocalizedTokens(5_200_000)).toBe('520万');
+      document.documentElement.lang = 'en-US';
+      expect(formatLocalizedTokens(5_200_000)).toBe('5.2M');
+    } finally {
+      document.documentElement.lang = originalLanguage;
+    }
+  });
+  it('formats compact counts using the interface language', () => {
+    expect(formatShortenNumber(5_200_000, 'zh-CN')).toBe('520万');
+    expect(formatShortenNumber(120_000_000, 'zh-CN')).toBe('1.2亿');
+    expect(formatShortenNumber(5_200_000, 'en-US')).toBe('5.2M');
+    expect(formatShortenNumber(0, 'zh-CN')).toBe('0');
+  });
+  it('uses the document language for compact counts when callers omit a locale', () => {
+    const previous = document.documentElement.lang;
+    try {
+      document.documentElement.lang = 'zh-CN';
+      expect(formatShortenNumber(5_847_518)).toBe('584.8万');
+      expect(formatShortenNumber(120_000_000)).toBe('1.2亿');
+      expect(formatShortenNumber(5_847_518, 'en-US')).toBe('5.8M');
+    } finally {
+      document.documentElement.lang = previous;
+    }
+  });
   describe('formatSize', () => {
     it('should format bytes to KB correctly', () => {
       expect(formatSize(1024)).toBe('1.0 KB');

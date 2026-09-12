@@ -1,5 +1,8 @@
 export const LOADING_FLAT = '...';
 
+/** Live group window only; persisted topics and explicit history reads are not expired. */
+export const GROUP_RECENT_MESSAGE_LIMIT = 200;
+
 export const MESSAGE_CANCEL_FLAT = 'canceled';
 
 export const MESSAGE_THREAD_DIVIDER_ID = '__THREAD_DIVIDER__';

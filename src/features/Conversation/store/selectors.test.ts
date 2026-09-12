@@ -267,55 +267,61 @@ describe('conversationSelectors', () => {
     });
 
     describe('isAssistantGroupItemGenerating', () => {
-      it('returns true for an assistantGroup when any child block is generating', () => {
-        const store = createMockState({
-          displayMessages: [
-            {
-              children: [
-                { content: 'first', id: 'block-1' },
-                { content: 'second', id: 'block-2' },
-              ],
-              content: '',
-              id: 'group-1',
-              role: 'assistantGroup',
-            } as any,
-          ],
-          operationState: {
-            ...DEFAULT_OPERATION_STATE,
-            getMessageOperationState: (messageId) => ({
-              ...DEFAULT_MESSAGE_OPERATION_STATE,
-              isGenerating: messageId === 'block-2',
-            }),
-          },
-        });
+      it.each(['assistantGroup', 'supervisor'])(
+        'returns true for %s when any child block is generating',
+        (role) => {
+          const store = createMockState({
+            displayMessages: [
+              {
+                children: [
+                  { content: 'first', id: 'block-1' },
+                  { content: 'second', id: 'block-2' },
+                ],
+                content: '',
+                id: 'group-1',
+                role,
+              } as any,
+            ],
+            operationState: {
+              ...DEFAULT_OPERATION_STATE,
+              getMessageOperationState: (messageId) => ({
+                ...DEFAULT_MESSAGE_OPERATION_STATE,
+                isGenerating: messageId === 'block-2',
+              }),
+            },
+          });
 
-        expect(conversationSelectors.isAssistantGroupItemGenerating('group-1')(store)).toBe(true);
-      });
+          expect(conversationSelectors.isAssistantGroupItemGenerating('group-1')(store)).toBe(true);
+        },
+      );
 
-      it('returns true for a child block when its assistantGroup is generating', () => {
-        const store = createMockState({
-          displayMessages: [
-            {
-              children: [
-                { content: 'first', id: 'block-1' },
-                { content: 'second', id: 'block-2' },
-              ],
-              content: '',
-              id: 'group-1',
-              role: 'assistantGroup',
-            } as any,
-          ],
-          operationState: {
-            ...DEFAULT_OPERATION_STATE,
-            getMessageOperationState: (messageId) => ({
-              ...DEFAULT_MESSAGE_OPERATION_STATE,
-              isGenerating: messageId === 'group-1',
-            }),
-          },
-        });
+      it.each(['assistantGroup', 'supervisor'])(
+        'returns true for a child block when its %s is generating',
+        (role) => {
+          const store = createMockState({
+            displayMessages: [
+              {
+                children: [
+                  { content: 'first', id: 'block-1' },
+                  { content: 'second', id: 'block-2' },
+                ],
+                content: '',
+                id: 'group-1',
+                role,
+              } as any,
+            ],
+            operationState: {
+              ...DEFAULT_OPERATION_STATE,
+              getMessageOperationState: (messageId) => ({
+                ...DEFAULT_MESSAGE_OPERATION_STATE,
+                isGenerating: messageId === 'group-1',
+              }),
+            },
+          });
 
-        expect(conversationSelectors.isAssistantGroupItemGenerating('block-2')(store)).toBe(true);
-      });
+          expect(conversationSelectors.isAssistantGroupItemGenerating('block-2')(store)).toBe(true);
+        },
+      );
     });
   });
 });

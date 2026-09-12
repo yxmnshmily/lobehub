@@ -4,8 +4,10 @@ import { ChatInput, ChatInputActionBar } from '@lobehub/editor/react';
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { memo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import ChatInputNotice from '@/features/ChatInput/ChatInputNotice';
+import { focusEditorOnBodyClick } from '@/features/ChatInput/components/focusEditorOnBodyClick';
 import { useChatInputStore } from '@/features/ChatInput/store';
 import dynamic from '@/libs/next/dynamic';
 
@@ -28,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-width: 0;
   `,
   footerRow: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   fullscreen: css`
     position: absolute;
@@ -47,7 +49,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-width: 0;
   `,
   headerRow: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   inputRoot: css`
     overflow: hidden;
@@ -77,7 +79,12 @@ const styles = createStaticStyles(({ css }) => ({
   `,
 }));
 
-const DesktopChatInput = memo<{ sendAreaPrefix?: ReactNode }>(({ sendAreaPrefix }) => {
+const DesktopChatInput = memo<{
+  sendAreaPrefix?: ReactNode;
+  leftContent?: ReactNode;
+  inputBanner?: ReactNode;
+}>(({ sendAreaPrefix, leftContent, inputBanner }) => {
+  const { t } = useTranslation('chat');
   const [slashMenuRef, expand] = useChatInputStore((s) => [s.slashMenuRef, s.expand]);
   const leftActions = useChatInputStore((s) => s.leftActions);
 
@@ -88,41 +95,63 @@ const DesktopChatInput = memo<{ sendAreaPrefix?: ReactNode }>(({ sendAreaPrefix 
       {!expand && fileNode}
       <Flexbox
         className={cx(styles.container, expand && styles.fullscreen)}
-        gap={8}
-        paddingBlock={'0 12px'}
+        gap={4}
+        paddingBlock={'0 4px'}
         paddingInline={12}
       >
-        <ChatInput
-          className={styles.inputRoot}
-          fullscreen={expand}
-          maxHeight={160}
-          minHeight={64}
-          resize={false}
-          slashMenuRef={slashMenuRef}
-          footer={
-            <ChatInputActionBar
-              className={cx(styles.actionRow, styles.footerRow)}
-              left={sendAreaPrefix || <div />}
-              right={<SendArea hideContextWindow={false} />}
-            />
-          }
-          header={
-            <ChatInputActionBar
-              className={cx(styles.actionRow, styles.headerRow)}
-              left={
-                <Flexbox horizontal align={'center'} className={styles.leftSlot} gap={4}>
-                  <ActionBar />
-                  <ChatInputNotice />
-                </Flexbox>
-              }
-            />
+        <div
+          style={
+            inputBanner && !expand ? { position: 'relative', zIndex: 1 } : { display: 'contents' }
           }
         >
-          {expand && fileNode}
-          <div className={styles.editorWrapper}>
-            <InputEditor defaultRows={1} />
+          <ChatInput
+            className={styles.inputRoot}
+            fullscreen={expand}
+            maxHeight={160}
+            minHeight={64}
+            resize={false}
+            slashMenuRef={slashMenuRef}
+            footer={
+              <Flexbox className={styles.footerRow}>
+                {sendAreaPrefix && <Flexbox padding={8}>{sendAreaPrefix}</Flexbox>}
+                <ChatInputActionBar
+                  className={styles.actionRow}
+                  right={<SendArea hideContextWindow={false} />}
+                />
+              </Flexbox>
+            }
+            header={
+              <ChatInputActionBar
+                className={cx(styles.actionRow, styles.headerRow)}
+                left={
+                  <Flexbox horizontal align={'center'} className={styles.leftSlot} gap={4}>
+                    {leftContent ?? <ActionBar />}
+                    <ChatInputNotice />
+                  </Flexbox>
+                }
+              />
+            }
+            onBodyClick={focusEditorOnBodyClick}
+          >
+            {expand && fileNode}
+            <div className={styles.editorWrapper}>
+              <InputEditor defaultRows={1} />
+            </div>
+          </ChatInput>
+        </div>
+        {!expand && inputBanner}
+        {!expand && (
+          <div
+            style={{
+              color: cssVar.colorTextSecondary,
+              fontSize: 10,
+              lineHeight: '14px',
+              textAlign: 'center',
+            }}
+          >
+            {t('input.disclaimer')}
           </div>
-        </ChatInput>
+        )}
       </Flexbox>
     </>
   );

@@ -19,6 +19,7 @@ import {
   type MessengerPlatform,
 } from '@/config/messenger';
 import { AgentModel } from '@/database/models/agent';
+import { ChatGroupModel } from '@/database/models/chatGroup';
 import { FileModel } from '@/database/models/file';
 import type { SafeMessengerAccountLink } from '@/database/models/messengerAccountLink';
 import {
@@ -248,7 +249,82 @@ const resolveAuthorizedAgentScope = async (
   return { title: agentRow.title, workspaceId: agentRow.workspaceId };
 };
 
+const resolveAuthorizedGroupScope = async (
+  db: LobeChatDatabase,
+  userId: string,
+  groupId: string,
+  workspaceId?: string | null,
+) => {
+  if (workspaceId) {
+    await assertWorkspaceFeatureEnabledForUser(userId);
+    const scopes = await new WorkspaceModel(db, userId).listUserWorkspaces();
+    if (!scopes.some((scope) => scope.id === workspaceId))
+      throw new TRPCError({ code: 'FORBIDDEN' });
+    const allowed = await new RbacModel(db, userId).hasAnyPermission(
+      ['agent:update:all', 'agent:update:owner'],
+      { workspaceId },
+    );
+    if (!allowed) throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  const model = new ChatGroupModel(db, userId, workspaceId ?? undefined);
+  const group = await model.findById(groupId);
+  if (!group) throw new TRPCError({ code: 'NOT_FOUND', message: 'messenger.error.groupNotFound' });
+  const supervisorId = await model.getSupervisorAgentId(groupId);
+  if (!supervisorId)
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'messenger.error.groupSupervisorMissing' });
+  return { title: group.title, workspaceId: group.workspaceId, supervisorId };
+};
+
 export const messengerRouter = router({
+  listGroupsForBinding: messengerProcedure
+    .input(z.object({ workspaceId: z.string().nullish() }).optional())
+    .query(async ({ ctx, input }) => {
+      const workspaceId = input?.workspaceId ?? undefined;
+      if (workspaceId) {
+        await assertWorkspaceFeatureEnabledForUser(ctx.userId);
+        const scopes = await new WorkspaceModel(ctx.serverDB, ctx.userId).listUserWorkspaces();
+        if (!scopes.some((scope) => scope.id === workspaceId))
+          throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      const groups = await new ChatGroupModel(ctx.serverDB, ctx.userId, workspaceId).query();
+      return groups.map(({ id, title, avatar, backgroundColor }) => ({
+        id,
+        title,
+        avatar,
+        backgroundColor,
+      }));
+    }),
+
+  setActiveGroup: messengerWriteProcedure
+    .input(
+      z.object({
+        groupId: z.string().min(1).nullable(),
+        platform: platformEnum,
+        tenantId: z.string().optional(),
+        workspaceId: z.string().nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const workspaceId = input.workspaceId ?? undefined;
+      if (workspaceId) {
+        await assertWorkspaceFeatureEnabledForUser(ctx.userId);
+        const scopes = await new WorkspaceModel(ctx.serverDB, ctx.userId).listUserWorkspaces();
+        if (!scopes.some((scope) => scope.id === workspaceId))
+          throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      if (input.groupId) {
+        await resolveAuthorizedGroupScope(ctx.serverDB, ctx.userId, input.groupId, workspaceId);
+      }
+      const updated = await ctx.messengerLinkModel.setActiveGroup(
+        input.platform,
+        input.groupId,
+        workspaceId ?? null,
+        input.tenantId,
+      );
+      if (!updated)
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'messenger.error.linkRequired' });
+      return { data: updated, success: true };
+    }),
   /**
    * Surface available platforms + bot deep-link metadata to the UI.
    *
@@ -421,13 +497,17 @@ export const messengerRouter = router({
           });
         }
 
-        // A first scan should be immediately usable, so route it to the user's
-        // personal inbox (LobeAI). A rescan preserves an authorized Agent
-        // choice, but repairs stale/deauthorized links with the same fallback.
+        // New connections wait for an explicit workgroup choice. Preserve
+        // existing legacy routing on rescan without silently changing groups.
         const inboxAgentId =
-          (await ctx.getAgentModel().getBuiltinAgent(INBOX_SESSION_ID))?.id ?? null;
+          existingUserLink && !existingUserLink.activeGroupId
+            ? ((await ctx.getAgentModel().getBuiltinAgent(INBOX_SESSION_ID))?.id ?? null)
+            : null;
         let activeAgentId = existingUserLink?.activeAgentId ?? inboxAgentId;
-        let workspaceId: string | null = null;
+        let workspaceId: string | null = existingUserLink?.activeGroupId
+          ? (existingUserLink.workspaceId ?? null)
+          : null;
+        if (existingUserLink?.activeGroupId) activeAgentId = null;
 
         if (activeAgentId) {
           try {
@@ -460,6 +540,9 @@ export const messengerRouter = router({
           return new MessengerAccountLinkModel(txDB, ctx.userId).upsertForPlatform(
             {
               activeAgentId,
+              ...(existingUserLink?.activeGroupId
+                ? { activeGroupId: existingUserLink.activeGroupId }
+                : {}),
               applicationId: botId,
               credentials: { baseUrl, botId, botToken },
               platform: 'wechat',
@@ -491,6 +574,7 @@ export const messengerRouter = router({
               await new MessengerAccountLinkModel(txDB, ctx.userId).upsertForPlatform(
                 {
                   activeAgentId: previousWechatLink.activeAgentId,
+                  activeGroupId: previousWechatLink.activeGroupId,
                   applicationId: previousApplicationId,
                   credentials: previousWechatLink.credentials,
                   platform: 'wechat',
@@ -636,10 +720,17 @@ export const messengerRouter = router({
    */
   confirmLink: messengerWriteProcedure
     .input(
-      z.object({
-        initialAgentId: z.string().min(1, 'messenger.error.pickDefaultAgent'),
-        randomId: z.string().min(8),
-      }),
+      z
+        .object({
+          initialAgentId: z.string().min(1).optional(),
+          initialGroupId: z.string().min(1).optional(),
+          workspaceId: z.string().nullish(),
+          randomId: z.string().min(8),
+        })
+        .refine(
+          (input) => Boolean(input.initialAgentId) !== Boolean(input.initialGroupId),
+          'messenger.error.pickDefaultAgent',
+        ),
     )
     .mutation(async ({ input, ctx }) => {
       // Peek first so a cross-user conflict / missing agent doesn't burn the
@@ -691,11 +782,14 @@ export const messengerRouter = router({
 
       // Authorize the chosen initial agent against its own workspace (personal
       // or a workspace the user can access) and derive the active scope.
-      const agentScope = await resolveAuthorizedAgentScope(
-        ctx.serverDB,
-        ctx.userId,
-        input.initialAgentId,
-      );
+      const agentScope = input.initialGroupId
+        ? await resolveAuthorizedGroupScope(
+            ctx.serverDB,
+            ctx.userId,
+            input.initialGroupId,
+            input.workspaceId,
+          )
+        : await resolveAuthorizedAgentScope(ctx.serverDB, ctx.userId, input.initialAgentId!);
 
       // Now safe to consume — token is single-use; do this last so any error
       // above leaves the token available for retry.
@@ -712,7 +806,8 @@ export const messengerRouter = router({
       let link;
       try {
         link = await ctx.messengerLinkModel.upsertForPlatform({
-          activeAgentId: input.initialAgentId,
+          activeAgentId: input.initialGroupId ? null : input.initialAgentId,
+          activeGroupId: input.initialGroupId ?? null,
           platform: payload.platform,
           platformUserId: payload.platformUserId,
           platformUsername: payload.platformUsername ?? null,

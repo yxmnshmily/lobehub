@@ -163,9 +163,7 @@ describe('default travel service group initialization', () => {
     await db
       .update(agents)
       .set({ systemRole: '漂移的文案提示词', title: '漂移的文案助手' })
-      .where(
-        and(eq(agents.userId, firstUserId), eq(agents.clientId, 'default-travel-copywriter')),
-      );
+      .where(and(eq(agents.userId, firstUserId), eq(agents.clientId, 'default-travel-copywriter')));
 
     const summary = await getDefaultTravelServiceGroupHealthSummary(db, {
       targetUserId: firstUserId,

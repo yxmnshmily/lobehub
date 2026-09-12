@@ -25,6 +25,15 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
       opacity: 0;
 
       transition: opacity 0.1s ${cssVar.motionEaseInOut};
+
+      @media (width <= 767px), (hover: none) {
+        opacity: 1;
+
+        button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+      }
     `,
   ),
 
@@ -33,7 +42,8 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
     width: 100%;
 
-    &:hover .generation-actions {
+    &:hover .generation-actions,
+    &:focus-within .generation-actions {
       opacity: 1;
     }
   `,
@@ -43,7 +53,8 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
     width: 100%;
 
-    &:hover .generation-actions {
+    &:hover .generation-actions,
+    &:focus-within .generation-actions {
       opacity: 1;
     }
   `,

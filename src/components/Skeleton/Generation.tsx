@@ -16,7 +16,7 @@ const HeaderSkeleton = () => (
     flex={'none'}
     height={44}
     justify={'space-between'}
-    paddingInline={16}
+    paddingInline={24}
   >
     <SkeletonBar height={20} width={120} />
     <SkeletonBar height={28} width={28} />
@@ -30,13 +30,8 @@ const HeaderSkeleton = () => (
  * that draws one inside the content area invents chrome the page never had.
  */
 const HomeSkeleton = () => (
-  <SkeletonContainer
-    align={'center'}
-    justify={'center'}
-    style={{ minHeight: 'calc(100vh - 180px)' }}
-  >
+  <SkeletonContainer align={'center'} flex={1} gap={24} height={'100%'} justify={'center'}>
     <SkeletonBar height={32} width={280} />
-    <div style={{ height: 24 }} />
     <SkeletonBar height={148} radius={cssVar.borderRadiusLG} />
   </SkeletonContainer>
 );
@@ -45,7 +40,7 @@ const HomeSkeleton = () => (
 const TopicSkeleton = () => (
   <SkeletonContainer flex={1} gap={16} paddingBlock={16}>
     <SkeletonBar height={20} width={'95%'} />
-    <Flexbox horizontal gap={12}>
+    <Flexbox horizontal gap={12} wrap={'wrap'}>
       <SkeletonBar height={16} width={120} />
       <SkeletonBar height={16} width={80} />
       <SkeletonBar height={16} width={60} />

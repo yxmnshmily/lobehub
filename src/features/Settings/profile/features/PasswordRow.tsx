@@ -73,6 +73,7 @@ const PasswordRow = () => {
         </Button>
       }
     >
+      {!sent && <Text>********</Text>}
       {sent && (
         <Flexbox horizontal align={'center'} gap={6}>
           <Icon color={cssVar.colorSuccess} icon={CheckCircle2Icon} size={14} />

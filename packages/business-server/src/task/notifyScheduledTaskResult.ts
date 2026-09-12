@@ -1,3 +1,5 @@
+import { notifyUser } from '@/server/services/notification';
+
 export interface NotifyScheduledTaskCompletedParams {
   /** Agent executing the task — lets inbox surfaces render its avatar. */
   agentId?: string;
@@ -34,9 +36,27 @@ export interface NotifyScheduledTaskFailedParams {
 }
 
 export async function notifyScheduledTaskCompleted(
-  _params: NotifyScheduledTaskCompletedParams,
-): Promise<void> {}
+  params: NotifyScheduledTaskCompletedParams,
+): Promise<void> {
+  await notifyUser({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    type: 'agent_cron_job_completed',
+    eventId: params.operationId,
+    content: `计划任务「${params.taskName || params.taskIdentifier}」已完成。`,
+    actionUrl: '/task/' + encodeURIComponent(params.taskId),
+  });
+}
 
 export async function notifyScheduledTaskFailed(
-  _params: NotifyScheduledTaskFailedParams,
-): Promise<void> {}
+  params: NotifyScheduledTaskFailedParams,
+): Promise<void> {
+  await notifyUser({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    type: 'agent_cron_job_failed',
+    eventId: params.operationId,
+    content: `计划任务「${params.taskName || params.taskIdentifier}」执行失败。${params.paused ? '连续失败后已自动暂停，请查看任务详情。' : '请查看任务详情。'}`,
+    actionUrl: '/task/' + encodeURIComponent(params.taskId),
+  });
+}

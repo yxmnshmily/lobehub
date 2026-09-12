@@ -8,10 +8,11 @@ import { ModelIcon } from '@lobehub/icons';
 import { Center, Flexbox, Icon, Tooltip } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
-import { CircleDollarSignIcon } from 'lucide-react';
+import { CoinsIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
@@ -25,16 +26,49 @@ import TokenDetail from './UsageDetail';
 
 export const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
+    overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
     font-size: 12px;
     color: ${cssVar.colorTextQuaternary};
+    white-space: nowrap;
+
+    @media (width <= 768px) {
+      width: 100%;
+      column-gap: 8px;
+    }
+  `,
+  model: css`
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+  `,
+  modelIdentity: css`
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    > span:last-child {
+      overflow: hidden;
+      min-width: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `,
+  performance: css`
+    flex: none;
+    white-space: nowrap;
+  `,
+  metrics: css`
+    flex: none;
+    white-space: nowrap;
   `,
 }));
 
 // Cheap messages don't need a cost callout — only surface it once it's
 // expensive enough to matter.
 const MIN_DISPLAY_COST = 0.2;
-
-const formatCost = (cost: number) => cost.toFixed(2);
 
 interface UsageProps {
   model: string;
@@ -45,6 +79,7 @@ interface UsageProps {
 
 const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
   const { t } = useTranslation('chat');
+  const { format: formatCost } = useMonthlyExchangeRate();
   const onboardingAgentId = useAgentStore(builtinAgentSelectors.webOnboardingAgentId);
   const conversationAgentId = useConversationStore(contextSelectors.agentId);
   const serverDefaultConfiguredModel = useAgentStore((s) => {
@@ -97,12 +132,14 @@ const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
           neighbouring coin, so the reader can't tell what the number measures.
           TTFT rides in the hover instead of taking a second inline slot — it's a
           diagnostic, not an at-a-glance metric. */}
-      <Center horizontal gap={6} style={{ fontSize: 12 }}>
-        <Center horizontal gap={4}>
-          {heteroName || (
+      <Center horizontal className={styles.model} gap={6} style={{ fontSize: 12 }}>
+        <Center horizontal className={styles.modelIdentity} gap={4}>
+          {heteroName ? (
+            <span>{heteroName}</span>
+          ) : (
             <>
               <ModelIcon model={displayModel} type={'mono'} />
-              {modelCard?.displayName || displayModel}
+              <span>{modelCard?.displayName || displayModel}</span>
             </>
           )}
         </Center>
@@ -122,7 +159,7 @@ const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
                 </Flexbox>
               }
             >
-              <Center horizontal gap={4}>
+              <Center horizontal className={styles.performance} gap={4}>
                 <span>{formatNumber(performance.tps, 1)}</span>
                 <span>{t('messages.tokenDetails.speed.tps.title')}</span>
               </Center>
@@ -131,7 +168,7 @@ const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
         )}
       </Center>
 
-      <Center horizontal gap={8}>
+      <Center horizontal className={styles.metrics} gap={8}>
         {!!usage?.totalTokens && (
           <TokenDetail
             model={displayModel}
@@ -142,7 +179,7 @@ const Usage = memo<UsageProps>(({ model, usage, performance, provider }) => {
         )}
         {!isShowCredit && !!usage?.cost && usage.cost >= MIN_DISPLAY_COST && (
           <Center horizontal gap={2}>
-            <Icon icon={CircleDollarSignIcon} />
+            <Icon icon={CoinsIcon} />
             {formatCost(usage.cost)}
           </Center>
         )}

@@ -52,7 +52,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 14px 6px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     background: ${cssVar.colorBgContainer};
   `,

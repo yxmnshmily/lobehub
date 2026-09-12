@@ -2,6 +2,7 @@ import { CUSTOM_DOCUMENT_FILE_TYPE } from '@lobechat/const';
 import { type DocumentItem } from '@lobechat/database/schemas';
 
 import { lambdaClient } from '@/libs/trpc/client';
+import { notifyMaterialDeletion } from '@/utils/materialDeletion';
 import type {
   CompareHistoryItemsInput,
   CompareHistoryItemsOutput,
@@ -213,10 +214,12 @@ export class DocumentService {
 
   async deleteDocument(id: string): Promise<void> {
     await lambdaClient.document.deleteDocument.mutate({ id });
+    notifyMaterialDeletion();
   }
 
   async deleteDocuments(ids: string[]): Promise<void> {
     await lambdaClient.document.deleteDocuments.mutate({ ids });
+    notifyMaterialDeletion();
   }
 
   async updateDocument(params: UpdateDocumentParams): Promise<UpdateDocumentOutput> {

@@ -158,7 +158,11 @@ vi.mock('model-bank', async (importOriginal) => {
 
 describe('AiAgentService.execAgent - model/provider override', () => {
   let service: AiAgentService;
-  const mockDb = {} as any;
+  // These model-override fixtures use ordinary topics. Keep the real phone
+  // admission check and stub only its database read, not the authorization.
+  const mockDb = {
+    query: { topics: { findFirst: vi.fn().mockResolvedValue({ groupId: null }) } },
+  } as any;
   const userId = 'test-user-id';
 
   const defaultAgentConfig = {
@@ -198,6 +202,18 @@ describe('AiAgentService.execAgent - model/provider override', () => {
     const callArgs = mockCreateOperation.mock.calls[0][0];
     expect(callArgs.agentConfig.model).toBe('gpt-4');
     expect(callArgs.agentConfig.provider).toBe('openai');
+  });
+
+  it('blocks pending published members before creating an operation even with a model override', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      ...defaultAgentConfig,
+      agencyConfig: { publicationBlockedReason: '原成员绑定本机运行环境' },
+    });
+    await expect(
+      service.execAgent({ agentId: 'agent-1', prompt: 'Hello', model: 'gpt-4' }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+    expect(mockMessageCreate).not.toHaveBeenCalled();
   });
 
   it('should override model when model param is provided', async () => {

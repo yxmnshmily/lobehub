@@ -30,7 +30,7 @@ const taskLockClient: EditLockClient = {
 // of the page, so the preview should carry a paragraph or two before it clamps.
 const INSTRUCTION_MAX_HEIGHT = 320;
 
-const TaskInstruction = memo(() => {
+const TaskInstruction = memo(({ compact = false }: { compact?: boolean }) => {
   const { t } = useTranslation('chat');
   const { allowed: canEditTask } = usePermission('create_content');
   const instruction = useTaskStore(taskDetailSelectors.activeTaskInstruction);
@@ -129,13 +129,14 @@ const TaskInstruction = memo(() => {
           would drop unsaved input. */}
       <CollapsibleContent
         collapsed={!expanded}
-        maxHeight={INSTRUCTION_MAX_HEIGHT}
+        maxHeight={compact ? 160 : INSTRUCTION_MAX_HEIGHT}
         onCollapsedChange={handleCollapsedChange}
         onOverflowChange={setOverflowing}
       >
         <div onFocus={handleFocus}>
           <EditorCanvas
             contentRevision={instructionRevision}
+            contentStyle={compact ? { minHeight: 64, paddingBottom: 8 } : undefined}
             disabled={!canEditTask}
             editable={!lock.lockedByOther && !lock.pending}
             editor={editor}

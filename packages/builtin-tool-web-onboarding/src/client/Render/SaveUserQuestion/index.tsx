@@ -40,7 +40,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   detailCard: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
     background: ${cssVar.colorFillTertiary};
   `,

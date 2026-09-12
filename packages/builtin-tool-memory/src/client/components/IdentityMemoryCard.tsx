@@ -17,7 +17,7 @@ const localStyles = createStaticStyles(({ css, cssVar }) => ({
   evidence: css`
     padding-block: 8px;
     padding-inline: 12px;
-    border-inline-start: 2px solid ${cssVar.colorBorder};
+    border-inline-start: 0.5px solid ${cssVar.colorBorder};
 
     font-size: 13px;
     font-style: italic;

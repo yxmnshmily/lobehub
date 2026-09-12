@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     `,
     bubble: css`
       padding: 6px;
-      border: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
+      border: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
       border-radius: 3px;
       background-color: ${cssVar.colorBgContainer};
     `,
@@ -21,9 +21,10 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       overflow: hidden;
       justify-self: flex-end;
 
-      width: 332px;
+      width: min(332px, 100%);
+      max-width: 100%;
       height: 200px;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgLayout};
@@ -32,7 +33,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       background: ${cssVar.colorBgContainer};
     `,
     header: css`
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     `,
     icon: css`
       flex: none;
@@ -40,16 +41,16 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       background: ${cssVar.colorFillSecondary};
     `,
     input: css`
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     `,
     nav: css`
       padding: 4px;
-      border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
       background: ${cssVar.colorBgLayout};
     `,
     sidebar: css`
       padding: 4px;
-      border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
       background: ${cssVar.colorBgLayout};
     `,
   };
@@ -101,7 +102,7 @@ const Preview = memo(() => {
       <Flexbox
         className={styles.icon}
         height={14}
-        style={{ border: `2px solid ${cssVar.colorPrimary}`, borderRadius: '50%' }}
+        style={{ border: `0.5px solid ${cssVar.colorPrimary}`, borderRadius: '50%' }}
         width={14}
       />
       <Flexbox className={styles.icon} height={12} width={12} />

@@ -15,6 +15,7 @@ import { changelogKeys } from '@/libs/swr/keys';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type Locales } from '@/locales/resources';
 import { type ChangelogIndexItem } from '@/types/changelog';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import VersionTag from './VersionTag';
 
@@ -28,6 +29,7 @@ interface PostItemProps extends ChangelogIndexItem {
 }
 
 const PostItem = ({ id, versionRange, locale, showDivider = true }: PostItemProps) => {
+  const translateTravel = useTravelTranslation();
   const { data } = useSWR(changelogKeys.post(id, locale), async () => {
     return await lambdaClient.changelog.getPostById.query({ id, locale });
   });
@@ -56,7 +58,7 @@ const PostItem = ({ id, versionRange, locale, showDivider = true }: PostItemProp
             }
           />
         )}
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>{translateTravel('加载中…')}</div>}>
           <CustomMDX
             components={{ 'collapsible-section': CollapsibleSection } as Components}
             remarkPlugins={[remarkCollapsibleSections]}

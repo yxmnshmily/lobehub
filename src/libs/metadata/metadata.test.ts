@@ -39,7 +39,7 @@ describe('Metadata', () => {
         url: 'https://example.com/custom',
         type: 'article',
         tags: ['tag1', 'tag2'],
-        locale: 'fr-FR',
+        locale: 'en-US',
         alternate: true,
       });
 
@@ -51,7 +51,7 @@ describe('Metadata', () => {
           description: 'Custom description',
           images: [{ url: 'https://custom-image.com', alt: `Custom Title · ${BRANDING_NAME}` }],
           type: 'article',
-          locale: 'fr-FR',
+          locale: 'en-US',
         }),
         twitter: expect.objectContaining({
           title: `Custom Title · ${BRANDING_NAME}`,
@@ -115,22 +115,7 @@ describe('Metadata', () => {
         type: 'article',
         url: 'https://example.com/og',
         siteName: BRANDING_NAME,
-        alternateLocale: expect.arrayContaining([
-          'ar',
-          'bg-BG',
-          'de-DE',
-          'en-US',
-          'es-ES',
-          'fr-FR',
-          'ja-JP',
-          'ko-KR',
-          'pt-BR',
-          'ru-RU',
-          'tr-TR',
-          'zh-CN',
-          'zh-TW',
-          'vi-VN',
-        ]),
+        alternateLocale: expect.arrayContaining(['en-US', 'zh-CN']),
       });
     });
   });

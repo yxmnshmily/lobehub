@@ -1,6 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveViteBrowserOrigin, resolveViteSpaTemplatePath } from './index';
+import {
+  fetchViteDevTemplate,
+  resolveViteBrowserOrigin,
+  resolveViteSpaTemplatePath,
+} from './index';
+
+afterEach(() => vi.unstubAllGlobals());
+
+it('resolves the share entry against its Vite directory, not the public share URL', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          '<html><head></head><body><script type="module" src="./src/entry.tsx"></script></body></html>',
+        ),
+      ),
+  );
+  const html = await fetchViteDevTemplate('/apps/share/index.html', 'http://localhost:9876');
+  expect(html).toContain('src="http://localhost:9876/apps/share/src/entry.tsx"');
+});
 
 describe('resolveViteSpaTemplatePath', () => {
   it('selects the mobile Vite entry for mobile requests', () => {
@@ -15,10 +36,7 @@ describe('resolveViteSpaTemplatePath', () => {
 describe('resolveViteBrowserOrigin', () => {
   it('keeps localhost assets local for a localhost request', () => {
     expect(
-      resolveViteBrowserOrigin(
-        'http://localhost:3010/lobehub/signin',
-        'http://localhost:9876',
-      ),
+      resolveViteBrowserOrigin('http://localhost:3010/lobehub/signin', 'http://localhost:9876'),
     ).toBe('http://localhost:9876');
   });
 
@@ -44,11 +62,7 @@ describe('resolveViteBrowserOrigin', () => {
 
   it('falls back safely when a forwarded host is malformed', () => {
     expect(
-      resolveViteBrowserOrigin(
-        'http://127.0.0.1:3011/signin',
-        'http://localhost:9876',
-        '[invalid',
-      ),
+      resolveViteBrowserOrigin('http://127.0.0.1:3011/signin', 'http://localhost:9876', '[invalid'),
     ).toBe('http://localhost:9876');
   });
 });

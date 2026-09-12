@@ -8,7 +8,9 @@ type NamespaceLoaderMap = Record<string, () => Promise<NamespaceModule>>;
 const defaultLoaders = import.meta.glob(
   '../../../../packages/locales/src/default/verify.ts',
 ) as NamespaceLoaderMap;
-const localeLoaders = import.meta.glob('../../../../locales/*/verify.json') as NamespaceLoaderMap;
+const localeLoaders = import.meta.glob(
+  '../../../../locales/{en-US,zh-CN}/verify.json',
+) as NamespaceLoaderMap;
 
 const DEFAULT_KEY = '../../../../packages/locales/src/default/verify.ts';
 

@@ -21,7 +21,6 @@ import type { LobeChatDatabase } from '@lobechat/database';
 import type { ChatTopicBotContext, RequestTrigger } from '@lobechat/types';
 import { getActivePluginIds } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
-import debug from 'debug';
 import type { ModelAbilities } from 'model-bank';
 
 import type { loadModels } from '@/business/client/model-bank/loadModels';
@@ -79,11 +78,10 @@ import {
   getMediaAvailabilityFromMessages,
   isMultimodalUnderstandingConfigured,
 } from '../helpers/mediaAvailability';
+import { aiAgentDebug as log } from '../safeDebug';
 import { resolveServerSearchDecision } from '../searchDecision';
 import { filterPluginsByShareGate, shareGateGrantsCloudSandbox } from '../shareGate';
 import type { ExecRunContext, InternalExecAgentParams } from '../types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface ToolDiscoveryDeps {
   agentDocumentsService: AgentDocumentsService;
@@ -178,7 +176,6 @@ export const discoverTools = async (
     provider,
     resolvedAgentId,
     shareGate,
-    topicId,
   } = ctx;
   const {
     additionalPluginIds,
@@ -735,14 +732,7 @@ export const discoverTools = async (
     // this log is the breadcrumb for diagnosing WHY the device was judged
     // offline (lazy WS connect vs getScopedOnlineDevices failing silently).
     if (executionPlan.kind === 'device-unrouted') {
-      console.warn('[AiAgentService] device-unrouted: exec degrades to cloud sandbox', {
-        boundDeviceId,
-        onlineDeviceCount: onlineDevices.length,
-        reason: executionPlan.reason,
-        requestedDeviceId,
-        topicId,
-        userId: deps.userId,
-      });
+      log('execAgent: device unrouted, degrading to cloud sandbox', onlineDevices.length);
     }
 
     // Resolve the operation's group context ONCE here and snapshot it into op
@@ -762,10 +752,14 @@ export const discoverTools = async (
       // authorize the group-orchestration toolset — otherwise any run marked
       // `{ orchestrationRole: 'supervisor', groupId }` could dispatch members.
       // Verify against the persisted, ownership-scoped membership instead.
-      if (appContext.orchestrationRole === 'supervisor') {
+      if (appContext.orchestrationRole === 'supervisor' || appContext.taskId) {
         isGroupSupervisor = roster.some(
           (member) => member.agentId === resolvedAgentId && member.role === 'supervisor',
         );
+        // Task runs retain their real executor; derive its role from membership,
+        // never from the fact that the group owns the task.
+        if (appContext.taskId)
+          appContext.orchestrationRole = isGroupSupervisor ? 'supervisor' : 'member';
         if (!isGroupSupervisor)
           log(
             'execAgent: orchestrationRole=supervisor but agent %s is not the supervisor of group %s — denying group tools',

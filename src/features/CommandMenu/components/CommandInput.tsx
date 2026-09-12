@@ -35,6 +35,7 @@ const CommandInput = memo<CommandInputProps>(({ onInputChange, onTypeFilterChang
     selectedAgent,
     setSelectedAgent,
     activeAgentId,
+    onClose,
   } = useCommandMenuContext();
 
   const activeAgentMeta = useAgentStore((s) =>
@@ -64,41 +65,51 @@ const CommandInput = memo<CommandInputProps>(({ onInputChange, onTypeFilterChang
 
   return (
     <>
-      {(menuContext !== 'general' || typeFilter) && !hasPages && !hasSelectedAgent && (
-        <div className={styles.contextWrapper}>
-          {hasActiveAgent ? (
-            <Tag
-              className={styles.contextTag}
-              icon={
-                <Avatar
-                  emojiScaleWithBackground
-                  avatar={activeAgentMeta?.avatar || DEFAULT_AVATAR}
-                  background={activeAgentMeta?.backgroundColor}
-                  name={agentDisplayName(activeAgentMeta, t('defaultAgent'))}
-                  shape="square"
-                  size={14}
-                />
-              }
-            >
-              {agentDisplayName(activeAgentMeta, t('defaultAgent'))}
-            </Tag>
-          ) : (
-            menuContext !== 'general' && <Tag className={styles.contextTag}>{contextName}</Tag>
-          )}
-          {typeFilter && (
-            <Tag
-              className={styles.backTag}
-              icon={<X size={12} />}
-              onClick={() => {
-                onTypeFilterChange();
-                setTypeFilter(undefined);
-              }}
-            >
-              {getTypeLabel(typeFilter)}
-            </Tag>
-          )}
-        </div>
-      )}
+      <div className={styles.contextWrapper}>
+        {(menuContext !== 'general' || typeFilter) && !hasPages && !hasSelectedAgent && (
+          <>
+            {hasActiveAgent ? (
+              <Tag
+                className={styles.contextTag}
+                icon={
+                  <Avatar
+                    emojiScaleWithBackground
+                    avatar={activeAgentMeta?.avatar || DEFAULT_AVATAR}
+                    background={activeAgentMeta?.backgroundColor}
+                    name={agentDisplayName(activeAgentMeta, t('defaultAgent'))}
+                    shape="square"
+                    size={14}
+                  />
+                }
+              >
+                {agentDisplayName(activeAgentMeta, t('defaultAgent'))}
+              </Tag>
+            ) : (
+              menuContext !== 'general' && <Tag className={styles.contextTag}>{contextName}</Tag>
+            )}
+            {typeFilter && (
+              <Tag
+                className={styles.backTag}
+                icon={<X size={12} />}
+                onClick={() => {
+                  onTypeFilterChange();
+                  setTypeFilter(undefined);
+                }}
+              >
+                {getTypeLabel(typeFilter)}
+              </Tag>
+            )}
+          </>
+        )}
+        {/* 右上角：ESC 提示 + 关闭按钮 */}
+        <Tag style={{ marginInlineStart: 'auto' }}>{t('cmdk.keyboard.ESC')}</Tag>
+        <Tag
+          aria-label={'关闭'}
+          className={styles.backTag}
+          icon={<X size={12} />}
+          onClick={onClose}
+        />
+      </div>
       <div className={styles.inputWrapper}>
         {hasPages && !hasSelectedAgent && (
           <Tag className={styles.backTag} icon={<ArrowLeft size={12} />} onClick={handleBack} />
@@ -130,13 +141,11 @@ const CommandInput = memo<CommandInputProps>(({ onInputChange, onTypeFilterChang
             setSearch(value);
           }}
         />
-        {page !== 'ask-ai' && !hasSelectedAgent && search.trim() ? (
+        {page !== 'ask-ai' && !hasSelectedAgent && search.trim() && (
           <>
             <span style={{ fontSize: '14px', opacity: 0.6 }}>{t('cmdk.askAI')}</span>
             <Tag>{t('cmdk.keyboard.Tab')}</Tag>
           </>
-        ) : (
-          <Tag>{t('cmdk.keyboard.ESC')}</Tag>
         )}
       </div>
     </>

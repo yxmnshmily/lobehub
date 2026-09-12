@@ -71,9 +71,9 @@ const WEBHOOK_RECONCILE_KEY_PREFIX = 'bot:webhook-reconcile';
 
 const log = debug('lobe-server:bot:message-router');
 const WECHAT_PRO_FEATURE_NOTICE =
-  '提示：由于 WeChat 渠道通信成本过高，LobeHub 微信渠道能力将于近期调整为付费功能。预告期内已有连接可继续使用，但新建或重新连接微信渠道需要升级到个人付费 Plan。';
+  '提示：由于 WeChat 渠道通信成本过高，旅游群 微信渠道能力将于近期调整为付费功能。预告期内已有连接可继续使用，但新建或重新连接微信渠道需要升级到个人付费 Plan。';
 const WECHAT_PRO_FEATURE_NOTICE_WORKSPACE =
-  '提示：由于 WeChat 渠道通信成本过高，LobeHub 微信渠道能力将于近期调整为付费功能。预告期内已有连接可继续使用，但新建或重新连接微信渠道需要将所属工作区升级到付费 Plan。';
+  '提示：由于 WeChat 渠道通信成本过高，旅游群 微信渠道能力将于近期调整为付费功能。预告期内已有连接可继续使用，但新建或重新连接微信渠道需要将所属工作区升级到付费 Plan。';
 
 /**
  * Compact summary of a Chat SDK Message's attachments for debug logging.
@@ -1935,7 +1935,7 @@ export class BotMessageRouter {
         name: 'approve',
       },
       {
-        description: 'Send feedback directly to the LobeHub team (no AI reply)',
+        description: 'Send feedback directly to the 旅游群 team (no AI reply)',
         // Declaring the argument so Discord/Slack surface a `/feedback <message>`
         // prompt instead of registering the command as zero-arg (see the
         // `options` comment on the BotCommand interface).

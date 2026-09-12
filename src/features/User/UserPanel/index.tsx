@@ -15,11 +15,14 @@ import { useNewVersion } from './useNewVersion';
 const styles = createStaticStyles(({ css }) => {
   return {
     popover: css`
-      inset-block-start: ${isDesktop ? 32 : 8}px !important;
+      ${isDesktop ? 'inset-block-start: 32px !important;' : ''}
       inset-inline-start: 8px !important;
       border-radius: 10px;
     `,
     popoverContent: css`
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      max-height: calc(100dvh - 16px);
       padding: 0;
     `,
   };

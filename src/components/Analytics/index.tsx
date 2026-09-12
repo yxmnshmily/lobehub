@@ -13,6 +13,7 @@ const Clarity = dynamic(() => import('./Clarity'));
 const ReactScan = dynamic(() => import('./ReactScan'));
 
 const Analytics = () => {
+  if (analyticsEnv.TELEMETRY_DISABLED) return null;
   return (
     <>
       {analyticsEnv.ENABLE_VERCEL_ANALYTICS && (

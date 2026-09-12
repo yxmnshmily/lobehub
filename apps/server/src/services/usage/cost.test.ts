@@ -13,6 +13,20 @@ const priced = LOBE_DEFAULT_MODEL_LIST.find(
 )!;
 
 describe('computeMessageCostSplit', () => {
+  it('uses the recorded FX for CNY cache savings without repricing the settled total', () => {
+    const split = computeMessageCostSplit(
+      {
+        totalInputTokens: 1_000_000,
+        inputCachedTokens: 1_000_000,
+        costExchangeRate: { rate: 6, rateDate: '2026-09-07', updatedAt: '2026-09-07T10:00:00Z' },
+      },
+      'moonshot',
+      'kimi-k3',
+      0.4,
+    );
+    expect(split.cacheSavings).toBe(3);
+    expect(split.totalCost).toBe(0.4);
+  });
   it('attributes the whole billed cost to input when pricing is unknown', () => {
     const usage: ModelUsage = { totalInputTokens: 100, totalOutputTokens: 50, totalTokens: 150 };
     const split = computeMessageCostSplit(usage, 'no-such-provider', 'no-such-model', 0.42);

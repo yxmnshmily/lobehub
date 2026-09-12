@@ -1,10 +1,11 @@
 import * as BaseUI from '@lobehub/ui/base-ui';
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { Form } from 'antd';
 import { type ReactElement, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SignInEmailStep } from '@/features/Auth/SignIn/SignInEmailStep';
+import { phoneNumber } from '@/libs/better-auth/auth-client';
 
 import AuthAgreement, { useAuthAgreement } from './AuthAgreement';
 import AuthFooterLinks from './AuthFooterLinks';
@@ -13,6 +14,11 @@ interface TransMockProps {
   components?: Record<string, ReactElement>;
   i18nKey: string;
 }
+
+vi.mock('@/libs/better-auth/auth-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  phoneNumber: { sendOtp: vi.fn(), verify: vi.fn() },
+}));
 
 vi.mock('react-i18next', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -102,6 +108,41 @@ describe('SignInEmailStep', () => {
     ).toBeTruthy();
   });
 
+  it.each(['send', 'verify'] as const)(
+    'shows phone %s failures outside the form without inserting an error row',
+    async (stage) => {
+      const errorToast = vi
+        .spyOn(BaseUI.toast, 'error')
+        .mockReturnValue({ close: vi.fn(), id: 'error-toast', update: vi.fn() });
+      vi.spyOn(phoneNumber, 'sendOtp').mockResolvedValue(
+        (stage === 'send' ? { error: { message: 'failed' } } : { data: {} }) as never,
+      );
+      vi.spyOn(phoneNumber, 'verify').mockResolvedValue({ error: { message: 'failed' } } as never);
+      const { container } = render(<ModeSwitcher />);
+      fireEvent.change(container.querySelector('input[inputmode="tel"]')!, {
+        target: { value: '13812345678' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /sendCode|获取验证码/ }));
+      if (stage === 'verify') {
+        await waitFor(() =>
+          expect(container.querySelector('input[inputmode="numeric"]')).toBeTruthy(),
+        );
+        fireEvent.change(container.querySelector('input[inputmode="numeric"]')!, {
+          target: { value: '123456' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /signInOrSignUp|登录或注册/ }));
+      }
+      await waitFor(() => expect(errorToast).toHaveBeenCalledTimes(1));
+      expect(errorToast.mock.calls[0][0]).toMatch(
+        stage === 'send' ? /sendFailed|验证码发送失败/ : /verifyFailed|验证码.*(错误|失效|失败)/,
+      );
+      expect(container.querySelector('form')?.textContent).not.toContain(
+        errorToast.mock.calls[0][0],
+      );
+      expect(container.querySelector('input[inputmode="tel"]')).toHaveValue('13812345678');
+    },
+  );
+
   it('should keep the phone and email input wrappers at the same control height', () => {
     const { container } = render(<ModeSwitcher />);
     const phoneInput = container.querySelector('input[inputmode="tel"]');
@@ -134,10 +175,12 @@ describe('SignInEmailStep', () => {
         <SignInEmailStep
           disableEmailPassword
           serverConfigInit
+          authMode="email"
           form={form}
           isSocialOnly={false}
           loading={false}
           oAuthSSOProviders={['google']}
+          setAuthMode={vi.fn()}
           socialLoading={null}
           onCheckUser={vi.fn(async () => {})}
           onGoToSignup={vi.fn()}

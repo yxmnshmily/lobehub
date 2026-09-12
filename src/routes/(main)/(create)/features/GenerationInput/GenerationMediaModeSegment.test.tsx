@@ -77,12 +77,13 @@ describe('GenerationMediaModeSegment', () => {
     const toggleGroup = screen.getByTestId('mode-toggle-group');
     expect(toggleGroup).toBeInTheDocument();
     expect(screen.queryByTestId('mode-select')).not.toBeInTheDocument();
-    expect(toggleGroup.querySelectorAll('svg')).toHaveLength(2);
+    expect(toggleGroup.querySelectorAll('svg')).toHaveLength(3);
     expect(screen.queryByText('tab.image')).not.toBeInTheDocument();
     expect(screen.queryByText('tab.video')).not.toBeInTheDocument();
     expect(componentMocks.segmented?.options?.map((option) => option.label)).toEqual([
       'tab.image',
       'tab.video',
+      'tab.pages',
     ]);
     expect(componentMocks.segmented?.classNames).toEqual({
       item: 'toolbar-item',
@@ -91,6 +92,8 @@ describe('GenerationMediaModeSegment', () => {
 
     act(() => componentMocks.segmented?.onChange?.('video'));
     expect(componentMocks.navigate).toHaveBeenCalledWith('/video');
+    act(() => componentMocks.segmented?.onChange?.('page'));
+    expect(componentMocks.navigate).toHaveBeenCalledWith('/page');
   });
 
   it('keeps the labeled select in the hero title', () => {

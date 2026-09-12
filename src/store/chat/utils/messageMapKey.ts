@@ -1,4 +1,8 @@
-import { type MessageMapContext, type MessageMapScope } from '@lobechat/types';
+import {
+  type ConversationContext,
+  type MessageMapContext,
+  type MessageMapScope,
+} from '@lobechat/types';
 
 /**
  * Input context for messageMapKey function
@@ -23,6 +27,7 @@ export interface MessageMapKeyInput {
    * For main scope: indicates creating a new topic
    */
   isNew?: boolean;
+  isolatedTopic?: boolean;
   /**
    * Scope type for the message map
    * @default 'main' (auto-detected based on threadId)
@@ -41,6 +46,8 @@ export interface MessageMapKeyInput {
    * Topic ID
    */
   topicId?: string | null;
+  viewedGoal?: ConversationContext['viewedGoal'];
+  viewedTask?: ConversationContext['viewedTask'];
 }
 
 /**
@@ -89,6 +96,21 @@ const toMessageMapContext = (input: MessageMapKeyInput): MessageMapContext => {
         subTopicId: subAgentId,
         topicId,
       };
+    }
+
+    // Work side conversations are separate surfaces even before a topic exists.
+    const workSubject = input.viewedGoal
+      ? `goal:${input.viewedGoal.goalId}`
+      : input.viewedTask
+        ? `task:${input.viewedTask.type === 'detail' ? input.viewedTask.taskId : 'list'}`
+        : undefined;
+    if (workSubject && (!scope || scope === 'group')) {
+      return { isNew, scope: 'group', scopeId: groupId, subTopicId: workSubject, topicId };
+    }
+
+    // A run transcript and the live group timeline may be mounted together.
+    if (input.isolatedTopic && topicId && (!scope || scope === 'group')) {
+      return { isNew, scope: 'group', scopeId: groupId, subTopicId: 'isolated', topicId };
     }
 
     // Default group scope

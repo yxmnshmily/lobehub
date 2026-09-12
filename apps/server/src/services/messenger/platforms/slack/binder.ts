@@ -136,7 +136,7 @@ export class MessengerSlackBinder implements MessengerPlatformBinder {
     } catch (error) {
       log('handleUnlinkedMessage: failed to issue link token: %O', error);
       const api = new SlackApi(this.creds.botToken);
-      const errorText = 'LobeHub is temporarily unavailable. Please try again in a moment.';
+      const errorText = '旅游群 is temporarily unavailable. Please try again in a moment.';
       if (ctx.channelMentionThreadId) {
         const [, channelId, threadTs] = ctx.channelMentionThreadId.split(':');
         await api.postEphemeral(channelId, ctx.authorUserId, errorText, { threadTs });
@@ -177,8 +177,8 @@ export class MessengerSlackBinder implements MessengerPlatformBinder {
     if (ctx.channelMentionThreadId) {
       const [, channelId, threadTs] = ctx.channelMentionThreadId.split(':');
       const text =
-        "Hi, I'm LobeHub — your AI agent on Slack.\n" +
-        `Link your LobeHub account to start chatting: <${verifyUrl}|click here>`;
+        "Hi, I'm 旅游群 — connect your workgroup to Slack.\n" +
+        `Link your 旅游群 account to start chatting: <${verifyUrl}|click here>`;
       await this.replyEphemeral({
         channelId,
         text,
@@ -189,7 +189,7 @@ export class MessengerSlackBinder implements MessengerPlatformBinder {
     }
 
     const intro =
-      "Hi, I'm LobeHub — your AI agent on Slack.\n" + 'To start, link your LobeHub account.';
+      "Hi, I'm 旅游群 — connect your workgroup to Slack.\n" + 'To start, link your 旅游群 account.';
     const linkLabel = `Or copy this link: <${verifyUrl}|${verifyUrl}>`;
 
     const api = new SlackApi(this.creds.botToken);
@@ -235,10 +235,10 @@ export class MessengerSlackBinder implements MessengerPlatformBinder {
     }
 
     const headline =
-      ':white_check_mark: Linked successfully! Your LobeHub account is now connected.';
+      ':white_check_mark: Linked successfully! Your 旅游群 account is now connected.';
     const tail = params.activeAgentName
-      ? `\n\nActive agent: *${params.activeAgentName}*\n\nGo ahead and send your first message — send \`/agents\` any time to switch the active agent.`
-      : '\n\nSend `/agents` to list your agents and pick the active one.';
+      ? `\n\nConnected to: *${params.activeAgentName}*\n\nSend your first message, or \`/groups\` to choose a workgroup.`
+      : '\n\nSend `/groups` to select a workgroup.';
 
     try {
       // Slack accepts a user id as the `channel` arg and auto-opens the IM

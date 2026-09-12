@@ -16,20 +16,56 @@ interface StatsFormGroupProps extends Omit<BlockProps, 'title'> {
 }
 
 const StatsFormGroup = memo<StatsFormGroupProps>(
-  ({ fontSize = 18, afterTitle, children, extra, title, ...rest }) => {
+  ({ fontSize = 18, afterTitle, children, extra, style, title, ...rest }) => {
     const { mobile = false } = useResponsive();
 
     return (
-      <Block gap={16} variant={'borderless'} {...rest}>
-        {mobile ? (
-          <Flexbox gap={12} style={{ minWidth: 0 }}>
+      <Block
+        gap={16}
+        style={{ minWidth: 0, width: '100%', ...style }}
+        variant={'borderless'}
+        {...rest}
+      >
+        {mobile && afterTitle && extra ? (
+          <Flexbox gap={8} style={{ minWidth: 0, width: '100%' }}>
             {title && (
-              <Text fontSize={fontSize} style={{ whiteSpace: 'normal' }} weight={500}>
+              <Text
+                fontSize={fontSize}
+                style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                weight={500}
+              >
+                {title}
+              </Text>
+            )}
+            <Flexbox
+              horizontal
+              align={'center'}
+              gap={8}
+              style={{ flexWrap: 'wrap', minWidth: 0, width: '100%' }}
+            >
+              {afterTitle}
+              {extra}
+            </Flexbox>
+          </Flexbox>
+        ) : mobile ? (
+          <Flexbox
+            horizontal
+            align={'center'}
+            gap={8}
+            justify={'space-between'}
+            style={{ minWidth: 0, width: '100%' }}
+          >
+            {title && (
+              <Text
+                fontSize={fontSize}
+                style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}
+                weight={500}
+              >
                 {title}
               </Text>
             )}
             {(afterTitle || extra) && (
-              <Flexbox horizontal align={'center'} gap={8} wrap={'wrap'}>
+              <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
                 {afterTitle}
                 {extra}
               </Flexbox>
@@ -48,7 +84,7 @@ const StatsFormGroup = memo<StatsFormGroupProps>(
             </Flexbox>
           </Flexbox>
         )}
-        {children}
+        <Flexbox style={{ maxWidth: '100%', minWidth: 0, width: '100%' }}>{children}</Flexbox>
       </Block>
     );
   },

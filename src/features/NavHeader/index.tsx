@@ -4,8 +4,6 @@ import { type CSSProperties, type ReactNode } from 'react';
 import { memo } from 'react';
 
 import ToggleLeftPanelButton, { isMacDesktop } from '@/features/NavPanel/ToggleLeftPanelButton';
-import { useGlobalStore } from '@/store/global';
-import { systemStatusSelectors } from '@/store/global/selectors';
 
 export interface NavHeaderProps extends Omit<FlexboxProps, 'children'> {
   children?: ReactNode;
@@ -35,13 +33,10 @@ const NavHeader = memo<NavHeaderProps>(
     styles,
     ...rest
   }) => {
-    const expand = useGlobalStore(systemStatusSelectors.showLeftPanel);
-
     const noContent = !left && !right && !children;
 
-    // When empty, this header only rendered to host the collapse toggle. Hide it
-    // when expanded, and also on macOS desktop where the toggle moved to the titlebar.
-    if (noContent && (expand || isMacDesktop)) return;
+    // macOS desktop already has a persistent titlebar control.
+    if (noContent && (isMacDesktop || !showTogglePanelButton)) return;
 
     return (
       <Flexbox
@@ -52,7 +47,8 @@ const NavHeader = memo<NavHeaderProps>(
         gap={4}
         height={44}
         justify={'space-between'}
-        padding={8}
+        paddingBlock={8}
+        paddingInline={'var(--mobile-page-gutter, 8px)'}
         style={style}
         {...rest}
       >
@@ -64,13 +60,17 @@ const NavHeader = memo<NavHeaderProps>(
             className={slotClassNames?.left}
             gap={2}
             justify={'flex-start'}
-            style={styles?.left}
+            style={{ minWidth: 0, ...styles?.left }}
           >
-            {showTogglePanelButton && !expand && <ToggleLeftPanelButton />}
+            {showTogglePanelButton && <ToggleLeftPanelButton id={null} />}
             {left}
           </Flexbox>
           {children && (
-            <Flexbox className={slotClassNames?.center} flex={1} style={styles?.center}>
+            <Flexbox
+              className={slotClassNames?.center}
+              flex={1}
+              style={{ minWidth: 0, ...styles?.center }}
+            >
               {children}
             </Flexbox>
           )}
@@ -80,7 +80,7 @@ const NavHeader = memo<NavHeaderProps>(
             className={slotClassNames?.right}
             gap={2}
             justify={'flex-end'}
-            style={styles?.right}
+            style={{ flexShrink: 0, minWidth: 0, ...styles?.right }}
           >
             {right}
           </Flexbox>

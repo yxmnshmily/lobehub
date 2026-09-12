@@ -57,9 +57,10 @@ export const componentMap = {
     loading: loading('Settings > Labels'),
   }),
   // Profile related tabs
-  [SettingsTabs.Profile]: dynamic(() => import('../profile'), {
-    loading: () => createElement(SettingsProfileSkeleton),
-  }),
+  [SettingsTabs.Profile]: dynamic(
+    () => import('@/business/client/BusinessSettingPages/CustomerCenterPage'),
+    { loading: () => createElement(SettingsProfileSkeleton) },
+  ),
   [SettingsTabs.Stats]: dynamic(() => import('../stats'), {
     loading: loading('Settings > Stats'),
   }),
@@ -82,12 +83,19 @@ export const componentMap = {
     () => import('@/business/client/BusinessSettingPages/ServiceOperations'),
     { loading: loading('Settings > ServiceOperations') },
   ),
+  [SettingsTabs.ContentModeration]: dynamic(
+    () => import('@/business/client/BusinessSettingPages/ServiceOperations'),
+    { loading: loading('Settings > ContentModeration') },
+  ),
   [SettingsTabs.Skill]: dynamic(() => import('../skill'), {
     loading: loading('Settings > Skill'),
   }),
-  [SettingsTabs.Connector]: dynamic(() => import('../connector'), {
-    loading: loading('Settings > Connector'),
-  }),
+  [SettingsTabs.Connector]: dynamic(
+    () => import('../skill').then(({ ConnectorSettings }) => ConnectorSettings),
+    {
+      loading: loading('Settings > Connector'),
+    },
+  ),
 
   [SettingsTabs.Plans]: dynamic(() => import('@/business/client/BusinessSettingPages/Plans'), {
     loading: loading('Settings > Plans'),

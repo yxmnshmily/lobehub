@@ -1,3 +1,4 @@
+import { VERIFY_INSTRUCTION_FILE_TYPE } from '@lobechat/const';
 import { FilesTabs } from '@lobechat/types';
 import type { SQL, SQLWrapper } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
@@ -32,12 +33,11 @@ const MEDIA_PREFIXES = ['audio', 'image', 'video'];
 export type CategoryFilterResult = SQL | 'all' | 'none';
 
 /**
- * Uploaded document files: any `text/*` file plus office / pdf style
- * `application/*` types. Derived pages/notes are NOT documents — they live in
- * the documents table and belong to the Pages category.
+ * Documents includes uploaded text/office files and generated editor manuscripts.
  */
 const documentFileCondition = (column: SQLWrapper): SQL => {
   const orConditions = [
+    sql`${column} = ${'custom/document'}`,
     sql`${column} ILIKE ${'text/%'}`,
     ...DOCUMENT_APPLICATION_PREFIXES.map((prefix) => sql`${column} ILIKE ${`${prefix}%`}`),
   ];
@@ -77,6 +77,9 @@ export const buildFileCategoryFilter = (
     case FilesTabs.Files: {
       return rawFileCondition(column);
     }
+    case FilesTabs.Other: {
+      return sql`(${rawFileCondition(column)} OR ${column} ILIKE ${'audio%'})`;
+    }
     case FilesTabs.Images: {
       return sql`${column} ILIKE ${'image%'}`;
     }
@@ -99,8 +102,8 @@ export const buildFileCategoryFilter = (
 /**
  * Category filter for the `documents` table (derived pages / notes).
  *
- * Only the Pages category (and the unconstrained All view) surfaces document
- * rows; every file-oriented category excludes the table entirely.
+ * Documents includes manuscripts as well as imported documents. Pages remains
+ * a legacy query value for callers outside the resource navigation.
  */
 export const buildDocumentCategoryFilter = (
   column: SQLWrapper,
@@ -109,10 +112,15 @@ export const buildDocumentCategoryFilter = (
   switch (category) {
     case FilesTabs.All:
     case FilesTabs.Home: {
-      return 'all';
+      // 「全部」只列用户自己的文件与文稿：目标/任务的验收标准（verify/instruction）
+      // 是执行过程的沟通文本，网页剪藏（article）属于「网页」分类，两者都不在这里出现。
+      return sql`(${column} != ${VERIFY_INSTRUCTION_FILE_TYPE} AND ${column} != ${'article'})`;
     }
     case FilesTabs.Pages: {
       return sql`(${column} ILIKE ${'custom/%'} AND ${column} != ${'custom/folder'})`;
+    }
+    case FilesTabs.Documents: {
+      return sql`(${documentFileCondition(column)} OR (${column} ILIKE ${'custom/%'} AND ${column} != ${'custom/folder'}))`;
     }
     case FilesTabs.Websites: {
       // web clippings: article documents plus raw html captures

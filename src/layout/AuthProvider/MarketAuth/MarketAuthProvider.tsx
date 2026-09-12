@@ -4,9 +4,9 @@ import { toast } from '@lobehub/ui/base-ui';
 import { type ReactNode } from 'react';
 import { createContext, lazy, Suspense, use, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { mutate as globalMutate } from 'swr';
 
 import { useSingleton } from '@/hooks/useSingleton';
+import { mutate as globalMutate } from '@/libs/swr';
 import { lambdaClient } from '@/libs/trpc/client';
 import { MARKET_OIDC_ENDPOINTS } from '@/services/_url';
 import { useServerConfigStore } from '@/store/serverConfig';
@@ -32,6 +32,27 @@ import { useMarketUserProfile } from './useMarketUserProfile';
 import { type ClaimableResources } from './useSocialConnect';
 
 const ProfileSetupModal = lazy(() => import('./ProfileSetupModal'));
+
+/**
+ * Whether an SWR cache key refers to a "user profile" entry.
+ *
+ * The app uses a tiered cache provider (`@/libs/swr`) whose profile keys are
+ * arrays (e.g. `['discover:userProfile', locale, username]` or
+ * `['market-user-profile', username]`), so matching must cover both string and
+ * array keys; a string-only predicate would silently match nothing.
+ */
+export const isUserProfileCacheKey = (key: unknown, userName?: string): boolean => {
+  const parts = typeof key === 'string' ? [key] : Array.isArray(key) ? key : null;
+  if (!parts) return false;
+
+  const isProfileKey = parts.some(
+    (part) =>
+      typeof part === 'string' && (part.includes('user-profile') || part.includes('userProfile')),
+  );
+  if (!isProfileKey) return false;
+
+  return !userName || parts.some((part) => typeof part === 'string' && part.includes(userName));
+};
 
 const MarketAuthContext = createContext<MarketAuthContextType | null>(null);
 
@@ -602,9 +623,7 @@ export const MarketAuthProvider = ({ children, isDesktop }: MarketAuthProviderPr
     }
 
     // Also refresh all user-profile related SWR cache as fallback
-    globalMutate((key) => typeof key === 'string' && key.startsWith('user-profile'), undefined, {
-      revalidate: true,
-    });
+    globalMutate((key) => isUserProfileCacheKey(key), undefined, { revalidate: true });
   }, [pendingClaimSuccessCallback]);
 
   /**
@@ -803,17 +822,12 @@ export const MarketAuthProvider = ({ children, isDesktop }: MarketAuthProviderPr
       // Update the SWR cache with the new profile
       mutateUserProfile(profile, false);
 
-      // Also refresh the discover store's user profile cache
-      // The discover store uses keys like 'user-profile-{locale}-{username}'
+      // Also refresh the discover store's user profile cache (array key
+      // like ['discover:userProfile', locale, username])
       if (profile.userName) {
-        globalMutate(
-          (key) =>
-            typeof key === 'string' &&
-            key.includes(`user-profile`) &&
-            key.includes(profile.userName!),
-          undefined,
-          { revalidate: true },
-        );
+        globalMutate((key) => isUserProfileCacheKey(key, profile.userName!), undefined, {
+          revalidate: true,
+        });
       }
 
       // Call the external success callback if provided

@@ -17,11 +17,11 @@ const styles = createStaticStyles(({ css }) => ({
   // Divider faces the quota windows: below when on top, above when it trails.
   bottom: css`
     padding-block-start: 8px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   top: css`
     padding-block-end: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 

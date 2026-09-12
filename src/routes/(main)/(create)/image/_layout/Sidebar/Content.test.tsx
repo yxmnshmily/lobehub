@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +7,7 @@ import ImageSidebarContent from './Content';
 const mocks = vi.hoisted(() => ({
   activeWorkspaceId: null as null | string,
   generationTopics: [] as unknown[],
+  expanded: true,
   updateSystemStatus: vi.fn(),
 }));
 
@@ -38,6 +39,7 @@ vi.mock('@/store/global', () => ({
 
 vi.mock('@/store/global/selectors', () => ({
   systemStatusSelectors: {
+    showLeftPanel: () => mocks.expanded,
     imageTopicViewMode: () => 'list',
   },
 }));
@@ -81,8 +83,20 @@ vi.mock('@/routes/(main)/(create)/features/GenerationLayout/Header', () => ({
 describe('ImageSidebarContent', () => {
   beforeEach(() => {
     mocks.activeWorkspaceId = null;
+    mocks.expanded = true;
     mocks.generationTopics = [];
     mocks.updateSystemStatus.mockClear();
+  });
+
+  it('shows one shared topic trigger and opens the list when collapsed', async () => {
+    mocks.expanded = false;
+    render(<ImageSidebarContent />);
+
+    expect(screen.queryByTestId('topic-list-all')).not.toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: 'topic.title' });
+    expect(trigger.querySelector('[data-nav-chevron]')).not.toBeNull();
+    fireEvent.click(trigger);
+    expect(await screen.findByTestId('topic-list-all')).toBeInTheDocument();
   });
 
   it('splits generation topics into private and workspace roots in workspace mode', () => {

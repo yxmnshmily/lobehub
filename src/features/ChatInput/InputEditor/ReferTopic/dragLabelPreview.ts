@@ -35,7 +35,7 @@ export const setDragLabelPreview = (
   Object.assign(preview.style, {
     alignItems: 'center',
     background: resolveCssVar(cssVar.colorBgElevated, host),
-    border: `1px solid ${resolveCssVar(cssVar.colorInfoBorder, host)}`,
+    border: `0.5px solid ${resolveCssVar(cssVar.colorInfoBorder, host)}`,
     borderRadius: '10px',
     color: resolveCssVar(cssVar.colorInfo, host),
     display: 'inline-flex',

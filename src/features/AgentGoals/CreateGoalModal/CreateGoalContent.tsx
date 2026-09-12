@@ -29,6 +29,7 @@ import {
   CriterionRow,
   openCriterionEditModal,
 } from '@/features/Acceptance';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { EditorCanvas } from '@/features/EditorCanvas';
 import { pickAndInsertAttachments } from '@/features/EditorCanvas/editorAttachments';
 import { usePermission } from '@/hooks/usePermission';
@@ -73,7 +74,7 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     padding-block: 8px;
     padding-inline: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   generatingStatus: css`
     min-height: 36px;
@@ -205,6 +206,7 @@ const criterionRequirement = (drafts: GoalCriterionDraft[]) =>
 export interface CreateGoalContentProps {
   /** The agent that owns the goal. Goals are always agent-scoped. */
   agentId?: string;
+  groupId?: string;
   /** Seed from an empty-state example. Only the plain fields — the instruction
    *  body falls back to the title, so the editor is never fought over. */
   initialRequirement?: string;
@@ -223,9 +225,17 @@ export interface CreateGoalContentProps {
  * hardcoded), so this form asks for them outright.
  */
 const CreateGoalContent = memo<CreateGoalContentProps>((props) => {
-  const { agentId, initialRequirement, initialRoundBudget, initialTitle, onCreated, projectId } =
-    props;
+  const {
+    agentId,
+    groupId,
+    initialRequirement,
+    initialRoundBudget,
+    initialTitle,
+    onCreated,
+    projectId,
+  } = props;
   const { t } = useTranslation('chat');
+  const { convert, toUsd, symbol } = useMonthlyExchangeRate();
   const { close } = useModalContext();
   const { allowed: canCreate, reason } = usePermission('create_content');
 
@@ -373,6 +383,7 @@ const CreateGoalContent = memo<CreateGoalContentProps>((props) => {
       const graph = await goalService.create({
         agentId,
         config: {
+          ...(groupId ? { groupId } : {}),
           recovery: { maxAttemptsPerTask: resolveGoalAttemptBudget(plan.maxIterations) },
         },
         // `maxIterations` is the per-Task attempt budget above; it is not the
@@ -407,7 +418,7 @@ const CreateGoalContent = memo<CreateGoalContentProps>((props) => {
     } finally {
       setIsCreating(false);
     }
-  }, [agentId, canCreate, close, onCreated, plan, projectId, requirement, t]);
+  }, [agentId, groupId, canCreate, close, onCreated, plan, projectId, requirement, t]);
 
   const handlePrimaryAction =
     step === 'describe' ? handleNext : step === 'review' ? handleSubmit : undefined;
@@ -633,14 +644,19 @@ const CreateGoalContent = memo<CreateGoalContentProps>((props) => {
                   placeholder={t('createGoal.costBudgetPlaceholder')}
                   size={'small'}
                   style={{ width: '100%' }}
-                  value={plan.maxTotalCost}
+                  value={plan.maxTotalCost == null ? plan.maxTotalCost : convert(plan.maxTotalCost)}
                   variant={'filled'}
                   prefix={
                     <Text fontSize={12} type={'secondary'}>
-                      $
+                      {symbol}
                     </Text>
                   }
-                  onChange={(value) => setPlan((current) => ({ ...current, maxTotalCost: value }))}
+                  onChange={(value) =>
+                    setPlan((current) => ({
+                      ...current,
+                      maxTotalCost: value == null ? value : toUsd(value),
+                    }))
+                  }
                 />
                 <Text className={styles.sectionHint} fontSize={12}>
                   {t('createGoal.costBudgetHint')}

@@ -15,6 +15,41 @@ export const VERIFICATION_FAILED_ERROR = 'Delivery did not pass verification.';
 
 export const TERMINAL_NODE_STATUSES = new Set(['resolved', 'rejected', 'retired']);
 
+/** Statuses that end a node without producing the outcome its dependents need. */
+export const GIVEN_UP_NODE_STATUSES = new Set(['rejected', 'retired']);
+
+/**
+ * Every live task node that reaches `nodeId` through `depends_on`, transitively.
+ *
+ * Used when a prerequisite is given up on for good: its dependents can never
+ * satisfy that edge, so the only ways forward are redoing the prerequisite or
+ * retiring the work below it.
+ */
+export const collectDependents = (graph: GoalGraphSnapshot, nodeId: string): GoalGraphNode[] => {
+  const dependentsOf = (id: string) =>
+    graph.edges
+      .filter((edge) => edge.kind === 'depends_on' && edge.targetNodeId === id)
+      .map((edge) => edge.sourceNodeId);
+
+  const seen = new Set<string>();
+  const queue = dependentsOf(nodeId);
+  const dependents: GoalGraphNode[] = [];
+
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    const node = graph.nodes.find((item) => item.id === id);
+    if (node && node.kind === 'task' && !TERMINAL_NODE_STATUSES.has(node.status)) {
+      dependents.push(node);
+    }
+    queue.push(...dependentsOf(id));
+  }
+
+  return dependents;
+};
+
 export interface FrontierSelection {
   /** Every eligible task node, best first — the trace-shaped view. */
   candidates: FrontierCandidate[];
@@ -239,7 +274,34 @@ export const decideNextMove = ({
     return move;
   }
 
-  if (!chosen) return decideWithoutFrontier(graph, candidates);
+  // Nothing is runnable *and* the reason is a prerequisite that was given up on.
+  // `selectFrontier` only counts `resolved` as satisfying `depends_on`, so a
+  // retired dependency blocks its dependents forever: no task is running, no gate
+  // is open, and the goal just stops with nothing for the user to answer. Report
+  // the given-up node so the caller can reopen it as a decision.
+  if (!chosen) {
+    const blockedByGivenUp = frontier.eligible.find(({ blockedBy }) =>
+      blockedBy.some((id) => {
+        const blocker = graph.nodes.find((node) => node.id === id);
+        return blocker ? GIVEN_UP_NODE_STATUSES.has(blocker.status) : false;
+      }),
+    );
+    if (blockedByGivenUp) {
+      const givenUp = graph.nodes.find(
+        (node) =>
+          blockedByGivenUp.blockedBy.includes(node.id) && GIVEN_UP_NODE_STATUSES.has(node.status),
+      )!;
+      return {
+        ...base,
+        branch: 'blocked_by_given_up',
+        focusNodeId: givenUp.id,
+        message: `"${givenUp.title}" was given up, so "${blockedByGivenUp.node.title}" can never run`,
+        outcome: 'waiting_human',
+      };
+    }
+
+    return decideWithoutFrontier(graph, candidates);
+  }
 
   // Everything eligible is either running, parked on a person, or waiting for a
   // slot. Report which, so the row does not read as stalled when it is simply

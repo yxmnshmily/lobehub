@@ -10,9 +10,9 @@ import { VirtuosoGrid } from 'react-virtuoso';
 
 import { ArticleSkeleton } from '@/components/Skeleton';
 import { useClientDataSWR } from '@/libs/swr';
-import { discoverKeys } from '@/libs/swr/keys';
-import { discoverService } from '@/services/discover';
-import { type DiscoverAssistantItem } from '@/types/discover';
+import { agentService, type AvailableAgentItem } from '@/services/agent';
+import { useUserStore } from '@/store/user';
+import { userProfileSelectors } from '@/store/user/selectors';
 
 import AgentItem from './AgentItem';
 import { useDetailContext } from './DetailContext';
@@ -21,12 +21,11 @@ import VirtuosoLoading from './VirtuosoLoading';
 
 const PAGE_SIZE = 12;
 
-const Agents = memo(() => {
+const AgentList = memo(({ identifier, userId }: { identifier: string; userId?: string }) => {
   const { t } = useTranslation('plugin');
-  const { identifier } = useDetailContext();
 
   // Local state for pagination
-  const [items, setItems] = useState<DiscoverAssistantItem[]>([]);
+  const [items, setItems] = useState<AvailableAgentItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -34,13 +33,16 @@ const Agents = memo(() => {
 
   // SWR fetch data (lazy loading - only requests when component mounts)
   const { data, isLoading, error } = useClientDataSWR(
-    identifier ? discoverKeys.skillAgents(identifier, currentPage) : null,
-    () =>
-      discoverService.getAgentsByPlugin({
-        page: currentPage,
-        pageSize: PAGE_SIZE,
+    identifier && userId ? ['skillLocalAgents', userId, identifier, currentPage] : null,
+    async () => {
+      const offset = (currentPage - 1) * PAGE_SIZE;
+      const agents = await agentService.queryAgents({
         pluginId: identifier,
-      }),
+        limit: PAGE_SIZE + 1,
+        offset,
+      });
+      return { items: agents.slice(0, PAGE_SIZE), totalCount: offset + agents.length };
+    },
   );
 
   // Data accumulation logic
@@ -103,15 +105,31 @@ const Agents = memo(() => {
       endReached={loadMore}
       increaseViewportBy={typeof window !== 'undefined' ? window.innerHeight : 0}
       itemClassName={styles.item}
-      itemContent={(_, item) => <AgentItem key={item.identifier} {...item} />}
       listClassName={styles.list}
       overscan={24}
       style={{ height: '50vh', width: '100%' }}
       components={{
         Footer: isLoading ? VirtuosoLoading : () => <div style={{ height: 16 }} />,
       }}
+      itemContent={(_, item) => (
+        <AgentItem
+          agentId={item.id}
+          avatar={item.avatar || undefined}
+          backgroundColor={item.backgroundColor || undefined}
+          description={item.description || undefined}
+          identifier={item.id}
+          key={item.id}
+          title={item.name || item.title || item.id}
+        />
+      )}
     />
   );
 });
+
+const Agents = () => {
+  const { identifier } = useDetailContext();
+  const userId = useUserStore(userProfileSelectors.userId);
+  return <AgentList identifier={identifier} key={`${userId}:${identifier}`} userId={userId} />;
+};
 
 export default Agents;

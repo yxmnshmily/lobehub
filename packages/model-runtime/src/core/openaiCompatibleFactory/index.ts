@@ -9,11 +9,13 @@ import OpenAI from 'openai';
 import type { Stream } from 'openai/streaming';
 
 import { ErrorClassifier, refineErrorCode } from '../../errors';
+import { isKimiReasoningEffortModel } from '../../providers/moonshot/modelId';
 import {
   isGPT5ProResponsesModel,
   isResponsesAPIModel,
   supportsGPT5ResponsesReasoningEffortNone,
 } from '../../providers/openai/modelId';
+import { supportsQwenCompletionTokenLimit } from '../../providers/qwen/modelId';
 import type {
   ASROptions,
   ASRPayload,
@@ -68,6 +70,7 @@ import {
   type SignatureScopeKind,
 } from '../../utils/signatureScope';
 import type { LobeRuntimeAI } from '../BaseAI';
+import { type BoundedChatModelLimits, prepareBoundedChat } from '../boundedChat';
 import { normalizeToolsParameters } from '../contextBuilders/normalizeToolSchema';
 import { convertOpenAIMessages, convertOpenAIResponseInputs } from '../contextBuilders/openai';
 import { resolveModelSamplingParameters } from '../parameterResolver';
@@ -603,6 +606,76 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
       return generateObjectConfig?.handlePayload
         ? generateObjectConfig.handlePayload(payload, requestPayload, this._options)
         : requestPayload;
+    }
+
+    async prepareChatBounded(
+      payload: ChatStreamPayload,
+      maxOutputTokens: number,
+      limits: BoundedChatModelLimits,
+    ) {
+      const runtime = new LobeOpenAICompatibleAI({
+        ...this._options,
+        ...this.modelIdMappingOptions,
+        maxRetries: 0,
+      });
+      const model = resolveMappedModelId(payload.model, this.modelIdMappingOptions);
+      const instanceChat = ((this._options as any).chatCompletion || {}) as {
+        useResponse?: boolean;
+        useResponseModels?: Array<string | RegExp>;
+      };
+      const runtimeBaseURL =
+        typeof this._options.baseURL === 'string' && this._options.baseURL.trim()
+          ? this._options.baseURL.trim()
+          : DEFAULT_BASE_URL;
+      const isNativeArkSeed =
+        provider === 'volcengine' &&
+        /^https:\/\/ark\.cn-beijing\.volces\.com\/api\/v3\/?$/.test(runtimeBaseURL) &&
+        typeof model === 'string' &&
+        /^doubao-seed-2-1-(?:turbo|pro)-260628$/.test(model) &&
+        !payload.enabledSearch;
+      const useArkResponses =
+        isNativeArkSeed &&
+        runtime.shouldUseResponsesAPI({
+          context: 'chat',
+          flagUseResponse: instanceChat?.useResponse ?? chatCompletion?.useResponse,
+          flagUseResponseModels:
+            instanceChat?.useResponseModels ?? chatCompletion?.useResponseModels,
+          model: payload.model,
+          userApiMode: payload.apiMode,
+        });
+      // Ark's native Seed routes cap the complete generated output, including
+      // reasoning: Chat uses max_completion_tokens; Responses uses
+      // max_output_tokens. Search remains conservative because its tool loop
+      // has a different envelope.
+      const arkChatTotalCap = isNativeArkSeed && !useArkResponses;
+      const outputTokenLimit = isNativeArkSeed
+        ? maxOutputTokens
+        : provider === 'deepseek' && /^deepseek-v4-(?:flash|pro)$/.test(model)
+          ? // DeepSeek documents total generation separately from its 1M context.
+            // Keep the full catalog output ceiling, including hidden reasoning.
+            limits.maxOutput
+          : provider === 'qwen' && supportsQwenCompletionTokenLimit(model)
+            ? maxOutputTokens + 10
+            : provider === 'moonshot' && isKimiReasoningEffortModel(model)
+              ? maxOutputTokens
+              : undefined;
+      return prepareBoundedChat({
+        chat: arkChatTotalCap
+          ? ({ max_tokens, ...boundedPayload }, options) => {
+              const completionPayload = {
+                ...boundedPayload,
+                apiMode: 'chatCompletion' as const,
+                max_completion_tokens: max_tokens,
+              };
+              return runtime.chat(completionPayload, options);
+            }
+          : runtime.chat.bind(runtime),
+        maxOutputTokens,
+        // DashScope documents up to ten tokens of overshoot for its total cap.
+        outputTokenLimit,
+        limits,
+        payload,
+      });
     }
 
     async chat({ responseMode, ...payload }: ChatStreamPayload, options?: ChatMethodOptions) {

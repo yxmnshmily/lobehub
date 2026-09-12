@@ -79,7 +79,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   card: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -91,7 +91,7 @@ const styles = createStaticStyles(({ css }) => ({
   context: css`
     padding-block: 8px 10px;
     padding-inline: 14px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 12px;
     color: ${cssVar.colorTextSecondary};
@@ -111,7 +111,7 @@ const styles = createStaticStyles(({ css }) => ({
   header: css`
     padding-block: 10px;
     padding-inline: 14px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   heatmap: css`
     display: grid;
@@ -140,7 +140,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-inline: 14px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
     @media (width <= 640px) {
@@ -163,7 +163,7 @@ const styles = createStaticStyles(({ css }) => ({
     td {
       padding-block: 8px;
       padding-inline: 10px;
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
       text-align: start;
       white-space: nowrap;

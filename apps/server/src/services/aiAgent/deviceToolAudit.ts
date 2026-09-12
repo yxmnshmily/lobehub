@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { ChatTopicBotContext } from '@lobechat/types';
 import debug from 'debug';
 
@@ -7,6 +9,9 @@ export type { DeviceAccessReason } from './deviceAccessPolicy';
 export { isDeviceToolIdentifier } from './deviceToolRegistry';
 
 const log = debug('lobe-server:agent-device-tool-audit');
+
+const auditRef = (value?: string | null): string =>
+  value ? createHash('sha256').update(value).digest('hex').slice(0, 12) : '-';
 
 export interface DeviceToolAuditEntry {
   apiName: string;
@@ -63,11 +68,11 @@ export const logDeviceToolAudit = (params: LogDeviceToolAuditParams): void => {
     'device-tool-call %s:%s userId=%s topicId=%s operationId=%s platform=%s sender=%s isOwner=%s reason=%s canUseDevice=%s',
     entry.toolIdentifier,
     entry.apiName,
-    entry.userId ?? '-',
-    entry.topicId ?? '-',
-    entry.operationId ?? '-',
+    auditRef(entry.userId),
+    auditRef(entry.topicId),
+    auditRef(entry.operationId),
     entry.platform ?? '-',
-    entry.senderExternalUserId ?? '-',
+    auditRef(entry.senderExternalUserId),
     entry.isOwner === null ? '-' : entry.isOwner,
     entry.reason,
     entry.canUseDevice,

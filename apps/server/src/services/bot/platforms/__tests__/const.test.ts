@@ -31,7 +31,7 @@ describe('normalizeBotReplyLocale', () => {
   });
 
   it('normalizes Telegram-style lowercase to project Locales', () => {
-    expect(normalizeBotReplyLocale('pt-br')).toBe('pt-BR');
+    expect(normalizeBotReplyLocale('pt-br')).toBe('en-US');
     expect(normalizeBotReplyLocale('zh-cn')).toBe('zh-CN');
     expect(normalizeBotReplyLocale('en')).toBe('en-US');
   });
@@ -54,10 +54,10 @@ describe('normalizeBotReplyLocale', () => {
     // Telegram emits these lowercase shapes for Chinese users — without
     // explicit script handling they fall through to en-US.
     expect(normalizeBotReplyLocale('zh-hans')).toBe('zh-CN');
-    expect(normalizeBotReplyLocale('zh-hant')).toBe('zh-TW');
+    expect(normalizeBotReplyLocale('zh-hant')).toBe('zh-CN');
     expect(normalizeBotReplyLocale('zh-Hans-CN')).toBe('zh-CN');
-    expect(normalizeBotReplyLocale('zh-Hant-TW')).toBe('zh-TW');
-    expect(normalizeBotReplyLocale('zh_Hant_HK')).toBe('zh-TW');
+    expect(normalizeBotReplyLocale('zh-Hant-TW')).toBe('zh-CN');
+    expect(normalizeBotReplyLocale('zh_Hant_HK')).toBe('zh-CN');
   });
 });
 

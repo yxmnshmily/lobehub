@@ -14,7 +14,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${
       !isMacOSWithLargeWindowBorders()
         ? cssVar.borderRadius
@@ -30,7 +30,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${
       !isMacOSWithLargeWindowBorders()
         ? cssVar.borderRadius

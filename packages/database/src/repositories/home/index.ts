@@ -309,6 +309,7 @@ export class HomeRepository {
     chatGroupItems: Array<{
       avatar: string | null;
       backgroundColor: string | null;
+      clientId: string | null;
       description: string | null;
       groupId: string | null;
       groupUserId: string;

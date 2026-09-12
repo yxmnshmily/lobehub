@@ -21,6 +21,7 @@ import { WidthMode } from './type';
 interface PreviewProps extends FieldType {
   context: ConversationContext;
   headerAgentId?: string | null;
+  hideAgentDetails?: boolean;
   messages: UIChatMessage[];
   previewId?: string;
   title?: string;
@@ -30,6 +31,7 @@ const Preview = memo<PreviewProps>(
   ({
     context,
     headerAgentId,
+    hideAgentDetails,
     messages,
     previewId = 'preview',
     title,
@@ -78,12 +80,15 @@ const Preview = memo<PreviewProps>(
       ];
     });
 
-    const displayTitle =
-      (isHeaderInbox ?? isInbox)
+    const displayTitle = hideAgentDetails
+      ? title
+      : (isHeaderInbox ?? isInbox)
         ? '旅游群主AI'
         : agentDisplayName(headerMeta) || title || currentTitle;
-    const displayAvatar = headerMeta?.avatar || currentAvatar;
-    const displayBackgroundColor = headerMeta?.backgroundColor || currentBackgroundColor;
+    const displayAvatar = hideAgentDetails ? undefined : headerMeta?.avatar || currentAvatar;
+    const displayBackgroundColor = hideAgentDetails
+      ? undefined
+      : headerMeta?.backgroundColor || currentBackgroundColor;
     const displayModel = headerModel || currentModel;
     const displayPlugins = headerPlugins || currentPlugins;
 
@@ -113,14 +118,16 @@ const Preview = memo<PreviewProps>(
                 <Text strong fontSize={16}>
                   {displayTitle}
                 </Text>
-                <Flexbox horizontal gap={4}>
-                  <ModelTag model={displayModel} />
-                  {withPluginInfo && displayPlugins?.length > 0 && (
-                    <PluginTag plugins={displayPlugins} />
-                  )}
-                </Flexbox>
+                {!hideAgentDetails && (
+                  <Flexbox horizontal gap={4}>
+                    <ModelTag model={displayModel} />
+                    {withPluginInfo && displayPlugins?.length > 0 && (
+                      <PluginTag plugins={displayPlugins} />
+                    )}
+                  </Flexbox>
+                )}
               </Flexbox>
-              {withSystemRole && systemRole && (
+              {!hideAgentDetails && withSystemRole && systemRole && (
                 <div className={styles.role}>
                   <Markdown variant={'chat'}>{systemRole}</Markdown>
                 </div>

@@ -26,6 +26,17 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
+const encodeGroupReplyReference = (messageId: string) =>
+  encodeURIComponent(messageId).replaceAll('_', '%5F');
+
+const decodeGroupReplyReference = (messageId: string): string | undefined => {
+  try {
+    return decodeURIComponent(messageId);
+  } catch {
+    return undefined;
+  }
+};
+
 interface GroupAsyncTaskResultContentItem {
   agentId: string;
   error?: string;
@@ -193,9 +204,11 @@ export const createGroupOrchestrationExecutors = (
      * as User Messages have stronger influence on model behavior.
      */
     call_agent: async (instruction, state): Promise<GroupOrchestrationExecutorOutput> => {
-      const { agentId, instruction: agentInstruction } = (
-        instruction as SupervisorInstructionCallAgent
-      ).payload;
+      const {
+        agentId,
+        instruction: agentInstruction,
+        replyToMessageId,
+      } = (instruction as SupervisorInstructionCallAgent).payload;
 
       const sessionLogId = `${state.operationId}:call_agent`;
       log(`[${sessionLogId}] Calling agent: ${agentId}, instruction: ${agentInstruction}`);
@@ -216,18 +229,32 @@ export const createGroupOrchestrationExecutors = (
       // This virtual message is not persisted to database, only used for model context
       // Mark with <speaker> tag so the agent knows this instruction is from the Supervisor
       const now = Date.now();
-      const messagesWithInstruction: UIChatMessage[] = agentInstruction
-        ? [
-            ...messages,
-            {
-              content: `<speaker name="Supervisor" />\n${agentInstruction}`,
-              createdAt: now,
-              id: `virtual_speak_instruction_${now}`,
-              role: 'user',
-              updatedAt: now,
-            },
-          ]
-        : messages;
+      const decodedReplyToMessageId = replyToMessageId
+        ? decodeGroupReplyReference(replyToMessageId)
+        : undefined;
+      const replyTarget = decodedReplyToMessageId
+        ? messages.find(({ id }) => id === decodedReplyToMessageId)
+        : undefined;
+      const validatedReplyToMessageId =
+        replyTarget?.role === 'assistant' && replyTarget.agentId && replyTarget.agentId !== agentId
+          ? replyTarget.id
+          : undefined;
+      const replyInstruction = validatedReplyToMessageId
+        ? `\n\nBegin your response with exactly <group_reply ref="${encodeGroupReplyReference(validatedReplyToMessageId)}" /> because you are directly replying to that group message. Do not replace the reference or omit this marker.`
+        : '';
+      const messagesWithInstruction: UIChatMessage[] =
+        agentInstruction || validatedReplyToMessageId
+          ? [
+              ...messages,
+              {
+                content: `<speaker name="Supervisor" />\n${agentInstruction ?? 'Respond directly to the referenced group message.'}${replyInstruction}`,
+                createdAt: now,
+                id: `virtual_speak_instruction_${now}`,
+                role: 'user',
+                updatedAt: now,
+              },
+            ]
+          : messages;
 
       // Execute target Agent with subAgentId for agent config retrieval
       // - messageContext keeps the group's main conversation context (for message storage)

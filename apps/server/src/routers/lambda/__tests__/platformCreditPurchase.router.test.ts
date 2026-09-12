@@ -53,9 +53,9 @@ describe('platform Credits purchase tRPC contracts', () => {
     });
 
     expect(first).toMatchObject({
-      amountMinor: 100,
+      amountMinor: 1000,
       credits: 1_000_000,
-      currency: 'USD',
+      currency: 'CNY',
       productId: 'credits-1m',
       status: 'created',
       version: 1,

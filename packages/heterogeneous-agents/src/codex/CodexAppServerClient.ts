@@ -301,7 +301,7 @@ export class CodexAppServerClient {
         },
         clientInfo: {
           name: 'lobehub-desktop',
-          title: 'LobeHub Desktop',
+          title: '旅游群 Desktop',
           version: this.options.clientVersion,
         },
       };

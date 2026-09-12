@@ -34,7 +34,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: ${QR_SLOT_SIZE}px;
     height: ${QR_SLOT_SIZE}px;
     padding: 9px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};

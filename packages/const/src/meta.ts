@@ -1,7 +1,8 @@
 import { BRANDING_LOGO_URL } from '@lobechat/business-const';
 import type { MetaData } from '@lobechat/types';
 
-export const DEFAULT_AVATAR = '/avatars/agent-default.png';
+/* 默认助手头像改用本项目 LOGO（旅游群吉祥物），与站内其他地方一致 */
+export const DEFAULT_AVATAR = BRANDING_LOGO_URL || '/lobehub/app-icons/travel-cloud-mascot.png';
 export const DEFAULT_USER_AVATAR = '😀';
 export const DEFAULT_SUPERVISOR_AVATAR = '🎙️';
 export const DEFAULT_SUPERVISOR_ID = 'supervisor';

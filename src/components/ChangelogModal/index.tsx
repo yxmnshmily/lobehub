@@ -33,7 +33,7 @@ export const openChangelogModal = () =>
         <ArrowUpRightIcon size={16} />
       </a>
     ),
-    width: 800,
+    width: 720,
   });
 
 export default openChangelogModal;

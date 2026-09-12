@@ -45,6 +45,14 @@ export class GroupOrchestrationRuntime {
    * @returns The executor output containing new state and next result
    */
   async step(state: AgentState, result: ExecutorResult): Promise<GroupOrchestrationExecutorOutput> {
+    const interrupted = (): GroupOrchestrationExecutorOutput => ({
+      events: [{ reason: 'user_aborted', type: 'done' }],
+      newState: { ...state, status: 'interrupted' },
+      result: undefined,
+    });
+    if (state.status === 'interrupted' || this.getAbortController()?.signal.aborted) {
+      return interrupted();
+    }
     // 1. Increment step count
     const newState = structuredClone(state);
     newState.stepCount = (newState.stepCount || 0) + 1;
@@ -67,6 +75,7 @@ export class GroupOrchestrationRuntime {
 
     // 3. Get instruction from supervisor based on result
     const instruction = await this.supervisor.decide(result, newState);
+    if (this.getAbortController()?.signal.aborted) return interrupted();
 
     // 4. Check if we should finish
     if (instruction.type === 'finish') {
@@ -121,7 +130,7 @@ export class GroupOrchestrationRuntime {
       // Check for abort
       const abortController = this.getAbortController();
       if (abortController?.signal.aborted) {
-        state.status = 'done';
+        state.status = 'interrupted';
         break;
       }
     }

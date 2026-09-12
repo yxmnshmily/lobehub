@@ -24,6 +24,14 @@ const alias = {
     __dirname,
     './packages/business/model-bank/src/index.ts',
   ),
+  '@emoji-mart/data/i18n/en.json': resolve(
+    __dirname,
+    './node_modules/@emoji-mart/data/i18n/en.json',
+  ),
+  '@emoji-mart/data/i18n/zh.json': resolve(
+    __dirname,
+    './node_modules/@emoji-mart/data/i18n/zh.json',
+  ),
   '@emoji-mart/data': resolve(__dirname, './tests/mocks/emojiMartData.ts'),
   '@emoji-mart/react': resolve(__dirname, './tests/mocks/emojiMartReact.tsx'),
   '@/utils/client/switchLang': resolve(__dirname, './src/utils/client/switchLang'),

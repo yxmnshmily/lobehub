@@ -103,6 +103,6 @@ describe('AgentViewAll group management policy', () => {
       />,
     );
 
-    expect(getMenuKeys(getItems?.())).toEqual(['openInNewWindow']);
+    expect(getMenuKeys(getItems?.() ?? [])).toEqual(['openInNewWindow']);
   });
 });

@@ -66,7 +66,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       inset-inline-start: 50%;
       transform: translateX(-50%);
 
-      width: 1px;
+      width: 0.5px;
 
       background: ${cssVar.colorBorderSecondary};
 

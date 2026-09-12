@@ -13,6 +13,25 @@ const identity = {
 } as const;
 
 describe('preparePlatformUsageCharge', () => {
+  it('keeps the settled FX snapshot in ledger usage metadata', () => {
+    const costExchangeRate = { rate: 7, rateDate: '2026-09-07', updatedAt: '2026-09-07T10:00:00Z' };
+    const charge = preparePlatformUsageCharge({
+      ...identity,
+      usage: { cost: 1, costExchangeRate },
+    });
+    expect(charge.tokens).toEqual({ costExchangeRate });
+    expect(charge.credits).toBe(1_000_000);
+  });
+  it.each([
+    [0.000123, 123],
+    [0.000249, 249],
+    [0.00012300000001, 124],
+    [1e-12, 1],
+    [1.0000001, 1_000_001],
+  ])('converts decimal USD %s without a floating-point extra credit', (cost, credits) => {
+    expect(preparePlatformUsageCharge({ ...identity, usage: { cost } }).credits).toBe(credits);
+  });
+
   it('converts the authoritative USD cost to integer LobeHub credits', () => {
     const charge = preparePlatformUsageCharge({
       ...identity,
@@ -135,7 +154,7 @@ describe('preparePlatformUsageCharge', () => {
     ['negative cost', { cost: -0.1 }, 'INVALID_COST'],
     ['NaN cost', { cost: Number.NaN }, 'INVALID_COST'],
     ['infinite cost', { cost: Number.POSITIVE_INFINITY }, 'INVALID_COST'],
-  ])('fails closed for %s', (_label, usage, code) => {
+  ] as const)('fails closed for %s', (_label, usage, code) => {
     expect(() => preparePlatformUsageCharge({ ...identity, usage })).toThrowError(
       expect.objectContaining<Partial<PlatformUsageBillingError>>({ code }),
     );

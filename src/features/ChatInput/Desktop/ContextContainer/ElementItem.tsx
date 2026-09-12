@@ -42,7 +42,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     max-width: min(420px, 70vw);
     max-height: 240px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     object-fit: contain;

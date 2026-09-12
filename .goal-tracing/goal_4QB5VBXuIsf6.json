@@ -1,0 +1,852 @@
+{
+  "advances": [
+    {
+      "completedAt": 1788798101621,
+      "durationMs": 50,
+      "seq": 0,
+      "startedAt": 1788798101571,
+      "ticks": [
+        {
+          "at": 1788798101571,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "priority": 0,
+              "status": "active",
+              "title": "西藏7日游文案，10条"
+            }
+          ],
+          "chosenNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_zreNyZ4AAlhk",
+              "identifier": "T-4",
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "status": "running",
+              "updatedAt": 1788798101333
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-4 is running",
+          "outcome": "waiting_external",
+          "taskId": "task_zreNyZ4AAlhk",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "childOperationIds": [
+        "op_1788798103566_agt_tczVqFc9gmKp_tpc_tAXcqeNG7NNs_ligJ0bMy"
+      ],
+      "completedAt": 1788798103657,
+      "durationMs": 2496,
+      "seq": 1,
+      "startedAt": 1788798101161,
+      "ticks": [
+        {
+          "at": 1788798101162,
+          "branch": "plan_decomposition",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Planner unavailable; seeded a single task from the requirement",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "type": "created_node",
+              "detail": "西藏7日游文案，10条"
+            }
+          ],
+          "graphDelta": {
+            "nodesRemoved": [
+              "098965e0-4420-4b8d-8af8-3b79081af07d"
+            ],
+            "edgesRemoved": [
+              "81d8d2e1-1067-41b2-bd31-d66f7e0d8f29"
+            ],
+            "goal": {
+              "status": "planning"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 0,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 1,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1788798101215,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "priority": 0,
+              "status": "proposed",
+              "title": "西藏7日游文案，10条"
+            }
+          ],
+          "chosenNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-4",
+          "outcome": "advanced",
+          "taskId": "task_zreNyZ4AAlhk",
+          "effects": [
+            {
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "targetId": "task_zreNyZ4AAlhk",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788798101194,
+                "id": "098965e0-4420-4b8d-8af8-3b79081af07d",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "西藏7日游文案，10条"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "81d8d2e1-1067-41b2-bd31-d66f7e0d8f29",
+                "kind": "decomposes",
+                "sourceNodeId": "ff7a0c05-5d92-4c0c-955d-4d952b944fec",
+                "targetNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        },
+        {
+          "at": 1788798101308,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "priority": 0,
+              "status": "active",
+              "title": "西藏7日游文案，10条"
+            }
+          ],
+          "chosenNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_zreNyZ4AAlhk",
+              "identifier": "T-4",
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "status": "backlog",
+              "updatedAt": 1788798101255
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-4",
+          "outcome": "waiting_external",
+          "taskId": "task_zreNyZ4AAlhk",
+          "effects": [
+            {
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "operationId": "op_1788798103566_agt_tczVqFc9gmKp_tpc_tAXcqeNG7NNs_ligJ0bMy",
+              "targetId": "task_zreNyZ4AAlhk",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788798101194,
+                "id": "098965e0-4420-4b8d-8af8-3b79081af07d",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_zreNyZ4AAlhk",
+                "title": "西藏7日游文案，10条"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "completedAt": 1788800729233,
+      "durationMs": 63,
+      "seq": 2,
+      "startedAt": 1788800729170,
+      "ticks": [
+        {
+          "at": 1788800729170,
+          "branch": "failure_decision",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "priority": 0,
+              "status": "active",
+              "title": "西藏7日游文案，10条"
+            }
+          ],
+          "chosenNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+          "candidateTasks": [
+            {
+              "error": "Platform-managed execution requires a valid shared budget context.",
+              "id": "task_zreNyZ4AAlhk",
+              "identifier": "T-4",
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "status": "paused",
+              "updatedAt": 1788798104788
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_zreNyZ4AAlhk",
+          "effects": [
+            {
+              "detail": "Platform-managed execution requires a valid shared budget context.",
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "targetId": "b212ea49-7e18-418e-87d7-1749452b6425",
+              "type": "opened_decision"
+            }
+          ],
+          "graphDelta": {
+            "goal": {
+              "requirement": "## 西藏7日游文案，10条a\n\n**Scope:**      - 西藏7日游文案，10条\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **西藏7日游文案，10条**"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "resume"
+    },
+    {
+      "completedAt": 1789034946361,
+      "durationMs": 19,
+      "seq": 3,
+      "startedAt": 1789034946342,
+      "ticks": [
+        {
+          "at": 1789034946342,
+          "branch": "pending_decision",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "priority": 0,
+              "status": "waiting",
+              "title": "西藏7日游文案，10条"
+            }
+          ],
+          "chosenNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+          "candidateTasks": [
+            {
+              "error": "Verification could not run (internal error); the delivery was not evaluated.",
+              "id": "task_zreNyZ4AAlhk",
+              "identifier": "T-4",
+              "nodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+              "status": "paused",
+              "updatedAt": 1789034946328
+            }
+          ],
+          "concurrency": 3,
+          "message": "Platform-managed execution requires a valid shared budget context.. Retry or retire this task node?",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788798101194,
+                "id": "098965e0-4420-4b8d-8af8-3b79081af07d",
+                "kind": "task",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": "task_zreNyZ4AAlhk",
+                "title": "西藏7日游文案，10条"
+              },
+              {
+                "createdAt": 1788800729184,
+                "id": "b212ea49-7e18-418e-87d7-1749452b6425",
+                "kind": "decision",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "190ffd59-dc44-4bc8-8c12-33b8b20a3c0f",
+                "kind": "leads_to",
+                "sourceNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d",
+                "targetNodeId": "b212ea49-7e18-418e-87d7-1749452b6425"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "9639b94c-564c-4ff9-8286-91e1e37b0657",
+                "nodeId": "b212ea49-7e18-418e-87d7-1749452b6425",
+                "question": "Platform-managed execution requires a valid shared budget context.. Retry or retire this task node?",
+                "resolvedOptionId": null,
+                "status": "pending"
+              }
+            ],
+            "goal": {
+              "requirement": "## 西藏7日游文案，10条a\n\n**Scope:**          - 西藏7日游文案，10条\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **西藏7日游文案，10条**",
+              "status": "review"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 2,
+            "findings": 0,
+            "gatesPending": 1,
+            "nodesTotal": 3,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": [
+        "op_1789042943325_agt_tczVqFc9gmKp_tpc_OxO7mnMrh85k_ho65LxPP"
+      ],
+      "completedAt": 1789042943394,
+      "durationMs": 1846,
+      "seq": 4,
+      "startedAt": 1789042941548,
+      "ticks": [
+        {
+          "at": 1789042941549,
+          "branch": "terminal_acceptance",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created Goal-level acceptance Task for the remaining contract",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "type": "created_node",
+              "detail": "terminal acceptance"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788798101194,
+                "id": "098965e0-4420-4b8d-8af8-3b79081af07d",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": "task_zreNyZ4AAlhk",
+                "title": "西藏7日游文案，10条"
+              },
+              {
+                "createdAt": 1788800729184,
+                "id": "b212ea49-7e18-418e-87d7-1749452b6425",
+                "kind": "decision",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "9639b94c-564c-4ff9-8286-91e1e37b0657",
+                "nodeId": "b212ea49-7e18-418e-87d7-1749452b6425",
+                "question": "Platform-managed execution requires a valid shared budget context.. Retry or retire this task node?",
+                "resolvedOptionId": "retire",
+                "status": "resolved"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 2,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 3,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789042941622,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 1,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "priority": -1,
+              "status": "proposed",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-29",
+          "outcome": "advanced",
+          "taskId": "task_X4GNzQy8gf7z",
+          "effects": [
+            {
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "targetId": "task_X4GNzQy8gf7z",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789042941563,
+                "id": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+                "kind": "task",
+                "priority": -1,
+                "status": "proposed",
+                "taskId": null,
+                "title": "Complete full Goal acceptance"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "513ff30e-4298-42a8-bef2-438cceaff202",
+                "kind": "decomposes",
+                "sourceNodeId": "ff7a0c05-5d92-4c0c-955d-4d952b944fec",
+                "targetNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        },
+        {
+          "at": 1789042941727,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 1,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_X4GNzQy8gf7z",
+              "identifier": "T-29",
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "status": "backlog",
+              "updatedAt": 1789042941666
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-29",
+          "outcome": "waiting_external",
+          "taskId": "task_X4GNzQy8gf7z",
+          "effects": [
+            {
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "operationId": "op_1789042943325_agt_tczVqFc9gmKp_tpc_OxO7mnMrh85k_ho65LxPP",
+              "targetId": "task_X4GNzQy8gf7z",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789042941563,
+                "id": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+                "kind": "task",
+                "priority": -1,
+                "status": "active",
+                "taskId": "task_X4GNzQy8gf7z",
+                "title": "Complete full Goal acceptance"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "decide"
+    },
+    {
+      "childOperationIds": [
+        "op_1789043011060_agt_tczVqFc9gmKp_tpc_SiVkKIYAt2ww_Ehv4CWRU"
+      ],
+      "completedAt": 1789043011160,
+      "durationMs": 1116,
+      "seq": 5,
+      "startedAt": 1789043010044,
+      "ticks": [
+        {
+          "at": 1789043010044,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 2,
+            "totalCost": 0.013635
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_X4GNzQy8gf7z",
+              "identifier": "T-29",
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "status": "paused",
+              "updatedAt": 1789043010036
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-29",
+          "outcome": "waiting_external",
+          "taskId": "task_X4GNzQy8gf7z",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "operationId": "op_1789043011060_agt_tczVqFc9gmKp_tpc_SiVkKIYAt2ww_Ehv4CWRU",
+              "targetId": "task_X4GNzQy8gf7z",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": [
+        "op_1789043011060_agt_tczVqFc9gmKp_tpc_SiVkKIYAt2ww_Ehv4CWRU"
+      ],
+      "completedAt": 1789043328589,
+      "durationMs": 108,
+      "seq": 6,
+      "startedAt": 1789043328481,
+      "ticks": [
+        {
+          "at": 1789043328481,
+          "branch": "consume_completed",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_X4GNzQy8gf7z",
+              "identifier": "T-29",
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "status": "completed",
+              "updatedAt": 1789043328469
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task outcome was synthesized into a finding",
+          "outcome": "advanced",
+          "taskId": "task_X4GNzQy8gf7z",
+          "effects": [
+            {
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "operationId": "op_1789043011060_agt_tczVqFc9gmKp_tpc_SiVkKIYAt2ww_Ehv4CWRU",
+              "targetId": "task_X4GNzQy8gf7z",
+              "type": "node_status",
+              "detail": "resolved"
+            },
+            {
+              "detail": "finding",
+              "nodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+              "targetId": "27a9ed4f-6aea-4975-a654-6c83324febd5",
+              "type": "created_node"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789043328561,
+          "branch": "terminal_acceptance",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Goal-level acceptance passed",
+          "outcome": "achieved",
+          "effects": [
+            {
+              "detail": "resolved",
+              "nodeId": "ff7a0c05-5d92-4c0c-955d-4d952b944fec",
+              "type": "node_status"
+            },
+            {
+              "type": "goal_status",
+              "detail": "achieved"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789042941563,
+                "id": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+                "kind": "task",
+                "priority": -1,
+                "status": "resolved",
+                "taskId": "task_X4GNzQy8gf7z",
+                "title": "Complete full Goal acceptance"
+              },
+              {
+                "createdAt": 1789043328548,
+                "id": "27a9ed4f-6aea-4975-a654-6c83324febd5",
+                "kind": "finding",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "西藏7日游文案10条终稿交付与验收自检"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "e159bf39-4ee1-4db7-9aed-4d83bff287f6",
+                "kind": "produces",
+                "sourceNodeId": "93a4d0ff-3073-4299-992c-0fbf3942d9af",
+                "targetNodeId": "27a9ed4f-6aea-4975-a654-6c83324febd5"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 5,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 1
+        }
+      ],
+      "trigger": "settle"
+    }
+  ],
+  "goalId": "goal_4QB5VBXuIsf6",
+  "graphBaseline": {
+    "decisions": [],
+    "edges": [
+      {
+        "id": "81d8d2e1-1067-41b2-bd31-d66f7e0d8f29",
+        "kind": "decomposes",
+        "sourceNodeId": "ff7a0c05-5d92-4c0c-955d-4d952b944fec",
+        "targetNodeId": "098965e0-4420-4b8d-8af8-3b79081af07d"
+      }
+    ],
+    "goal": {
+      "agentId": "agt_tczVqFc9gmKp",
+      "id": "goal_4QB5VBXuIsf6",
+      "maxRounds": null,
+      "maxTotalCost": null,
+      "requirement": "## 西藏7日游文案，10条\n\n**Scope:** - 西藏7日游文案，10条\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **西藏7日游文案，10条**",
+      "status": "running",
+      "title": "西藏7日游文案，10条"
+    },
+    "nodes": [
+      {
+        "createdAt": 1788798101131,
+        "id": "ff7a0c05-5d92-4c0c-955d-4d952b944fec",
+        "kind": "problem",
+        "priority": 0,
+        "status": "active",
+        "taskId": null,
+        "title": "西藏7日游文案，10条"
+      },
+      {
+        "createdAt": 1788798101194,
+        "id": "098965e0-4420-4b8d-8af8-3b79081af07d",
+        "kind": "task",
+        "priority": 0,
+        "status": "active",
+        "taskId": "task_zreNyZ4AAlhk",
+        "title": "西藏7日游文案，10条"
+      }
+    ]
+  },
+  "startedAt": 1788798101571,
+  "title": "西藏7日游文案，10条",
+  "traceId": "goal_4QB5VBXuIsf6",
+  "totalAdvances": 7,
+  "totalTicks": 12,
+  "completedAt": 1789043328597,
+  "completionReason": "achieved"
+}

@@ -5,6 +5,7 @@ import { Avatar, Button, Skeleton, Text } from '@lobehub/ui/base-ui';
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import AuthCard from '@/features/AuthCard';
 import { useSession } from '@/libs/better-auth/auth-client';
 import type { OidcClientMetadata } from '@/types/oidc';
@@ -78,7 +79,7 @@ const LoginConfirmClient = memo<LoginConfirmProps>(({ uid, clientMetadata }) => 
           ) : (
             <Flexbox horizontal gap={16}>
               <Skeleton.Avatar shape={'square'} size={40} />
-              <Skeleton height={36} />
+              <SkeletonBar height={36} />
             </Flexbox>
           )}
         </Block>

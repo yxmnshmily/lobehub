@@ -1,7 +1,7 @@
 'use client';
 
 import type { EvalRunTopicResult } from '@lobechat/types';
-import { formatCost, formatShortenNumber } from '@lobechat/utils';
+import { formatLocalizedTokens as formatShortenNumber } from '@lobechat/utils';
 import { Flexbox } from '@lobehub/ui';
 import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 
 const styles = createStaticStyles(({ css }) => ({
   backLink: css`
@@ -45,7 +47,7 @@ const styles = createStaticStyles(({ css }) => ({
   header: css`
     padding-block: 16px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   metricCard: css`
     gap: 8px;
@@ -97,6 +99,7 @@ interface CaseHeaderProps {
 const CaseHeader = memo<CaseHeaderProps>(
   ({ caseNumber, runName, evalResult, onBack, onPrev, onNext }) => {
     const { t } = useTranslation('eval');
+    const { formatOptional: formatCost } = useMonthlyExchangeRate();
 
     const metrics = [
       {
@@ -112,7 +115,7 @@ const CaseHeader = memo<CaseHeaderProps>(
       {
         icon: DollarSign,
         label: t('caseDetail.cost'),
-        value: evalResult?.cost != null ? `$${formatCost(evalResult.cost)}` : null,
+        value: evalResult?.cost != null ? formatCost(evalResult.cost) : null,
       },
       {
         icon: Hash,

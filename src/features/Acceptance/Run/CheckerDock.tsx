@@ -31,12 +31,12 @@ import { countResults, phaseFromStatus } from '../utils';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   actions: css`
     margin-block-start: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   body: css`
     padding-block: 0 12px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   /* In the merged verify card the RunResult header already draws the divider —
      drop our own top border so they don't stack into a 2px line. */
@@ -52,7 +52,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-block: 12px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   chevron: css`
@@ -75,7 +75,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   dock: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 16px;
     background: ${cssVar.colorBgElevated};
   `,
@@ -93,7 +93,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   inputPanel: css`
     margin-block-start: 10px;
     padding: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
     background: ${cssVar.colorFillQuaternary};

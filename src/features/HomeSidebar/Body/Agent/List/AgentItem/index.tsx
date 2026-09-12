@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 14px;
     height: 14px;
     padding-inline: 3px;
-    border: 1.5px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 999px;
 
     font-size: 9px;
@@ -60,7 +60,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 14px;
     height: 14px;
-    border: 1.5px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 999px;
 
     color: ${cssVar.colorWarning};

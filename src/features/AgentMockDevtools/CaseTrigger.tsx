@@ -33,7 +33,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 6px;
     padding-inline: 12px;
-    border-inline-start: 1px solid transparent;
+    border-inline-start: 0.5px solid transparent;
 
     font-size: 12px;
     color: ${cssVar.colorTextSecondary};
@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css }) => ({
   search: css`
     padding-block: 8px 4px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   trigger: css`
     cursor: pointer;
@@ -83,7 +83,7 @@ const styles = createStaticStyles(({ css }) => ({
     max-width: 240px;
     padding-block: 4px;
     padding-inline: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     font-size: 12px;

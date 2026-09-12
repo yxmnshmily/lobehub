@@ -73,7 +73,7 @@ export class MessengerAccountLinkConflictError extends Error {
   readonly existingUserId: string;
 
   constructor(existingUserId: string, message?: string) {
-    super(message ?? 'IM identity is already linked to another LobeHub user');
+    super(message ?? 'IM identity is already linked to another 旅游群 user');
     this.name = 'MessengerAccountLinkConflictError';
     this.existingUserId = existingUserId;
   }
@@ -136,7 +136,7 @@ export class MessengerAccountLinkModel {
     if (claimed && claimed.userId !== this.userId) {
       throw new MessengerAccountLinkConflictError(
         claimed.userId,
-        'Credential application is already linked to another LobeHub user',
+        'Credential application is already linked to another 旅游群 user',
       );
     }
     throw new MessengerAccountLinkRelinkRequiredError();
@@ -228,7 +228,10 @@ export class MessengerAccountLinkModel {
         const [updated] = await this.db
           .update(messengerAccountLinks)
           .set({
-            activeAgentId: params.activeAgentId ?? byIdentity.activeAgentId,
+            activeAgentId: params.activeGroupId
+              ? null
+              : (params.activeAgentId ?? byIdentity.activeAgentId),
+            ...(params.activeGroupId === undefined ? {} : { activeGroupId: params.activeGroupId }),
             platformUsername: params.platformUsername ?? null,
             updatedAt: now,
             workspaceId: params.workspaceId ?? null,
@@ -264,7 +267,10 @@ export class MessengerAccountLinkModel {
         const [updated] = await this.db
           .update(messengerAccountLinks)
           .set({
-            activeAgentId: params.activeAgentId ?? existingForUser.activeAgentId,
+            activeAgentId: params.activeGroupId
+              ? null
+              : (params.activeAgentId ?? existingForUser.activeAgentId),
+            ...(params.activeGroupId === undefined ? {} : { activeGroupId: params.activeGroupId }),
             platformUsername: params.platformUsername ?? null,
             updatedAt: now,
             workspaceId: params.workspaceId ?? null,
@@ -383,10 +389,30 @@ export class MessengerAccountLinkModel {
 
     const [updated] = await this.db
       .update(messengerAccountLinks)
-      .set({ activeAgentId: agentId, updatedAt: new Date(), workspaceId })
+      .set({ activeAgentId: agentId, activeGroupId: null, updatedAt: new Date(), workspaceId })
       .where(and(...conditions))
       .returning(safeLinkColumns);
 
+    return updated;
+  };
+
+  setActiveGroup = async (
+    platform: string,
+    groupId: string | null,
+    workspaceId: string | null,
+    tenantId = GLOBAL_TENANT_ID,
+  ): Promise<SafeMessengerAccountLink | undefined> => {
+    const [updated] = await this.db
+      .update(messengerAccountLinks)
+      .set({ activeGroupId: groupId, activeAgentId: null, workspaceId, updatedAt: new Date() })
+      .where(
+        and(
+          this.ownership(),
+          eq(messengerAccountLinks.platform, platform),
+          eq(messengerAccountLinks.tenantId, tenantId),
+        ),
+      )
+      .returning(safeLinkColumns);
     return updated;
   };
 
@@ -505,7 +531,7 @@ export class MessengerAccountLinkModel {
   ): Promise<SafeMessengerAccountLink | undefined> => {
     const [updated] = await db
       .update(messengerAccountLinks)
-      .set({ activeAgentId: agentId, updatedAt: new Date() })
+      .set({ activeAgentId: agentId, activeGroupId: null, updatedAt: new Date() })
       .where(eq(messengerAccountLinks.id, linkId))
       .returning(safeLinkColumns);
     return updated;
@@ -527,7 +553,7 @@ export class MessengerAccountLinkModel {
   ): Promise<SafeMessengerAccountLink | undefined> => {
     const [updated] = await db
       .update(messengerAccountLinks)
-      .set({ activeAgentId: agentId, updatedAt: new Date(), workspaceId })
+      .set({ activeAgentId: agentId, activeGroupId: null, updatedAt: new Date(), workspaceId })
       .where(eq(messengerAccountLinks.id, linkId))
       .returning(safeLinkColumns);
     return updated;

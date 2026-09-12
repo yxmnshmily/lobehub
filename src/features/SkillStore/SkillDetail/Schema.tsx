@@ -20,7 +20,7 @@ import { useDetailContext } from './DetailContext';
 const styles = createStaticStyles(({ css }) => ({
   divider: css`
     flex-shrink: 0;
-    width: 1px;
+    width: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   left: css`
@@ -83,7 +83,7 @@ const Schema = memo(() => {
           <Flexbox
             horizontal
             style={{
-              border: `1px solid ${cssVar.colorBorderSecondary}`,
+              border: `0.5px solid ${cssVar.colorBorderSecondary}`,
               borderRadius: 8,
               height: 400,
               overflow: 'hidden',

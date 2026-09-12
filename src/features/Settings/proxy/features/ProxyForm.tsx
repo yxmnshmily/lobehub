@@ -3,11 +3,12 @@
 import { type NetworkProxySettings } from '@lobechat/electron-client-ipc';
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Flexbox, Form } from '@lobehub/ui';
-import { Button, RadioGroup, Skeleton, Switch, toast } from '@lobehub/ui/base-ui';
+import { Button, RadioGroup, Switch, toast } from '@lobehub/ui/base-ui';
 import { Form as AntdForm, Input } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
 import { desktopSettingsService } from '@/services/electron/settings';
@@ -206,7 +207,7 @@ const ProxyForm = () => {
     }
   }, [proxySettings, testUrl, form, t]);
 
-  if (isLoading) return <Skeleton.Text rows={5} />;
+  if (isLoading) return <SkeletonText rows={5} />;
 
   const enableProxyGroup: FormGroupItemType = {
     children: [

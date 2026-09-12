@@ -5,6 +5,8 @@ import { CopyButton, Highlighter, Markdown } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   codeWrapper: css`
     position: relative;
@@ -173,12 +175,13 @@ interface ContentViewerProps {
 
 const ContentViewer = memo<ContentViewerProps>(
   ({ skillDetail, selectedFile, contentMap, liveContent }) => {
+    const translateTravel = useTravelTranslation();
     if (selectedFile === 'SKILL.md') {
       const displayContent = liveContent ?? skillDetail?.content;
       if (!displayContent) {
         return (
           <div className={styles.docWrapper}>
-            <p style={{ opacity: 0.45 }}>No content</p>
+            <p style={{ opacity: 0.45 }}>{translateTravel('暂无内容')}</p>
           </div>
         );
       }

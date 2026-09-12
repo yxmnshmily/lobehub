@@ -1,3 +1,4 @@
+import { USD_TO_CNY } from '@lobechat/const/currency';
 import type { Pricing } from 'model-bank';
 
 export interface ImageSinglePriceResult {
@@ -20,12 +21,14 @@ export const resolveImageSinglePrice = (pricing?: Pricing): ImageSinglePriceResu
   if (!imageGenerationUnit) return {};
 
   if (imageGenerationUnit.strategy === 'fixed') {
+    const usdRate =
+      pricing.currency === 'CNY' ? imageGenerationUnit.rate / USD_TO_CNY : imageGenerationUnit.rate;
     if (imageGenerationUnit.unit === 'image') {
-      return { price: imageGenerationUnit.rate };
+      return { price: usdRate };
     }
 
     if (imageGenerationUnit.unit === 'megapixel') {
-      return { price: imageGenerationUnit.rate * DEFAULT_REFERENCE_MP };
+      return { approximatePrice: usdRate * DEFAULT_REFERENCE_MP };
     }
   }
 

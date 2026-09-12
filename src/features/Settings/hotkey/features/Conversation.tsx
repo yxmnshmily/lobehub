@@ -3,11 +3,12 @@
 import { HotkeyGroupEnum } from '@lobechat/const/hotkeys';
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Form } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
 import { HOTKEYS_REGISTRATION } from '@/const/hotkeys';
 import { FORM_STYLE } from '@/const/layoutTokens';
@@ -28,7 +29,7 @@ const HotkeySetting = memo(() => {
   const [setSettings, isUserStateInit] = useUserStore((s) => [s.setSettings, s.isUserStateInit]);
   const { status: saveStatus, lastSavedAt, save, retry } = useSaveState();
 
-  if (!isUserStateInit) return <Skeleton.Text rows={5} />;
+  if (!isUserStateInit) return <SkeletonText rows={5} />;
 
   const clearHotkeyBinding = (id: HotkeyItem['id']) => {
     if (!hotkey[id]) return;

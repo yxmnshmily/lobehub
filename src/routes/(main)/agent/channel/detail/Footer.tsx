@@ -26,7 +26,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     gap: 16px;
 
     width: 100%;
-    max-width: 1024px;
+    max-width: 100%;
   `,
   webhookBox: css`
     overflow: hidden;
@@ -34,7 +34,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: ${cssVar.controlHeight};
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     font-family: monospace;

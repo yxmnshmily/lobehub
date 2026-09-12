@@ -477,7 +477,11 @@ export class ChatGroupModel {
       );
   }
 
-  async update(id: string, value: Partial<ChatGroupItem>): Promise<ChatGroupItem> {
+  async update(
+    id: string,
+    value: Partial<ChatGroupItem>,
+    options?: { configDefaults: NonNullable<ChatGroupItem['config']> },
+  ): Promise<ChatGroupItem> {
     if (value.groupId) await this.assertFolderAssignable(id, value.groupId);
 
     // Scope columns never travel through the generic update. The router hands
@@ -490,7 +494,16 @@ export class ChatGroupModel {
 
     const [result] = await this.db
       .update(chatGroups)
-      .set(safe)
+      .set({
+        ...safe,
+        // API config patches must preserve server-owned fields and concurrent edits.
+        // Defaults fill absent keys only; explicit empty strings/arrays still replace values.
+        ...(options && safe.config
+          ? {
+              config: sql`${JSON.stringify(options.configDefaults)}::jsonb || COALESCE(${chatGroups.config}, '{}'::jsonb) || ${JSON.stringify(safe.config)}::jsonb`,
+            }
+          : {}),
+      })
       .where(and(eq(chatGroups.id, id), this.ownership()))
       .returning();
 

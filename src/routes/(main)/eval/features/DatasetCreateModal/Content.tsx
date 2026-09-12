@@ -9,6 +9,7 @@ import { type FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { agentEvalService } from '@/services/agentEval';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { DATASET_PRESETS, getPresetsByCategory } from '../../config/datasetPresets';
 
@@ -42,7 +43,7 @@ const styles = createStaticStyles(({ css }) => ({
     position: relative;
 
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -80,7 +81,7 @@ const styles = createStaticStyles(({ css }) => ({
     gap: 8px;
   `,
   presetIcon: css`
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgElevated};
   `,
@@ -118,6 +119,7 @@ const DatasetCreateContent: FC<DatasetCreateContentProps> = ({
   onLoadingChange,
   onSuccess,
 }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('eval');
   const { close } = useModalContext();
 
@@ -277,11 +279,12 @@ const DatasetCreateContent: FC<DatasetCreateContentProps> = ({
               {DATASET_PRESETS[selectedPreset].formatDescription}
             </Text>
             <Text className={styles.presetMeta}>
-              <strong>Required:</strong> {DATASET_PRESETS[selectedPreset].requiredFields.join(', ')}
+              <strong>{translateTravel('必填字段：')}</strong>{' '}
+              {DATASET_PRESETS[selectedPreset].requiredFields.join(', ')}
               {DATASET_PRESETS[selectedPreset].optionalFields.length > 0 && (
                 <>
                   {' · '}
-                  <strong>Optional:</strong>{' '}
+                  <strong>{translateTravel('可选字段：')}</strong>{' '}
                   {DATASET_PRESETS[selectedPreset].optionalFields.join(', ')}
                 </>
               )}

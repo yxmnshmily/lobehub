@@ -46,7 +46,7 @@ export const panel = style({
   'background': v(vars.colorBgElevated),
   'backdropFilter': 'blur(14px)',
   'WebkitBackdropFilter': 'blur(14px)',
-  'border': `1px solid ${v(vars.panelBorder)}`,
+  'border': `0.5px solid ${v(vars.panelBorder)}`,
   'borderRadius': radius.panel,
   'boxShadow': v(vars.panelShadow),
   'color': v(vars.colorText),
@@ -101,7 +101,7 @@ export const panel = style({
 
 export const selectionSummary = style({
   alignItems: 'center',
-  borderBottom: `1px solid ${v(vars.colorBorderSecondary)}`,
+  borderBottom: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   display: 'flex',
   gap: 10,
   padding: '10px 12px',
@@ -111,7 +111,7 @@ export const thumb = style({
   background: v(vars.colorFillTertiary),
   backgroundPosition: 'center',
   backgroundSize: 'cover',
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: radius.thumb,
   flexShrink: 0,
   height: 40,
@@ -166,7 +166,7 @@ export const iconBtn = style({
 });
 
 export const multiSelectionSummary = style({
-  borderBottom: `1px solid ${v(vars.colorBorderSecondary)}`,
+  borderBottom: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
@@ -206,7 +206,7 @@ export const multiSelectionRail = style({
 
 export const multiSelectionItem = style({
   background: v(vars.colorFillQuaternary),
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: 10,
   display: 'flex',
   flex: '0 0 104px',
@@ -229,7 +229,7 @@ export const multiSelectionThumb = style({
   background: v(vars.colorFillTertiary),
   backgroundPosition: 'center',
   backgroundSize: 'cover',
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: 8,
   height: 58,
   overflow: 'hidden',
@@ -239,7 +239,7 @@ export const multiSelectionThumb = style({
 export const multiSelectionRemoveBtn = style({
   alignItems: 'center',
   background: `color-mix(in srgb, ${v(vars.colorBgElevated)} 82%, transparent)`,
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: 999,
   color: v(vars.colorTextSecondary),
   cursor: 'pointer',
@@ -414,7 +414,7 @@ export const shortcutHint = style({
 export const shortcutKbd = style({
   alignItems: 'center',
   background: v(vars.colorFillQuaternary),
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: radius.kbd,
   color: v(vars.colorTextSecondary),
   display: 'inline-flex',
@@ -430,7 +430,7 @@ export const shortcutKbd = style({
 export const sendBtn = style({
   alignItems: 'center',
   background: v(vars.colorBgElevated),
-  border: `1px solid ${v(vars.colorBgElevated)}`,
+  border: `0.5px solid ${v(vars.colorBgElevated)}`,
   borderRadius: radius.button,
   cursor: 'pointer',
   color: v(vars.colorText),
@@ -542,7 +542,7 @@ export const popupPositioner = style({
 
 export const popup = style({
   background: v(vars.colorBgElevated),
-  border: `1px solid ${v(vars.colorBorderSecondary)}`,
+  border: `0.5px solid ${v(vars.colorBorderSecondary)}`,
   borderRadius: 10,
   boxShadow: v(vars.panelShadow),
   color: v(vars.colorText),

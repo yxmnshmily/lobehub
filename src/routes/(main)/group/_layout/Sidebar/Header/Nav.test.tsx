@@ -25,7 +25,9 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/features/NavPanel/components/NavItem', () => ({
-  default: ({ title }: { title: string }) => <button>{title}</button>,
+  default: ({ onClick, title }: { onClick?: () => void; title: string }) => (
+    <button onClick={onClick}>{title}</button>
+  ),
 }));
 
 vi.mock('@/features/ResourcePermission/useResourceAccess', () => ({
@@ -69,8 +71,7 @@ vi.mock('@/store/agentGroup', () => ({
 vi.mock('@/store/agentGroup/selectors', () => ({
   agentGroupSelectors: {
     getGroupById:
-      (groupId: string) =>
-      (state: { groupMap: Record<string, { clientId: string | null }> }) =>
+      (groupId: string) => (state: { groupMap: Record<string, { clientId: string | null }> }) =>
         state.groupMap[groupId],
   },
 }));
@@ -94,25 +95,30 @@ describe('group navigation management policy', () => {
   beforeEach(() => {
     mocks.clientId = 'default-travel-service-group';
     mocks.isPlatformAdmin = false;
+    mocks.push.mockClear();
   });
 
-  it('hides the profile entry for an ordinary user in a platform-managed group', () => {
+  it('removes relocated links from the default group sidebar', () => {
     render(<Nav />);
 
-    expect(screen.queryByRole('button', { name: 'tab.groupProfile' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tab.groupProfile' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'tab.groupHome' })).toBeNull();
   });
 
-  it('keeps the profile entry for an ordinary user-created group', () => {
+  it('removes the profile entry from ordinary group sidebars', () => {
     mocks.clientId = null;
     render(<Nav />);
 
-    expect(screen.getByRole('button', { name: 'tab.groupProfile' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tab.groupProfile' })).toBeNull();
   });
 
-  it('keeps the profile entry for a super admin in a platform-managed group', () => {
+  it('keeps the default group in one conversation even for an admin', () => {
     mocks.isPlatformAdmin = true;
     render(<Nav />);
 
-    expect(screen.getByRole('button', { name: 'tab.groupProfile' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tab.groupProfile' })).toBeNull();
+
+    expect(screen.queryByRole('button', { name: '管理统一助理模板' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'actions.addNewTopic' })).toBeNull();
   });
 });

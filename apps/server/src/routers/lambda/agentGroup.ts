@@ -45,6 +45,14 @@ import {
 } from '@/server/services/resourcePermission';
 import { assertTransferRecipientValid } from '@/server/services/resourceTransferRequest';
 import {
+  backfillDefaultTravelGroupSupervisorProfile,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+} from '@/server/services/user/travelServiceGroup';
+import {
+  assertDefaultTravelServiceMutationAllowed,
+  assertNoReservedTravelServiceIdentity,
+} from '@/server/services/user/travelServiceGroupMutationGuard';
+import {
   hasWorkspaceScopedPermission,
   isWorkspacePrimaryOwner,
 } from '@/server/services/workspacePermission';
@@ -226,6 +234,14 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        agentIds: input.agentIds,
+        groupId: input.groupId,
+        kind: 'membership',
+        operation: 'add',
+        workspaceId: ctx.workspaceId,
+      });
       if (ctx.workspaceId) {
         await assertCanPerformResourceAction({
           action: 'edit',
@@ -251,6 +267,14 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        agentIds: [],
+        groupId: input.groupId,
+        kind: 'membership',
+        operation: 'add',
+        workspaceId: ctx.workspaceId,
+      });
       if (ctx.workspaceId) {
         await assertCanPerformResourceAction({
           action: 'edit',
@@ -377,6 +401,7 @@ export const agentGroupRouter = router({
   createGroup: agentGroupProcedureWrite
     .input(InsertChatGroupSchema)
     .mutation(async ({ input, ctx }) => {
+      assertNoReservedTravelServiceIdentity({ groupClientId: input.clientId });
       const { group, supervisorAgentId } = await ctx.agentGroupRepo.createGroupWithSupervisor({
         ...input,
         config: ctx.agentGroupService.normalizeGroupConfig(input.config as ChatGroupConfig | null),
@@ -435,6 +460,13 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      assertNoReservedTravelServiceIdentity({ groupClientId: input.groupConfig.clientId });
+      for (const member of input.members) {
+        assertNoReservedTravelServiceIdentity({
+          agentClientId: member.clientId,
+          agentSlug: member.slug,
+        });
+      }
       // Resolve the folder BEFORE creating the member agents. The same check
       // runs inside `createGroupWithSupervisor`, but that happens after these
       // inserts and outside their transaction, so a bad folder id would leave
@@ -527,6 +559,12 @@ export const agentGroupRouter = router({
   deleteGroup: agentGroupProcedureWrite
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.id,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       if (ctx.workspaceId) {
         await assertCanPerformResourceAction({
           action: 'delete',
@@ -578,6 +616,12 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.groupId,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       // Duplicating copies the group config + virtual member agent details,
       // which a use-only member must not be able to inspect — same edit gate
       // as `updateGroup`, mirroring the UI's `canEditResource` guard.
@@ -651,10 +695,24 @@ export const agentGroupRouter = router({
   getGroupDetail: agentGroupProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
-      const detail = await ctx.agentGroupService.getGroupDetail(input.id);
+      let detail = await ctx.agentGroupService.getGroupDetail(input.id);
       if (!detail) return null;
       const access = await getGroupConfigAccess(ctx, detail);
       if (access === 'none') return null;
+
+      // Ordinary owners have profile-only access to platform-managed configuration.
+      // Repair missing platform defaults before redaction, without granting edit access.
+      if (
+        ctx.apiKeyScopes === undefined &&
+        !ctx.workspaceId &&
+        !detail.workspaceId &&
+        detail.userId === ctx.userId &&
+        detail.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID &&
+        (await backfillDefaultTravelGroupSupervisorProfile(ctx.serverDB, ctx.userId, detail.id))
+      ) {
+        detail = await ctx.agentGroupService.getGroupDetail(input.id);
+        if (!detail) return null;
+      }
       if (access === 'profile') return redactGroupConfig(detail);
 
       const defaultAgentConfig = await ctx.userModel.getUserSettingsDefaultAgentConfig();
@@ -707,6 +765,14 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        agentIds: input.agentIds,
+        groupId: input.groupId,
+        kind: 'membership',
+        operation: 'remove',
+        workspaceId: ctx.workspaceId,
+      });
       if (ctx.workspaceId) {
         await assertCanPerformResourceAction({
           action: 'edit',
@@ -773,6 +839,12 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.groupId,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       const group = await ctx.chatGroupModel.findById(input.groupId);
       if (!group) {
         throw new TRPCError({
@@ -1012,6 +1084,15 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        agentIds: [input.agentId],
+        groupId: input.groupId,
+        kind: 'membership',
+        operation: 'update',
+        role: input.updates.role,
+        workspaceId: ctx.workspaceId,
+      });
       if (ctx.workspaceId) {
         await assertCanPerformResourceAction({
           action: 'edit',
@@ -1038,6 +1119,12 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.id,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       // Same rule `setGroupVisibility` enforces, on the other route to the same
       // transition: a private group may hold the creator's private member
       // agents, and publishing the group without them leaves everyone else
@@ -1093,6 +1180,12 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.id,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       if (!ctx.workspaceId) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -1198,6 +1291,12 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      await assertDefaultTravelServiceMutationAllowed(ctx.serverDB, {
+        actorUserId: ctx.userId,
+        groupId: input.id,
+        kind: 'group',
+        workspaceId: ctx.workspaceId,
+      });
       // General-access write guard: only `edit` permits collaborative updates.
       await assertCanEditResource({
         db: ctx.serverDB,
@@ -1220,11 +1319,11 @@ export const agentGroupRouter = router({
         }
       }
 
-      return ctx.chatGroupModel.update(input.id, {
-        ...input.value,
-        config: ctx.agentGroupService.normalizeGroupConfig(
-          input.value.config as ChatGroupConfig | null,
-        ),
+      const value = { ...input.value, config: input.value.config ?? undefined };
+      if (!value.config) return ctx.chatGroupModel.update(input.id, value);
+
+      return ctx.chatGroupModel.update(input.id, value, {
+        configDefaults: ctx.agentGroupService.normalizeGroupConfig({})!,
       });
     }),
 

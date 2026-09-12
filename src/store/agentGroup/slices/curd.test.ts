@@ -2,11 +2,11 @@ import { type AgentGroupDetail } from '@lobechat/types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_CHAT_GROUP_CHAT_CONFIG } from '@/const/settings';
 import type { ChatGroupItem } from '@/database/schemas/chatGroup';
 import type * as SwrModule from '@/libs/swr';
 import { mutate, useClientDataSWRWithSync } from '@/libs/swr';
 import { chatGroupService } from '@/services/chatGroup';
+import { useChatStore } from '@/store/chat';
 
 import { useAgentGroupStore } from '../store';
 
@@ -89,6 +89,28 @@ describe('ChatGroupCurdSlice', () => {
   });
 
   describe('updateGroup', () => {
+    it('should store the complete server config in both caches after a partial save', async () => {
+      const saved = createMockChatGroup({
+        config: { maxDiscussionRounds: 3, openingMessage: 'Server greeting' },
+      });
+      vi.mocked(chatGroupService.updateGroup).mockResolvedValue(saved);
+      await useAgentGroupStore
+        .getState()
+        .updateGroup('group-1', { config: { maxDiscussionRounds: 3 } });
+      const state = useAgentGroupStore.getState();
+      expect(state.groupMap['group-1'].config).toEqual(saved.config);
+      expect(state.groups[0].config).toEqual(saved.config);
+    });
+
+    it('should leave both caches unchanged when a save fails', async () => {
+      const before = useAgentGroupStore.getState();
+      vi.mocked(chatGroupService.updateGroup).mockRejectedValueOnce(new Error('Save failed'));
+      await expect(
+        before.updateGroup('group-1', { config: { maxDiscussionRounds: 3 } }),
+      ).rejects.toThrow('Save failed');
+      expect(useAgentGroupStore.getState().groupMap).toBe(before.groupMap);
+      expect(useAgentGroupStore.getState().groups).toBe(before.groups);
+    });
     it('should update group properties', async () => {
       vi.mocked(chatGroupService.updateGroup).mockResolvedValue({} as any);
 
@@ -129,6 +151,24 @@ describe('ChatGroupCurdSlice', () => {
   });
 
   describe('useFetchGroupDetail', () => {
+    it('does not activate an old supervisor when a previous group finishes after switching', () => {
+      useAgentGroupStore.getState().useFetchGroupDetail(true, 'group-1');
+      const onData = vi.mocked(useClientDataSWRWithSync).mock.calls.at(-1)?.[2]?.onData;
+      useAgentGroupStore.setState({ activeGroupId: 'group-2' });
+      useChatStore.setState({ activeAgentId: 'supervisor-2' });
+      act(() => onData?.(createMockGroup({ title: 'Late response' })));
+      expect(useChatStore.getState().activeAgentId).toBe('supervisor-2');
+    });
+
+    it('restores the current supervisor even when the detail is unchanged in cache', () => {
+      const detail = useAgentGroupStore.getState().groupMap['group-1'];
+      useChatStore.setState({ activeAgentId: 'supervisor-2' });
+      useAgentGroupStore.getState().useFetchGroupDetail(true, 'group-1');
+      const onData = vi.mocked(useClientDataSWRWithSync).mock.calls.at(-1)?.[2]?.onData;
+      act(() => onData?.(detail));
+      expect(useChatStore.getState().activeAgentId).toBe('supervisor-1');
+    });
+
     it('should remove stale local group data and mark not-found when detail revalidation reports not found', async () => {
       vi.mocked(chatGroupService.getGroupDetail).mockResolvedValue(null as any);
 
@@ -158,7 +198,7 @@ describe('ChatGroupCurdSlice', () => {
   });
 
   describe('updateGroupConfig', () => {
-    it('should update group config with merged defaults', async () => {
+    it('should send only changed config fields', async () => {
       vi.mocked(chatGroupService.updateGroup).mockResolvedValue({} as any);
 
       const { result } = renderHook(() => useAgentGroupStore());
@@ -168,10 +208,7 @@ describe('ChatGroupCurdSlice', () => {
       });
 
       expect(chatGroupService.updateGroup).toHaveBeenCalledWith('group-1', {
-        config: expect.objectContaining({
-          ...DEFAULT_CHAT_GROUP_CHAT_CONFIG,
-          allowDM: false,
-        }),
+        config: { allowDM: false },
       });
     });
 

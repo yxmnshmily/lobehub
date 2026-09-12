@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       min-width: 360px;
       max-width: 360px;
       height: 136px;
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
       border-radius: 12px;
     `,
 

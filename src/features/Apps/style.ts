@@ -100,7 +100,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 12px;
     padding-inline: 32px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     @media (width <= 860px) {
       padding-inline: 24px;
@@ -126,7 +126,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-block-start: 20px;
     padding-block: 6px;
     padding-inline: 14px 6px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: ${cssVar.fontSizeSM};
@@ -135,14 +135,13 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorFillQuaternary};
   `,
   content: css`
-    width: min(100%, 1080px);
-    margin-inline: auto;
+    width: 100%;
     padding-block: 32px 64px;
     padding-inline: 24px;
 
     @media (width <= 860px) {
       padding-block: 20px 48px;
-      padding-inline: 16px;
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
     }
   `,
   ctaRow: css`
@@ -181,11 +180,13 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     }
   `,
   grid: css`
+    overflow: hidden;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1px;
 
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
+    border-radius: 16px;
 
     background: ${cssVar.colorBorder};
 
@@ -257,7 +258,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow-y: auto;
     height: 100%;
     min-height: 100%;
-    background: ${cssVar.colorBgLayout};
+    background: ${cssVar.colorBgContainer};
   `,
   phone: css`
     position: absolute;
@@ -269,7 +270,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 216px;
     height: 260px;
-    border: 6px solid #1c1c1e;
+    border: 0.5px solid #1c1c1e;
     border-block-end: none;
     border-start-start-radius: 32px;
     border-start-end-radius: 32px;

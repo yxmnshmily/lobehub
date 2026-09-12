@@ -23,7 +23,10 @@ import {
   logDeviceToolAudit,
 } from '@/server/services/aiAgent/deviceToolAudit';
 import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
-import { getPlatformUsageSharedBudgetForOperation } from '@/server/services/platformUsageBilling/sharedBudget';
+import {
+  getPlatformUsageSharedBudgetForOperation,
+  getPlatformUsageSharedBudgetLimit,
+} from '@/server/services/platformUsageBilling/sharedBudget';
 
 import type { RuntimeExecutorContext } from '../context';
 import { dispatchClientTool } from '../dispatchClientTool';
@@ -300,6 +303,10 @@ export class ServerToolTransport implements ToolTransport {
               platformUsageSharedBudget
                 ? grantPlatformManagedExecution(toolExecutionContext, {
                     actorUserId: billingActorUserId,
+                    maxCredits: getPlatformUsageSharedBudgetLimit(platformUsageSharedBudget, {
+                      actorUserId: billingActorUserId,
+                      workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
+                    }),
                     resourceOwnerUserId,
                     sharedBudget: platformUsageSharedBudget,
                   })

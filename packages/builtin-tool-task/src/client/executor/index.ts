@@ -217,6 +217,7 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
       // member owns the outcome, the agent executes) — a member owner does not
       // suppress the usual current-agent default.
       const task = await getTaskStoreState().createTask({
+        ...(ctx?.groupId ? { config: { groupId: ctx.groupId } } : {}),
         assigneeAgentId:
           params.assigneeAgentId ?? (ctx?.scope === 'task' ? undefined : ctx?.agentId),
         assigneeUserId: params.assigneeUserId,
@@ -771,10 +772,13 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
 
       const normalized = normalizeListTasksParams(params, {
         currentAgentId: ctx?.agentId,
-        defaultScope: ctx?.scope === 'task' ? 'allAgents' : 'currentAgent',
+        defaultScope: ctx?.groupId || ctx?.scope === 'task' ? 'allAgents' : 'currentAgent',
       });
 
-      const result = await getTaskStoreState().fetchTaskList(normalized.query);
+      const result = await getTaskStoreState().fetchTaskList({
+        ...normalized.query,
+        ...(ctx?.groupId ? { groupId: ctx.groupId } : {}),
+      });
 
       const tasks = result.data ?? [];
 

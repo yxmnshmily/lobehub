@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css }) => ({
   card: css`
     box-sizing: border-box;
     width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -153,7 +153,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 6px;
     padding-inline: 12px;
-    border-block-start: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px dashed ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 11px;

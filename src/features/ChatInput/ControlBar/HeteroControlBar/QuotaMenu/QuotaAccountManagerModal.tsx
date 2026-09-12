@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     margin-block-start: 4px;
     padding-block-start: 10px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   hint: css`
     font-size: 12px;

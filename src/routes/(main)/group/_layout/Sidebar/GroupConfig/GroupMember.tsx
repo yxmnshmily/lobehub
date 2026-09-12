@@ -1,15 +1,16 @@
 'use client';
 
-import { agentDisplayName } from '@lobechat/types';
+import { agentDisplayName, DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { UserMinus } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_AVATAR } from '@/const/meta';
 import AgentProfilePopup from '@/features/AgentProfileCard/AgentProfilePopup';
+import AssistantActions from '@/features/GroupMembership/AssistantActions';
+import AssistantMenu from '@/features/GroupMembership/AssistantMenu';
+import { useMemberSidebar } from '@/features/GroupMembership/useMemberSidebar';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
 import UserAvatar from '@/features/User/UserAvatar';
@@ -27,9 +28,16 @@ import { useRemoveGroupMember } from './useRemoveGroupMember';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   memberTrigger: css`
+    box-sizing: border-box;
+    overflow: hidden;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     border-radius: ${cssVar.borderRadius};
     transition: background 0.2s ${cssVar.motionEaseOut};
 
+    &:hover,
+    &:focus-visible,
     &[data-popup-open],
     &[data-active='true'] {
       background: ${cssVar.colorFillTertiary};
@@ -50,7 +58,7 @@ interface GroupMemberProps {
 const GroupMember = memo<GroupMemberProps>(
   ({ addModalOpen, canManage, onAddModalOpenChange, groupId }) => {
     const { t } = useTranslation('chat');
-    const { allowed: hasEditPermission, reason } = usePermission('edit_own_content');
+    const { allowed: hasEditPermission } = usePermission('edit_own_content');
     const { canEditResource } = useResourceAccess('agentGroup', groupId);
     const canEdit = canManage && hasEditPermission && canEditResource;
     const router = useQueryRoute();
@@ -69,6 +77,11 @@ const GroupMember = memo<GroupMemberProps>(
     });
 
     const groupMembers = useAgentGroupStore(agentGroupSelectors.getGroupMembers(groupId || ''));
+    const group = useAgentGroupStore((s) => (groupId ? s.groupMap[groupId] : undefined));
+    const isSupergroup =
+      group?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID && !group.workspaceId;
+    const displayedMembers = isSupergroup ? (group?.agents ?? []) : groupMembers;
+    const memberSidebar = useMemberSidebar();
 
     const activeTab = useMemo(
       () => new URLSearchParams(location.search).get('tab'),
@@ -100,11 +113,24 @@ const GroupMember = memo<GroupMemberProps>(
 
     return (
       <>
-        <Flexbox gap={2}>
+        <Flexbox
+          data-nav-scroll=""
+          gap={2}
+          style={{
+            maxHeight: 'min(380px, 40dvh)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            overscrollBehavior: 'contain',
+            flexShrink: 0,
+            scrollbarWidth: 'thin',
+          }}
+        >
           {/* User */}
-          <NavItem icon={<UserAvatar size={24} />} title={nickname || username || 'User'} />
+          {!isSupergroup && (
+            <NavItem icon={<UserAvatar size={24} />} title={nickname || username || 'User'} />
+          )}
           {groupId &&
-            groupMembers.map((item) => {
+            memberSidebar.arrange(displayedMembers).map((item) => {
               const memberTitle = agentDisplayName(item, t('defaultSession', { ns: 'common' }));
 
               return (
@@ -120,18 +146,35 @@ const GroupMember = memo<GroupMemberProps>(
                       isExternal={!item.virtual}
                       title={memberTitle}
                       actions={
-                        canManage ? (
-                          <ActionIcon
-                            danger
-                            disabled={!canEdit}
-                            icon={UserMinus}
-                            loading={removingMemberIds.includes(item.id)}
-                            size={'small'}
-                            title={canEdit ? t('groupSidebar.members.removeMember') : reason}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              confirmRemoveMember(item.id, memberTitle);
-                            }}
+                        isSupergroup ? (
+                          <AssistantActions
+                            compact
+                            agentId={item.id}
+                            groupId={groupId}
+                            isSupervisor={item.id === group?.supervisorAgentId}
+                            pinned={item.pinned}
+                            sessionGroupId={item.sessionGroupId}
+                            title={memberTitle}
+                            onUpdated={() =>
+                              useAgentGroupStore.getState().refreshGroupDetail(groupId)
+                            }
+                          />
+                        ) : canManage ? (
+                          <AssistantMenu
+                            compact
+                            agentId={item.id}
+                            canConfigure={canEdit}
+                            pinned={item.pinned}
+                            sessionGroupId={item.sessionGroupId}
+                            title={memberTitle}
+                            onRemove={
+                              canEdit && !removingMemberIds.includes(item.id)
+                                ? () => confirmRemoveMember(item.id, memberTitle)
+                                : undefined
+                            }
+                            onUpdated={() =>
+                              useAgentGroupStore.getState().refreshGroupDetail(groupId)
+                            }
                           />
                         ) : undefined
                       }
@@ -142,7 +185,7 @@ const GroupMember = memo<GroupMemberProps>(
             })}
         </Flexbox>
 
-        {groupId && canManage && (
+        {groupId && canManage && !isSupergroup && (
           <AddGroupMemberModal
             existingMembers={groupMembers.map((member) => member.id)}
             groupId={groupId}

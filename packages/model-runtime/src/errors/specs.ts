@@ -179,7 +179,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 402,
     retryable: false,
     countAsFailure: false,
-    description: 'LobeHub Cloud free-plan usage limit reached.',
+    description: '旅游群 Cloud free-plan usage limit reached.',
   },
   [ChatErrorType.InsufficientBudgetForModel]: {
     code: ChatErrorType.InsufficientBudgetForModel,
@@ -190,7 +190,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 402,
     retryable: false,
     countAsFailure: false,
-    description: 'LobeHub Cloud balance is positive but below the model’s estimated cost.',
+    description: '旅游群 Cloud balance is positive but below the model’s estimated cost.',
   },
   [ChatErrorType.SubscriptionPlanLimit]: {
     code: ChatErrorType.SubscriptionPlanLimit,
@@ -202,7 +202,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     retryable: false,
     countAsFailure: false,
     description:
-      'LobeHub Cloud paid-plan allowance reached, or the plan tier does not cover the requested model.',
+      '旅游群 Cloud paid-plan allowance reached, or the plan tier does not cover the requested model.',
   },
 
   // ─── 3xxx Capacity ────────────────────────────────────────────────────
@@ -328,7 +328,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 404,
     retryable: false,
     countAsFailure: false,
-    description: 'Requested LobeHub Cloud model has been deprecated / removed.',
+    description: 'Requested 旅游群 Cloud model has been deprecated / removed.',
   },
 
   // ─── 5xxx Safety ──────────────────────────────────────────────────────

@@ -81,7 +81,9 @@ describe('useAskCopilotItem', () => {
     );
 
     const clickCurrentItem = () => {
-      const element = result.current?.[0]?.children as ReactElement<{ onClick: () => void }>;
+      const item = result.current?.[0];
+      if (!item || !('children' in item)) throw new Error('Expected a custom action item');
+      const element = item.children as ReactElement<{ onClick: () => void }>;
       act(() => element.props.onClick());
     };
 

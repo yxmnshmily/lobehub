@@ -2,6 +2,7 @@ import { isDesktop } from '@lobechat/const';
 
 import { DEFAULT_LANG } from '@/const/locale';
 import { type Locales, normalizeLocale } from '@/locales/resources';
+import { getServerConfigStoreState } from '@/store/serverConfig';
 import { getSystemLanguage } from '@/utils/client/systemLanguage';
 import { isOnServerSide } from '@/utils/env';
 
@@ -31,7 +32,9 @@ const currentResponseLanguage = (s: UserStore): Locales => {
 
   return normalizeLocale(getSystemLanguage());
 };
-const telemetry = (s: UserStore) => generalConfig(s).telemetry;
+const telemetry = (s: UserStore) =>
+  getServerConfigStoreState()?.serverConfig.telemetry.disabled === false &&
+  generalConfig(s).telemetry === true;
 const enableAutoScrollOnStreaming = (s: UserStore) =>
   generalConfig(s).enableAutoScrollOnStreaming ?? true;
 const enableMessageLinkIcon = (s: UserStore) => generalConfig(s).enableMessageLinkIcon ?? true;

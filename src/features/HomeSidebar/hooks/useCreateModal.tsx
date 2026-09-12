@@ -57,7 +57,7 @@ const SkillSuggestionPanel = memo<SkillSuggestionPanelProps>(
         gap={12}
         style={{
           background: cssVar.colorFillQuaternary,
-          border: `1px solid ${cssVar.colorFillSecondary}`,
+          border: `0.5px solid ${cssVar.colorFillSecondary}`,
           borderRadius: 12,
           padding: 14,
         }}
@@ -86,7 +86,7 @@ const SkillSuggestionPanel = memo<SkillSuggestionPanelProps>(
                 key={item.identifier}
                 style={{
                   background: cssVar.colorBgContainer,
-                  border: `1px solid ${cssVar.colorFillTertiary}`,
+                  border: `0.5px solid ${cssVar.colorFillTertiary}`,
                   borderRadius: 10,
                   padding: 10,
                 }}
@@ -182,7 +182,7 @@ const SkillInstalledPanel = memo<SkillInstalledPanelProps>(({ onClose, onOpenSki
         justify={'space-between'}
         style={{
           background: cssVar.colorFillQuaternary,
-          border: `1px solid ${cssVar.colorFillTertiary}`,
+          border: `0.5px solid ${cssVar.colorFillTertiary}`,
           borderRadius: 12,
           padding: 12,
           width: '100%',
@@ -193,7 +193,7 @@ const SkillInstalledPanel = memo<SkillInstalledPanelProps>(({ onClose, onOpenSki
           justify={'center'}
           style={{
             background: cssVar.colorBgContainer,
-            border: `1px solid ${cssVar.colorFillTertiary}`,
+            border: `0.5px solid ${cssVar.colorFillTertiary}`,
             borderRadius: 10,
             flex: 'none',
             height: 38,

@@ -1,7 +1,8 @@
-import { formatUsageValue } from '@lobechat/utils';
+import { formatLocalizedTokens } from '@lobechat/utils';
 import { Flexbox } from '@lobehub/ui';
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface TokenProgressItem {
   color: string;
@@ -12,10 +13,12 @@ export interface TokenProgressItem {
 
 interface TokenProgressProps {
   data: TokenProgressItem[];
+  isCredit?: boolean;
   showIcon?: boolean;
 }
 
 const TokenProgress = memo<TokenProgressProps>(({ data, showIcon }) => {
+  const { i18n } = useTranslation();
   const total = data.reduce((acc, item) => acc + item.value, 0);
 
   return (
@@ -56,7 +59,9 @@ const TokenProgress = memo<TokenProgressProps>(({ data, showIcon }) => {
               )}
               <div style={{ color: cssVar.colorTextSecondary }}>{item.title}</div>
             </Flexbox>
-            <div style={{ fontWeight: 500 }}>{formatUsageValue(item.value)}</div>
+            <div style={{ fontWeight: 500 }}>
+              {formatLocalizedTokens(item.value, i18n.language)}
+            </div>
           </Flexbox>
         ))}
       </Flexbox>

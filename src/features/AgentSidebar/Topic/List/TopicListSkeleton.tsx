@@ -1,7 +1,8 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
 
@@ -15,7 +16,7 @@ const GROUPS = [
 
 const RowSkeleton = memo<{ width: string }>(({ width }) => (
   <Flexbox horizontal align={'center'} gap={8} height={36} paddingInline={4}>
-    <Skeleton
+    <SkeletonBar
       style={{
         borderRadius: cssVar.borderRadiusSM,
         height: 16,
@@ -25,7 +26,7 @@ const RowSkeleton = memo<{ width: string }>(({ width }) => (
       }}
     />
     <Flexbox flex={1}>
-      <Skeleton
+      <SkeletonBar
         style={{
           borderRadius: cssVar.borderRadius,
           height: 14,
@@ -47,7 +48,7 @@ const TopicListSkeleton = memo(() => (
     {GROUPS.map((group, i) => (
       <Flexbox gap={1} key={i} paddingBlock={4} paddingInline={'8px 4px'}>
         <Flexbox horizontal align={'center'} height={24}>
-          <Skeleton
+          <SkeletonBar
             style={{
               borderRadius: cssVar.borderRadiusSM,
               height: 12,

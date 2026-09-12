@@ -15,6 +15,8 @@ import {
   useKeepSidebarGroupsListed,
   useKeepSidebarListed,
 } from '@/features/HomeSidebar/Body/Agent/List/useAgentList';
+import { useMyTravelGroupReadiness } from '@/hooks/useMyTravelGroupReadiness';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
 import { useHomeStore } from '@/store/home';
@@ -30,11 +32,13 @@ export interface AgentRow {
 }
 
 export interface HomeAgentRows {
+  defaultAgentId?: string;
+  isPersonalTravelGroup: boolean;
   /** Workspace-private items owned by the caller. Always empty in personal mode. */
   privateRows: AgentRow[];
   /** Whether to render the 私人 / 工作区 section split. */
   showPrivateSection: boolean;
-  /** Inbox + workspace-visible items. */
+  /** Personal group supervisor (or workspace Inbox) + visible items. */
   workspaceRows: AgentRow[];
 }
 
@@ -61,6 +65,22 @@ export const useHomeAgentRows = (): HomeAgentRows => {
   );
 
   const activeWorkspaceId = useActiveWorkspaceId();
+  const readiness = useMyTravelGroupReadiness({ manageLifecycle: false });
+  const isPersonalTravelGroup = readiness.isEnabled && !activeWorkspaceId;
+  // Match the home group sidebar's member source. The old Inbox is a
+  // different agent and must not masquerade as the group's supervisor.
+  const participants = lambdaQuery.groupMembership.listParticipants.useQuery(
+    { groupId: readiness.groupId ?? '', limit: 50, offset: 0 },
+    {
+      enabled: isPersonalTravelGroup && !!readiness.groupId,
+      gcTime: 0,
+      refetchOnWindowFocus: true,
+      retry: false,
+    },
+  );
+  const supervisor = isPersonalTravelGroup
+    ? participants.data?.assistants.find((agent) => agent.isSupervisor)
+    : undefined;
 
   // Drop the caller's "removed from my sidebar" items and folders, exactly like
   // the sidebar lists and the agent-detail switcher do — a hidden agent (or an
@@ -70,6 +90,7 @@ export const useHomeAgentRows = (): HomeAgentRows => {
 
   return useMemo(() => {
     const seen = new Set<string>();
+    if (isPersonalTravelGroup && inboxAgentId) seen.add(inboxAgentId);
 
     // An agent can sit in several buckets (pinned AND inside a folder), so
     // de-duplicate by id across every bucket.
@@ -102,7 +123,15 @@ export const useHomeAgentRows = (): HomeAgentRows => {
     ]);
 
     const workspaceRows: AgentRow[] = [];
-    if (inboxAgentId && !seen.has(inboxAgentId)) {
+    if (supervisor) {
+      seen.add(supervisor.id);
+      workspaceRows.push({
+        avatar: supervisor.avatar || DEFAULT_INBOX_AVATAR,
+        id: supervisor.id,
+        subtitle: [supervisor.subtitle, '主管'].filter(Boolean).join(' · '),
+        title: supervisor.title || t('untitledAgent'),
+      });
+    } else if (!isPersonalTravelGroup && inboxAgentId && !seen.has(inboxAgentId)) {
       seen.add(inboxAgentId);
       workspaceRows.push({
         avatar:
@@ -122,6 +151,8 @@ export const useHomeAgentRows = (): HomeAgentRows => {
     );
 
     return {
+      defaultAgentId: isPersonalTravelGroup ? supervisor?.id : inboxAgentId,
+      isPersonalTravelGroup,
       privateRows,
       // Same rule as the agent-detail SwitchPanel: only split into 私人 / 工作区
       // when there is a workspace AND private items survive the hidden filter —
@@ -134,6 +165,8 @@ export const useHomeAgentRows = (): HomeAgentRows => {
     agentGroups,
     inboxAgentId,
     inboxMeta,
+    isPersonalTravelGroup,
+    supervisor,
     keep,
     keepGroups,
     pinnedAgents,

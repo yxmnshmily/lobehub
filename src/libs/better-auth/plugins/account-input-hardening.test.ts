@@ -56,17 +56,20 @@ describe('account input hardening', () => {
     const hooks = options?.options?.databaseHooks?.user;
 
     await expect(
-      hooks?.create?.before?.({
-        email: 'Traveler@Example.Test',
-        image: 'https://assets.example.test/avatar.png',
-        name: '  Traveler  ',
-      } as never),
+      hooks?.create?.before?.(
+        {
+          email: 'Traveler@Example.Test',
+          image: 'https://assets.example.test/avatar.png',
+          name: '  Traveler  ',
+        } as never,
+        null,
+      ),
     ).resolves.toEqual({
       data: expect.objectContaining({ email: 'traveler@example.test', name: 'Traveler' }),
     });
 
     await expect(
-      hooks?.update?.before?.({ image: 'javascript:alert(1)' } as never),
+      hooks?.update?.before?.({ image: 'javascript:alert(1)' } as never, null),
     ).rejects.toMatchObject({ body: expect.objectContaining({ code: 'INVALID_AVATAR_URL' }) });
   });
 });

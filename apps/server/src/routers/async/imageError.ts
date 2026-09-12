@@ -135,6 +135,26 @@ export const categorizeImageGenerationError = ({
     );
   }
 
+  // Keep actionable HTTP categories without persisting arbitrary provider text or credentials.
+  if (error.status === 400 || error.status === 422) {
+    return publicError(
+      AsyncTaskErrorType.ServerError,
+      'Image request parameters were rejected. Check the model parameter schema before retrying.',
+    );
+  }
+  if (error.status === 403) {
+    return publicError(
+      AsyncTaskErrorType.InvalidProviderAPIKey,
+      'Image generation permission was denied. Check provider account and model access.',
+    );
+  }
+  if (error.status === 429) {
+    return publicError(
+      AsyncTaskErrorType.ServerError,
+      'The provider rejected the request due to a rate or quota limit. Check provider limits before retrying.',
+    );
+  }
+
   if (isAborted || error.message?.includes('aborted')) {
     return {
       errorMessage: AsyncTaskErrorType.Timeout,

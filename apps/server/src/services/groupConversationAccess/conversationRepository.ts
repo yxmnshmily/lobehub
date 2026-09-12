@@ -1,21 +1,52 @@
 import { createHash } from 'node:crypto';
 
+import { GROUP_RECENT_MESSAGE_LIMIT } from '@lobechat/const';
 import type { LobeChatDatabase, Transaction } from '@lobechat/database';
 import {
   agentOperations,
+  agents,
   chatGroups,
+  chatGroupsAgents,
   chatGroupUserMemberships,
+  files,
+  messageGroups,
   messages,
   messagesFiles,
   topics,
   users,
+  works,
+  workVersions,
 } from '@lobechat/database/schemas';
-import { and, asc, desc, eq, gt, gte, isNotNull, isNull, notExists, or, sql } from 'drizzle-orm';
+import type { ChatFileItem, ChatImageItem, UIChatMessage } from '@lobechat/types';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  notExists,
+  or,
+  sql,
+} from 'drizzle-orm';
+import { escapeRegExp } from 'es-toolkit';
 
+import { getFileProxyUrl } from '@/server/services/file';
+import { parseHostedGroupRunSnapshot } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
 
+import type { ExecutionMessageInput } from './executionMessages';
+import { readExecutionMessages, recoverExecutionMessageIds } from './executionMessages';
 import type { GroupConversationPrincipal } from './principal';
-import { GroupConversationAccessUnavailableError } from './principal';
+import {
+  GroupConversationAccessUnavailableError,
+  resolveGroupConversationPrincipal,
+} from './principal';
 
 export const GROUP_CONVERSATION_PAGE_SIZE_MAX = 50;
 const GROUP_CONVERSATION_PAGE_SIZE_DEFAULT = 30;
@@ -51,7 +82,10 @@ export type GroupConversationCursor = {
 
 type GroupConversationPageOptions = {
   cursor?: GroupConversationCursor;
+  direction?: 'latest' | 'oldest';
+  keywords?: string;
   limit?: number;
+  recent?: boolean;
 };
 
 export type CreateAccessibleTopicInput = {
@@ -61,6 +95,7 @@ export type CreateAccessibleTopicInput = {
 };
 
 export type CreateAccessibleTextMessageInput = {
+  fileIds?: string[];
   content: string;
   groupId: string;
   idempotencyKey: string;
@@ -68,6 +103,12 @@ export type CreateAccessibleTextMessageInput = {
 };
 
 export type AccessibleConversationTopic = {
+  favorite?: boolean | null;
+  updatedAt?: Date;
+  status?: typeof topics.$inferSelect.status;
+  trigger?: string | null;
+  latestMessage?: string;
+  latestMessageId?: string;
   createdAt: Date;
   id: string;
   title: string | null;
@@ -76,14 +117,22 @@ export type AccessibleConversationTopic = {
 export type AccessibleTextMessage = {
   authorKind: 'member' | 'owner' | 'self';
   content: string;
+  fileList?: ChatFileItem[];
+  imageList?: ChatImageItem[];
   publicMessageId: string;
+  sender?: { avatar: string | null; fullName: string | null; id: string };
   topicId: string;
   visibleAt: Date;
 };
 
 export type AccessiblePublishedAssistantMessage = {
+  agentId?: string | null;
   content: string;
+  executionMessages?: UIChatMessage[];
+  fileList?: ChatFileItem[];
+  imageList?: ChatImageItem[];
   id: string;
+  isGenerating?: boolean;
   kind: 'assistant';
   topicId: string;
   visibleAt: Date;
@@ -127,11 +176,27 @@ const afterTopicCursor = (cursor?: GroupConversationCursor) =>
       )
     : undefined;
 
+const beforeTopicCursor = (cursor?: GroupConversationCursor) =>
+  cursor
+    ? or(
+        lt(topics.createdAt, cursor.createdAt),
+        and(eq(topics.createdAt, cursor.createdAt), lt(topics.id, cursor.id)),
+      )
+    : undefined;
+
 const afterMessageCursor = (cursor?: GroupConversationCursor) =>
   cursor
     ? or(
         gt(messages.createdAt, cursor.createdAt),
         and(eq(messages.createdAt, cursor.createdAt), gt(messages.id, cursor.id)),
+      )
+    : undefined;
+
+const beforeMessageCursor = (cursor?: GroupConversationCursor) =>
+  cursor
+    ? or(
+        lt(messages.createdAt, cursor.createdAt),
+        and(eq(messages.createdAt, cursor.createdAt), lt(messages.id, cursor.id)),
       )
     : undefined;
 
@@ -192,7 +257,13 @@ const parseTopicInput = (input: CreateAccessibleTopicInput): CreateAccessibleTop
 const parseTextMessageInput = (
   input: CreateAccessibleTextMessageInput,
 ): CreateAccessibleTextMessageInput => {
-  const record = assertExactObject(input, ['content', 'groupId', 'idempotencyKey', 'topicId']);
+  const record = assertExactObject(input, [
+    'content',
+    'groupId',
+    'idempotencyKey',
+    'topicId',
+    'fileIds',
+  ]);
   const idempotencyKey = requiredString(
     record,
     'idempotencyKey',
@@ -200,8 +271,17 @@ const parseTextMessageInput = (
   );
   if (!/^[\x20-\x7E]+$/.test(idempotencyKey)) return invalidInput();
 
+  const fileIds = record.fileIds;
+  if (
+    fileIds !== undefined &&
+    (!Array.isArray(fileIds) ||
+      fileIds.length > 20 ||
+      fileIds.some((id) => typeof id !== 'string' || !id || id.length > 255))
+  )
+    return invalidInput();
   return {
     content: requiredString(record, 'content', GROUP_CONVERSATION_TEXT_MAX),
+    ...(fileIds ? { fileIds: [...new Set(fileIds as string[])] } : {}),
     groupId: requiredString(record, 'groupId', 255),
     idempotencyKey,
     topicId: requiredString(record, 'topicId', 255),
@@ -232,8 +312,17 @@ const parsePublishedAssistantMarker = (value: unknown) => {
   const marker = asRecord(value);
   if (
     !marker ||
-    Object.keys(marker).length !== PUBLISHED_ASSISTANT_MARKER_KEYS.length ||
-    Object.keys(marker).some((key) => !PUBLISHED_ASSISTANT_MARKER_KEYS.includes(key as never))
+    PUBLISHED_ASSISTANT_MARKER_KEYS.some((key) => !(key in marker)) ||
+    Object.keys(marker).some(
+      (key) =>
+        key !== 'executionMessageIds' && !PUBLISHED_ASSISTANT_MARKER_KEYS.includes(key as never),
+    ) ||
+    (marker.executionMessageIds !== undefined &&
+      (!Array.isArray(marker.executionMessageIds) ||
+        marker.executionMessageIds.length === 0 ||
+        marker.executionMessageIds.some((id) => typeof id !== 'string' || !id.trim()) ||
+        marker.executionMessageIds.at(-1) !== marker.assistantMessageId ||
+        new Set(marker.executionMessageIds).size !== marker.executionMessageIds.length))
   ) {
     return undefined;
   }
@@ -266,6 +355,7 @@ const parsePublishedAssistantMarker = (value: unknown) => {
     actorUserIdSnapshot: marker.actorUserIdSnapshot,
     assistantMessageId: marker.assistantMessageId,
     contentHash: marker.contentHash,
+    executionMessageIds: marker.executionMessageIds as string[] | undefined,
     groupId: marker.groupId,
     membershipVersion: marker.membershipVersion as number,
     operationId: marker.operationId,
@@ -418,8 +508,259 @@ const resolveLockedPrincipal = async (
   };
 };
 
+const projectAttachments = (
+  items: Array<{ id: string; name: string; fileType: string; size: number }>,
+) =>
+  items.length
+    ? {
+        fileList: items
+          .filter((file) => !file.fileType.startsWith('image/'))
+          .map(({ id, name, fileType, size }) => ({
+            id,
+            name,
+            fileType,
+            size,
+            url: getFileProxyUrl(id),
+            downloadUrl: `${getFileProxyUrl(id)}?download=1`,
+          })),
+        imageList: items
+          .filter((file) => file.fileType.startsWith('image/'))
+          .map(({ id, name }) => ({
+            id,
+            alt: name,
+            url: getFileProxyUrl(id),
+          })),
+      }
+    : {};
+
 export class GroupConversationAccessRepository {
   constructor(private readonly db: LobeChatDatabase) {}
+
+  /** Read-only resource access derived from an accessible, still-current publication. */
+  resolvePublishedResource = async (
+    actorUserId: string,
+    type: 'document' | 'file',
+    resourceId: string,
+  ) => {
+    const candidates = await this.db
+      .select({
+        groupId: agentOperations.chatGroupId,
+        ownerId: works.userId,
+        workId: works.id,
+        versionId: workVersions.id,
+      })
+      .from(works)
+      .innerJoin(workVersions, eq(workVersions.id, works.currentVersionId))
+      .innerJoin(
+        agentOperations,
+        and(
+          eq(agentOperations.id, workVersions.rootOperationId),
+          eq(agentOperations.userId, works.userId),
+        ),
+      )
+      .innerJoin(
+        chatGroupUserMemberships,
+        and(
+          eq(chatGroupUserMemberships.chatGroupId, agentOperations.chatGroupId),
+          eq(chatGroupUserMemberships.userId, actorUserId),
+          isNull(chatGroupUserMemberships.removedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(works.resourceType, type),
+          isNull(works.workspaceId),
+          isNull(works.deletedAt),
+          type === 'document'
+            ? eq(works.resourceId, resourceId)
+            : sql<boolean>`${workVersions.metadata}->>'fileId' = ${resourceId}`,
+        ),
+      );
+    for (const candidate of candidates) {
+      if (!candidate.groupId) continue;
+      try {
+        const published = await this.listAccessiblePublishedAssistantMessages(
+          actorUserId,
+          candidate.groupId,
+        );
+        const publication = published.find((message) =>
+          message.executionMessages?.some((step) =>
+            step.works?.some(
+              (work) => work.id === candidate.workId && work.event.id === candidate.versionId,
+            ),
+          ),
+        );
+        if (publication) return { ownerId: candidate.ownerId, publishedAt: publication.visibleAt };
+      } catch (error) {
+        if (!(error instanceof GroupConversationAccessUnavailableError)) throw error;
+      }
+    }
+    return undefined;
+  };
+
+  updateAccessibleTextMessage = async (
+    actorUserId: string,
+    input: { groupId: string; publicMessageId: string; visibleAt: Date; content: string | null },
+  ): Promise<void> =>
+    this.db.transaction(async (tx) => {
+      const principal = await resolveLockedPrincipal(tx, actorUserId, input.groupId);
+      const content = input.content === null ? '消息已撤回' : input.content.trim();
+      if (!content || content.length > GROUP_CONVERSATION_TEXT_MAX) return invalidInput();
+      const candidates = await tx
+        .select({ id: messages.id, topicId: messages.topicId })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.groupId, principal.groupId),
+            eq(messages.userId, actorUserId),
+            eq(messages.role, 'user'),
+            isNull(messages.workspaceId),
+            gte(messages.createdAt, input.visibleAt),
+            lt(messages.createdAt, new Date(input.visibleAt.getTime() + 1)),
+            principal.joinedAt ? gte(messages.createdAt, principal.joinedAt) : undefined,
+          ),
+        )
+        .for('update');
+      const message = candidates.find(
+        (row) =>
+          row.topicId &&
+          textMessagePublicId(
+            principal.resourceOwnerUserId,
+            principal.groupId,
+            row.topicId,
+            row.id,
+          ) === input.publicMessageId,
+      );
+      if (!message) throw new GroupConversationAccessUnavailableError();
+      if (input.content === null) {
+        await tx.delete(messagesFiles).where(eq(messagesFiles.messageId, message.id));
+      }
+      await tx
+        .update(messages)
+        .set({ content, updatedAt: new Date() })
+        .where(eq(messages.id, message.id));
+    });
+
+  listAccessibleTasks = async (
+    actorUserId: string,
+    groupId: string,
+    offset = 0,
+    category: 'all' | 'running' | 'success' | 'failed' | 'error' | 'usage' = 'all',
+  ) =>
+    this.db.transaction(async (tx) => {
+      const principal = await resolveLockedPrincipal(tx, actorUserId, groupId);
+      const rows = await tx
+        .select({
+          id: agentOperations.id,
+          status: agentOperations.status,
+          createdAt: agentOperations.createdAt,
+          startedAt: agentOperations.startedAt,
+          completedAt: agentOperations.completedAt,
+          completionReason: agentOperations.completionReason,
+          totalCost: agentOperations.totalCost,
+          currency: agentOperations.currency,
+          totalTokens: agentOperations.totalTokens,
+          totalInputTokens: agentOperations.totalInputTokens,
+          totalOutputTokens: agentOperations.totalOutputTokens,
+          processingTimeMs: agentOperations.processingTimeMs,
+          stepCount: agentOperations.stepCount,
+          llmCalls: agentOperations.llmCalls,
+          toolCalls: agentOperations.toolCalls,
+          model: agentOperations.model,
+          provider: agentOperations.provider,
+          agentName: sql<
+            string | null
+          >`coalesce(nullif(trim(${agents.name}), ''), ${agents.title})`,
+          topicId: topics.id,
+          topicTitle: topics.title,
+          // Do not return provider payloads, credentials, stack traces or arbitrary error text.
+          errorCode: sql<string | null>`case
+            when ${agentOperations.error} is null and ${agentOperations.status} != 'error' then null
+            when ${agentOperations.error}->>'type' = '429' then 'rate_limit'
+            when ${agentOperations.error}->>'type' in ('401', '403') then 'authentication'
+            when ${agentOperations.error}->>'type' in ('408', '504', 'TimeoutError') then 'timeout'
+            when ${agentOperations.error}->>'type' in ('500', '502', '503') then 'unavailable'
+            else 'execution_error' end`,
+        })
+        .from(agentOperations)
+        .leftJoin(
+          agents,
+          and(
+            eq(agents.id, agentOperations.agentId),
+            eq(agents.userId, principal.resourceOwnerUserId),
+            isNull(agents.workspaceId),
+          ),
+        )
+        .leftJoin(
+          topics,
+          and(
+            eq(topics.id, agentOperations.topicId),
+            eq(topics.groupId, principal.groupId),
+            eq(topics.userId, principal.resourceOwnerUserId),
+            isNull(topics.workspaceId),
+            isNull(topics.deletedAt),
+            principal.joinedAt ? gte(topics.createdAt, principal.joinedAt) : undefined,
+          ),
+        )
+        .where(
+          and(
+            eq(agentOperations.chatGroupId, principal.groupId),
+            eq(agentOperations.userId, principal.resourceOwnerUserId),
+            isNull(agentOperations.workspaceId),
+            isNull(agentOperations.parentOperationId),
+            gte(agentOperations.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+            principal.joinedAt ? gte(agentOperations.createdAt, principal.joinedAt) : undefined,
+            category === 'running'
+              ? inArray(agentOperations.status, [
+                  'idle',
+                  'running',
+                  'waiting_for_human',
+                  'waiting_for_async_tool',
+                ])
+              : undefined,
+            category === 'success'
+              ? and(
+                  eq(agentOperations.status, 'done'),
+                  or(
+                    isNull(agentOperations.completionReason),
+                    eq(agentOperations.completionReason, 'done'),
+                  ),
+                )
+              : undefined,
+            category === 'failed'
+              ? or(
+                  inArray(agentOperations.status, ['error', 'interrupted', 'abandoned']),
+                  inArray(agentOperations.completionReason, [
+                    'cost_limit',
+                    'max_steps',
+                    'lease_expired',
+                  ]),
+                )
+              : undefined,
+            category === 'error'
+              ? or(isNotNull(agentOperations.error), eq(agentOperations.status, 'error'))
+              : undefined,
+            category === 'usage'
+              ? or(isNotNull(agentOperations.totalCost), isNotNull(agentOperations.totalTokens))
+              : undefined,
+          ),
+        )
+        .orderBy(desc(agentOperations.createdAt), desc(agentOperations.id))
+        .limit(51)
+        .offset(offset);
+      return {
+        items: rows.slice(0, 50).map((row) => ({
+          ...row,
+          totalCost: row.totalCost === null ? null : Number(row.totalCost),
+          id: createHash('sha256')
+            .update(JSON.stringify([groupId, row.id]))
+            .digest('hex'),
+          status: row.status,
+          createdAt: row.createdAt,
+        })),
+        nextOffset: rows.length > 50 ? offset + 50 : null,
+      };
+    });
 
   private activeMembershipJoin = (actorUserId: string) =>
     and(
@@ -454,7 +795,7 @@ export class GroupConversationAccessRepository {
   private resolveAccessibleTextCursor = async (
     actorUserId: string,
     groupId: string,
-    topicId: string,
+    topicId: string | undefined,
     cursor: GroupConversationCursor,
   ): Promise<GroupConversationCursor> => {
     const rows = await this.db
@@ -478,27 +819,29 @@ export class GroupConversationAccessRepository {
           sql<boolean>`length(trim(${messages.content})) > 0`,
           isNull(messages.workspaceId),
           this.visibleSinceCurrentMembership(actorUserId, messages.createdAt),
-          notExists(
-            this.db
-              .select({ fileId: messagesFiles.fileId })
-              .from(messagesFiles)
-              .where(eq(messagesFiles.messageId, messages.id)),
+          or(
+            sql<boolean>`${messages.metadata}->>'groupSharedAttachments' = 'true'`,
+            notExists(
+              this.db
+                .select({ fileId: messagesFiles.fileId })
+                .from(messagesFiles)
+                .where(eq(messagesFiles.messageId, messages.id)),
+            ),
           ),
         ),
       )
       .where(
         and(
           this.accessibleGroupWhere(actorUserId, groupId),
-          eq(topics.id, topicId),
+          topicId ? eq(topics.id, topicId) : undefined,
           eq(topics.userId, chatGroups.userId),
           isNull(topics.workspaceId),
-          this.visibleSinceCurrentMembership(actorUserId, topics.createdAt),
+          topicId ? this.visibleSinceCurrentMembership(actorUserId, topics.createdAt) : undefined,
         ),
       );
 
     const match = rows.find(
-      (row) =>
-        textMessagePublicId(row.ownerUserId, row.groupId, row.topicId, row.id) === cursor.id,
+      (row) => textMessagePublicId(row.ownerUserId, row.groupId, row.topicId, row.id) === cursor.id,
     );
     if (!match) throw new GroupConversationAccessUnavailableError();
 
@@ -511,13 +854,15 @@ export class GroupConversationAccessRepository {
    *
    * This is deliberately not a general ownership bypass: the joins prove that
    * the caller owns the default private travel group and that every returned
-   * author wrote plain text during a valid membership period. Owner-authored
+   * author is a known human member of this group. Departure and rejoining must
+   * not hide their earlier messages from the owner. Owner-authored
    * and AI rows continue through the normal MessageModel path.
    */
   listOwnerSupplementalTextMessages = async (
     ownerUserId: string,
     groupId: string,
-    topicId: string,
+    topicId: string | undefined,
+    page: { limit: number; offset: number } = { limit: 1000, offset: 0 },
   ): Promise<OwnerSupplementalTextMessage[]> => {
     const rows = await this.db
       .select({
@@ -541,7 +886,7 @@ export class GroupConversationAccessRepository {
         topics,
         and(
           eq(topics.id, messages.topicId),
-          eq(topics.id, topicId),
+          topicId ? eq(topics.id, topicId) : undefined,
           eq(topics.groupId, groupId),
           eq(topics.userId, ownerUserId),
           isNull(topics.workspaceId),
@@ -565,11 +910,6 @@ export class GroupConversationAccessRepository {
           eq(chatGroupUserMemberships.userId, messages.userId),
           eq(chatGroupUserMemberships.role, 'member'),
           gt(chatGroupUserMemberships.membershipVersion, 0),
-          gte(messages.createdAt, chatGroupUserMemberships.joinedAt),
-          or(
-            isNull(chatGroupUserMemberships.removedAt),
-            gte(chatGroupUserMemberships.removedAt, messages.createdAt),
-          ),
         ),
       )
       .innerJoin(users, eq(users.id, messages.userId))
@@ -586,18 +926,22 @@ export class GroupConversationAccessRepository {
           isNull(messages.model),
           isNull(messages.provider),
           isNull(messages.tools),
-          notExists(
-            this.db
-              .select({ fileId: messagesFiles.fileId })
-              .from(messagesFiles)
-              .where(eq(messagesFiles.messageId, messages.id)),
+          or(
+            sql<boolean>`${messages.metadata}->>'groupSharedAttachments' = 'true'`,
+            notExists(
+              this.db
+                .select({ fileId: messagesFiles.fileId })
+                .from(messagesFiles)
+                .where(eq(messagesFiles.messageId, messages.id)),
+            ),
           ),
         ),
       )
-      .orderBy(asc(messages.createdAt), asc(messages.id))
-      .limit(1000);
+      .orderBy(desc(messages.createdAt), desc(messages.id))
+      .limit(page.limit)
+      .offset(page.offset);
 
-    return rows.flatMap<OwnerSupplementalTextMessage>((row) =>
+    return rows.reverse().flatMap<OwnerSupplementalTextMessage>((row) =>
       row.content && row.groupId && row.topicId && row.sender
         ? [
             {
@@ -620,10 +964,46 @@ export class GroupConversationAccessRepository {
     groupId: string,
     options: GroupConversationPageOptions = {},
   ): Promise<GroupConversationPage<AccessibleConversationTopic>> => {
-    const limit = pageLimit(options.limit);
+    const limit = options.recent
+      ? Math.min(pageLimit(options.limit), 20)
+      : pageLimit(options.limit);
+    // Search and previews share the same visibility boundary; private threads,
+    // other groups and pre-membership content cannot become search side channels.
+    const visibleRequest = and(
+      eq(messages.groupId, chatGroups.id),
+      eq(messages.topicId, topics.id),
+      eq(messages.role, 'user'),
+      isNull(messages.threadId),
+      isNull(messages.workspaceId),
+      sql<boolean>`length(trim(${messages.content})) > 0`,
+      this.visibleSinceCurrentMembership(actorUserId, messages.createdAt),
+      or(
+        sql<boolean>`${messages.metadata}->>'groupSharedAttachments' = 'true'`,
+        notExists(
+          this.db
+            .select({ fileId: messagesFiles.fileId })
+            .from(messagesFiles)
+            .where(eq(messagesFiles.messageId, messages.id)),
+        ),
+      ),
+    );
+    const latestRequest = this.db
+      .select({ id: messages.id, content: messages.content, createdAt: messages.createdAt })
+      .from(messages)
+      .where(visibleRequest)
+      .orderBy(desc(messages.createdAt), desc(messages.id))
+      .limit(1)
+      .as('latest_request');
     const rows = await this.db
       .select({
+        latestMessage: latestRequest.content,
+        latestMessageId: latestRequest.id,
+        ownerId: chatGroups.userId,
         createdAt: topics.createdAt,
+        updatedAt: topics.updatedAt,
+        favorite: topics.favorite,
+        status: topics.status,
+        trigger: topics.trigger,
         groupId: chatGroups.id,
         id: topics.id,
         title: topics.title,
@@ -636,36 +1016,90 @@ export class GroupConversationAccessRepository {
           eq(topics.groupId, chatGroups.id),
           eq(topics.userId, chatGroups.userId),
           isNull(topics.workspaceId),
+          isNull(topics.deletedAt),
           this.visibleSinceCurrentMembership(actorUserId, topics.createdAt),
-          afterTopicCursor(options.cursor),
+          options.keywords
+            ? or(
+                sql<boolean>`strpos(lower(${topics.title}), lower(${options.keywords})) > 0`,
+                exists(
+                  this.db
+                    .select({ id: messages.id })
+                    .from(messages)
+                    .where(
+                      and(
+                        visibleRequest,
+                        sql<boolean>`strpos(lower(${messages.content}), lower(${options.keywords})) > 0`,
+                      ),
+                    ),
+                ),
+              )
+            : undefined,
+          options.recent
+            ? undefined
+            : options.direction === 'latest'
+              ? beforeTopicCursor(options.cursor)
+              : afterTopicCursor(options.cursor),
         ),
       )
+      .leftJoinLateral(latestRequest, options.recent ? sql`true` : sql`false`)
       .where(this.accessibleGroupWhere(actorUserId, groupId))
-      .orderBy(asc(topics.createdAt), asc(topics.id))
-      .limit(limit + 1);
+      .orderBy(
+        ...(options.recent
+          ? [desc(sql`coalesce(${latestRequest.createdAt}, ${topics.updatedAt})`), desc(topics.id)]
+          : options.direction === 'latest'
+            ? [desc(topics.createdAt), desc(topics.id)]
+            : [asc(topics.createdAt), asc(topics.id)]),
+      )
+      .limit(options.recent ? limit : limit + 1);
 
     if (rows.length === 0) throw new GroupConversationAccessUnavailableError();
 
-    const items = rows.flatMap<AccessibleConversationTopic>((row) =>
-      row.id && row.createdAt ? [{ createdAt: row.createdAt, id: row.id, title: row.title }] : [],
-    );
+    const items = rows.flatMap<AccessibleConversationTopic>((row) => {
+      if (!row.id || !row.createdAt) return [];
+      return [
+        {
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt ?? row.createdAt,
+          ...(actorUserId === row.ownerId ? { favorite: row.favorite } : {}),
+          status: row.status,
+          trigger: row.trigger,
+          id: row.id,
+          title: row.title,
+          ...(options.recent && row.latestMessage && row.latestMessageId
+            ? {
+                latestMessage: row.latestMessage.trim().replaceAll(/\s+/g, ' ').slice(0, 200),
+                latestMessageId:
+                  actorUserId === row.ownerId
+                    ? row.latestMessageId
+                    : textMessagePublicId(row.ownerId, groupId, row.id, row.latestMessageId),
+              }
+            : {}),
+        },
+      ];
+    });
 
+    if (options.recent) return { items: items.slice(0, limit), nextCursor: null };
     return toPage(items, limit);
   };
 
   listAccessibleTextMessages = async (
     actorUserId: string,
     groupId: string,
-    topicId: string,
+    topicId: string | undefined,
     options: GroupConversationPageOptions = {},
   ): Promise<GroupConversationPage<AccessibleTextMessage>> => {
     const limit = pageLimit(options.limit);
+    const latestFirst = options.direction === 'latest';
     const rawCursor = options.cursor
       ? await this.resolveAccessibleTextCursor(actorUserId, groupId, topicId, options.cursor)
       : undefined;
     const rows = await this.db
       .select({
         authorUserId: messages.userId,
+        authorAvatar: users.avatar,
+        authorName: sql<
+          string | null
+        >`coalesce(nullif(trim(${users.fullName}), ''), nullif(trim(${users.username}), ''))`,
         content: messages.content,
         createdAt: messages.createdAt,
         groupId: chatGroups.id,
@@ -686,34 +1120,50 @@ export class GroupConversationAccessRepository {
           sql<boolean>`length(trim(${messages.content})) > 0`,
           isNull(messages.workspaceId),
           this.visibleSinceCurrentMembership(actorUserId, messages.createdAt),
-          afterMessageCursor(rawCursor),
-          notExists(
-            this.db
-              .select({ fileId: messagesFiles.fileId })
-              .from(messagesFiles)
-              .where(eq(messagesFiles.messageId, messages.id)),
+          latestFirst ? beforeMessageCursor(rawCursor) : afterMessageCursor(rawCursor),
+          options.keywords
+            ? sql<boolean>`strpos(lower(${messages.content}), lower(${options.keywords})) > 0`
+            : undefined,
+          or(
+            sql<boolean>`${messages.metadata}->>'groupSharedAttachments' = 'true'`,
+            notExists(
+              this.db
+                .select({ fileId: messagesFiles.fileId })
+                .from(messagesFiles)
+                .where(eq(messagesFiles.messageId, messages.id)),
+            ),
           ),
         ),
       )
+      .leftJoin(users, eq(users.id, messages.userId))
       .where(
         and(
           this.accessibleGroupWhere(actorUserId, groupId),
-          eq(topics.id, topicId),
+          topicId ? eq(topics.id, topicId) : undefined,
           eq(topics.userId, chatGroups.userId),
           isNull(topics.workspaceId),
-          this.visibleSinceCurrentMembership(actorUserId, topics.createdAt),
+          topicId ? this.visibleSinceCurrentMembership(actorUserId, topics.createdAt) : undefined,
         ),
       )
-      .orderBy(asc(messages.createdAt), asc(messages.id))
+      .orderBy(
+        latestFirst ? sql`${messages.createdAt} desc nulls last` : asc(messages.createdAt),
+        latestFirst ? sql`${messages.id} desc nulls last` : asc(messages.id),
+      )
       .limit(limit + 1);
 
-    if (rows.length === 0) throw new GroupConversationAccessUnavailableError();
+    if (rows.length === 0) {
+      if (topicId) throw new GroupConversationAccessUnavailableError();
+      await resolveGroupConversationPrincipal(this.db, { actorUserId, groupId });
+      return { items: [], nextCursor: null };
+    }
 
     const internalItems = rows.flatMap((row) =>
       row.id && row.content && row.createdAt && row.authorUserId && row.groupId && row.ownerUserId
         ? [
             {
               authorUserId: row.authorUserId,
+              authorAvatar: row.authorAvatar,
+              authorName: row.authorName,
               content: row.content,
               createdAt: row.createdAt,
               groupId: row.groupId,
@@ -727,16 +1177,56 @@ export class GroupConversationAccessRepository {
 
     const result = toPage(internalItems, limit);
     const lastVisibleItem = result.items.at(-1);
+    const visibleItems = latestFirst ? [...result.items].reverse() : result.items;
+    const sharedFiles = visibleItems.length
+      ? await this.db
+          .select({
+            messageId: messages.id,
+            id: files.id,
+            name: files.name,
+            fileType: files.fileType,
+            size: files.size,
+          })
+          .from(messagesFiles)
+          .innerJoin(messages, eq(messages.id, messagesFiles.messageId))
+          .innerJoin(
+            files,
+            and(
+              eq(files.id, messagesFiles.fileId),
+              eq(files.userId, messages.userId),
+              isNull(files.workspaceId),
+            ),
+          )
+          .where(
+            and(
+              inArray(
+                messages.id,
+                visibleItems.map((item) => item.id),
+              ),
+              eq(messages.groupId, groupId),
+              eq(messagesFiles.userId, messages.userId),
+              sql<boolean>`${messages.metadata}->>'groupSharedAttachments' = 'true'`,
+            ),
+          )
+          .orderBy(asc(files.id))
+      : [];
     return {
-      items: result.items.map((item) => ({
+      items: visibleItems.map((item) => ({
         authorKind: messageAuthorKind(actorUserId, item.ownerUserId, item.authorUserId),
         content: item.content,
-        publicMessageId: textMessagePublicId(
-          item.ownerUserId,
-          item.groupId,
-          item.topicId,
-          item.id,
-        ),
+        ...projectAttachments(sharedFiles.filter((file) => file.messageId === item.id)),
+        publicMessageId: textMessagePublicId(item.ownerUserId, item.groupId, item.topicId, item.id),
+        ...(item.authorName || item.authorAvatar
+          ? {
+              sender: {
+                avatar: item.authorAvatar,
+                fullName: item.authorName,
+                id: createHash('sha256')
+                  .update(JSON.stringify(['group-author:v1', item.groupId, item.authorUserId]))
+                  .digest('hex'),
+              },
+            }
+          : {}),
         topicId: item.topicId,
         visibleAt: item.createdAt,
       })),
@@ -763,7 +1253,65 @@ export class GroupConversationAccessRepository {
   listAccessiblePublishedAssistantMessages = async (
     actorUserId: string,
     groupId: string,
-    topicId: string,
+    topicId?: string,
+    keywords?: string,
+    includeInProgress = false,
+    recent = false,
+  ): Promise<AccessiblePublishedAssistantMessage[]> =>
+    this.queryPublishedAssistantMessages(
+      actorUserId,
+      groupId,
+      topicId,
+      keywords,
+      undefined,
+      includeInProgress,
+      recent,
+    );
+
+  /** Resolve a retry from a verified publication, never from a nearby human message. */
+  getAccessiblePublishedAssistantRequest = async (
+    actorUserId: string,
+    groupId: string,
+    publicMessageId: string,
+  ): Promise<{ prompt: string; mentionedAgentIds: string[]; topicId: string }> => {
+    let request: { prompt: string; mentionedAgentIds: string[]; topicId: string } | undefined;
+    await this.queryPublishedAssistantMessages(
+      actorUserId,
+      groupId,
+      undefined,
+      undefined,
+      (message, metadata) => {
+        if (message.id !== publicMessageId) return;
+        const original = asRecord(asRecord(metadata?.hostedGroupRun)?.originalRequest);
+        if (
+          typeof original?.prompt !== 'string' ||
+          !original.prompt.trim() ||
+          !Array.isArray(original.mentionedAgentIds) ||
+          !original.mentionedAgentIds.every((id) => typeof id === 'string')
+        )
+          return;
+        request = {
+          prompt: original.prompt,
+          mentionedAgentIds: original.mentionedAgentIds as string[],
+          topicId: message.topicId,
+        };
+      },
+    );
+    if (!request) throw new GroupConversationAccessUnavailableError();
+    return request;
+  };
+
+  private queryPublishedAssistantMessages = async (
+    actorUserId: string,
+    groupId: string,
+    topicId: string | undefined,
+    keywords?: string,
+    onVerified?: (
+      message: AccessiblePublishedAssistantMessage,
+      metadata: Record<string, unknown> | undefined,
+    ) => void,
+    includeInProgress = false,
+    recent = false,
   ): Promise<AccessiblePublishedAssistantMessage[]> =>
     this.db.transaction(async (tx) => {
       const principal = await resolveLockedPrincipal(tx, actorUserId, groupId);
@@ -774,18 +1322,31 @@ export class GroupConversationAccessRepository {
         .from(topics)
         .where(
           and(
-            eq(topics.id, topicId),
+            topicId ? eq(topics.id, topicId) : undefined,
             eq(topics.groupId, principal.groupId),
             eq(topics.userId, principal.resourceOwnerUserId),
             isNull(topics.workspaceId),
           ),
         )
         .limit(1);
-      if (!topic) throw new GroupConversationAccessUnavailableError();
+      if (!topic) {
+        if (topicId) throw new GroupConversationAccessUnavailableError();
+        return [];
+      }
 
-      const rows = await tx
+      const query = tx
         .select({
+          agentId: sql<string | null>`case when exists (
+            select 1 from ${chatGroupsAgents}
+            where ${chatGroupsAgents.agentId} = ${messages.agentId}
+              and ${chatGroupsAgents.chatGroupId} = ${principal.groupId}
+              and ${chatGroupsAgents.userId} = ${principal.resourceOwnerUserId}
+              and ${chatGroupsAgents.workspaceId} is null
+              and ${chatGroupsAgents.enabled} = true
+          ) then ${messages.agentId} else null end`,
           content: messages.content,
+          createdAt: messages.createdAt,
+          appContext: agentOperations.appContext,
           messageId: messages.id,
           metadata: agentOperations.metadata,
           operationId: agentOperations.id,
@@ -811,29 +1372,44 @@ export class GroupConversationAccessRepository {
             ),
             eq(messages.userId, principal.resourceOwnerUserId),
             eq(messages.groupId, principal.groupId),
-            eq(messages.topicId, topic.id),
+            eq(messages.topicId, agentOperations.topicId),
+            topicId ? eq(messages.topicId, topic.id) : undefined,
             eq(messages.role, 'assistant'),
+            keywords
+              ? sql<boolean>`strpos(lower(${messages.content}), lower(${keywords})) > 0`
+              : undefined,
             isNotNull(messages.content),
             sql<boolean>`length(trim(${messages.content})) > 0`,
             isNull(messages.workspaceId),
             isNull(messages.threadId),
             isNull(messages.sessionId),
-            isNull(messages.messageGroupId),
+            // Archival changes presentation, not the verified publication's visibility.
+            or(
+              isNull(messages.messageGroupId),
+              inArray(
+                messages.messageGroupId,
+                tx
+                  .select({ id: messageGroups.id })
+                  .from(messageGroups)
+                  .where(
+                    and(
+                      eq(messageGroups.type, 'compression'),
+                      eq(messageGroups.userId, principal.resourceOwnerUserId),
+                      eq(messageGroups.topicId, messages.topicId),
+                      isNull(messageGroups.workspaceId),
+                    ),
+                  ),
+              ),
+            ),
             isNull(messages.error),
             isNull(messages.tools),
-            notExists(
-              tx
-                .select({ fileId: messagesFiles.fileId })
-                .from(messagesFiles)
-                .where(eq(messagesFiles.messageId, messages.id)),
-            ),
           ),
         )
         .where(
           and(
             eq(agentOperations.userId, principal.resourceOwnerUserId),
             eq(agentOperations.chatGroupId, principal.groupId),
-            eq(agentOperations.topicId, topic.id),
+            topicId ? eq(agentOperations.topicId, topic.id) : undefined,
             isNull(agentOperations.workspaceId),
             isNull(agentOperations.parentOperationId),
             eq(agentOperations.status, 'done'),
@@ -844,10 +1420,41 @@ export class GroupConversationAccessRepository {
             sql<boolean>`${agentOperations.metadata}->'hostedGroupMemberFinal'->>'groupId' = ${principal.groupId}`,
           ),
         )
-        .orderBy(desc(agentOperations.completedAt), desc(agentOperations.id))
-        .limit(50);
+        .orderBy(desc(agentOperations.completedAt), desc(agentOperations.id));
+      const rows = await (recent
+        ? query.limit(GROUP_RECENT_MESSAGE_LIMIT)
+        : keywords
+          ? query.limit(50)
+          : query);
+      const attachedFiles = rows.length
+        ? await tx
+            .select({
+              messageId: messagesFiles.messageId,
+              boundUserId: messagesFiles.userId,
+              id: files.id,
+              userId: files.userId,
+              workspaceId: files.workspaceId,
+              name: files.name,
+              fileType: files.fileType,
+              size: files.size,
+            })
+            .from(messagesFiles)
+            .innerJoin(files, eq(files.id, messagesFiles.fileId))
+            .where(
+              inArray(
+                messagesFiles.messageId,
+                rows.map((row) => row.messageId),
+              ),
+            )
+            .orderBy(asc(files.id))
+        : [];
 
-      return rows.flatMap<AccessiblePublishedAssistantMessage>((row) => {
+      const published: AccessiblePublishedAssistantMessage[] = [];
+      const executions: {
+        message: AccessiblePublishedAssistantMessage;
+        input: ExecutionMessageInput;
+      }[] = [];
+      for (const row of rows) {
         const metadata = asRecord(row.metadata);
         const marker = parsePublishedAssistantMarker(metadata?.hostedGroupMemberFinal);
         const canonicalContent = row.content?.trim();
@@ -860,28 +1467,170 @@ export class GroupConversationAccessRepository {
           marker.groupId !== principal.groupId ||
           marker.assistantMessageId !== row.messageId ||
           marker.publishedAt < principal.joinedAt ||
-          !hostedRunMatchesPublishedMarker(metadata.hostedGroupRun, marker) ||
+          !hostedRunMatchesPublishedMarker(metadata?.hostedGroupRun, marker) ||
           createHash('sha256').update(canonicalContent, 'utf8').digest('hex') !== marker.contentHash
         ) {
-          return [];
+          continue;
         }
+        const attachments = attachedFiles.filter((file) => file.messageId === row.messageId);
+        // Publish only files the verified final text already explicitly disclosed.
+        if (
+          attachments.some(
+            (file) =>
+              file.userId !== principal.resourceOwnerUserId ||
+              file.boundUserId !== principal.resourceOwnerUserId ||
+              file.workspaceId !== null ||
+              !new RegExp(`${escapeRegExp(getFileProxyUrl(file.id))}(?=[\\s)>?#]|$)`).test(
+                canonicalContent,
+              ),
+          )
+        )
+          continue;
 
-        return [
-          {
-            content: canonicalContent,
-            id: publishedAssistantPublicId(
-              principal.resourceOwnerUserId,
-              principal.groupId,
-              row.topicId,
-              row.operationId,
-              row.messageId,
-            ),
-            kind: 'assistant',
-            topicId: row.topicId,
-            visibleAt: marker.publishedAt,
-          },
-        ];
+        const message: AccessiblePublishedAssistantMessage = {
+          agentId: row.agentId,
+          content: canonicalContent,
+          ...projectAttachments(attachments),
+          id: publishedAssistantPublicId(
+            principal.resourceOwnerUserId,
+            principal.groupId,
+            row.topicId,
+            row.operationId,
+            row.messageId,
+          ),
+          kind: 'assistant',
+          topicId: row.topicId,
+          visibleAt: marker.publishedAt,
+        };
+        const executionMessageIds =
+          marker.executionMessageIds ??
+          (!keywords && !onVerified && row.appContext?.sourceMessageId
+            ? await recoverExecutionMessageIds(tx as LobeChatDatabase, {
+                ownerId: principal.resourceOwnerUserId,
+                groupId: principal.groupId,
+                topicId: row.topicId,
+                sourceMessageId: row.appContext.sourceMessageId,
+                joinedAt: principal.joinedAt,
+                until: row.createdAt,
+              })
+            : undefined);
+        if (executionMessageIds?.includes(row.messageId) && !keywords && !onVerified) {
+          executions.push({
+            message,
+            input: {
+              agentId: row.agentId,
+              ownerId: principal.resourceOwnerUserId,
+              groupId: principal.groupId,
+              topicId: row.topicId,
+              operationId: row.operationId,
+              ids: executionMessageIds,
+              joinedAt: principal.joinedAt,
+              until: marker.publishedAt,
+              publicId: (id) =>
+                publishedAssistantPublicId(
+                  principal.resourceOwnerUserId,
+                  principal.groupId,
+                  row.topicId!,
+                  row.operationId,
+                  id,
+                ),
+            },
+          });
+        }
+        onVerified?.(message, metadata);
+        published.push(message);
+      }
+      const chains = await readExecutionMessages(
+        tx as LobeChatDatabase,
+        executions.map(({ input }) => input),
+      );
+      executions.forEach(({ message }, index) => {
+        message.executionMessages = chains[index];
       });
+      if (includeInProgress && !keywords && !onVerified) {
+        const runningQuery = tx
+          .select({
+            id: agentOperations.id,
+            topicId: agentOperations.topicId,
+            source: agentOperations.appContext,
+            metadata: agentOperations.metadata,
+            startedAt: agentOperations.startedAt,
+          })
+          .from(agentOperations)
+          .innerJoin(
+            topics,
+            and(
+              eq(topics.id, agentOperations.topicId),
+              eq(topics.groupId, principal.groupId),
+              eq(topics.userId, principal.resourceOwnerUserId),
+              isNull(topics.workspaceId),
+              isNull(topics.deletedAt),
+            ),
+          )
+          .where(
+            and(
+              eq(agentOperations.userId, principal.resourceOwnerUserId),
+              eq(agentOperations.chatGroupId, principal.groupId),
+              isNull(agentOperations.workspaceId),
+              isNull(agentOperations.parentOperationId),
+              isNull(agentOperations.threadId),
+              topicId ? eq(agentOperations.topicId, topicId) : undefined,
+              inArray(agentOperations.status, [
+                'idle',
+                'running',
+                'waiting_for_async_tool',
+                'waiting_for_human',
+              ]),
+            ),
+          )
+          .orderBy(desc(agentOperations.startedAt), desc(agentOperations.id));
+        const running = await (recent
+          ? runningQuery.limit(GROUP_RECENT_MESSAGE_LIMIT)
+          : runningQuery);
+        for (const run of running) {
+          const binding = parseHostedGroupRunSnapshot(asRecord(run.metadata)?.hostedGroupRun);
+          if (
+            !binding ||
+            binding.groupId !== principal.groupId ||
+            binding.ownerUserIdSnapshot !== principal.resourceOwnerUserId ||
+            !run.topicId ||
+            !run.source?.sourceMessageId
+          )
+            continue;
+          const scope = {
+            ownerId: principal.resourceOwnerUserId,
+            groupId: principal.groupId,
+            topicId: run.topicId,
+            sourceMessageId: run.source.sourceMessageId,
+            joinedAt: principal.joinedAt,
+            startedAt: run.startedAt,
+            until: new Date(),
+          };
+          const ids = await recoverExecutionMessageIds(tx as LobeChatDatabase, scope);
+          if (!ids.length) continue;
+          const [executionMessages] = await readExecutionMessages(tx as LobeChatDatabase, [
+            {
+              ...scope,
+              ids,
+              operationId: run.id,
+              publicId: (id) =>
+                publishedAssistantPublicId(scope.ownerId, scope.groupId, scope.topicId, run.id, id),
+            },
+          ]);
+          const last = executionMessages?.at(-1);
+          if (last)
+            published.push({
+              content: last.content,
+              executionMessages,
+              id: last.id,
+              isGenerating: true,
+              kind: 'assistant',
+              topicId: run.topicId,
+              visibleAt: scope.until,
+            });
+        }
+      }
+      return published;
     });
 
   createAccessibleTopic = async (
@@ -967,15 +1716,35 @@ export class GroupConversationAccessRepository {
 
       if (!topic) throw new GroupConversationAccessUnavailableError();
 
-      const request = requestIds('message', principal, input.idempotencyKey, [
-        topic.id,
+      const attached = input.fileIds?.length
+        ? await tx
+            .select({ id: files.id, name: files.name, fileType: files.fileType })
+            .from(files)
+            .where(
+              and(
+                inArray(files.id, input.fileIds),
+                eq(files.userId, actorUserId),
+                isNull(files.workspaceId),
+              ),
+            )
+            .orderBy(asc(files.id))
+        : [];
+      if (attached.length !== (input.fileIds?.length ?? 0))
+        throw new GroupConversationAccessUnavailableError();
+      const content = [
         input.content,
-      ]);
+        ...attached.map((file) => {
+          const name = file.name.replaceAll(/[[\]\\\r\n]/g, '_');
+          return `${file.fileType.startsWith('image/') ? '!' : ''}[${name}](<${getFileProxyUrl(file.id)}>)`;
+        }),
+      ].join('\n\n');
+      const request = requestIds('message', principal, input.idempotencyKey, [topic.id, content]);
       const [created] = await tx
         .insert(messages)
         .values({
           clientId: request.clientId,
-          content: input.content,
+          content,
+          ...(attached.length ? { metadata: { groupSharedAttachments: true } } : {}),
           groupId: principal.groupId,
           id: request.id,
           role: 'user',
@@ -993,6 +1762,15 @@ export class GroupConversationAccessRepository {
         });
 
       if (created?.content && created.topicId) {
+        if (attached.length)
+          await tx.insert(messagesFiles).values(
+            attached.map((file) => ({
+              fileId: file.id,
+              messageId: created.id,
+              userId: actorUserId,
+            })),
+          );
+        await tx.update(topics).set({ updatedAt: new Date() }).where(eq(topics.id, topic.id));
         return {
           authorKind: 'self',
           content: created.content,
@@ -1027,7 +1805,7 @@ export class GroupConversationAccessRepository {
       if (
         !existing ||
         existing.clientId !== request.clientId ||
-        existing.content !== input.content ||
+        existing.content !== content ||
         existing.groupId !== principal.groupId ||
         existing.role !== 'user' ||
         existing.topicId !== topic.id ||

@@ -133,6 +133,24 @@ describe('userRouter', () => {
     mockCreateTaskRecommendationService.mockResolvedValue(mockTaskRecommendationService);
   });
 
+  describe('required display name', () => {
+    const updateUser = vi.fn();
+    beforeEach(() => {
+      updateUser.mockReset().mockResolvedValue(undefined);
+      vi.mocked(UserModel).mockImplementation(() => ({ updateUser }) as any);
+    });
+    it.each(['', '   '])('rejects a blank name before updating the user', async (name) => {
+      await expect(userRouter.createCaller(mockCtx).updateFullName(name)).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+      expect(updateUser).not.toHaveBeenCalled();
+    });
+    it('trims a valid display name', async () => {
+      await userRouter.createCaller(mockCtx).updateFullName('  Traveler  ');
+      expect(updateUser).toHaveBeenCalledWith({ fullName: 'Traveler' });
+    });
+  });
+
   describe('onboarding understanding', () => {
     const pollingResult = { id: 'session-1', sources: {}, status: 'pending' as const };
     const scopedCtx = mockCtx;

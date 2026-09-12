@@ -17,7 +17,7 @@ const styles = createStaticStyles(({ css }) => ({
     z-index: 20;
     inset: 8px;
 
-    border: 2px dashed ${cssVar.colorInfoBorder};
+    border: 0.5px dashed ${cssVar.colorInfoBorder};
     border-radius: ${cssVar.borderRadiusLG};
 
     opacity: 0.9;

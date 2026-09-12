@@ -9,12 +9,9 @@ import {
 } from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
 import { eq, inArray } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  SponsoredPlatformUsageSettlement,
-  type SponsoredPlatformUsageSettlementError,
-} from './sponsoredSettlement';
+import { SponsoredPlatformUsageSettlement } from './sponsoredSettlement';
 
 const payerUserId = 'sponsored-settlement-payer';
 const actorUserId = 'sponsored-settlement-actor';
@@ -26,6 +23,7 @@ const fixtureUserIds = [payerUserId, actorUserId, outsiderUserId];
 const createClaimedSponsoredReservation = async (input?: {
   actor?: string;
   authorizationKind?: 'group_member_sponsored' | 'self';
+  providerRequestId?: string | null;
   reservationAccountId?: string;
   status?: 'provider_completed' | 'provider_started' | 'reserved';
 }) => {
@@ -82,6 +80,7 @@ const createClaimedSponsoredReservation = async (input?: {
       idempotencyKey: `reservation:${authorizationKind}:${actor}`,
       model: 'deepseek-chat',
       provider: 'deepseek',
+      providerRequestId: input?.providerRequestId,
       actualUsage:
         input?.status === 'provider_completed' ? { cost: 0.0001, totalTokens: 100 } : null,
       reservedCredits: 500,
@@ -160,6 +159,72 @@ describe('SponsoredPlatformUsageSettlement', () => {
     });
   });
 
+  it('retains provider request evidence when completion omits the request id', async () => {
+    const fixture = await createClaimedSponsoredReservation({
+      providerRequestId: 'provider-request-evidence-1',
+    });
+
+    await expect(
+      new SponsoredPlatformUsageSettlement(db, actorUserId).settleClaimedReservation({
+        leaseVersion: fixture.reservation.leaseVersion,
+        reservationId: fixture.reservation.id,
+        usage: { cost: 0.0001, totalTokens: 100 },
+      }),
+    ).resolves.toMatchObject({
+      reservation: { providerRequestId: 'provider-request-evidence-1', status: 'settled' },
+    });
+  });
+
+  it('rejects completion with a provider request id that conflicts with recorded evidence', async () => {
+    const fixture = await createClaimedSponsoredReservation({
+      providerRequestId: 'provider-request-evidence-1',
+    });
+
+    await expect(
+      new SponsoredPlatformUsageSettlement(db, actorUserId).settleClaimedReservation({
+        leaseVersion: fixture.reservation.leaseVersion,
+        providerRequestId: 'provider-request-evidence-2',
+        reservationId: fixture.reservation.id,
+        usage: { cost: 0.0001, totalTokens: 100 },
+      }),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+
+    const [payerAccount] = await db
+      .select()
+      .from(platformCreditAccounts)
+      .where(eq(platformCreditAccounts.id, fixture.payerAccount.id));
+    const [reservation] = await db
+      .select()
+      .from(platformCreditReservations)
+      .where(eq(platformCreditReservations.id, fixture.reservation.id));
+    expect(payerAccount.balanceCredits).toBe(1000);
+    expect(reservation).toMatchObject({
+      providerRequestId: 'provider-request-evidence-1',
+      status: 'provider_started',
+    });
+    await expect(db.select().from(platformCreditEntries)).resolves.toHaveLength(0);
+  });
+
+  it('rejects an unsafe provider request id before sponsored usage is charged', async () => {
+    const fixture = await createClaimedSponsoredReservation();
+
+    await expect(
+      new SponsoredPlatformUsageSettlement(db, actorUserId).settleClaimedReservation({
+        leaseVersion: fixture.reservation.leaseVersion,
+        providerRequestId: 'provider-request\nAuthorization: secret',
+        reservationId: fixture.reservation.id,
+        usage: { cost: 0.0001, totalTokens: 100 },
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_CONTEXT' });
+
+    const [payerAccount] = await db
+      .select()
+      .from(platformCreditAccounts)
+      .where(eq(platformCreditAccounts.id, fixture.payerAccount.id));
+    expect(payerAccount.balanceCredits).toBe(1000);
+    await expect(db.select().from(platformCreditEntries)).resolves.toHaveLength(0);
+  });
+
   it.each(['reserved', 'provider_completed'] as const)(
     'fails closed when the reservation is %s instead of provider_started',
     async (status) => {
@@ -171,7 +236,7 @@ describe('SponsoredPlatformUsageSettlement', () => {
           reservationId: fixture.reservation.id,
           usage: { cost: 0.0001, totalTokens: 100 },
         }),
-      ).rejects.toMatchObject<SponsoredPlatformUsageSettlementError>({
+      ).rejects.toMatchObject({
         code: 'INVALID_STATE',
       });
       await expect(db.select().from(platformCreditEntries)).resolves.toHaveLength(0);
@@ -187,7 +252,7 @@ describe('SponsoredPlatformUsageSettlement', () => {
         reservationId: fixture.reservation.id,
         usage: { cost: 0.0001, totalTokens: 100 },
       }),
-    ).rejects.toMatchObject<SponsoredPlatformUsageSettlementError>({ code: 'INVALID_CONTEXT' });
+    ).rejects.toMatchObject({ code: 'INVALID_CONTEXT' });
     const [payerAccount] = await db
       .select()
       .from(platformCreditAccounts)
@@ -210,7 +275,7 @@ describe('SponsoredPlatformUsageSettlement', () => {
         reservationId: fixture.reservation.id,
         usage: { cost: 0.0001, totalTokens: 100 },
       }),
-    ).rejects.toMatchObject<SponsoredPlatformUsageSettlementError>({ code: 'INVALID_CONTEXT' });
+    ).rejects.toMatchObject({ code: 'INVALID_CONTEXT' });
   });
 
   it('rejects self-funded budgets from the sponsored settlement path', async () => {
@@ -222,7 +287,7 @@ describe('SponsoredPlatformUsageSettlement', () => {
         reservationId: fixture.reservation.id,
         usage: { cost: 0.0001, totalTokens: 100 },
       }),
-    ).rejects.toMatchObject<SponsoredPlatformUsageSettlementError>({ code: 'INVALID_CONTEXT' });
+    ).rejects.toMatchObject({ code: 'INVALID_CONTEXT' });
   });
 
   it('replays an exact settlement but rejects changed authoritative usage', async () => {
@@ -244,9 +309,45 @@ describe('SponsoredPlatformUsageSettlement', () => {
         ...input,
         usage: { cost: 0.0002, totalTokens: 200 },
       }),
-    ).rejects.toMatchObject<SponsoredPlatformUsageSettlementError>({
+    ).rejects.toMatchObject({
       code: 'IDEMPOTENCY_CONFLICT',
     });
     await expect(db.select().from(platformCreditEntries)).resolves.toHaveLength(1);
   });
+});
+
+const creditNotice = vi.hoisted(() => vi.fn(async (_event: unknown) => {}));
+vi.mock('@/server/services/notification/index', () => ({ notifyUser: creditNotice }));
+
+it('notifies the payer when sponsored usage consumes the final credits', async () => {
+  const fixture = await createClaimedSponsoredReservation();
+  await db
+    .update(platformCreditAccounts)
+    .set({ balanceCredits: 100 })
+    .where(eq(platformCreditAccounts.id, fixture.payerAccount.id));
+  await db
+    .update(platformCreditBudgets)
+    .set({ authorizedCredits: 100 })
+    .where(eq(platformCreditBudgets.id, fixture.budget.id));
+  await db
+    .update(platformCreditReservations)
+    .set({ reservedCredits: 100 })
+    .where(eq(platformCreditReservations.id, fixture.reservation.id));
+  creditNotice.mockClear();
+  const result = await new SponsoredPlatformUsageSettlement(
+    db,
+    actorUserId,
+  ).settleClaimedReservation({
+    leaseVersion: fixture.reservation.leaseVersion,
+    reservationId: fixture.reservation.id,
+    usage: { cost: 0.0001, totalTokens: 100 },
+  });
+  expect(result.entry.balanceAfterCredits).toBe(0);
+  expect(creditNotice).toHaveBeenCalledWith(
+    expect.objectContaining({
+      userId: payerUserId,
+      eventId: result.entry.id,
+      type: 'credits_exhausted',
+    }),
+  );
 });

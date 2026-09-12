@@ -1,7 +1,8 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox, Tooltip, TooltipGroup } from '@lobehub/ui';
-import { ActionIcon, Avatar, Button, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Avatar, Button, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { ExternalLink, Globe, Settings } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
@@ -58,7 +59,7 @@ const WorkspaceHeader = memo(() => {
             )}
           </Flexbox>
           {isLoading ? (
-            <Skeleton height={32} width={140} />
+            <SkeletonBar height={32} width={140} />
           ) : (
             <Flexbox horizontal gap={8}>
               {publicProfileUrl && (

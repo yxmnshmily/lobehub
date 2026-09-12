@@ -99,7 +99,7 @@ const chipStyles = createStaticStyles(({ css }) => ({
 
     padding-block: 3px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 20px;
 
     font-size: 12px;

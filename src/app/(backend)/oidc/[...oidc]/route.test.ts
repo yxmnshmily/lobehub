@@ -66,4 +66,32 @@ describe('OIDC route', () => {
     await expect(response.text()).resolves.toContain('body stream aborted');
     expect(mocks.middleware).not.toHaveBeenCalled();
   });
+
+  it('keeps signed interaction cookies as separate Set-Cookie headers', async () => {
+    const cookies = [
+      '_interaction=example; Path=/; HttpOnly; SameSite=Lax',
+      '_interaction.sig=signature; Path=/; HttpOnly; SameSite=Lax',
+      '_interaction_resume=example; Path=/oidc/device/example; HttpOnly; SameSite=Lax',
+      '_interaction_resume.sig=signature; Path=/oidc/device/example; HttpOnly; SameSite=Lax',
+    ];
+    mocks.createNodeRequest.mockResolvedValueOnce({});
+    mocks.createNodeResponse.mockReturnValueOnce({
+      nodeResponse: {},
+      responseBody: '',
+      responseHeaders: { 'location': '/oauth/consent/example', 'set-cookie': cookies },
+      responseStatus: 303,
+    });
+    mocks.middleware.mockImplementationOnce((_req, _res, next) => next());
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('https://example.com/oidc/device', {
+        method: 'POST',
+      }) as unknown as NextRequest,
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.getSetCookie()).toEqual(cookies);
+    expect(response.headers.get('location')).toBe('/oauth/consent/example');
+  });
 });

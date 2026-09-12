@@ -2,7 +2,7 @@
 
 import { type DropdownItem } from '@lobehub/ui';
 import { Block, Center, DropdownMenu, stopPropagation } from '@lobehub/ui';
-import { ActionIcon, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import {
   Activity,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useEvalStore } from '@/store/eval';
 
@@ -105,7 +106,7 @@ const BenchmarkHead = memo<{ id: string }>(({ id }) => {
         <Icon size={18} />
       </Center>
       {!name ? (
-        <Skeleton.Text width={80} />
+        <SkeletonText width={80} />
       ) : (
         <DropdownMenu items={menuItems} placement="bottomRight">
           <Center

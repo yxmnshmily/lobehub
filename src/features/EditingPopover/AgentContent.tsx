@@ -47,8 +47,9 @@ const AgentContent = memo<AgentContentProps>(({ id, title, avatar, onClose }) =>
       try {
         useHomeStore.getState().setAgentUpdatingId(id);
 
-        const updates: { avatar?: string; backgroundColor?: string; title?: string } = {};
-        if (titleChanged) updates.title = newTitle;
+        const updates: { avatar?: string; backgroundColor?: string; name?: string } = {};
+        // The popover edits the displayed name, not the member's role (`title`).
+        if (titleChanged) updates.name = newTitle.trim();
         if (avatarChanged) updates.avatar = newAvatar || undefined;
         if (backgroundColorChanged) updates.backgroundColor = newBackgroundColor;
 

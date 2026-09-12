@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 const styles = createStaticStyles(({ css }) => ({
   statDivider: css`
-    width: 1px;
+    width: 0.5px;
     height: 28px;
     background: ${cssVar.colorBorderSecondary};
   `,

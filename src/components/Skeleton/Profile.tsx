@@ -17,26 +17,25 @@ interface ProfileSkeletonProps extends RouteSkeletonProps {
 const styles = createStaticStyles(({ css }) => ({
   configPanel: css`
     padding: 24px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillQuaternary};
   `,
   cover: css`
-    width: calc(100% + 32px);
+    width: 100%;
     height: 80px;
-    margin-inline: -16px;
     background: ${cssVar.colorFillQuaternary};
   `,
   divider: css`
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   editor: css`
-    padding-block: 24px 96px;
+    padding-block: 24px;
   `,
   header: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 
@@ -62,6 +61,7 @@ const AgentProfileSkeleton = () => (
           gap={16}
           paddingInline={24}
           style={{ marginTop: -36 }}
+          wrap={'wrap'}
         >
           <SkeletonBar height={72} radius={cssVar.borderRadiusLG} width={72} />
           <Flexbox gap={8} style={{ minWidth: 0, paddingBottom: 4 }}>
@@ -75,7 +75,7 @@ const AgentProfileSkeleton = () => (
           <SkeletonBar height={12} width={96} />
           <SkeletonBar height={12} width={72} />
         </Flexbox>
-        <Flexbox horizontal gap={8}>
+        <Flexbox horizontal gap={8} wrap={'wrap'}>
           <SkeletonBar height={32} width={196} />
           <SkeletonBar height={32} width={112} />
         </Flexbox>

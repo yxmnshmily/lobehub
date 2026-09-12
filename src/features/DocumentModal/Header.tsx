@@ -1,20 +1,13 @@
 'use client';
 
 import { copyToClipboard, Flexbox } from '@lobehub/ui';
-import {
-  ActionIcon,
-  Avatar,
-  DropdownMenu,
-  Skeleton,
-  Text,
-  toast,
-  useModalContext,
-} from '@lobehub/ui/base-ui';
+import { ActionIcon, Avatar, DropdownMenu, Text, toast, useModalContext } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { MoreHorizontal, XIcon } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import ShareButton from '@/business/client/features/PageShare/ShareButton';
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { DESKTOP_HEADER_ICON_SIZE, DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
@@ -68,12 +61,12 @@ const DocumentModalHeader = memo(() => {
       height={HEADER_HEIGHT}
       justify={'space-between'}
       padding={8}
-      style={{ borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}` }}
+      style={{ borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}` }}
     >
       <Flexbox allowShrink horizontal align={'center'} gap={6} style={{ minWidth: 0 }}>
         {emoji && <Avatar avatar={emoji} shape={'square'} size={24} />}
         {isDocumentLoading && !title ? (
-          <Skeleton style={{ height: 14, minWidth: 120, width: 120 }} />
+          <SkeletonBar style={{ height: 14, minWidth: 120, width: 120 }} />
         ) : (
           <Text ellipsis style={{ minWidth: 0 }} weight={500}>
             {title || t('pageEditor.titlePlaceholder')}

@@ -17,17 +17,18 @@ export const CHAT_PORTAL_TASK_WIDTH = 640;
 /** For portal views that read as a document (acceptance report, evidence, screenshots) */
 export const CHAT_PORTAL_WIDE_WIDTH = 840;
 /**
- * Width the conversation column needs to stay usable next to an open portal.
- * Below this the working sidebar yields, leaving conversation + portal.
+ * Minimum readable width kept for the primary conversation column while
+ * secondary panels negotiate the remaining horizontal space. Below this the
+ * working sidebar yields, leaving conversation + portal.
  */
-export const CONVERSATION_KEEP_WIDTH = 420;
+export const CONVERSATION_KEEP_WIDTH = 640;
 
 export const MARKET_SIDEBAR_WIDTH = 400;
 export const FOLDER_WIDTH = 270;
 export const MAX_WIDTH = 1024;
 export const FORM_STYLE: FormProps = {
   itemMinWidth: 'max(34%, 240px)',
-  style: { maxWidth: MAX_WIDTH, width: '100%' },
+  style: { maxWidth: '100%', minWidth: 0, width: '100%' },
 };
 export const MOBILE_HEADER_ICON_SIZE: ActionIconProps['size'] = { blockSize: 44, size: 22 };
 export const DESKTOP_HEADER_ICON_SIZE: ActionIconProps['size'] = { blockSize: 32, size: 20 };

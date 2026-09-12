@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, responsive }) => ({
   `,
   divider: css`
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   label: css`

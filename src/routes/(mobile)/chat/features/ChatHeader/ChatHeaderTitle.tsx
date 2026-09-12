@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { usePersonalInbox } from '@/features/AgentRoute/usePersonalInbox';
 import { useFetchActiveTopicDetail } from '@/hooks/useFetchActiveTopicDetail';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
@@ -19,13 +20,15 @@ const ChatHeaderTitle = memo(() => {
     topicSelectors.currentActiveTopic(s),
   ]);
   const isInbox = useAgentStore(builtinAgentSelectors.isInboxAgent);
+  const activeId = useAgentStore((s) => s.activeAgentId);
+  const personalInbox = usePersonalInbox(activeId);
   const title = useAgentStore(agentSelectors.currentAgentDisplayName);
 
   // Archived topics fall out of the sidebar list fetch — pull their detail by
   // id so the title doesn't degrade to the "new topic" placeholder.
   useFetchActiveTopicDetail();
 
-  const displayTitle = isInbox ? '旅游群主AI' : title;
+  const displayTitle = personalInbox ? '历史聊天记录' : isInbox ? '旅游群主AI' : title;
   const topicLabel = t('title', { ns: 'topic' });
   const triggerStyle = {
     appearance: 'none',

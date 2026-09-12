@@ -1,0 +1,235 @@
+{
+  "advances": [
+    {
+      "completedAt": 1789034946420,
+      "durationMs": 11,
+      "seq": 0,
+      "startedAt": 1789034946409,
+      "ticks": [
+        {
+          "at": 1789034946409,
+          "branch": "goal_terminal",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Goal is already achieved",
+          "outcome": "achieved",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 5,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 5
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    }
+  ],
+  "goalId": "goal_A49OVKP8qlGR",
+  "graphBaseline": {
+    "decisions": [],
+    "edges": [
+      {
+        "id": "d3f2deeb-19cf-4810-8256-3eadb80f22c0",
+        "kind": "decomposes",
+        "sourceNodeId": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "targetNodeId": "e18c2131-3893-471b-ac15-c6b761892b2d"
+      },
+      {
+        "id": "272ccb26-8420-4718-8ca2-8e9410af3d7c",
+        "kind": "decomposes",
+        "sourceNodeId": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "targetNodeId": "e8464ab9-ddb5-4adf-a8a0-262b3b8c17af"
+      },
+      {
+        "id": "a2b503e3-7e1a-4a54-9c63-d465d04d6ba3",
+        "kind": "decomposes",
+        "sourceNodeId": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "targetNodeId": "f11cf2c4-8c9d-4b1b-9bcd-50e6e807d17b"
+      },
+      {
+        "id": "a7ed83e4-c7cf-4b1c-a06f-ee75377ede5b",
+        "kind": "decomposes",
+        "sourceNodeId": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "targetNodeId": "4152d33d-65d0-486e-84fb-88008c2a60ab"
+      },
+      {
+        "id": "c8753d31-9ffc-40b9-a86f-85b87704c236",
+        "kind": "depends_on",
+        "sourceNodeId": "e8464ab9-ddb5-4adf-a8a0-262b3b8c17af",
+        "targetNodeId": "e18c2131-3893-471b-ac15-c6b761892b2d"
+      },
+      {
+        "id": "fdb75263-fbe6-4adb-9d19-3711648fe13b",
+        "kind": "depends_on",
+        "sourceNodeId": "f11cf2c4-8c9d-4b1b-9bcd-50e6e807d17b",
+        "targetNodeId": "e8464ab9-ddb5-4adf-a8a0-262b3b8c17af"
+      },
+      {
+        "id": "d6966b9c-0108-4445-9c8c-6d360d3e167f",
+        "kind": "depends_on",
+        "sourceNodeId": "4152d33d-65d0-486e-84fb-88008c2a60ab",
+        "targetNodeId": "f11cf2c4-8c9d-4b1b-9bcd-50e6e807d17b"
+      },
+      {
+        "id": "7764551e-7a5e-4904-b55f-34a686bc31ee",
+        "kind": "produces",
+        "sourceNodeId": "e18c2131-3893-471b-ac15-c6b761892b2d",
+        "targetNodeId": "b0fd843f-6ecc-4be7-b7cb-2042a4e6319c"
+      },
+      {
+        "id": "5c23e37d-3d1b-47a9-9e73-8c7fb19d5d6b",
+        "kind": "produces",
+        "sourceNodeId": "e8464ab9-ddb5-4adf-a8a0-262b3b8c17af",
+        "targetNodeId": "f09292fe-0e6d-4de1-ae03-accf363f2985"
+      },
+      {
+        "id": "c536d071-94ff-4df5-b2c0-ae571385a9f4",
+        "kind": "produces",
+        "sourceNodeId": "f11cf2c4-8c9d-4b1b-9bcd-50e6e807d17b",
+        "targetNodeId": "a6f91bf6-55af-40b6-a0f9-54bdb26b80e8"
+      },
+      {
+        "id": "12b82794-515b-4604-8e16-a364adf02e7a",
+        "kind": "produces",
+        "sourceNodeId": "4152d33d-65d0-486e-84fb-88008c2a60ab",
+        "targetNodeId": "55bc7e14-6d99-4e9f-89eb-79171b432f26"
+      },
+      {
+        "id": "07846dbf-38d3-4661-b3c3-dd5bab47e623",
+        "kind": "decomposes",
+        "sourceNodeId": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "targetNodeId": "4ce0ee5b-b21f-4083-97a7-e2e5da815a6c"
+      },
+      {
+        "id": "ef3d40bb-5fe3-4a59-b322-dac08d0f993c",
+        "kind": "produces",
+        "sourceNodeId": "4ce0ee5b-b21f-4083-97a7-e2e5da815a6c",
+        "targetNodeId": "a9923eb9-e381-4019-ab20-c689de75ded5"
+      }
+    ],
+    "goal": {
+      "agentId": "agt_tczVqFc9gmKp",
+      "id": "goal_A49OVKP8qlGR",
+      "maxRounds": null,
+      "maxTotalCost": null,
+      "requirement": "## 厦门鼓浪屿亲子游宣传主文案（独立目标）\n\n**Scope:** 独立目标，不与任何既有任务或话题串联，也不设置任何定时/周期性执行。\n\n【交付物】一条\"厦门鼓浪屿亲子游\"宣传主文案，字数在 30 字以内（含标点），主题突出\"轻松陪伴\"的亲子出游氛围。\n\n【硬性约束】\n1. 全篇不超过 30 字。\n2. 核心情绪落点是\"轻松、陪伴、亲子同游\"，不要写成攻略罗列或功能清单。\n3. 不得出现：价格/费用/优惠等价格信息；购物、免税店、特产带货等购物导向；任何安全承诺类表述（如\"绝对安全\"\"全程无忧\"\"零风险\"等）。\n4. 不得虚构景点、船班、天气、时长等事实性描述。\n\n【分工与协作顺序】\n- 撰写：由\"短视频编剧\"完成主文案（可附 1 条备选，但最终只交付 1 条主文案），须给出字数统计。\n- 独立审阅：由与撰写者不同的成员\"旅游攻略审核员\"完成，只做评审，不得代写终稿；须逐条核对字数、主题一致性、以及价格/购物/安全承诺三类禁写项，并明确给出\"通过/不通过\"结论与具体修改意见。\n- 如审阅不通过：由原作者\"短视频编剧\"根据审阅意见修订，改完后再次送同一审阅人复核；审阅人不得自行改写终稿。\n- 通过后交付：交付 1 条最终主文案（含字数），并注明已通过独立审阅。\n\n【验收方式】每条标准都需有可核对的证据（字数统计、禁写项逐条核对结果、审阅结论）。审阅人必须是与撰写者不同的成员，不能自写自审。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案不超过30字** — 最终主文案（含标点）字数 ≤ 30 字，且给出可核对的实际字数统计。  \n   *How to judge:* 逐字统计最终文案字数（含标点），确认 ≤ 30。若超字则判定不通过并要求原作者精简。\n2. **突出轻松陪伴的亲子主题** — 文案核心情绪为轻松、陪伴、亲子同游，读起来自然口语化，不是模板化 AI 腔或攻略罗列。  \n   *How to judge:* 判断文案是否以轻松陪伴亲子出游为落点，是否自然可读；若更像攻略清单或空泛口号则判不通过并说明理由。\n3. **无价格、购物、安全承诺类内容** — 文案中不含价格/费用/优惠信息，不含购物或带货导向，不含任何安全承诺表述。  \n   *How to judge:* 逐项排查三类禁写内容：价格费用、购物消费导向、安全承诺措辞，任一出现即判不通过并指出具体词句。\n4. **由独立成员审阅并给出明确结论** — 审阅由与撰写者不同的成员完成，并输出明确的通过/不通过结论及依据；审阅人不代写终稿。  \n   *How to judge:* 确认撰写者与审阅者为不同成员；确认审阅记录中包含明确结论与具体依据；若为自写自审或仅有笼统表述则判不通过。\n5. **最终只交付一份通过审阅的主文案** — 交付物为 1 条经独立审阅通过的主文案，不重复交付、不出现多个互相冲突的版本。  \n   *How to judge:* 检查最终交付是否为单条主文案且已通过审阅，无重复或冲突版本。",
+      "status": "achieved",
+      "title": "厦门鼓浪屿亲子游宣传主文案（独立目标）"
+    },
+    "nodes": [
+      {
+        "createdAt": 1789016807424,
+        "id": "243bf8e5-6013-470f-b6ad-827e14b43435",
+        "kind": "problem",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "厦门鼓浪屿亲子游宣传主文案（独立目标）"
+      },
+      {
+        "createdAt": 1789016819512,
+        "id": "e18c2131-3893-471b-ac15-c6b761892b2d",
+        "kind": "task",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": "task_iGXsHXJBHEtq",
+        "title": "撰写主文案草稿"
+      },
+      {
+        "createdAt": 1789016819534,
+        "id": "e8464ab9-ddb5-4adf-a8a0-262b3b8c17af",
+        "kind": "task",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": "task_yqEF8uYqMwsJ",
+        "title": "独立审阅与逐项核对"
+      },
+      {
+        "createdAt": 1789016819554,
+        "id": "f11cf2c4-8c9d-4b1b-9bcd-50e6e807d17b",
+        "kind": "task",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": "task_VFKc033ABsTG",
+        "title": "按审阅意见修订并复核定稿"
+      },
+      {
+        "createdAt": 1789016819572,
+        "id": "4152d33d-65d0-486e-84fb-88008c2a60ab",
+        "kind": "task",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": "task_sveEiTdgR7e1",
+        "title": "汇总并交付唯一终稿"
+      },
+      {
+        "createdAt": 1789016884174,
+        "id": "b0fd843f-6ecc-4be7-b7cb-2042a4e6319c",
+        "kind": "finding",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "完成鼓浪屿亲子游主文案草稿撰写"
+      },
+      {
+        "createdAt": 1789019772244,
+        "id": "f09292fe-0e6d-4de1-ae03-accf363f2985",
+        "kind": "finding",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "独立审阅通过：15字亲子主文案"
+      },
+      {
+        "createdAt": 1789020098524,
+        "id": "a6f91bf6-55af-40b6-a0f9-54bdb26b80e8",
+        "kind": "finding",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "修订任务未触发：首轮审阅已通过，定稿"
+      },
+      {
+        "createdAt": 1789020165039,
+        "id": "55bc7e14-6d99-4e9f-89eb-79171b432f26",
+        "kind": "finding",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "交付唯一终稿：鼓浪屿亲子游主文案"
+      },
+      {
+        "createdAt": 1789020165078,
+        "id": "4ce0ee5b-b21f-4083-97a7-e2e5da815a6c",
+        "kind": "task",
+        "priority": -1,
+        "status": "resolved",
+        "taskId": "task_qMk0HP84KG5I",
+        "title": "Complete full Goal acceptance"
+      },
+      {
+        "createdAt": 1789020203686,
+        "id": "a9923eb9-e381-4019-ab20-c689de75ded5",
+        "kind": "finding",
+        "priority": 0,
+        "status": "resolved",
+        "taskId": null,
+        "title": "完成鼓浪屿亲子游文案目标验收证据核验"
+      }
+    ]
+  },
+  "startedAt": 1789034946409,
+  "title": "厦门鼓浪屿亲子游宣传主文案（独立目标）",
+  "traceId": "goal_A49OVKP8qlGR",
+  "totalAdvances": 1,
+  "totalTicks": 1,
+  "completedAt": 1789034946434,
+  "completionReason": "achieved"
+}

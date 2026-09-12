@@ -101,7 +101,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   emptyCard: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -141,7 +141,7 @@ const styles = createStaticStyles(({ css }) => ({
     grid-template-columns: 1fr 1fr;
     gap: 1px;
 
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBorderSecondary};
   `,
@@ -174,7 +174,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   groupList: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -208,7 +208,7 @@ const styles = createStaticStyles(({ css }) => ({
     transition: background 0.15s;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
     &:hover {

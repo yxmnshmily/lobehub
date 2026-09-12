@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css }) => ({
     &::after {
       content: '';
       flex: 1;
-      height: 1px;
+      height: 0.5px;
       background: ${cssVar.colorSplit};
     }
   `,

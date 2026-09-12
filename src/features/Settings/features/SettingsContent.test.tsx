@@ -10,6 +10,7 @@ import SettingsContent from './SettingsContent';
 const access = vi.hoisted(() => ({ isLoading: false, isPlatformAdmin: false }));
 const navigate = vi.hoisted(() => vi.fn());
 const adminDataRequest = vi.hoisted(() => vi.fn());
+const renderedComponentProps = vi.hoisted(() => vi.fn());
 
 vi.mock('@/libs/trpc/client', () => ({
   lambdaQuery: {
@@ -53,11 +54,17 @@ vi.mock('./componentMap', () => ({
       return <div>api-key-view</div>;
     },
     'billing': () => <div>billing-view</div>,
+    'notification': () => <div>notification-view</div>,
     'credential': () => {
       adminDataRequest('credential');
       return <div>credential-view</div>;
     },
+    'connector': (props: { mobile?: boolean }) => {
+      renderedComponentProps('connector', props);
+      return <div>connector-view</div>;
+    },
     'credits': () => <div>credits-view</div>,
+    'plans': () => <div>plans-view</div>,
     'oauth-apps': () => {
       adminDataRequest('oauth-apps');
       return <div>oauth-apps-view</div>;
@@ -80,8 +87,9 @@ vi.mock('./componentMap', () => ({
       adminDataRequest('service-operations');
       return <div>service-operations-view</div>;
     },
-    'skill': () => {
+    'skill': (props: { mobile?: boolean }) => {
       adminDataRequest('skill');
+      renderedComponentProps('skill', props);
       return <div>skill-view</div>;
     },
     'storage': () => {
@@ -98,9 +106,67 @@ afterEach(() => {
   access.isPlatformAdmin = false;
   navigate.mockReset();
   adminDataRequest.mockReset();
+  renderedComponentProps.mockReset();
 });
 
 describe('SettingsContent customer route guard', () => {
+  it('redirects an unknown settings tab to profile instead of silently showing appearance', async () => {
+    access.isPlatformAdmin = true;
+
+    render(<SettingsContent activeTab={'does-not-exist'} />);
+
+    expect(screen.getByText('profile-view')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('/settings/profile', {
+        escape: true,
+        replace: true,
+      }),
+    );
+  });
+
+  it('wraps every desktop settings page in the shared DeepSeek visual layer', () => {
+    const { container } = render(<SettingsContent activeTab={SettingsTabs.Profile} />);
+
+    expect(container.querySelector('[data-settings-content="deepseek"]')).toContainElement(
+      screen.getByText('profile-view'),
+    );
+  });
+
+  it.each([SettingsTabs.Usage, SettingsTabs.ServiceOperations])(
+    'keeps one shared navigation header above the full-width %s page',
+    (tab) => {
+      access.isPlatformAdmin = true;
+      const { container } = render(<SettingsContent activeTab={tab} />);
+      expect(container.querySelectorAll('header')).toHaveLength(1);
+      expect(container.querySelector('main')).toBeNull();
+    },
+  );
+
+  it.each([SettingsTabs.Provider, SettingsTabs.Skill, SettingsTabs.Creds])(
+    'does not duplicate the header owned by %s',
+    (tab) => {
+      access.isPlatformAdmin = true;
+      const { container } = render(<SettingsContent activeTab={tab} />);
+      expect(container.querySelector('header')).toBeNull();
+    },
+  );
+
+  it('leaves the mobile usage header to the mobile layout', () => {
+    const { container } = render(<SettingsContent mobile activeTab={SettingsTabs.Usage} />);
+    expect(container.querySelector('header')).toBeNull();
+  });
+
+  it.each([SettingsTabs.Skill, SettingsTabs.Connector])(
+    'passes the mobile shell signal explicitly into %s',
+    (tab) => {
+      access.isPlatformAdmin = true;
+
+      render(<SettingsContent mobile activeTab={tab} />);
+
+      expect(renderedComponentProps).toHaveBeenCalledWith(tab, { mobile: true });
+    },
+  );
+
   it('takes a newly verified account through session-safe password rotation into its personal center', async () => {
     const baseURL = 'https://customer-lifecycle.example.test';
     const account = {
@@ -243,7 +309,6 @@ describe('SettingsContent customer route guard', () => {
     [SettingsTabs.Storage, 'storage-view'],
     [SettingsTabs.Labs, 'labs-view'],
     [SettingsTabs.ServiceOperations, 'service-operations-view'],
-    [SettingsTabs.Plans, 'plans-view'],
     [SettingsTabs.Referral, 'referral-view'],
     [SettingsTabs.Connector, 'connector-view'],
     [SettingsTabs.Memory, 'memory-view'],
@@ -251,7 +316,6 @@ describe('SettingsContent customer route guard', () => {
     [SettingsTabs.Devices, 'devices-view'],
     [SettingsTabs.Hotkey, 'hotkey-view'],
     [SettingsTabs.Messenger, 'messenger-view'],
-    [SettingsTabs.Notification, 'notification-view'],
     [SettingsTabs.Proxy, 'proxy-view'],
     [SettingsTabs.SystemTools, 'system-tools-view'],
     [SettingsTabs.Stats, 'stats-view'],
@@ -270,10 +334,12 @@ describe('SettingsContent customer route guard', () => {
 
   it.each([
     [SettingsTabs.Profile, 'profile-view'],
+    [SettingsTabs.Plans, 'plans-view'],
     [SettingsTabs.Security, 'security-view'],
     [SettingsTabs.Credits, 'credits-view'],
     [SettingsTabs.Billing, 'billing-view'],
     [SettingsTabs.Usage, 'usage-view'],
+    [SettingsTabs.Notification, 'notification-view'],
   ])('keeps the customer-owned %s page available after a fresh mount', (tab, label) => {
     const firstMount = render(<SettingsContent activeTab={tab} />);
 

@@ -209,6 +209,112 @@ beforeEach(async () => {
 });
 
 describe('PlatformCreditModel', () => {
+  it.each(['direct', 'reserved'] as const)(
+    'replays legacy floating-point charges without rewriting funds (%s)',
+    async (path) => {
+      await new PlatformCreditAdminModel(db, adminId).topUp({
+        credits: 200,
+        idempotencyKey: 'legacy-funds',
+        reason: '旧取整兼容测试',
+        targetUserId: userA,
+      });
+      const ledger = new PlatformCreditModel(db, userA);
+      const input = {
+        actorUserId: userA,
+        costUsd: 0.000123,
+        credits: 123,
+        generationId: 'operation:legacy:step:0:call_llm',
+        idempotencyKey: 'legacy-charge',
+        model: 'model',
+        provider: 'provider',
+        tokenUsage: { totalTokens: 123 },
+      };
+      let reservation: Awaited<ReturnType<PlatformCreditModel['reserveCall']>> | undefined;
+      let budgetId: string | undefined;
+      if (path === 'reserved') {
+        const expiresAt = new Date(Date.now() + 60_000);
+        const budget = await ledger.reserveBudget({
+          authorizedCredits: 200,
+          expiresAt,
+          idempotencyKey: 'legacy-budget',
+          requestHash: 'legacy-request',
+          sourceId: 'legacy-source',
+          sourceType: 'agent-operation',
+        });
+        budgetId = budget.id;
+        reservation = await reserveFixtureCall(ledger, budget.id, 'legacy', expiresAt, 200);
+        await ledger.claimReservationForProvider({
+          reservationId: reservation.id,
+          leaseVersion: reservation.leaseVersion,
+        });
+        await ledger.recordProviderCompletion({
+          ...input,
+          reservationId: reservation.id,
+          leaseVersion: reservation.leaseVersion,
+        });
+      }
+      const charge = (next = input) =>
+        reservation
+          ? ledger.settleReservedUsage({
+              ...next,
+              reservationId: reservation.id,
+              leaseVersion: reservation.leaseVersion,
+            })
+          : ledger.chargeUsage(next);
+      const first = await charge();
+      // Recreate a pre-fix database snapshot; never adjust production history on replay.
+      await client.query(
+        'UPDATE platform_credit_entries SET amount_credits = -124, balance_after_credits = 76 WHERE id = $1',
+        [first.id],
+      );
+      await client.query('UPDATE platform_credit_accounts SET balance_credits = 76 WHERE id = $1', [
+        first.accountId,
+      ]);
+      if (reservation) {
+        await client.query(
+          'UPDATE platform_credit_reservations SET settled_credits = 124 WHERE id = $1',
+          [reservation.id],
+        );
+        await client.query(
+          'UPDATE platform_credit_budgets SET consumed_credits = 124 WHERE id = $1',
+          [budgetId],
+        );
+      }
+      await expect(charge()).resolves.toMatchObject({
+        id: first.id,
+        amountCredits: -124,
+        balanceAfterCredits: 76,
+      });
+      await expect(ledger.getAccount()).resolves.toMatchObject({ balanceCredits: 76 });
+      await expect(charge({ ...input, model: 'changed-model' })).rejects.toThrow();
+      await expect(
+        ledger.chargeUsage({ ...input, idempotencyKey: 'new-incorrect-charge', credits: 124 }),
+      ).rejects.toThrow(PLATFORM_CREDIT_INVALID_USAGE);
+    },
+  );
+
+  it('persists a 123-credit decimal charge without an extra rounding credit', async () => {
+    await new PlatformCreditAdminModel(db, adminId).topUp({
+      credits: 200,
+      idempotencyKey: 'rounding-funds',
+      reason: '精度回归',
+      targetUserId: userA,
+    });
+    const ledger = new PlatformCreditModel(db, userA);
+    const charge = await ledger.chargeUsage({
+      actorUserId: userA,
+      costUsd: 0.000123,
+      credits: 123,
+      generationId: 'rounding-generation',
+      idempotencyKey: 'rounding-charge',
+      model: 'model',
+      provider: 'provider',
+      tokenUsage: { totalTokens: 123 },
+    });
+    expect(charge.amountCredits).toBe(-123);
+    expect((await ledger.getAccount()).balanceCredits).toBe(77);
+  });
+
   it('rejects sponsored budgets from every generic call and provider-claim entry', async () => {
     const { account, budget, expiresAt, ledger } =
       await createSponsoredBudgetFixture('generic-entry-isolation');
@@ -1081,6 +1187,25 @@ describe('PlatformCreditModel', () => {
     await expect(ledger.getAvailableCredits()).resolves.toMatchObject({ heldCredits: 50 });
   });
 
+  it('lists the budgets whose unclaimed hold outlived its lease', async () => {
+    const staleLease = new Date(Date.now() + 1_000);
+    const stale = await createBudgetFixture('stale-hold', staleLease, 80);
+    await reserveFixtureCall(stale.ledger, stale.budget.id, 'stale-hold', staleLease, 80);
+
+    const liveLease = new Date(Date.now() + 60_000);
+    const live = await createBudgetFixture('live-hold', liveLease, 80);
+    await reserveFixtureCall(live.ledger, live.budget.id, 'live-hold', liveLease, 80);
+
+    // Exactly this list drives `reapExpiredBudget` from the recovery sweep, so it
+    // has to mean "past its lease with the hold unclaimed" — not "any live budget".
+    const found = await PlatformCreditModel.findBudgetsWithStaleReservations(db, {
+      now: new Date(staleLease.getTime() + 1),
+    });
+
+    expect(found.map((budget) => budget.id)).toEqual([stale.budget.id]);
+    expect(found[0]!.userId).toBe(userA);
+  });
+
   it('reaps an expired empty budget and releases its entire hold', async () => {
     const expiresAt = new Date(Date.now() + 1_000);
     const { budget, ledger } = await createBudgetFixture('expired-empty', expiresAt, 80);
@@ -1098,6 +1223,41 @@ describe('PlatformCreditModel', () => {
       availableCredits: 100,
       balanceCredits: 100,
       heldCredits: 0,
+    });
+  });
+
+  it('lazily reaps expired unclaimed holds before reporting available Credits', async () => {
+    const expiresAt = new Date(Date.now() + 1_000);
+    const { budget, ledger } = await createBudgetFixture('availability-reaper', expiresAt, 80);
+    const reservation = await reserveFixtureCall(
+      ledger,
+      budget.id,
+      'availability-reaper',
+      expiresAt,
+      80,
+    );
+    const now = vi.spyOn(Date, 'now').mockReturnValue(expiresAt.getTime() + 1);
+
+    try {
+      await expect(ledger.getAvailableCredits()).resolves.toEqual({
+        availableCredits: 100,
+        balanceCredits: 100,
+        heldCredits: 0,
+      });
+    } finally {
+      now.mockRestore();
+    }
+    await expect(ledger.getReservation(reservation.id)).resolves.toMatchObject({
+      status: 'expired',
+    });
+    await expect(
+      ledger.getBudgetBySource({
+        sourceId: 'operation:availability-reaper',
+        sourceType: 'agent-operation',
+      }),
+    ).resolves.toMatchObject({
+      budget: { status: 'expired' },
+      lifecycle: 'expired',
     });
   });
 
@@ -1417,6 +1577,7 @@ describe('PlatformCreditModel', () => {
       model: 'gpt-image-1',
       provider: 'openai',
       tokenUsage: {
+        costExchangeRate: { rate: 7, rateDate: '2026-09-07', updatedAt: '2026-09-07T10:00:00Z' },
         inputImageTokens: 300,
         inputTextTokens: 100,
         outputImageTokens: 850,
@@ -1442,6 +1603,7 @@ describe('PlatformCreditModel', () => {
       workspaceId: 'workspace-a',
     });
     expect(charge.tokenUsage).toEqual({
+      costExchangeRate: { rate: 7, rateDate: '2026-09-07', updatedAt: '2026-09-07T10:00:00Z' },
       inputImageTokens: 300,
       inputTextTokens: 100,
       outputImageTokens: 850,
@@ -1665,6 +1827,101 @@ describe('PlatformCreditModel', () => {
 });
 
 describe('PlatformCreditAdminModel', () => {
+  it('lists unresolved provider calls for both the payer and sponsored actor without ledger secrets', async () => {
+    const admin = new PlatformCreditAdminModel(db, adminId);
+    const expiresAt = new Date(Date.now() + 60_000);
+
+    const selfFixture = await createBudgetFixture('admin-pending-self', expiresAt);
+    const selfReservation = await reserveFixtureCall(
+      selfFixture.ledger,
+      selfFixture.budget.id,
+      'admin-pending-self',
+      expiresAt,
+      40,
+    );
+    const claimedSelf = await selfFixture.ledger.claimReservationForProvider({
+      leaseVersion: selfReservation.leaseVersion,
+      reservationId: selfReservation.id,
+    });
+    await selfFixture.ledger.recordProviderCompletion({
+      costUsd: 0.00002,
+      credits: 20,
+      leaseVersion: claimedSelf.reservation.leaseVersion,
+      providerRequestId: 'provider-request-admin-pending',
+      reservationId: selfReservation.id,
+      tokenUsage: { totalTokens: 20 },
+    });
+
+    const sponsoredFixture = await createSponsoredBudgetFixture('admin-pending-sponsored');
+    const [sponsoredReservation] = await db
+      .insert(platformCreditReservations)
+      .values({
+        accountId: sponsoredFixture.account.id,
+        budgetId: sponsoredFixture.budget.id,
+        callKind: 'call_llm',
+        expiresAt: sponsoredFixture.expiresAt,
+        generationId: 'operation:admin-pending-sponsored:step:0:call_llm',
+        idempotencyKey: 'reservation:a:admin-pending-sponsored',
+        model: 'model',
+        provider: 'provider',
+        reservedCredits: 30,
+        status: 'provider_started',
+      })
+      .returning();
+
+    await reserveFixtureCall(
+      selfFixture.ledger,
+      selfFixture.budget.id,
+      'admin-pending-not-dispatched',
+      expiresAt,
+      10,
+    );
+
+    const payerItems = await admin.listPendingReservationsForUser(userA, 20, 0);
+    const actorItems = await admin.listPendingReservationsForUser(userB, 20, 0);
+
+    expect(payerItems.map(({ id }) => id).sort()).toEqual(
+      [selfReservation.id, sponsoredReservation.id].sort(),
+    );
+    expect(actorItems).toHaveLength(1);
+    expect(actorItems[0]).toMatchObject({
+      actorUserId: userB,
+      id: sponsoredReservation.id,
+      payerUserId: userA,
+      status: 'provider_started',
+    });
+    expect(payerItems.find(({ id }) => id === selfReservation.id)).toMatchObject({
+      actorUserId: userA,
+      model: 'model',
+      payerUserId: userA,
+      provider: 'provider',
+      providerRequestId: 'provider-request-admin-pending',
+      reservedCredits: 40,
+      settledCredits: 0,
+      status: 'provider_completed',
+    });
+    expect(Object.keys(actorItems[0]).sort()).toEqual([
+      'actorUserId',
+      'callKind',
+      'createdAt',
+      'expiresAt',
+      'generationId',
+      'generationType',
+      'id',
+      'model',
+      'payerUserId',
+      'provider',
+      'providerRequestId',
+      'reservedCredits',
+      'settledCredits',
+      'status',
+      'updatedAt',
+    ]);
+    expect(JSON.stringify(payerItems)).not.toMatch(
+      /accountId|actualUsage|budgetId|idempotencyKey|leaseOwner|requestHash|tokenUsage|usageEntryId|workspaceId/,
+    );
+  });
+
   it('posts idempotent top-ups and signed adjustments in integer credits', async () => {
     const admin = new PlatformCreditAdminModel(db, adminId);
     const topUpInput = {

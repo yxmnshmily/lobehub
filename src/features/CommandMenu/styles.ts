@@ -98,7 +98,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   commandRoot: css`
     overflow: hidden;
@@ -189,7 +189,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     }
 
     [cmdk-separator] {
-      height: 1px;
+      height: 0.5px;
       margin-block: 4px;
       background: ${cssVar.colorBorderSecondary};
     }
@@ -218,7 +218,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   itemContent: css`
     display: flex;

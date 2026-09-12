@@ -1,5 +1,6 @@
 import { MCP } from '@lobehub/icons';
 import { Icon } from '@lobehub/ui';
+import { SkillsIcon } from '@lobehub/ui/icons';
 import { Bot, Brain, BrainCircuit, House } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { useMemo } from 'react';
@@ -11,63 +12,84 @@ import { DiscoverTab } from '@/types/discover';
 
 const ICON_SIZE = 16;
 
+export interface CommunityNavItem {
+  icon: ReactNode;
+  key: DiscoverTab;
+  label: ReactNode;
+  title: string;
+}
+
+const COMMUNITY_LIST_TABS = [
+  DiscoverTab.Home,
+  DiscoverTab.Assistants,
+  DiscoverTab.Skills,
+  DiscoverTab.Mcp,
+  DiscoverTab.Models,
+  DiscoverTab.Providers,
+] as const;
+
+export const getCommunityCategoryPath = (key: string) =>
+  key === DiscoverTab.Home ? '/community' : `/community/${key}`;
+
 export const useNav = () => {
   const location = useLocation();
   const { t } = useTranslation('discover');
   const activeKey = useMemo(() => {
-    const pathname = location.pathname;
-    for (const value of Object.values(DiscoverTab)) {
-      if (pathname.includes(`/${DiscoverTab.Plugins}`)) {
-        return DiscoverTab.Mcp;
-      } else if (pathname.includes(`/${value}`)) {
-        return value;
-      }
+    const routeSegment = location.pathname.split('/community/').at(1)?.split('/').at(0);
+    if (routeSegment === DiscoverTab.Plugins) return DiscoverTab.Mcp;
+    if (COMMUNITY_LIST_TABS.includes(routeSegment as (typeof COMMUNITY_LIST_TABS)[number])) {
+      return routeSegment as (typeof COMMUNITY_LIST_TABS)[number];
     }
     return DiscoverTab.Home;
   }, [location.pathname]);
 
-  const items: MenuProps['items'] = useMemo(
-    () => [
-      {
+  const navItems = useMemo<CommunityNavItem[]>(() => {
+    const createItem = (item: Omit<CommunityNavItem, 'label'>): CommunityNavItem => ({
+      ...item,
+      label: <span style={{ color: 'inherit' }}>{item.title}</span>,
+    });
+
+    return [
+      createItem({
         icon: <Icon icon={House} size={ICON_SIZE} />,
         key: DiscoverTab.Home,
-        label: <div style={{ color: 'inherit', display: 'inline' }}>{t('tab.home')}</div>,
-      },
-      {
+        title: t('tab.home'),
+      }),
+      createItem({
         icon: <Icon icon={Bot} size={ICON_SIZE} />,
         key: DiscoverTab.Assistants,
-        label: <div style={{ color: 'inherit', display: 'inline' }}>{t('tab.assistant')}</div>,
-      },
-      {
+        title: t('tab.assistant'),
+      }),
+      createItem({
+        icon: <SkillsIcon size={ICON_SIZE} />,
+        key: DiscoverTab.Skills,
+        title: t('tab.skill'),
+      }),
+      createItem({
         icon: <MCP className={'anticon'} size={ICON_SIZE} />,
         key: DiscoverTab.Mcp,
-        label: (
-          <div style={{ color: 'inherit', display: 'inline' }}>{`MCP ${t('tab.plugin')}`}</div>
-        ),
-      },
-      {
+        title: `MCP ${t('tab.plugin')}`,
+      }),
+      createItem({
         icon: <Icon icon={Brain} size={ICON_SIZE} />,
         key: DiscoverTab.Models,
-        label: <div style={{ color: 'inherit', display: 'inline' }}>{t('tab.model')}</div>,
-      },
-      {
+        title: t('tab.model'),
+      }),
+      createItem({
         icon: <Icon icon={BrainCircuit} size={ICON_SIZE} />,
         key: DiscoverTab.Providers,
-        label: <div style={{ color: 'inherit', display: 'inline' }}>{t('tab.provider')}</div>,
-      },
-    ],
-    [t],
-  );
+        title: t('tab.provider'),
+      }),
+    ];
+  }, [t]);
 
-  const activeItem = items.find((item: any) => item.key === activeKey) as {
-    icon: ReactNode;
-    key: string;
-    label: string;
-  };
+  const activeItem = navItems.find((item) => item.key === activeKey);
+  const items = navItems as MenuProps['items'];
 
   return {
     activeItem,
     activeKey,
     items,
+    navItems,
   };
 };

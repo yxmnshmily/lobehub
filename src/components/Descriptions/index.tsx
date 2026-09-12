@@ -11,7 +11,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
   return {
     bordered: css`
       overflow: hidden;
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
       border-radius: ${cssVar.borderRadiusLG};
       ${responsive.sm} {
         background: ${cssVar.colorBgContainer};
@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     `,
     label: css`
       overflow: hidden;
-      border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
       background: ${cssVar.colorFillQuaternary};
     `,
   };

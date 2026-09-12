@@ -7,7 +7,7 @@ import { QwenAIStream } from '../../core/streams';
 import { processMultiProviderModelList } from '../../utils/modelParse';
 import { createQwenImage } from './createImage';
 import { createQwenVideo } from './createVideo';
-import { isThinkingForcedQwenModel } from './modelId';
+import { isThinkingForcedQwenModel, supportsQwenCompletionTokenLimit } from './modelId';
 
 export interface QwenModelCard {
   id: string;
@@ -79,6 +79,11 @@ export const params = {
 
       return {
         ...rest,
+        ...(supportsQwenCompletionTokenLimit(model) &&
+          rest.max_tokens !== undefined && {
+            max_completion_tokens: rest.max_tokens,
+            max_tokens: undefined,
+          }),
         ...(isDeepSeekV4Model
           ? {
               ...(thinking?.type === 'enabled' || thinkingExplicitlyDisabled

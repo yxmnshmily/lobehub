@@ -1,6 +1,12 @@
 // @vitest-environment node
 import type * as DatabaseModule from '@lobechat/database';
+import {
+  CHAT_GROUP_SPONSORED_CREDIT_POLICY_DISABLED,
+  type LobeChatDatabase,
+} from '@lobechat/database';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type * as GroupTemplateModule from '@/server/services/user/travelServiceGroupTemplate';
 
 import {
   deriveHostedGroupChatRequestIdentity,
@@ -8,9 +14,11 @@ import {
   resolveHostedTravelGroupTarget,
   runHostedGroupChatWithBudget,
 } from './groupChat';
+import { PlatformManagedTextUsageSettlementError } from './settlement';
 import type * as SharedBudgetModule from './sharedBudget';
 
 const mocks = vi.hoisted(() => ({
+  phoneGuard: vi.fn(),
   createAgentService: vi.fn(),
   createGroupModel: vi.fn(),
   createOwnerBudget: vi.fn(),
@@ -19,10 +27,14 @@ const mocks = vi.hoisted(() => ({
   getAgentConfig: vi.fn(),
   getRoster: vi.fn(),
   getSupervisorId: vi.fn(),
+  getTemplate: vi.fn(),
   resolveAdmission: vi.fn(),
   resolvePrincipal: vi.fn(),
   runIdempotently: vi.fn(),
   queueRuntimeEnabled: vi.fn(),
+}));
+vi.mock('@/server/services/aiAgent/verifiedPhone', () => ({
+  assertGroupAiPhoneVerified: mocks.phoneGuard,
 }));
 
 vi.mock('@/database/models/chatGroup', () => ({
@@ -30,6 +42,10 @@ vi.mock('@/database/models/chatGroup', () => ({
 }));
 vi.mock('@/server/services/agent', () => ({
   AgentService: mocks.createAgentService,
+}));
+vi.mock('@/server/services/user/travelServiceGroupTemplate', async (importOriginal) => ({
+  ...(await importOriginal<typeof GroupTemplateModule>()),
+  getSuperGroupTemplate: mocks.getTemplate,
 }));
 vi.mock('@/server/services/groupConversationAccess/principal', () => ({
   resolveGroupConversationPrincipal: mocks.resolvePrincipal,
@@ -146,6 +162,7 @@ describe('hosted default travel group target', () => {
     });
     mocks.getSupervisorId.mockResolvedValue(supervisorId);
     mocks.getRoster.mockResolvedValue(roster);
+    mocks.getTemplate.mockResolvedValue({ revision: 0, members: [] });
     mocks.getAgentConfig.mockImplementation(async (agentId) => fixedConfig(agentId));
     mocks.resolvePrincipal.mockResolvedValue({
       actorUserId: userId,
@@ -173,6 +190,84 @@ describe('hosted default travel group target', () => {
     ).rejects.toMatchObject({
       message: expect.stringContaining(HOSTED_GROUP_CHAT_BILLING_UNAVAILABLE),
     });
+  });
+
+  it.each(['owner', 'member'] as const)(
+    'uses the published roster for a %s instead of requiring bootstrap assistants',
+    async (actor) => {
+      mocks.getTemplate.mockResolvedValue({
+        revision: 2,
+        members: [{ key: 'custom-expert', plugins: [] }],
+      });
+      mocks.getRoster.mockResolvedValue([
+        roster[0],
+        { agentId: 'expert-a', clientId: 'supergroup-template-custom-expert', role: 'member' },
+      ]);
+      if (actor === 'member')
+        mocks.resolvePrincipal.mockResolvedValue({
+          actorUserId: 'member-a',
+          groupId,
+          kind: 'member',
+          membershipVersion: 3,
+          resourceOwnerUserId: userId,
+        });
+      await expect(
+        resolveHostedTravelGroupTarget({
+          db: {} as any,
+          groupId,
+          userId: actor === 'owner' ? userId : 'member-a',
+        }),
+      ).resolves.toMatchObject({
+        platformModel: { model: 'platform-model', provider: 'platform-provider' },
+        supervisorId,
+        routingMembers: [
+          { id: supervisorId, clientId: 'group-supervisor' },
+          { id: 'expert-a', clientId: 'supergroup-template-custom-expert' },
+        ],
+      });
+    },
+  );
+
+  it('allows a published supervisor-only roster', async () => {
+    mocks.getTemplate.mockResolvedValue({ revision: 2, members: [] });
+    mocks.getRoster.mockResolvedValue([roster[0]]);
+    await expect(
+      resolveHostedTravelGroupTarget({ db: {} as any, groupId, userId }),
+    ).resolves.toMatchObject({ supervisorId });
+  });
+
+  it('honors a published copywriter without the bootstrap tool requirements', async () => {
+    mocks.getTemplate.mockResolvedValue({
+      revision: 2,
+      members: [{ key: 'copywriter', plugins: [] }],
+    });
+    mocks.getRoster.mockResolvedValue(roster.slice(0, 2));
+    mocks.getAgentConfig.mockImplementation(async (id) => ({ ...fixedConfig(id), plugins: [] }));
+    await expect(
+      resolveHostedTravelGroupTarget({ db: {} as any, groupId, userId }),
+    ).resolves.toMatchObject({ supervisorId });
+  });
+
+  it('rejects a missing published member', async () => {
+    mocks.getTemplate.mockResolvedValue({
+      revision: 2,
+      members: [{ key: 'custom-expert', plugins: [] }],
+    });
+    await expect(
+      resolveHostedTravelGroupTarget({ db: {} as any, groupId, userId }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+  });
+
+  it('still rejects a foreign-owned agent in a published roster', async () => {
+    mocks.getTemplate.mockResolvedValue({ revision: 2, members: [] });
+    mocks.getRoster.mockResolvedValue([roster[0]]);
+    mocks.getAgentConfig.mockResolvedValue({
+      ...fixedConfig(supervisorId),
+      userId: 'another-owner',
+    });
+    await expect(
+      resolveHostedTravelGroupTarget({ db: {} as any, groupId, userId }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
   });
 
   it('returns only server-owned routing identities for a fully bound group', async () => {
@@ -263,6 +358,13 @@ describe('hosted group chat budget admission', () => {
     mocks.runIdempotently.mockImplementation(async ({ start }) => start());
     mocks.createOwnerBudget.mockResolvedValue({ kind: 'owner-handle' });
     mocks.createSponsoredBudget.mockResolvedValue({ kind: 'sponsored-handle' });
+    mocks.resolvePrincipal.mockResolvedValue({
+      kind: 'member',
+      actorUserId: memberPrincipal.actorUserId,
+      groupId: memberPrincipal.groupId,
+      resourceOwnerUserId: memberPrincipal.resourceOwnerUserId,
+      membershipVersion: memberPrincipal.membershipVersion,
+    });
     mocks.resolveAdmission.mockResolvedValue({
       actorUserId: memberPrincipal.actorUserId,
       chatGroupId: memberPrincipal.groupId,
@@ -273,7 +375,7 @@ describe('hosted group chat budget admission', () => {
     });
   });
 
-  it('preserves the owner self-budget path', async () => {
+  it('ignores a legacy owner ceiling and does not create a Credits hold', async () => {
     const start = vi.fn().mockResolvedValue('owner started');
 
     await expect(
@@ -289,13 +391,84 @@ describe('hosted group chat budget admission', () => {
 
     expect(mocks.createOwnerBudget).toHaveBeenCalledWith(expect.anything(), 'owner-a', {
       expiresAt: expect.any(Date),
-      maxCredits: 100,
+      maxCredits: undefined,
       requestIdentity: expect.stringMatching(/^group-chat:v2:/),
       workspaceId: null,
     });
     expect(mocks.resolveAdmission).not.toHaveBeenCalled();
     expect(mocks.createSponsoredBudget).not.toHaveBeenCalled();
   });
+
+  it('rejects an unbound actor before creating a budget or starting AI', async () => {
+    mocks.phoneGuard.mockRejectedValueOnce(new Error('PHONE_BINDING_REQUIRED'));
+    const start = vi.fn();
+    await expect(
+      runHostedGroupChatWithBudget({
+        billing: { idempotencyKey: 'unbound' },
+        db: {} as any,
+        fingerprint: {},
+        principal: memberPrincipal,
+        secret: 'server-secret',
+        start,
+      }),
+    ).rejects.toThrow('PHONE_BINDING_REQUIRED');
+    expect(mocks.phoneGuard).toHaveBeenCalledWith(
+      expect.anything(),
+      memberPrincipal.actorUserId,
+      memberPrincipal,
+    );
+    expect(mocks.createOwnerBudget).not.toHaveBeenCalled();
+    expect(mocks.createSponsoredBudget).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it.each(['owner', 'member'] as const)(
+    'identifies whose Credits block %s admission without starting AI',
+    async (kind) => {
+      const start = vi.fn();
+      const budget = kind === 'member' ? mocks.createSponsoredBudget : mocks.createOwnerBudget;
+      budget.mockRejectedValueOnce(
+        new PlatformManagedTextUsageSettlementError('BALANCE_FLOOR_REACHED', 'private ledger detail'),
+      );
+      await expect(
+        runHostedGroupChatWithBudget({
+          billing: { idempotencyKey: 'empty-balance', maxCredits: 80 },
+          db: {} as any,
+          fingerprint: { prompt: 'hello' },
+          principal: kind === 'member' ? memberPrincipal : ownerPrincipal,
+          secret: 'server-secret',
+          start,
+        }),
+      ).rejects.toMatchObject({
+        code: 'PRECONDITION_FAILED',
+        message: expect.stringContaining(
+          kind === 'member' ? '[GROUP_OWNER_CREDITS_EMPTY]' : '[PLATFORM_CREDITS_EMPTY]',
+        ),
+      });
+      expect(start).not.toHaveBeenCalled();
+      if (kind === 'member') expect(mocks.createOwnerBudget).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['BALANCE_LOOKUP_FAILED', 'BALANCE_INVALID'] as const)(
+    'does not mislabel %s as insufficient Credits',
+    async (code) => {
+      const error = new PlatformManagedTextUsageSettlementError(code, 'ledger unavailable');
+      mocks.createSponsoredBudget.mockRejectedValueOnce(error);
+      const start = vi.fn();
+      await expect(
+        runHostedGroupChatWithBudget({
+          billing: { idempotencyKey: 'ledger-error', maxCredits: 80 },
+          db: {} as any,
+          fingerprint: { prompt: 'hello' },
+          principal: memberPrincipal,
+          secret: 'server-secret',
+          start,
+        }),
+      ).rejects.toBe(error);
+      expect(start).not.toHaveBeenCalled();
+    },
+  );
 
   it('fails closed before creating a process-local budget in distributed queue mode', async () => {
     mocks.queueRuntimeEnabled.mockReturnValue(true);
@@ -318,7 +491,7 @@ describe('hosted group chat budget admission', () => {
     expect(mocks.createSponsoredBudget).not.toHaveBeenCalled();
   });
 
-  it('rechecks member authorization and creates only a sponsored owner-paid handle', async () => {
+  it('rechecks sponsor authorization and creates only a sponsored owner-paid handle', async () => {
     const start = vi.fn().mockResolvedValue('member started');
 
     await expect(
@@ -345,6 +518,73 @@ describe('hosted group chat budget admission', () => {
     expect(start).toHaveBeenCalledWith({
       maxCredits: 80,
       sharedBudget: { kind: 'sponsored-handle' },
+    });
+  });
+
+  it('derives an owner-sponsored ceiling when the browser omits maxCredits', async () => {
+    mocks.resolveAdmission.mockResolvedValueOnce({
+      actorUserId: 'member-a',
+      chatGroupId: 'group-a',
+      groupPeriodLimitCredits: 1_000,
+      maxCreditsPerPeriod: 800,
+      maxCreditsPerRequest: 300,
+      membershipVersion: 3,
+      payerUserId: 'owner-a',
+      policyVersion: 7,
+      workspaceId: null,
+    });
+    const start = vi.fn().mockResolvedValue('member started');
+
+    await expect(
+      runHostedGroupChatWithBudget({
+        billing: { idempotencyKey: 'member-automatic-request' },
+        db: {} as LobeChatDatabase,
+        fingerprint: { prompt: 'member prompt' },
+        principal: memberPrincipal,
+        secret: 'server-secret',
+        start,
+      }),
+    ).resolves.toBe('member started');
+
+    expect(mocks.resolveAdmission).toHaveBeenCalledWith({ chatGroupId: 'group-a', maxCredits: 1 });
+    expect(mocks.createSponsoredBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      'member-a',
+      expect.objectContaining({ maxCredits: 300 }),
+    );
+    expect(start).toHaveBeenCalledWith({
+      maxCredits: 300,
+      sharedBudget: { kind: 'sponsored-handle' },
+    });
+  });
+
+  it('uses the invited member own Credits when no sponsorship policy exists', async () => {
+    mocks.resolveAdmission.mockRejectedValueOnce(
+      new Error(CHAT_GROUP_SPONSORED_CREDIT_POLICY_DISABLED),
+    );
+    const start = vi.fn().mockResolvedValue('self-paid member started');
+
+    await expect(
+      runHostedGroupChatWithBudget({
+        billing: { idempotencyKey: 'member-self-paid-request' },
+        db: {} as LobeChatDatabase,
+        fingerprint: { prompt: 'member prompt' },
+        principal: memberPrincipal,
+        secret: 'server-secret',
+        start,
+      }),
+    ).resolves.toBe('self-paid member started');
+
+    expect(mocks.createOwnerBudget).toHaveBeenCalledWith(expect.anything(), 'member-a', {
+      expiresAt: expect.any(Date),
+      maxCredits: undefined,
+      requestIdentity: expect.stringMatching(/^group-chat:v2:/),
+      workspaceId: null,
+    });
+    expect(mocks.createSponsoredBudget).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledWith({
+      maxCredits: undefined,
+      sharedBudget: { kind: 'owner-handle' },
     });
   });
 

@@ -48,7 +48,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     /* Separate non-first groups from the preceding group's last row.
        The first header sits against the list's own top border. */
     &:not(:first-child) {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
     &:hover {

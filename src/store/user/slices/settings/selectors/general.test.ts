@@ -1,3 +1,4 @@
+import { createServerConfigStore } from '@/store/serverConfig/store';
 import { type UserStore } from '@/store/user';
 import { type UserState } from '@/store/user/initialState';
 import { initialState } from '@/store/user/initialState';
@@ -6,6 +7,20 @@ import { merge } from '@/utils/merge';
 import { userGeneralSettingsSelectors } from './general';
 
 describe('settingsSelectors', () => {
+  it.each([true, undefined])(
+    'blocks a saved telemetry opt-in when deployment disabled=%s',
+    (disabled) => {
+      const store = createServerConfigStore();
+      const previous = store.getState().serverConfig;
+      store.setState({ serverConfig: { ...previous, telemetry: { disabled } } });
+      try {
+        const state = merge(initialState, { settings: { general: { telemetry: true } } });
+        expect(userGeneralSettingsSelectors.telemetry(state as UserStore)).toBe(false);
+      } finally {
+        store.setState({ serverConfig: previous });
+      }
+    },
+  );
   describe('generalConfig', () => {
     it('should return general settings', () => {
       const s: UserState = merge(initialState, {
@@ -24,7 +39,7 @@ describe('settingsSelectors', () => {
         isDevMode: false,
         isLiteMode: false,
         mermaidTheme: 'lobe-theme',
-        telemetry: true,
+        telemetry: false,
         transitionMode: 'fadeIn',
       });
     });

@@ -14,6 +14,7 @@ import type {
   HostedGroupChatBilling,
   MessageMetadata,
   RuntimeMentionedAgent,
+  UIChatMessage,
 } from '@lobechat/types';
 import { resolveAgentAgencyConfig } from '@lobechat/types';
 
@@ -813,7 +814,17 @@ export class GatewayActionImpl {
       ...executionContext,
       topicId: result.topicId,
     });
-    const resolvedMessageContext = resolveThread({ ...messageContext, topicId: result.topicId });
+    // Hosted groups render a cross-topic timeline. A retry executes in the
+    // original topic but its stream must stay in the initiating visible bucket.
+    const keepGroupTimeline =
+      billing &&
+      parentMessageId &&
+      messageContext.groupId &&
+      messageContext.scope === 'group' &&
+      !messageContext.threadId;
+    const resolvedMessageContext = resolveThread(
+      keepGroupTimeline ? messageContext : { ...messageContext, topicId: result.topicId },
+    );
     this.#get().moveVoiceMessages(messageContext, resolvedMessageContext);
 
     if (result.createdThreadId) {
@@ -1002,6 +1013,7 @@ export class GatewayActionImpl {
     const eventHandler = createGatewayEventHandler(this.#get, {
       assistantMessageId: result.assistantMessageId,
       context: resolvedMessageContext,
+      ...(keepGroupTimeline ? { executionTopicId: result.topicId } : {}),
       // Server-side operation id — needed for tool_result dispatch back over
       // the same WS that gatewayConnections is keyed on.
       gatewayOperationId: result.operationId,
@@ -1029,7 +1041,27 @@ export class GatewayActionImpl {
     // the supervisor bubble.
     const eventRouter = createGatewayEventRouter({
       createMemberHandler: this.buildMemberHandlerFactory(resolvedMessageContext, gatewayOpId),
-      ownerHandler: eventHandler,
+      ownerHandler: (event) => {
+        const data = event.data as { uiMessages?: UIChatMessage[] } | undefined;
+        if (keepGroupTimeline && Array.isArray(data?.uiMessages)) {
+          // Server snapshots cover only the execution topic. Replace that topic
+          // while retaining the other topics currently visible in the group.
+          const snapshotIds = new Set(data.uiMessages.map((message) => message.id));
+          const current = this.#get().dbMessagesMap[messageMapKey(resolvedMessageContext)] ?? [];
+          const others = current.filter(
+            (message) => message.topicId !== result.topicId && !snapshotIds.has(message.id),
+          );
+          eventHandler({
+            ...event,
+            data: {
+              ...data,
+              uiMessages: [...others, ...data.uiMessages].sort((a, b) => a.createdAt - b.createdAt),
+            },
+          });
+          return;
+        }
+        eventHandler(event);
+      },
       ownerOperationId: result.operationId,
     });
 
@@ -1132,6 +1164,8 @@ export class GatewayActionImpl {
      */
     agentShareId?: string;
     assistantMessageId: string;
+    groupId?: string;
+    isolatedTopic?: boolean;
     heteroType?: string | null;
     operationId: string;
     scope?: string;
@@ -1202,7 +1236,9 @@ export class GatewayActionImpl {
     const context = {
       agentId,
       ...(agentShareId && { agentShareId }),
-      scope: (scope ?? 'main') as ConversationContext['scope'],
+      ...(params.groupId && { groupId: params.groupId }),
+      ...(params.isolatedTopic && { isolatedTopic: true }),
+      scope: (scope ?? (params.groupId ? 'group' : 'main')) as ConversationContext['scope'],
       threadId: threadId ?? null,
       topicId,
     };

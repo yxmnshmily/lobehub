@@ -58,6 +58,23 @@ const getGeneratedUserContent = (callIndex: number) => {
 };
 
 describe('useBuilderSuggestions', () => {
+  it('stops loading and aborts a stalled recommendation request after 15 seconds', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(aiChatService, 'generateJSON').mockImplementation(() => new Promise(() => {}));
+      const { result } = renderHook(() => useBuilderSuggestions(baseParams), {
+        wrapper: createSWRWrapper(),
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_001);
+      });
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeTruthy();
+      expect(vi.mocked(aiChatService.generateJSON).mock.calls[0][1]?.signal.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(aiChatService, 'generateJSON').mockResolvedValue(makeEnvelope('first'));

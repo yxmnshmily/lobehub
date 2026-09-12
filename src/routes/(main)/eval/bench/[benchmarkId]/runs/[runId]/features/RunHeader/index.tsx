@@ -25,6 +25,7 @@ import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { createRunEditModal } from '@/routes/(main)/eval/bench/[benchmarkId]/features/RunEditModal';
 import StatusBadge from '@/routes/(main)/eval/features/StatusBadge';
 import { useEvalStore } from '@/store/eval';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 const styles = createStaticStyles(({ css }) => ({
   backLink: css`
@@ -178,6 +179,7 @@ interface RunHeaderProps {
 }
 
 const RunHeader = memo<RunHeaderProps>(({ run, benchmarkId, hideStart }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('eval');
 
   const navigate = useWorkspaceAwareNavigate();
@@ -375,7 +377,7 @@ const RunHeader = memo<RunHeaderProps>(({ run, benchmarkId, hideStart }) => {
             {/* System Role */}
             {snapshot.systemRole && (
               <div className={styles.configSection}>
-                <div className={styles.configSectionLabel}>System Role</div>
+                <div className={styles.configSectionLabel}>{translateTravel('系统角色')}</div>
                 <div className={styles.systemRole}>
                   <Markdown variant="chat">{snapshot.systemRole}</Markdown>
                 </div>
@@ -384,7 +386,7 @@ const RunHeader = memo<RunHeaderProps>(({ run, benchmarkId, hideStart }) => {
             {/* Plugins */}
             {snapshot.plugins && snapshot.plugins.length > 0 && (
               <div className={styles.configSection}>
-                <div className={styles.configSectionLabel}>Plugins</div>
+                <div className={styles.configSectionLabel}>{translateTravel('插件')}</div>
                 <Flexbox horizontal gap={4} wrap="wrap">
                   {snapshot.plugins.map((plugin) => (
                     <Tag key={plugin}>{plugin}</Tag>
@@ -398,7 +400,7 @@ const RunHeader = memo<RunHeaderProps>(({ run, benchmarkId, hideStart }) => {
                 <Flexbox horizontal gap={12}>
                   {snapshot.chatConfig && (
                     <Flexbox flex={1} gap={0} style={{ minWidth: 0 }}>
-                      <div className={styles.configSectionLabel}>Chat Config</div>
+                      <div className={styles.configSectionLabel}>{translateTravel('对话配置')}</div>
                       <Highlighter
                         language="json"
                         style={{ fontSize: 12, maxHeight: 300, overflow: 'auto' }}
@@ -410,7 +412,7 @@ const RunHeader = memo<RunHeaderProps>(({ run, benchmarkId, hideStart }) => {
                   )}
                   {snapshot.params && (
                     <Flexbox flex={1} gap={0} style={{ minWidth: 0 }}>
-                      <div className={styles.configSectionLabel}>Params</div>
+                      <div className={styles.configSectionLabel}>{translateTravel('参数')}</div>
                       <Highlighter
                         language="json"
                         style={{ fontSize: 12, maxHeight: 300, overflow: 'auto' }}

@@ -10,7 +10,7 @@ import Header from './Header';
 
 const Layout = () => {
   return (
-    <MobileContentLayout gap={16} header={<Header />} id={SCROLL_PARENT_ID} padding={16}>
+    <MobileContentLayout gap={16} header={<Header />} id={SCROLL_PARENT_ID} paddingBlock={16}>
       <SWRConfig value={{ suspense: true }}>
         <SuspenseRouteBoundary>
           <Outlet />

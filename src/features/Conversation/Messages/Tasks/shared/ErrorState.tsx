@@ -7,11 +7,12 @@ import { MessageSquare, Timer, Wrench } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { type TaskDetail } from '@/types/index';
 import { ThreadStatus } from '@/types/index';
 
 import { MetricItem } from './CompletedState';
-import { formatCost, formatDuration } from './utils';
+import { formatDuration } from './utils';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   separator: css`
@@ -82,6 +83,7 @@ const getErrorContent = (error: Record<string, any> | undefined): string | null 
 
 const ErrorState = memo<ErrorStateProps>(({ taskDetail }) => {
   const { t } = useTranslation('chat');
+  const { formatOptional: formatCost } = useMonthlyExchangeRate();
 
   const { status, duration, totalToolCalls, totalMessages, totalCost, error } = taskDetail;
 
@@ -89,7 +91,10 @@ const ErrorState = memo<ErrorStateProps>(({ taskDetail }) => {
 
   // Format duration and cost using shared utilities
   const formattedDuration = useMemo(() => formatDuration(duration), [duration]);
-  const formattedCost = useMemo(() => formatCost(totalCost), [totalCost]);
+  const formattedCost = useMemo(
+    () => (totalCost ? formatCost(totalCost) : null),
+    [totalCost, formatCost],
+  );
 
   // Extract error content
   const errorContent = useMemo(() => getErrorContent(error), [error]);

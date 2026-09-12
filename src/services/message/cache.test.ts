@@ -44,6 +44,19 @@ afterEach(() => {
 });
 
 describe('message list client cache', () => {
+  it('keeps a group run query separate from the group timeline and forwards topicOnly', async () => {
+    const timeline = { agentId: 'agent-1', groupId: 'group-1', topicId: 'topic-1' };
+    const run = { ...timeline, isolatedTopic: true };
+    const query = vi.fn().mockResolvedValue(messages);
+    await runMessageListQuery(timeline, query);
+    await runMessageListQuery(run, query);
+    expect(messageListKey(run)).not.toEqual(messageListKey(timeline));
+    expect(query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ groupId: 'group-1', topicId: 'topic-1', topicOnly: true }),
+    );
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it('normalizes equivalent UI contexts to one canonical v2 SWR key', () => {
     const conversationContext = {
       agentId: 'agent-1',

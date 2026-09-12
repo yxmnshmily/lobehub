@@ -735,7 +735,7 @@ describe('production travel generation composition', () => {
     [{ imageNum: 2, prompt: '西藏封面' }, 'multiple settlements'],
     [{ imageNum: 5, prompt: '西藏封面' }, 'too many images'],
     [{ imageNum: 1.5, prompt: '西藏封面' }, 'fractional images'],
-  ])('rejects %s before calling the image provider (%s)', async (input) => {
+  ])('rejects %s before calling the image provider (%s)', async (input, _label) => {
     const orchestrator = createTravelGenerationOrchestrator({
       db: {} as any,
       groupId: 'group-1',
@@ -1046,6 +1046,34 @@ describe('production travel generation composition', () => {
         totalTokens: 20,
       },
     });
+  });
+
+  it('generates hosted copy without imposing a request ceiling or output cap', async () => {
+    runSharedBudgetStep.mockImplementationOnce(async (_budget, input) => {
+      const call = await input.prepareProviderCall({ pricing: {} });
+      return (await call()).output;
+    });
+    const orchestrator = createHostedTravelCopyGenerationOrchestrator({
+      actorUserId: 'user-1',
+      db: {} as any,
+      groupId: 'group-1',
+      operationId: 'uncapped-copy',
+      sharedBudget: {} as any,
+      userId: 'user-1',
+      workspaceId: 'workspace-1',
+    });
+    const result = await orchestrator.run({
+      input: { prompt: '写桂林旅游文案' },
+      owner: { groupId: 'group-1', userId: 'user-1', workspaceId: 'workspace-1' },
+      type: 'copy',
+    });
+    expect(result).toMatchObject({
+      status: 'succeeded',
+      artifacts: [{ content: '桂林山水旅行文案', type: 'text' }],
+    });
+    expect(prepareBoundedPlatformRuntime).not.toHaveBeenCalled();
+    expect(generateObject.mock.calls[0]?.[0]).not.toHaveProperty('max_tokens');
+    expect(result.usage).toBeDefined();
   });
 
   it('bills the invited actor while persisting hosted copy for the resource owner', async () => {

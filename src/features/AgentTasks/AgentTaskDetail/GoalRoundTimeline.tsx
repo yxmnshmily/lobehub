@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 7px;
     height: 7px;
-    border: 2px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 50%;
 
     background: ${cssVar.colorError};

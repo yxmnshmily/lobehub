@@ -31,7 +31,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     box-sizing: border-box;
     width: 100%;
     height: ${HOME_INPUT_FRAME_HEIGHT}px;
-    border: 1px solid ${cssVar.colorFill};
+    border: 0.5px solid ${cssVar.colorFill};
     border-radius: 20px;
 
     background: ${cssVar.colorBgElevated};

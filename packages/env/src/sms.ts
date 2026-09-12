@@ -6,6 +6,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       SMS_SERVICE_PROVIDER?: string;
+      TENCENTCLOUD_SMS_NOTIFICATION_TEMPLATE_ID?: string;
       TENCENTCLOUD_SMS_REGION?: string;
       TENCENTCLOUD_SMS_SDK_APP_ID?: string;
       TENCENTCLOUD_SMS_SECRET_ID?: string;
@@ -26,6 +27,8 @@ export const getSmsConfig = () =>
       TENCENTCLOUD_SMS_SECRET_KEY: process.env.TENCENTCLOUD_SMS_SECRET_KEY,
       TENCENTCLOUD_SMS_SIGN_NAME: process.env.TENCENTCLOUD_SMS_SIGN_NAME,
       TENCENTCLOUD_SMS_TEMPLATE_ID: process.env.TENCENTCLOUD_SMS_TEMPLATE_ID,
+      TENCENTCLOUD_SMS_NOTIFICATION_TEMPLATE_ID:
+        process.env.TENCENTCLOUD_SMS_NOTIFICATION_TEMPLATE_ID,
     },
     server: {
       SMS_SERVICE_PROVIDER: z.enum(['tencentcloud']).optional(),
@@ -35,6 +38,7 @@ export const getSmsConfig = () =>
       TENCENTCLOUD_SMS_SECRET_KEY: z.string().optional(),
       TENCENTCLOUD_SMS_SIGN_NAME: z.string().optional(),
       TENCENTCLOUD_SMS_TEMPLATE_ID: z.string().optional(),
+      TENCENTCLOUD_SMS_NOTIFICATION_TEMPLATE_ID: z.string().optional(),
     },
   });
 

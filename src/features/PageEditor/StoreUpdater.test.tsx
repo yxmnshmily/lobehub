@@ -57,9 +57,13 @@ vi.mock('./useDocumentLock', () => ({ useDocumentLock: vi.fn() }));
 vi.mock('./usePageDraft', () => ({ usePageDraft: vi.fn() }));
 vi.mock('./useResourceEvents', () => ({ useResourceEvents: vi.fn() }));
 
-const Wrapper = ({ children, store }: { children: ReactNode; store: ReturnType<typeof createStore> }) => (
-  <Provider createStore={() => store}>{children}</Provider>
-);
+const Wrapper = ({
+  children,
+  store,
+}: {
+  children: ReactNode;
+  store: ReturnType<typeof createStore>;
+}) => <Provider createStore={() => store}>{children}</Provider>;
 
 describe('StoreUpdater document switching', () => {
   beforeEach(() => {
@@ -75,10 +79,9 @@ describe('StoreUpdater document switching', () => {
 
   it('flushes the previous document meta save before switching document ids', async () => {
     const store = createStore();
-    const view = render(
-      <StoreUpdater pageId="doc-1" title="Document 1" />,
-      { wrapper: ({ children }) => <Wrapper store={store}>{children}</Wrapper> },
-    );
+    const view = render(<StoreUpdater pageId="doc-1" title="Document 1" />, {
+      wrapper: ({ children }) => <Wrapper store={store}>{children}</Wrapper>,
+    });
 
     expect(store.getState().documentId).toBe('doc-1');
     store.getState().setTitle('Document 1 edited');

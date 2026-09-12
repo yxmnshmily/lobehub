@@ -24,7 +24,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     align-items: center;
 
     padding: 12px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};

@@ -16,7 +16,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 2px;
     padding-inline: 8px;
-    border: 1px dashed ${cssVar.colorErrorBorder};
+    border: 0.5px dashed ${cssVar.colorErrorBorder};
     border-radius: 999px;
 
     font-family: ${cssVar.fontFamilyCode};

@@ -396,6 +396,8 @@ export default {
   'agentDocuments.title': 'Agent Documents',
   'analytics.telemetry.desc': 'Help us improve {{appName}} with anonymous usage data',
   'analytics.telemetry.title': 'Send Anonymous Usage Data',
+  'analytics.telemetry.disabledBySystem':
+    'Non-essential analytics, community usage reporting, and chat content tracing are disabled on this site.',
   'analytics.title': 'Analytics',
 
   // Heterogeneous agent CLI status (shown on agent profile page in integration mode)
@@ -818,6 +820,7 @@ export default {
     'Deliver notifications to your {{platform}} DM via the LobeHub bot',
   'notification.im.platform.enable': 'Enable {{platform}} notifications',
   'notification.im.platform.viewSetup': 'View setup',
+  'notification.sms.title': 'SMS Notifications',
   'notification.email.title': 'Email Notifications',
   'notification.inbox.desc': 'Show notifications in the in-app inbox',
   'notification.inbox.title': 'Inbox Notifications',
@@ -910,6 +913,8 @@ export default {
   'settingAgent.artwork.background.remove': 'Remove background',
   'settingAgent.artwork.background.upload': 'Upload background',
   'settingAgent.artwork.cancel': 'Cancel generation',
+  'settingAgent.artwork.invalidApiKey':
+    'The image provider rejected the API key. Check its key and endpoint in provider settings before retrying.',
   'settingAgent.artwork.generateFailed': 'Could not generate the image. Try again.',
   'settingAgent.artwork.generatingHint':
     'This usually takes about 60 seconds. You can keep editing while it finishes.',
@@ -1617,7 +1622,7 @@ When I am ___, I need ___
   'systemAgent.translation.label': 'Model',
   'systemAgent.translation.modelDesc': 'Model used to translate messages',
   'systemAgent.translation.title': 'Message Translation',
-  'tab.about': 'About',
+  'tab.about': 'About the system',
   'tab.advanced': 'Advanced',
   'tab.advanced.appUpdates.title': 'App updates',
   'tab.advanced.gatewayMode.desc':
@@ -1640,12 +1645,12 @@ When I am ___, I need ___
   'tab.addCustomSkill': 'Add',
   'tab.agent': 'Agent',
   'tab.all': 'All',
-  'tab.apikey': 'API Keys',
+  'tab.apikey': 'Site API keys',
   'tab.appearance': 'Appearance',
   'tab.chatAppearance': 'Chat Appearance',
   'tab.common': 'Appearance',
   'tab.connector': 'Connectors',
-  'tab.creds': 'Credentials',
+  'tab.creds': 'General credentials',
   'tab.devices': 'Devices',
   'tab.experiment': 'Experiment',
   'tab.hotkey': 'Hotkeys',

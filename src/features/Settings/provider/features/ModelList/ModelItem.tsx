@@ -10,10 +10,10 @@ import { useTranslation } from 'react-i18next';
 
 import { ModelInfoTags } from '@/components/ModelSelect';
 import NewModelBadge from '@/components/ModelSelect/NewModelBadge';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
-import { formatPriceByCurrency } from '@/utils/format';
 import {
   getAudioInputUnitRate,
   getTextInputUnitRate,
@@ -80,6 +80,7 @@ const ModelItem = memo<ModelItemProps>(
     type,
   }) => {
     const { t } = useTranslation(['modelProvider', 'components', 'models', 'common']);
+    const { money: formatPriceByCurrency } = useMonthlyExchangeRate();
     const { modelEditable, showDeployName } = use(ProviderSettingsContext);
     const { allowed: canManageProvider, reason } = usePermission('manage_provider_key');
 
@@ -104,11 +105,11 @@ const ModelItem = memo<ModelItemProps>(
           return [
             typeof inputRate === 'number' &&
               t('providerModels.item.pricing.inputTokens', {
-                amount: formatPriceByCurrency(inputRate, pricing?.currency),
+                amount: formatPriceByCurrency(inputRate, pricing?.currency, 6),
               }),
             typeof outputRate === 'number' &&
               t('providerModels.item.pricing.outputTokens', {
-                amount: formatPriceByCurrency(outputRate, pricing?.currency),
+                amount: formatPriceByCurrency(outputRate, pricing?.currency, 6),
               }),
           ].filter(Boolean) as string[];
         }
@@ -117,7 +118,7 @@ const ModelItem = memo<ModelItemProps>(
           return [
             typeof inputRate === 'number' &&
               t('providerModels.item.pricing.inputTokens', {
-                amount: formatPriceByCurrency(inputRate, pricing?.currency),
+                amount: formatPriceByCurrency(inputRate, pricing?.currency, 6),
               }),
           ].filter(Boolean) as string[];
         }
@@ -126,7 +127,7 @@ const ModelItem = memo<ModelItemProps>(
           return [
             typeof inputRate === 'number' &&
               t('providerModels.item.pricing.inputCharts', {
-                amount: formatPriceByCurrency(inputRate, pricing?.currency),
+                amount: formatPriceByCurrency(inputRate, pricing?.currency, 6),
               }),
           ].filter(Boolean) as string[];
         }
@@ -135,7 +136,7 @@ const ModelItem = memo<ModelItemProps>(
           return [
             typeof inputRate === 'number' &&
               t('providerModels.item.pricing.inputMinutes', {
-                amount: formatPriceByCurrency(inputRate, pricing?.currency),
+                amount: formatPriceByCurrency(inputRate, pricing?.currency, 6),
               }),
           ].filter(Boolean) as string[];
         }

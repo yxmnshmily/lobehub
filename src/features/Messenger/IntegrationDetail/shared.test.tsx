@@ -1,9 +1,10 @@
-import { render, renderHook, screen, within } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { messengerKeys } from '@/libs/swr/keys';
 
+import { ConfirmCard } from '../Verify/Body/shared';
 import { useLinkActions, UserAgentConnection } from './shared';
 
 const userState = {
@@ -115,13 +116,30 @@ vi.mock('@/store/user', () => ({
   useUserStore: (selector: (state: typeof userState) => unknown) => selector(userState),
 }));
 
-vi.mock('../AgentSelect', () => ({
-  default: ({ defaultToInbox }: { defaultToInbox?: boolean }) => (
-    <div data-default-to-inbox={defaultToInbox} data-testid="agent-select" />
+vi.mock('../GroupSelect', () => ({
+  default: ({ value, onChange }: { value?: string; onChange?: (id: string) => void }) => (
+    <select
+      aria-label="工作群"
+      value={value ?? ''}
+      onChange={(event) => onChange?.(event.target.value)}
+    >
+      <option value="">请选择</option>
+      <option value="group-1">文旅工作群</option>
+    </select>
   ),
 }));
 
 describe('Messenger UserAgentConnection', () => {
+  it('renders the initial binding confirmation with explicit workgroup selection', () => {
+    render(
+      <ConfirmCard infoRows={[]} onSuccess={vi.fn()} platform="telegram" randomId="test-binding" />,
+    );
+    const submit = screen.getByRole('button', { name: 'verify.confirm.cta' });
+    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('工作群'), { target: { value: 'group-1' } });
+    expect(submit).not.toBeDisabled();
+  });
+
   it('hides an opaque platform ID and exposes it through the account title tooltip', () => {
     render(
       <UserAgentConnection
@@ -164,7 +182,8 @@ describe('Messenger UserAgentConnection', () => {
     expect(screen.getByTestId('scope-select')).toHaveAttribute('data-value-class', 'scopeValue');
   });
 
-  it('defaults an agent-less personal connection to LobeAI', () => {
+  it('waits for an explicit workgroup selection instead of binding an inbox', () => {
+    const onSetActive = vi.fn().mockResolvedValue(true);
     render(
       <UserAgentConnection
         link={{
@@ -173,12 +192,16 @@ describe('Messenger UserAgentConnection', () => {
           platformUsername: 'platform-name',
           workspaceId: null,
         }}
-        onSetActive={vi.fn()}
+        onSetActive={onSetActive}
         onUnlink={vi.fn()}
       />,
     );
 
-    expect(screen.getByTestId('agent-select')).toHaveAttribute('data-default-to-inbox', 'true');
+    expect(onSetActive).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('combobox', { name: '工作群' }), {
+      target: { value: 'group-1' },
+    });
+    expect(onSetActive).toHaveBeenCalledWith('group-1', null);
   });
 });
 

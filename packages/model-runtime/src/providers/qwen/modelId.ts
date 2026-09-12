@@ -56,3 +56,16 @@ export const isThinkingForcedQwenModel = (model: string): boolean => {
 
   return parsed.majorVersion === 3 && (parsed.minorVersion ?? 0) >= 8;
 };
+
+/** DashScope native models whose total-output cap includes reasoning (not third-party ids). */
+export const supportsQwenCompletionTokenLimit = (model: string): boolean => {
+  const parsed = parseQwenModelId(model);
+  if (!parsed?.majorVersion) return false;
+  const minimumMinor =
+    parsed.family === 'max' ? 7 : ['plus', 'flash'].includes(parsed.family) ? 5 : undefined;
+  return (
+    minimumMinor !== undefined &&
+    (parsed.majorVersion > 3 ||
+      (parsed.majorVersion === 3 && (parsed.minorVersion ?? 0) >= minimumMinor))
+  );
+};

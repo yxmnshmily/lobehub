@@ -114,7 +114,7 @@ export interface DataAction {
    */
   useFetchMessages: (
     context: ConversationContext,
-    options?: { revalidateOnFocus?: boolean; skipFetch?: boolean },
+    options?: { refreshInterval?: number; revalidateOnFocus?: boolean; skipFetch?: boolean },
   ) => SWRResponse<UIChatMessage[]>;
 }
 
@@ -243,12 +243,13 @@ export const dataSlice: StateCreator<
   },
 
   useFetchMessages: (context, options) => {
-    const { skipFetch, revalidateOnFocus } = options ?? {};
+    const { skipFetch, revalidateOnFocus, refreshInterval } = options ?? {};
     // When skipFetch is true, SWR key is null - no fetch occurs
     // This is used when external messages are provided (e.g., creating new thread)
-    // Also skip fetch when topicId is null (new conversation state) - there's no server data,
-    // only local optimistic updates. Fetching would return empty array and overwrite local data.
-    const shouldFetch = !skipFetch && !!context.agentId && !!context.topicId;
+    // Group roots can contain historical messages across topics. Individual new chats
+    // still skip fetching until their first topic exists.
+    const hasMessageScope = !!context.topicId || (context.scope === 'group' && !!context.groupId);
+    const shouldFetch = !skipFetch && !!context.agentId && hasMessageScope;
     const contextKey = messageMapKey(context);
     const storeContextKeyAtRequest = messageMapKey(get().context);
     const onMessagesChange = get().onMessagesChange;
@@ -269,12 +270,13 @@ export const dataSlice: StateCreator<
       {
         ...getMessageListFetchPolicy(context),
         ...(revalidateOnFocus !== undefined && { revalidateOnFocus }),
+        ...(refreshInterval !== undefined && { refreshInterval }),
         // Fresh in-memory or prefetched data can render without an immediate
         // switch-time revalidation. Missing cache data still fetches because
         // SWR always loads when `data` is undefined.
         onData: (data) => {
           if (!data) return;
-          if (!context.topicId) return;
+          if (!hasMessageScope) return;
 
           const storeContextKey = messageMapKey(get().context);
           if (storeContextKeyAtRequest !== storeContextKey) {

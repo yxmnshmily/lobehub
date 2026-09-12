@@ -125,6 +125,28 @@ describe('UserPersonaService', () => {
     expect(latest?.version).toBe(1);
   });
 
+  it.each([
+    { requested: undefined, expected: 'zh-CN' },
+    { requested: 'zh-TW', expected: 'zh-TW' },
+  ])(
+    'uses the user response language unless explicitly overridden: $expected',
+    async ({ requested, expected }) => {
+      await db.insert(userSettings).values({ id: userId, general: { responseLanguage: 'zh-CN' } });
+      const service = new UserPersonaService(db);
+      await service.composeWriting({
+        userId,
+        language: requested,
+        existingPersona: '# Current focus\nEnglish baseline.',
+      });
+      expect(toolCall).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          language: expected,
+          existingPersona: '# Current focus\nEnglish baseline.',
+        }),
+      );
+    },
+  );
+
   it('passes existing persona baseline on subsequent runs', async () => {
     const service = new UserPersonaService(db);
     await service.composeWriting({ userId, username: 'User' });

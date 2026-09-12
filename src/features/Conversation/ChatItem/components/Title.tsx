@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActivityTime } from '@/hooks/useActivityTime';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { type ChatItemProps } from '../type';
 
@@ -15,6 +16,7 @@ export interface TitleProps {
 }
 
 const Title = memo<TitleProps>(({ showTitle, time, avatar, titleAddon }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('chat');
   const title = agentDisplayName(avatar, t('untitledAgent'));
   const { text: timeText, title: timeTitle } = useActivityTime(time);
@@ -29,7 +31,7 @@ const Title = memo<TitleProps>(({ showTitle, time, avatar, titleAddon }) => {
       {showTitle ? titleAddon : undefined}
       {!timeText ? null : (
         <Text
-          aria-label="published-date"
+          aria-label={translateTravel('发布时间')}
           as={'time'}
           fontSize={12}
           title={timeTitle}

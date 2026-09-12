@@ -242,13 +242,13 @@ describe('useSignIn', () => {
 
       expect(mockSignInEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: `${originalLocation.origin}/lobehub/`,
+          callbackURL: `${originalLocation.origin}/lobehub/group/default`,
           email: 'user@example.com',
           password: 'password123',
         }),
         expect.any(Object),
       );
-      expect(window.location.href).toBe('/lobehub/');
+      expect(window.location.href).toBe('/lobehub/group/default');
     });
 
     it('should sign in a username without exposing its resolved email to the client', async () => {
@@ -268,7 +268,7 @@ describe('useSignIn', () => {
 
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/resolve-username', {
         body: JSON.stringify({
-          callbackURL: '/lobehub/',
+          callbackURL: '/lobehub/group/default',
           password: 'password123',
           username: 'myusername',
         }),
@@ -276,7 +276,7 @@ describe('useSignIn', () => {
         method: 'POST',
       });
       expect(mockSignInEmail).not.toHaveBeenCalled();
-      expect(window.location.href).toBe('/lobehub/');
+      expect(window.location.href).toBe('/lobehub/group/default');
     });
 
     it('should show the same generic field error for a failed username login', async () => {
@@ -301,7 +301,7 @@ describe('useSignIn', () => {
     });
 
     it.each(['javascript:alert(1)', 'https://evil.com', '//evil.com'])(
-      'should fall back to "/" instead of redirecting to hostile callbackUrl %s',
+      'should fall back to the default group instead of a hostile callbackUrl %s',
       async (hostileUrl) => {
         mockSearchParamsGet.mockImplementation((key: string) =>
           key === 'callbackUrl' ? hostileUrl : null,
@@ -326,10 +326,12 @@ describe('useSignIn', () => {
         });
 
         expect(mockSignInEmail).toHaveBeenCalledWith(
-          expect.objectContaining({ callbackURL: `${originalLocation.origin}/lobehub/` }),
+          expect.objectContaining({
+            callbackURL: `${originalLocation.origin}/lobehub/group/default`,
+          }),
           expect.any(Object),
         );
-        expect(window.location.href).toBe('/lobehub/');
+        expect(window.location.href).toBe('/lobehub/group/default');
       },
     );
 
@@ -477,12 +479,12 @@ describe('useSignIn', () => {
       expect(result.current.wechatAuthUrl).toBeNull();
     });
 
-    it('rewrites a loopback WeChat callback to the current page origin', async () => {
+    it.each([
+      'http://127.0.0.1:3010/lobehub/api/auth/callback/wechat',
+      'https://lvyouqun.com/lobehub/api/auth/callback/wechat',
+    ])('preserves the server-configured WeChat callback: %s', async (callbackUrl) => {
       const authorizationUrl = new URL('https://open.weixin.qq.com/connect/qrconnect');
-      authorizationUrl.searchParams.set(
-        'redirect_uri',
-        'http://127.0.0.1:3010/lobehub/api/auth/callback/wechat',
-      );
+      authorizationUrl.searchParams.set('redirect_uri', callbackUrl);
       mockSignInOauth2.mockResolvedValue({
         data: { redirect: false, url: authorizationUrl.toString() },
         error: null,
@@ -495,9 +497,7 @@ describe('useSignIn', () => {
       });
 
       const mobileAuthorizationUrl = new URL(result.current.wechatAuthUrl!);
-      expect(mobileAuthorizationUrl.searchParams.get('redirect_uri')).toBe(
-        `${originalLocation.origin}/lobehub/api/auth/callback/wechat`,
-      );
+      expect(mobileAuthorizationUrl.searchParams.get('redirect_uri')).toBe(callbackUrl);
     });
 
     it('returns the WeChat authorization URL for an in-page dialog', async () => {
@@ -565,7 +565,7 @@ describe('useSignIn', () => {
 
       expect(mockSignInSocial).toHaveBeenCalledWith(
         expect.objectContaining({
-          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault`,
           provider: 'google',
         }),
       );
@@ -583,7 +583,7 @@ describe('useSignIn', () => {
 
       expect(mockSignInOauth2).toHaveBeenCalledWith(
         expect.objectContaining({
-          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault`,
           providerId: 'custom-oidc',
         }),
       );
@@ -826,8 +826,8 @@ describe('useSignIn', () => {
       expect(mockSignInMagicLink).toHaveBeenCalledTimes(1);
       expect(mockSignInMagicLink).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: `${originalLocation.origin}/lobehub/`,
-          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding`,
+          callbackURL: `${originalLocation.origin}/lobehub/group/default`,
+          newUserCallbackURL: `${originalLocation.origin}/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault`,
         }),
       );
       expect(result.current.step).toBe('emailSent');

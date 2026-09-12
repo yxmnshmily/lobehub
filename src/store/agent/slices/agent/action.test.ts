@@ -725,6 +725,18 @@ describe('AgentSlice Actions', () => {
   });
 
   describe('updateAgentMeta', () => {
+    it('propagates a template synchronization failure instead of reporting a successful save', async () => {
+      const { result } = renderHook(() => useAgentStore());
+      vi.mocked(agentService.updateAgentMeta).mockRejectedValue(
+        new Error('模板自动同步失败：技能不可共享'),
+      );
+      await act(async () => {
+        await expect(
+          result.current.updateAgentMetaById('agent-1', { title: '编剧' }),
+        ).rejects.toThrow('模板自动同步失败');
+      });
+      expect(result.current.saveStatus).not.toBe('saved');
+    });
     it('should not call optimisticUpdateAgentMeta if no activeAgentId', async () => {
       const { result } = renderHook(() => useAgentStore());
 
@@ -1009,6 +1021,27 @@ describe('AgentSlice Actions', () => {
   });
 
   describe('optimisticUpdateAgentMeta', () => {
+    it('refreshes the workspace detail cache after a metadata save', async () => {
+      const scopedMutate = vi.fn();
+      setScopedMutate(scopedMutate as any);
+      vi.mocked(agentService.updateAgentMeta).mockResolvedValue({
+        success: true,
+        agent: { id: 'agent-1', name: '旅游群', title: '旅游顾问' } as any,
+      });
+      await useAgentStore.getState().optimisticUpdateAgentMeta('agent-1', { name: '旅游群' });
+      const cacheCall = scopedMutate.mock.calls.find(([key]) => typeof key === 'function');
+      expect(cacheCall).toBeDefined();
+      const [matches, update, options] = cacheCall!;
+      expect(matches([...agentConfigKeys.config('agent-1'), 'workspace-a'])).toBe(true);
+      expect(matches(agentConfigKeys.config('agent-2'))).toBe(false);
+      expect(update({ name: '旧名字', model: 'test-model' })).toMatchObject({
+        name: '旅游群',
+        title: '旅游顾问',
+        model: 'test-model',
+      });
+      expect(options).toEqual({ revalidate: false });
+    });
+
     it('should perform optimistic update and then use API result', async () => {
       const { result } = renderHook(() => useAgentStore());
 

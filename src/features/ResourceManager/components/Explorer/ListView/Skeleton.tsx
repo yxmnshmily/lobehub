@@ -2,6 +2,8 @@ import { Center, Flexbox } from '@lobehub/ui';
 import { Checkbox, Skeleton } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
+
 import { FILE_DATE_WIDTH, FILE_SIZE_WIDTH, getListViewMinWidth } from './ListItem/constants';
 
 interface ListViewSkeletonProps {
@@ -34,7 +36,7 @@ const ListViewSkeleton = ({
           paddingInline={8}
           style={{
             background: index % 2 === 0 ? cssVar.colorFillQuaternary : 'transparent',
-            borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`,
+            borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`,
             minWidth: getListViewMinWidth(showUploader),
             opacity: getOpacity(index),
           }}
@@ -54,10 +56,10 @@ const ListViewSkeleton = ({
             }}
           >
             <Skeleton.Avatar shape={'square'} size={24} style={{ marginInline: 8 }} />
-            <Skeleton height={16} width={'60%'} />
+            <SkeletonBar height={16} width={'60%'} />
           </Flexbox>
           <Flexbox style={{ flexShrink: 0, paddingInline: '0 24px' }} width={columnWidths.date}>
-            <Skeleton height={16} width={'80%'} />
+            <SkeletonBar height={16} width={'80%'} />
           </Flexbox>
           {showUploader && (
             <Flexbox
@@ -68,11 +70,11 @@ const ListViewSkeleton = ({
               width={columnWidths.uploader}
             >
               <Skeleton.Avatar size={20} />
-              <Skeleton height={16} width={'70%'} />
+              <SkeletonBar height={16} width={'70%'} />
             </Flexbox>
           )}
           <Flexbox style={{ flexShrink: 0, paddingInline: '0 24px' }} width={columnWidths.size}>
-            <Skeleton height={16} width={'60%'} />
+            <SkeletonBar height={16} width={'60%'} />
           </Flexbox>
         </Flexbox>
       ))}

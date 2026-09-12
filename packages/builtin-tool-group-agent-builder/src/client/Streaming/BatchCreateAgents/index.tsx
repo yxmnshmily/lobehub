@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
 
     &:not(:last-child) {
-      border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
     }
   `,
   systemRole: css`

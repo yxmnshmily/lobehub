@@ -6,6 +6,7 @@ import { useParams } from 'react-router';
 import { useInitGroupConfig } from '@/hooks/useInitGroupConfig';
 import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
+import { isTrpcErrorCode } from '@/utils/trpcError';
 
 export interface MemberGroupSummary {
   avatar: string | null;
@@ -13,12 +14,13 @@ export interface MemberGroupSummary {
   joinedAt: Date | null;
   kind: 'member';
   membershipVersion: number;
+  ownerDisplayName?: string | null;
   title: string | null;
 }
 
 type GroupRouteAccess =
   | { kind: 'error'; error: unknown; retry: () => void }
-  | { kind: 'loading' }
+  | { kind: 'loading'; memberSidebarGroupId?: string }
   | { group: MemberGroupSummary; kind: 'member'; markUnavailable: () => void }
   | { kind: 'owner' }
   | { kind: 'unavailable' };
@@ -28,6 +30,8 @@ export const useGroupRouteAccess = (): GroupRouteAccess => {
   const activeGroupId = useAgentGroupStore((state) => state.activeGroupId);
   const ownerDetail = useInitGroupConfig();
   const accessibleGroups = lambdaQuery.groupConversation.listGroups.useQuery(undefined, {
+    gcTime: 0,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     retry: false,
   });
@@ -41,17 +45,31 @@ export const useGroupRouteAccess = (): GroupRouteAccess => {
     if (gid) setForcedUnavailableGroupId(gid);
   }, [gid]);
 
-  if (!gid || activeGroupId !== gid) return { kind: 'loading' };
+  const accessibleGroup = accessibleGroups.data?.find((group) => group.groupId === gid);
+  if (!gid || activeGroupId !== gid) {
+    return {
+      kind: 'loading',
+      // Keep navigation stable during route synchronization, never the previous conversation.
+      memberSidebarGroupId:
+        !accessibleGroups.isError && accessibleGroup?.kind === 'member' ? gid : undefined,
+    };
+  }
   if (forcedUnavailableGroupId === gid) return { kind: 'unavailable' };
   if (ownerDetail.data?.id === gid) {
-    if (ownerDetail.error) return { error: ownerDetail.error, kind: 'error', retry };
+    if (
+      ownerDetail.error &&
+      (isTrpcErrorCode(ownerDetail.error, 'UNAUTHORIZED') ||
+        isTrpcErrorCode(ownerDetail.error, 'FORBIDDEN') ||
+        isTrpcErrorCode(ownerDetail.error, 'NOT_FOUND'))
+    ) {
+      return { error: ownerDetail.error, kind: 'error', retry };
+    }
     return { kind: 'owner' };
   }
   if (accessibleGroups.isError) {
     return { error: accessibleGroups.error, kind: 'error', retry };
   }
 
-  const accessibleGroup = accessibleGroups.data?.find((group) => group.groupId === gid);
   if (accessibleGroup?.kind === 'member') {
     return {
       group: {
@@ -60,6 +78,7 @@ export const useGroupRouteAccess = (): GroupRouteAccess => {
         joinedAt: accessibleGroup.joinedAt,
         kind: 'member',
         membershipVersion: accessibleGroup.membershipVersion,
+        ownerDisplayName: accessibleGroup.ownerDisplayName,
         title: accessibleGroup.title,
       },
       kind: 'member',

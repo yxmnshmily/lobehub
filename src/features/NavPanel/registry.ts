@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 export type NavPanelOwner = symbol;
 
 export interface NavPanelRegistryEntry {
+  hidden?: boolean;
   node: ReactNode;
   owner: NavPanelOwner;
 }
@@ -24,12 +25,17 @@ export const subscribeNavPanelRegistry = (listener: () => void) => {
 
 export const getNavPanelRegistrySnapshot = (): NavPanelRegistrySnapshot => snapshot;
 
-export const registerNavPanelContent = (key: string, owner: NavPanelOwner, node: ReactNode) => {
+export const registerNavPanelContent = (
+  key: string,
+  owner: NavPanelOwner,
+  node: ReactNode,
+  hidden = false,
+) => {
   const current = snapshot.get(key);
-  if (current?.owner === owner && current.node === node) return;
+  if (current?.owner === owner && current.node === node && current.hidden === hidden) return;
 
   const nextSnapshot = new Map(snapshot);
-  nextSnapshot.set(key, { node, owner });
+  nextSnapshot.set(key, { hidden, node, owner });
   publish(nextSnapshot);
 };
 

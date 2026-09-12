@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: center;
 
     width: 100%;
-    max-width: 1024px;
+    max-width: 100%;
     padding-block: 48px;
   `,
   title: css`

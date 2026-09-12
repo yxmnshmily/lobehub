@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PortalViewType } from '@/store/chat/slices/portal/initialState';
 
 interface RenderHomeOptions {
+  composer?: ReactNode;
+  embed?: boolean;
   hiddenWidgets?: string[];
   isLogin?: boolean;
   portalViewType?: PortalViewType;
@@ -40,6 +42,8 @@ function translate() {
 }
 
 const renderHome = async ({
+  composer,
+  embed = false,
   hiddenWidgets = [],
   isLogin = true,
   portalViewType,
@@ -83,7 +87,11 @@ const renderHome = async ({
 
   const { default: Home } = await import('../index');
 
-  render(<Home />);
+  if (embed) {
+    const { default: WorkGroupHome } = await import('@/features/HomeEmbed/WorkGroupHome');
+    return { ...render(<WorkGroupHome />), rerenderHome: <WorkGroupHome /> };
+  }
+  return { ...render(<Home composer={composer} />), rerenderHome: <Home composer={composer} /> };
 };
 
 afterEach(() => {
@@ -105,6 +113,52 @@ afterEach(() => {
 });
 
 describe('Home portrait visibility', () => {
+  it('keeps the same home layout while the embedded group resolves', async () => {
+    let groupId: string | undefined;
+    vi.doMock('@/hooks/useMyTravelGroupReadiness', () => ({
+      useMyTravelGroupReadiness: vi.fn(() => ({ groupId, isEnabled: false })),
+    }));
+    vi.doMock('@/store/agentGroup', () => ({
+      useAgentGroupStore: vi.fn((select: (state: unknown) => unknown) =>
+        select({ useFetchGroupDetail: vi.fn(() => ({ data: null })) }),
+      ),
+    }));
+    vi.doMock('@/libs/trpc/client', () => ({
+      lambdaQuery: {
+        groupConversation: { listTopics: { useQuery: vi.fn(() => ({ data: undefined })) } },
+      },
+    }));
+    vi.doMock('@/features/ChatInput', () => ({ DesktopChatInput: () => null }));
+    vi.doMock('@/features/Conversation', () => ({ ConversationProvider: () => null }));
+    vi.doMock('@/hooks/useInitAgentConfig', () => ({ useInitAgentConfig: vi.fn(() => ({})) }));
+    vi.doMock('@/hooks/useOperationState', () => ({ useOperationState: vi.fn(() => ({})) }));
+    vi.doMock('@/routes/(main)/group/features/Conversation/MainChatInput', () =>
+      stub('group-input'),
+    );
+    try {
+      const view = await renderHome({ embed: true });
+      const layout = screen.getByTestId('home-main');
+      groupId = 'group-1';
+      view.rerender(view.rerenderHome);
+      expect(screen.getByTestId('home-main')).toBe(layout);
+      expect(screen.getByText('工作群不存在或暂时无法访问')).toBeVisible();
+    } finally {
+      cleanup();
+      vi.doUnmock('@/hooks/useMyTravelGroupReadiness');
+      vi.doUnmock('@/store/agentGroup');
+      vi.doUnmock('@/libs/trpc/client');
+      vi.doUnmock('@/features/ChatInput');
+      vi.doUnmock('@/features/Conversation');
+      vi.doUnmock('@/hooks/useInitAgentConfig');
+      vi.doUnmock('@/hooks/useOperationState');
+      vi.doUnmock('@/routes/(main)/group/features/Conversation/MainChatInput');
+    }
+  }, 20000);
+  it('mounts a supplied work-group composer without mounting personal-agent input', async () => {
+    await renderHome({ composer: <button>发送到工作群</button> });
+    expect(screen.getByRole('button', { name: '发送到工作群' })).toBeVisible();
+    expect(screen.queryByTestId('home-input-area')).not.toBeInTheDocument();
+  }, 20000);
   it('shows the portrait and its bubble by default for a signed-in viewer', async () => {
     await renderHome();
 

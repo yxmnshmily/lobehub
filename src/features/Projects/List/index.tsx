@@ -19,7 +19,7 @@ import {
   SearchXIcon,
   TrashIcon,
 } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, use, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
@@ -32,11 +32,14 @@ import ProjectDisabled from '@/features/Projects/ProjectDisabled';
 import TopicCreatorAvatar from '@/features/TopicCreatorAvatar';
 import UserAvatar from '@/features/User/UserAvatar';
 import WideScreenContainer from '@/features/WideScreenContainer';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useCurrentProjectList, useProjectStore } from '@/store/project';
 import type { ProjectListItem } from '@/store/project/store';
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors, userProfileSelectors } from '@/store/user/selectors';
+
+import { GroupProjectScopeContext } from '../Layout/GroupProjectScope';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   actions: css`
@@ -51,7 +54,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   identifier: css`
     flex: none;
     min-width: 72px;
-    color: ${cssVar.colorTextTertiary};
+    color: ${cssVar.colorTextSecondary};
+    @container project-list (max-width: 600px) {
+      display: none;
+    }
   `,
   link: css`
     display: flex;
@@ -65,12 +71,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   owner: css`
     flex: none;
-    width: 20px;
+    width: 32px;
   `,
   row: css`
-    padding-block: 7px;
-    padding-inline: 4px 12px;
-    border-radius: ${cssVar.borderRadiusLG};
+    min-height: 56px;
+    padding: 12px;
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+    border-radius: ${cssVar.borderRadiusSM};
     color: inherit;
 
     &:hover {
@@ -87,9 +94,22 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     min-width: 88px;
 
-    color: ${cssVar.colorTextQuaternary};
+    color: ${cssVar.colorTextSecondary};
     text-align: end;
     white-space: nowrap;
+    @container project-list (max-width: 440px) {
+      display: none;
+    }
+  `,
+  content: css`
+    container: project-list / inline-size;
+    min-width: 0;
+  `,
+  header: css`
+    padding: 8px 12px;
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+    color: ${cssVar.colorTextSecondary};
+    font-size: 12px;
   `,
 }));
 
@@ -172,8 +192,8 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
           {dayjs(project.updatedAt).fromNow()}
         </Text>
       </WorkspaceLink>
-      {canDelete && (
-        <span className={`${styles.actions} project-row-actions`}>
+      <span className={`${styles.actions} project-row-actions`} style={{ width: 28 }}>
+        {canDelete && (
           <DropdownMenu items={menuItems} placement={'bottomRight'}>
             <ActionIcon
               icon={MoreHorizontalIcon}
@@ -182,8 +202,8 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
               title={t('list.moreActions')}
             />
           </DropdownMenu>
-        </span>
-      )}
+        )}
+      </span>
     </Flexbox>
   );
 
@@ -195,7 +215,10 @@ ProjectRow.displayName = 'ProjectRow';
 const ProjectListPage = memo(() => {
   const { t } = useTranslation('project');
   const [keyword, setKeyword] = useState('');
-  const enabled = useUserStore(labPreferSelectors.enableProjects);
+  const groupScope = use(GroupProjectScopeContext);
+  const labEnabled = useUserStore(labPreferSelectors.enableProjects);
+  const enabled = labEnabled || !!groupScope;
+  const navigate = useWorkspaceAwareNavigate();
   const projects = useCurrentProjectList();
   const { error, isLoading, mutate } = useProjectStore((s) => s.useFetchProjectList)(enabled);
 
@@ -213,24 +236,41 @@ const ProjectListPage = memo(() => {
   if (!enabled) return <ProjectDisabled />;
 
   return (
-    <Flexbox flex={1} height={'100%'}>
-      <NavHeader
-        left={
-          <Text style={{ paddingInlineStart: 4 }} weight={500}>
-            {t('list.title')}
-          </Text>
-        }
-      />
-      <WideScreenContainer gap={16} paddingBlock={16} wrapperStyle={{ flex: 1, overflowY: 'auto' }}>
+    <Flexbox flex={1} height={'100%'} style={{ minWidth: 0, minHeight: 0 }}>
+      {!groupScope && (
+        <NavHeader
+          left={
+            <Text style={{ paddingInlineStart: 4 }} weight={500}>
+              {t('list.title')}
+            </Text>
+          }
+        />
+      )}
+      <WideScreenContainer
+        fullWidth
+        className={styles.content}
+        gap={16}
+        paddingBlock={16}
+        paddingInline="clamp(12px, 2vw, 24px)"
+        wrapperStyle={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
+      >
         <Flexbox horizontal align={'center'} gap={12} justify={'space-between'}>
           <SearchBar
             allowClear
             placeholder={t('list.searchPlaceholder')}
-            style={{ maxWidth: 280 }}
+            style={{ maxWidth: 360, flex: 1, minWidth: 0 }}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
           />
-          <Button icon={PlusIcon} onClick={() => openCreateProjectModal()}>
+          <Button
+            icon={PlusIcon}
+            onClick={() =>
+              openCreateProjectModal({
+                onCreated: (project) =>
+                  navigate(`/project/${project.slug ?? project.id}/conversation`),
+              })
+            }
+          >
             {t('create.action')}
           </Button>
         </Flexbox>
@@ -246,7 +286,14 @@ const ProjectListPage = memo(() => {
             />
           </Center>
         ) : (
-          <Flexbox gap={4}>
+          <Flexbox gap={0}>
+            <Flexbox aria-hidden horizontal align="center" className={styles.header} gap={8}>
+              <span style={{ flex: 1 }}>项目名称</span>
+              <span className={styles.identifier}>编号</span>
+              <span className={styles.owner}>成员</span>
+              <span className={styles.updatedAt}>更新时间</span>
+              <span style={{ width: 28, flex: 'none' }} />
+            </Flexbox>
             {filteredProjects.map((project) => (
               <ProjectRow key={project.id} project={project} />
             ))}

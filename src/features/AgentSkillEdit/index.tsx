@@ -21,7 +21,7 @@ import SkillEditForm, { type SkillEditFormValues } from './SkillEditForm';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   divider: css`
     flex-shrink: 0;
-    width: 1px;
+    width: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   left: css`
@@ -98,6 +98,12 @@ const AgentSkillEdit = memo<AgentSkillEditProps>(({ skillId, open, onClose }) =>
       });
       toast.success(t('agentSkillEdit.saveSuccess'));
       onClose();
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message.startsWith('模板自动同步失败：')
+          ? error.message
+          : tc('saveAgentConfigFail'),
+      );
     } finally {
       setSaving(false);
     }

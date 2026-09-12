@@ -6,7 +6,7 @@ import { DEFAULT_PRERENDER_LOCALE } from '../lib/prerender';
 // all of them, so every other dictionary is fetched on demand. Lazy on purpose —
 // these become their own chunks and never touch the first-load path.
 const translated = import.meta.glob<{ default: Record<string, string> }>(
-  '../../../../locales/*/{auth,authError,common,error,marketAuth,oauth}.json',
+  '../../../../locales/{en-US,zh-CN}/{auth,authError,common,error,marketAuth,oauth}.json',
 );
 
 const defaults = import.meta.glob<{ default: Record<string, string> }>(

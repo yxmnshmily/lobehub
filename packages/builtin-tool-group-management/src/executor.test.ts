@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   AfterCompletionCallback,
   BuiltinToolContext,
   GroupOrchestrationCallbacks,
-} from '../../types';
+} from '@lobechat/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { groupManagementExecutor } from './executor';
 
 // Mock agentGroupStore
@@ -83,7 +83,11 @@ describe('GroupManagementExecutor', () => {
       );
 
       await groupManagementExecutor.speak(
-        { agentId: 'agent-1', instruction: 'Please respond' },
+        {
+          agentId: 'agent-1',
+          instruction: 'Please respond',
+          replyToMessageId: 'msg_source_1',
+        },
         ctx,
       );
 
@@ -98,6 +102,7 @@ describe('GroupManagementExecutor', () => {
       expect(triggerSpeak).toHaveBeenCalledWith({
         agentId: 'agent-1',
         instruction: 'Please respond',
+        replyToMessageId: 'msg_source_1',
         supervisorAgentId: 'supervisor-agent',
       });
     });
@@ -369,6 +374,29 @@ describe('GroupManagementExecutor', () => {
       });
     });
   });
+
+  it.each([
+    ['summarize', () => groupManagementExecutor.summarize({}, createMockContext())],
+    [
+      'createWorkflow',
+      () =>
+        groupManagementExecutor.createWorkflow({ name: 'review', steps: [] }, createMockContext()),
+    ],
+    [
+      'vote',
+      () => groupManagementExecutor.vote({ question: 'Accept?', options: [] }, createMockContext()),
+    ],
+  ])(
+    'reports unsupported %s as a failure without stopping the supervisor',
+    async (_method, execute) => {
+      const result = await execute();
+
+      expect(result.success).toBe(false);
+      expect(result.content).toBeTruthy();
+      expect(result.error).toMatchObject({ type: 'MethodNotImplemented' });
+      expect(result.stop).not.toBe(true);
+    },
+  );
 
   describe('interrupt', () => {
     beforeEach(() => {

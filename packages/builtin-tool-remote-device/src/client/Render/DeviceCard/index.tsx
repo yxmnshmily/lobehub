@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     padding-block: 12px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   root: css`
@@ -88,7 +88,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   statusDot: css`
     width: 7px;
     height: 7px;
-    border: 1px solid ${cssVar.colorTextQuaternary};
+    border: 0.5px solid ${cssVar.colorTextQuaternary};
     border-radius: 50%;
   `,
   statusDotOnline: css`

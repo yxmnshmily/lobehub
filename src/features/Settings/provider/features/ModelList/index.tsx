@@ -122,7 +122,7 @@ const Content = memo<ContentProps>(({ id }) => {
 
     // Only show tabs that have models (count > 0), but always show 'all' tab
     return allTabs.filter((tab) => tab.key === 'all' || tab.count > 0);
-  }, [modelCounts]);
+  }, [modelCounts, t]);
 
   // Ensure active tab is available, fallback to 'all' if current tab is hidden
   const availableTabKeys = tabs.map((tab) => tab.key);
@@ -167,7 +167,7 @@ const ModelList = memo<ModelListProps>(
       >
         <Flexbox
           gap={16}
-          paddingInline={mobile ? 12 : 0}
+          paddingInline={0}
           style={{
             background: mobile ? cssVar.colorBgContainer : undefined,
             paddingBottom: 16,

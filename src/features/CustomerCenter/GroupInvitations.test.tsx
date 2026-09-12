@@ -1,4 +1,5 @@
 import type * as LobeUIBase from '@lobehub/ui/base-ui';
+import { focusManager, QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import GroupInvitations from './GroupInvitations';
 
 const mocks = vi.hoisted(() => ({
+  useGroupsQuery: vi.fn(),
+  useInvitationsQuery: vi.fn(),
   acceptInvitation: vi.fn(),
   confirmModal: vi.fn(),
   invitationsQuery: {
@@ -13,6 +16,7 @@ const mocks = vi.hoisted(() => ({
       | {
           items: Array<{
             avatar: string | null;
+            billingMode?: 'automatic_owner';
             expiresAt: Date;
             groupId: string;
             invitationId: string;
@@ -56,19 +60,25 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
 vi.mock('@/libs/trpc/client', () => ({
   lambdaQuery: {
     groupConversation: {
-      listGroups: { useQuery: () => mocks.groupsQuery },
+      listGroups: {
+        useQuery: mocks.useGroupsQuery,
+      },
     },
     groupMembership: {
       acceptMyInvitation: {
         useMutation: () => ({ isPending: false, mutateAsync: mocks.acceptInvitation }),
       },
       leaveGroup: { useMutation: () => ({ isPending: false, mutateAsync: mocks.leaveGroup }) },
-      listMyPendingInvitations: { useQuery: () => mocks.invitationsQuery },
+      listMyPendingInvitations: {
+        useQuery: mocks.useInvitationsQuery,
+      },
     },
   },
 }));
 
 beforeEach(() => {
+  mocks.useGroupsQuery.mockImplementation(() => mocks.groupsQuery);
+  mocks.useInvitationsQuery.mockImplementation(() => mocks.invitationsQuery);
   mocks.acceptInvitation.mockReset().mockResolvedValue({ status: 'accepted' });
   mocks.leaveGroup.mockReset().mockResolvedValue({ status: 'left' });
   mocks.confirmModal.mockReset();
@@ -130,6 +140,63 @@ const renderGroupInvitations = () =>
   );
 
 describe('GroupInvitations', () => {
+  it('removes a departed group within one refresh period and refreshes handled invitations on focus', async () => {
+    vi.useFakeTimers();
+    mocks.useGroupsQuery.mockImplementation(function useGroupsQuery(
+      _input: unknown,
+      options: object,
+    ) {
+      return useQuery({
+        queryKey: ['member-groups'],
+        queryFn: async () => mocks.groupsQuery.data,
+        ...options,
+      });
+    });
+    mocks.useInvitationsQuery.mockImplementation(function useInvitationsQuery(
+      _input: unknown,
+      options: object,
+    ) {
+      return useQuery({
+        queryKey: ['pending-invitations'],
+        queryFn: async () => mocks.invitationsQuery.data,
+        ...options,
+      });
+    });
+    focusManager.setFocused(true);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    try {
+      render(
+        <QueryClientProvider client={client}>
+          <MemoryRouter>
+            <GroupInvitations locale="zh-CN" />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByRole('link', { name: '进入四川旅游协作群群聊' })).toBeInTheDocument();
+      mocks.groupsQuery.data = mocks.groupsQuery.data!.filter(({ kind }) => kind === 'owner');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_010);
+      });
+      expect(screen.queryByRole('link', { name: '进入四川旅游协作群群聊' })).toBeNull();
+      expect(screen.getByRole('link', { name: '进入我的默认旅游群群聊' })).toBeInTheDocument();
+      focusManager.setFocused(false);
+      mocks.invitationsQuery.data = { items: [] };
+      await act(async () => {
+        focusManager.setFocused(true);
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.queryByRole('button', { name: '接受西藏文案协作群的邀请' })).toBeNull();
+    } finally {
+      cleanup();
+      client.clear();
+      focusManager.setFocused(undefined);
+      vi.useRealTimers();
+    }
+  });
+
   it('provides safe chat links for owner and member groups without exposing group identifiers', () => {
     renderGroupInvitations();
 
@@ -138,7 +205,7 @@ describe('GroupInvitations', () => {
     expect(screen.getByText('我的默认旅游群')).toBeTruthy();
     expect(screen.getByRole('button', { name: '接受西藏文案协作群的邀请' })).toBeTruthy();
     expect(screen.getByText('费用由群主承担')).toBeTruthy();
-    expect(screen.getByText('单次 500 / 周期 3000 Credits')).toBeTruthy();
+    expect(screen.getByText('单次 500 / 周期 3000 积分')).toBeTruthy();
     expect(screen.getByRole('button', { name: '退出四川旅游协作群' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: '退出我的默认旅游群' })).toBeNull();
     expect(screen.getByRole('link', { name: '进入四川旅游协作群群聊' })).toHaveAttribute(
@@ -171,6 +238,35 @@ describe('GroupInvitations', () => {
     expect(screen.queryByText('费用由群主承担')).toBeNull();
   });
 
+  it('shows automatic owner billing without manual limits for default supergroup invitations', () => {
+    const invitation = mocks.invitationsQuery.data!.items[0];
+    invitation.billingMode = 'automatic_owner';
+    invitation.sponsorship = {
+      billingResponsibility: null,
+      maxCreditsPerPeriod: null,
+      maxCreditsPerRequest: null,
+    };
+
+    renderGroupInvitations();
+
+    expect(screen.getByText('群内实际 Token 消耗自动计入群所属账号，无需设置代付。')).toBeTruthy();
+    expect(screen.queryByText('AI任务未开放')).toBeNull();
+    expect(screen.queryByText(/单次 .*周期/u)).toBeNull();
+  });
+
+  it('does not ask default supergroup invitees to repair manual sponsorship on conflict', async () => {
+    mocks.invitationsQuery.data!.items[0].billingMode = 'automatic_owner';
+    mocks.acceptInvitation.mockRejectedValueOnce({ data: { code: 'CONFLICT' } });
+    renderGroupInvitations();
+
+    fireEvent.click(screen.getByRole('button', { name: '接受西藏文案协作群的邀请' }));
+
+    expect(
+      await screen.findByText('邀请状态已变更，请刷新后重试或联系群主重新邀请。'),
+    ).toBeTruthy();
+    expect(screen.queryByText('邀请中的代付设置已变更，请群主重新邀请。')).toBeNull();
+  });
+
   it('accepts the listed invitation id and refreshes both invitations and accessible groups', async () => {
     renderGroupInvitations();
 
@@ -189,9 +285,7 @@ describe('GroupInvitations', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '接受西藏文案协作群的邀请' }));
 
-    expect(
-      await screen.findByText('邀请中的代付设置已变更，请群主重新邀请。'),
-    ).toBeTruthy();
+    expect(await screen.findByText('邀请中的代付设置已变更，请群主重新邀请。')).toBeTruthy();
     expect(mocks.invitationsQuery.refetch).not.toHaveBeenCalled();
     expect(mocks.groupsQuery.refetch).not.toHaveBeenCalled();
   });

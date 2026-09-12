@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 
 import Card from './Card';
@@ -22,6 +23,7 @@ type ListProps = {
 const List = memo((props: ListProps) => {
   const { onProviderSelect } = props;
   const { t } = useTranslation('modelProvider');
+  const mobile = useIsMobile();
   const enabledList = useAiInfraStore(aiProviderSelectors.enabledAiProviderList, isEqual);
   const disabledList = useAiInfraStore(aiProviderSelectors.disabledAiProviderList, isEqual);
   const disabledCustomList = useAiInfraStore(
@@ -42,7 +44,7 @@ const List = memo((props: ListProps) => {
           {t('list.title.enabled')}
         </Text>
       </Flexbox>
-      <Grid gap={16} rows={3}>
+      <Grid gap={16} rows={mobile ? 1 : 3}>
         {loadingArr.map((item) => (
           <Card
             loading
@@ -73,7 +75,7 @@ const List = memo((props: ListProps) => {
           </Text>
           <Tag>{enabledList.length}</Tag>
         </Flexbox>
-        <Grid gap={16} rows={3}>
+        <Grid gap={16} rows={mobile ? 1 : 3}>
           {enabledList.map((item) => (
             <Card {...item} key={item.id} onProviderSelect={onProviderSelect} />
           ))}
@@ -87,7 +89,7 @@ const List = memo((props: ListProps) => {
             </Text>
             <Tag>{disabledCustomList.length}</Tag>
           </Flexbox>
-          <Grid gap={16} rows={3}>
+          <Grid gap={16} rows={mobile ? 1 : 3}>
             {disabledCustomList.map((item) => (
               <Card {...item} key={item.id} onProviderSelect={onProviderSelect} />
             ))}
@@ -101,7 +103,7 @@ const List = memo((props: ListProps) => {
           </Text>
           <Tag>{disabledList.length}</Tag>
         </Flexbox>
-        <Grid gap={16} rows={3}>
+        <Grid gap={16} rows={mobile ? 1 : 3}>
           {disabledList.map((item) => (
             <Card {...item} key={item.id} onProviderSelect={onProviderSelect} />
           ))}

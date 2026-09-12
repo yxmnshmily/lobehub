@@ -94,13 +94,14 @@ const isAssistantGroupItemGenerating = (id: string) => (s: State) => {
   if (isMessageGenerating(id)(s)) return true;
 
   const message = s.displayMessages.find((item) => item.id === id);
-  if (message?.role === 'assistantGroup') {
+  if (message && ['assistantGroup', 'supervisor'].includes(message.role)) {
     return message.children?.some((block) => isMessageGenerating(block.id)(s)) ?? false;
   }
 
   const parentMessage = s.displayMessages.find(
     (message) =>
-      message.role === 'assistantGroup' && message.children?.some((block) => block.id === id),
+      ['assistantGroup', 'supervisor'].includes(message.role) &&
+      message.children?.some((block) => block.id === id),
   );
 
   return parentMessage ? isMessageGenerating(parentMessage.id)(s) : false;

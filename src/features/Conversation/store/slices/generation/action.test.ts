@@ -1,9 +1,11 @@
 import { AgentManagementIdentifier } from '@lobechat/builtin-tool-agent-management';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { messageService } from '@/services/message';
 import { agentSelectors } from '@/store/agent/selectors';
+import { useAgentGroupStore } from '@/store/agentGroup';
 import * as agentDispatcher from '@/store/chat/slices/agentRun/actions/dispatch/agentDispatcher';
 import * as heterogeneousAgentExecutor from '@/store/chat/slices/agentRun/actions/transports/hetero/heterogeneousAgentExecutor';
 import type * as OperationSelectorsModule from '@/store/chat/slices/operation/selectors';
@@ -30,6 +32,7 @@ const mockFailOperation = vi.fn();
 const mockExecuteClientAgent = vi.fn();
 const mockIsGatewayModeEnabled = vi.fn(() => false);
 const mockExecuteGatewayAgent = vi.fn();
+const mockSendGroupMessage = vi.fn(() => Promise.resolve(true));
 const operationSelectorMock = vi.hoisted(() => ({
   getRunningInputLoadingOperationIds: vi.fn(() => () => ['root-op', 'retry-op']),
 }));
@@ -72,6 +75,7 @@ vi.mock('@/store/chat', () => ({
       executeClientAgent: mockExecuteClientAgent,
       isGatewayModeEnabled: mockIsGatewayModeEnabled,
       executeGatewayAgent: mockExecuteGatewayAgent,
+      sendGroupMessage: mockSendGroupMessage,
     })),
     setState: vi.fn(),
   },
@@ -1115,6 +1119,126 @@ describe('Generation Actions', () => {
   });
 
   describe('regenerateUserMessage', () => {
+    describe('hosted group retry', () => {
+      beforeEach(async () => {
+        const { useChatStore } = await import('@/store/chat');
+        vi.mocked(useChatStore.getState).mockReturnValue({
+          operations: {},
+          operationsByMessage: {},
+          startOperation: mockStartOperation,
+          completeOperation: mockCompleteOperation,
+          failOperation: mockFailOperation,
+          switchMessageBranch: mockSwitchMessageBranch,
+          deleteMessage: mockDeleteMessage,
+          executeGatewayAgent: mockExecuteGatewayAgent,
+          sendGroupMessage: mockSendGroupMessage,
+          executeClientAgent: mockExecuteClientAgent,
+          isGatewayModeEnabled: vi.fn(() => false),
+        } as any);
+        useAgentGroupStore.setState({
+          groupMap: {
+            'hosted-group': {
+              id: 'hosted-group',
+              clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+            },
+          },
+        } as any);
+      });
+
+      afterEach(() => {
+        useAgentGroupStore.setState({ groupMap: {} });
+        mockDeleteMessage.mockReset();
+      });
+
+      const setup = () => {
+        const context: ConversationContext = {
+          agentId: 'supervisor',
+          groupId: 'hosted-group',
+          scope: 'group',
+          topicId: null,
+        };
+        const store = createStore({ context });
+        const messages = [
+          { id: 'user', role: 'user', content: '原始任务', topicId: 'original-topic' },
+          {
+            id: 'reply',
+            role: 'assistant',
+            content: '旧回复',
+            parentId: 'user',
+            topicId: 'original-topic',
+          },
+        ];
+        store.setState({ dbMessages: messages, displayMessages: messages } as any);
+        return { context, store };
+      };
+
+      it('uses the hosted server transport and original topic when retrying from the group timeline', async () => {
+        const { context, store } = setup();
+        await store.getState().regenerateAssistantMessage('reply');
+
+        expect(mockSendGroupMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billing: { idempotencyKey: expect.any(String) },
+            context: { ...context, topicId: 'original-topic' },
+            message: '原始任务',
+            parentMessageId: 'user',
+            parentOperationId: 'test-op-id',
+            onComplete: expect.any(Function),
+          }),
+        );
+        expect(mockExecuteGatewayAgent).not.toHaveBeenCalled();
+        expect(mockExecuteClientAgent).not.toHaveBeenCalled();
+        expect(mockDeleteMessage).not.toHaveBeenCalled();
+      });
+
+      it('deletes the old group reply before a delete-and-regenerate request', async () => {
+        const { store } = setup();
+        await store.getState().delAndRegenerateMessage('reply');
+
+        expect(mockDeleteMessage).toHaveBeenCalledWith('reply', { operationId: 'test-op-id' });
+        expect(mockSwitchMessageBranch).toHaveBeenCalledWith('user', 1, {
+          operationId: 'test-op-id',
+        });
+        expect(mockSendGroupMessage).toHaveBeenCalledOnce();
+        mockDeleteMessage.mockReset();
+      });
+
+      it('allocates a new admission identity for each separately requested retry', async () => {
+        const { store } = setup();
+        await store.getState().regenerateUserMessage('user');
+        await store.getState().regenerateUserMessage('user');
+        const calls = mockSendGroupMessage.mock.calls;
+        expect(calls).toHaveLength(2);
+        expect(calls[0][0].billing.idempotencyKey).not.toEqual(calls[1][0].billing.idempotencyKey);
+      });
+
+      it('continues a hosted reply through the server transport in its original topic', async () => {
+        const { context, store } = setup();
+
+        await store.getState().continueGenerationMessage('reply', 'reply');
+
+        expect(mockSendGroupMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billing: { idempotencyKey: expect.any(String) },
+            context: { ...context, topicId: 'original-topic' },
+            message: '',
+            parentMessageId: 'reply',
+            parentOperationId: 'test-op-id',
+          }),
+        );
+        expect(mockExecuteGatewayAgent).not.toHaveBeenCalled();
+        expect(mockExecuteClientAgent).not.toHaveBeenCalled();
+      });
+
+      it('does not reroute an assistant thread through the supervisor-only hosted admission', async () => {
+        const { context, store } = setup();
+        store.setState({ context: { ...context, scope: 'group_agent', threadId: 'thread-1' } });
+        await store.getState().regenerateUserMessage('user');
+        expect(mockExecuteGatewayAgent).not.toHaveBeenCalled();
+        expect(mockExecuteClientAgent).toHaveBeenCalledOnce();
+      });
+    });
+
     it('should pass operationId to switchMessageBranch for correct context', async () => {
       // Re-setup mock with all required properties
       const { useChatStore } = await import('@/store/chat');

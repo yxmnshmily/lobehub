@@ -6,38 +6,48 @@ import { sweepStuckVerifyRuns } from '../sweep';
 
 const {
   claimVerifying,
+  findStuckPlanned,
   findStuckVerifying,
   operationFindById,
+  operationSettleStaleRunning,
   recompute,
   resultListByRun,
   upsertByCheckItem,
   finalizeVerifyRun,
+  runVerifyOnCompletion,
 } = vi.hoisted(() => ({
   claimVerifying: vi.fn(),
   finalizeVerifyRun: vi.fn(),
+  findStuckPlanned: vi.fn(),
   findStuckVerifying: vi.fn(),
   operationFindById: vi.fn(),
+  operationSettleStaleRunning: vi.fn(),
   recompute: vi.fn(),
   resultListByRun: vi.fn(),
+  runVerifyOnCompletion: vi.fn(),
   upsertByCheckItem: vi.fn(),
 }));
 
 vi.mock('@/database/models/verifyRun', () => ({
   VerifyRunModel: Object.assign(
-    vi.fn(() => ({})),
-    { findStuckVerifying },
+    vi.fn(() => ({ confirmPlan: vi.fn() })),
+    { findStuckPlanned, findStuckVerifying },
   ),
 }));
 vi.mock('@/database/models/verifyCheckResult', () => ({
   VerifyCheckResultModel: vi.fn(() => ({ listByRun: resultListByRun, upsertByCheckItem })),
 }));
 vi.mock('@/database/models/agentOperation', () => ({
-  AgentOperationModel: vi.fn(() => ({ findById: operationFindById })),
+  AgentOperationModel: vi.fn(() => ({
+    findById: operationFindById,
+    settleStaleRunning: operationSettleStaleRunning,
+  })),
 }));
 vi.mock('../statusService', () => ({
   VerifyStatusService: vi.fn(() => ({ claimVerifying, recompute })),
 }));
 vi.mock('../settle', () => ({ finalizeVerifyRun }));
+vi.mock('../lifecycle', () => ({ runVerifyOnCompletion }));
 
 const db = {} as any;
 const NOW = new Date('2026-08-10T00:00:00Z');
@@ -67,10 +77,14 @@ describe('sweepStuckVerifyRuns', () => {
       finalizeVerifyRun,
       findStuckVerifying,
       operationFindById,
+      findStuckPlanned,
+      operationSettleStaleRunning,
       recompute,
       resultListByRun,
+      runVerifyOnCompletion,
       upsertByCheckItem,
     ].forEach((m) => m.mockReset());
+    findStuckPlanned.mockResolvedValue([]);
     findStuckVerifying.mockResolvedValue([]);
     resultListByRun.mockResolvedValue([]);
     claimVerifying.mockResolvedValue(true);
@@ -145,13 +159,43 @@ describe('sweepStuckVerifyRuns', () => {
       { checkItemId: 'c1', status: 'running', verifierOperationId: 'verifier-op', verdict: null },
       { checkItemId: 'c2', status: 'passed', verdict: 'passed' },
     ]);
-    operationFindById.mockResolvedValue({ id: 'verifier-op', status: 'running' });
+    // Live *and* still holding its lease: a verifier refreshes it every step.
+    operationFindById.mockResolvedValue({
+      id: 'verifier-op',
+      status: 'running',
+      updatedAt: new Date(NOW.getTime() - 1000),
+    });
 
     const outcome = await sweepStuckVerifyRuns(db, { now: NOW });
 
     expect(outcome.skipped).toBe(1);
     expect(upsertByCheckItem).not.toHaveBeenCalled();
     expect(recompute).not.toHaveBeenCalled();
+    expect(operationSettleStaleRunning).not.toHaveBeenCalled();
+  });
+
+  it('reclaims a run whose verifier still says running but lost its lease', async () => {
+    singlePage([stuckRun({ updatedAt: new Date(NOW.getTime() - VERIFY_ABANDONED_MS - 1000) })]);
+    resultListByRun.mockResolvedValue([
+      { checkItemId: 'c1', status: 'running', verifierOperationId: 'verifier-op', verdict: null },
+      { checkItemId: 'c2', status: 'passed', verdict: 'passed' },
+    ]);
+    // The host died mid-turn: the row keeps saying `running` and never advances
+    // again. Status alone must not exempt it from recovery, or the run — and the
+    // goal above it — stays stranded for good.
+    operationFindById.mockResolvedValue({
+      id: 'verifier-op',
+      status: 'running',
+      updatedAt: new Date(NOW.getTime() - VERIFY_ABANDONED_MS - 1000),
+    });
+
+    const outcome = await sweepStuckVerifyRuns(db, { now: NOW });
+
+    expect(operationSettleStaleRunning).toHaveBeenCalledWith('verifier-op', expect.any(Date));
+    expect(outcome.abandoned).toEqual(['run-1']);
+    expect(upsertByCheckItem).toHaveBeenCalledWith(
+      expect.objectContaining({ checkItemId: 'c1', status: 'errored', verifyRunId: 'run-1' }),
+    );
   });
 
   it('closes a check whose verifier operation already died', async () => {
@@ -165,6 +209,54 @@ describe('sweepStuckVerifyRuns', () => {
     const outcome = await sweepStuckVerifyRuns(db, { now: NOW });
 
     expect(outcome.abandoned).toEqual(['run-1']);
+  });
+
+  it('hands a stranded planned run with a finished delivery back to the gate', async () => {
+    findStuckPlanned.mockResolvedValue([
+      stuckRun({ operationId: 'op-planned', status: 'planned' }),
+    ]);
+    operationFindById.mockResolvedValue({ id: 'op-planned', status: 'done', topicId: 'topic-1' });
+    // The sweep reads the delivery straight off the topic's latest assistant turn.
+    const plannedDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({ limit: async () => [{ content: 'the finished delivery' }] }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const outcome = await sweepStuckVerifyRuns(plannedDb, { now: NOW });
+
+    expect(outcome.refired).toEqual(['run-1']);
+    expect(runVerifyOnCompletion).toHaveBeenCalledWith(
+      plannedDb,
+      'u1',
+      expect.objectContaining({
+        deliverable: 'the finished delivery',
+        operationId: 'op-planned',
+      }),
+      undefined,
+    );
+  });
+
+  it('abandons a stranded planned run whose operation never delivered', async () => {
+    findStuckPlanned.mockResolvedValue([
+      stuckRun({
+        operationId: 'op-planned',
+        status: 'planned',
+        updatedAt: new Date(NOW.getTime() - VERIFY_ABANDONED_MS - 1000),
+      }),
+    ]);
+    operationFindById.mockResolvedValue({ id: 'op-planned', status: 'interrupted' });
+    resultListByRun.mockResolvedValue([{ checkItemId: 'c1', status: 'running', verdict: null }]);
+
+    const outcome = await sweepStuckVerifyRuns(db, { now: NOW });
+
+    // Nothing to judge: closed out like any other stranded run.
+    expect(outcome.abandoned).toEqual(['run-1']);
+    expect(runVerifyOnCompletion).not.toHaveBeenCalled();
   });
 
   it('ignores optional checks when deciding whether anything is outstanding', async () => {

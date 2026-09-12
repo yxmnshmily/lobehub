@@ -274,7 +274,7 @@ describe('PlatformUserGroupAdminModel', () => {
     });
     await db.insert(agents).values([
       {
-        agencyConfig: { enabled: true },
+        agencyConfig: { enableGraphMode: true },
         avatar: 'personal-a.png',
         clientId: 'platform-group-admin-agent-a',
         description: 'Personal A',

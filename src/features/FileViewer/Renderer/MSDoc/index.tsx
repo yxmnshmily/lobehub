@@ -4,6 +4,8 @@ import { Flexbox } from '@lobehub/ui';
 import { css, cx } from 'antd-style';
 import { memo } from 'react';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 const container = css`
   position: relative;
   overflow: hidden;
@@ -26,6 +28,7 @@ interface MSDocViewerProps {
 }
 
 const MSDocViewer = memo<MSDocViewerProps>(({ url }) => {
+  const translateTravel = useTravelTranslation();
   if (!url) return null;
 
   return (
@@ -34,7 +37,7 @@ const MSDocViewer = memo<MSDocViewerProps>(({ url }) => {
         className={cx(content)}
         id="msdoc-iframe"
         src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
-        title="msdoc-iframe"
+        title={translateTravel('文档预览')}
       />
     </Flexbox>
   );

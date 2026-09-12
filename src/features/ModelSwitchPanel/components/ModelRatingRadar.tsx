@@ -21,7 +21,7 @@ export const RATING_SOURCE_NAMES: Record<ModelRatingSource, string> = {
   'artificial-analysis': 'Artificial Analysis',
   'design-arena': 'Design Arena',
   'lmarena': 'LMArena',
-  'lobehub': 'LobeHub',
+  'lobehub': '旅游群',
 };
 
 /** below this coverage the radar reads as broken — callers fall back to a list */

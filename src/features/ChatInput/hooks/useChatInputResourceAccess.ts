@@ -40,6 +40,12 @@ const useChatInputAgentId = (): string | undefined => {
  */
 export const useChatInputResourceAccess = () => {
   const chatInputAgentId = useChatInputAgentId();
+  const inputStore = useChatInputStoreApiOptional() as StoreApi<State> | undefined;
+  const readOnlyConfig = useSyncExternalStore(
+    inputStore ? inputStore.subscribe : EMPTY_SUBSCRIBE,
+    () => inputStore?.getState().readOnlyConfig ?? false,
+    () => false,
+  );
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const agentVisibility = useAgentStore((s) =>
     chatInputAgentId ? s.agentMap[chatInputAgentId]?.visibility : undefined,
@@ -68,7 +74,7 @@ export const useChatInputResourceAccess = () => {
   } = useResourceAccess(isGroupContext ? 'agentGroup' : 'agent', gatedResourceId);
 
   return {
-    canConfigureResource: isAccessResolved && canEditContent && canEditResource,
+    canConfigureResource: !readOnlyConfig && isAccessResolved && canEditContent && canEditResource,
     /** Hide composer controls until access resolves, and for view-only callers. */
     canShowControls:
       !isAccessLoading && isAccessResolved && canCreateContent && canUseResourceLevel,

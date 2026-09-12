@@ -73,6 +73,7 @@ interface PageState {
 interface CustomerCenterPageDataInput {
   generation?: {
     items: Array<{
+      createdAt: Date | string;
       id: string;
       status: string;
       title: null | string;

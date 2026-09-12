@@ -89,6 +89,7 @@ const Locale = memo<LocaleLayoutProps>(({ children, defaultLang, antdLocale }) =
 
   useEffect(() => {
     const handleLang = async (lng: string) => {
+      document.documentElement.lang = lng;
       setLang(lng);
       const newLocale = await getAntdLocale(lng);
       setLocale(newLocale);

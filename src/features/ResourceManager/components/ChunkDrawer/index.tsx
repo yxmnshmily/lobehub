@@ -39,7 +39,7 @@ const ChunkDrawer = memo(() => {
             <FileViewer {...file} id={file.fileId ?? file.id} />
           </Flexbox>
         )}
-        <Flexbox flex={1} style={{ borderInlineStart: `1px solid ${cssVar.colorSplit}` }}>
+        <Flexbox flex={1} style={{ borderInlineStart: `0.5px solid ${cssVar.colorSplit}` }}>
           <Content />
         </Flexbox>
       </Flexbox>

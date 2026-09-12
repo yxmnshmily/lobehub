@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   workCard: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
     background: ${cssVar.colorFillQuaternary};
   `,

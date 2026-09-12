@@ -27,7 +27,11 @@ export const workerDeployAnnotationArgs = (
 
 const git = (cwd: string, args: string): string | undefined => {
   try {
-    return execSync(`git ${args}`, { cwd, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
+    return (
+      execSync(`git ${args}`, { cwd, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim() || undefined
+    );
   } catch {
     return undefined;
   }

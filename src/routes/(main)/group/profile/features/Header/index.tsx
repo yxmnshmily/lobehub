@@ -1,20 +1,20 @@
 'use client';
 
 import { Flexbox, Icon, type MenuProps } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { Crown, Sparkles, Users, UsersRound } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { Crown, PanelLeftClose, PanelLeftOpen, Sparkles, Users, UsersRound } from 'lucide-react';
+import { type ComponentProps, memo, type ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import ToggleLeftPanelButton from '@/features/NavPanel/ToggleLeftPanelButton';
+import { useMobileGroupSidebar } from '@/features/SuperGroup/useMobileGroupSidebar';
 import { usePermission } from '@/hooks/usePermission';
 import { parseAsString, useQueryState } from '@/hooks/useQueryParam';
 import AddGroupMemberModal from '@/routes/(main)/group/_layout/Sidebar/AddGroupMemberModal';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
-import { useGlobalStore } from '@/store/global';
-import { systemStatusSelectors } from '@/store/global/selectors';
 
 import AgentBuilderToggle from './AgentBuilderToggle';
 import { type ChromeTabItem } from './ChromeTabs';
@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     height: 44px;
     padding-block: 8px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   tabsWrapper: css`
     scrollbar-width: none;
@@ -48,6 +48,34 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
+export function ProfileHeaderBar({
+  actions,
+  ...tabs
+}: ComponentProps<typeof ChromeTabs> & { actions?: ReactNode }) {
+  const sidebar = useMobileGroupSidebar();
+  return (
+    <Flexbox horizontal align="center" className={styles.header} gap={4} justify="space-between">
+      {sidebar ? (
+        <ActionIcon
+          aria-label={sidebar.open ? '收起侧栏' : '展开侧栏'}
+          icon={sidebar.open ? PanelLeftClose : PanelLeftOpen}
+          onClick={sidebar.toggle}
+        />
+      ) : (
+        <ToggleLeftPanelButton />
+      )}
+      <div className={styles.tabsWrapper}>
+        <ChromeTabs {...tabs} />
+      </div>
+      {actions && (
+        <Flexbox horizontal align="center" flex="none" gap={8} style={{ marginInlineStart: 12 }}>
+          {actions}
+        </Flexbox>
+      )}
+    </Flexbox>
+  );
+}
+
 const Header = memo(() => {
   const { t } = useTranslation('chat');
   const { allowed: canEdit, reason } = usePermission('edit_own_content');
@@ -59,7 +87,6 @@ const Header = memo(() => {
   const activeGroupId = useAgentGroupStore(agentGroupSelectors.activeGroupId);
   const addAgentsToGroup = useAgentGroupStore((s) => s.addAgentsToGroup);
   const createAgentInGroup = useAgentGroupStore((s) => s.createAgentInGroup);
-  const showLeftPanel = useGlobalStore(systemStatusSelectors.showLeftPanel);
 
   // Use URL query param for selected tab
   const [selectedTabId, setSelectedTabId] = useQueryState(
@@ -128,22 +155,15 @@ const Header = memo(() => {
 
   return (
     <>
-      <Flexbox horizontal align="center" className={styles.header} gap={4} justify="space-between">
-        {!showLeftPanel && <ToggleLeftPanelButton />}
-        <div className={styles.tabsWrapper}>
-          <ChromeTabs
-            activeId={selectedTabId}
-            addDisabled={!canEdit}
-            addDisabledReason={reason}
-            addMenuItems={addMenuItems}
-            items={tabItems}
-            onChange={setSelectedTabId}
-          />
-        </div>
-        <Flexbox horizontal align="center" flex="none" gap={8} style={{ marginInlineStart: 12 }}>
-          <AgentBuilderToggle />
-        </Flexbox>
-      </Flexbox>
+      <ProfileHeaderBar
+        actions={<AgentBuilderToggle />}
+        activeId={selectedTabId}
+        addDisabled={!canEdit}
+        addDisabledReason={reason}
+        addMenuItems={addMenuItems}
+        items={tabItems}
+        onChange={setSelectedTabId}
+      />
       {activeGroupId && (
         <AddGroupMemberModal
           existingMembers={existingMemberIds}

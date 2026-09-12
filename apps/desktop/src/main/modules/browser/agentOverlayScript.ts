@@ -50,7 +50,7 @@ const ensureOverlay = (labels: AgentOverlayLabels) => `((labels) => {
       }
       .ripple {
         position: absolute; top: -10px; left: -10px;
-        width: 28px; height: 28px; border: 2px solid #2f54eb; border-radius: 50%;
+        width: 28px; height: 28px; border: 0.5px solid #2f54eb; border-radius: 50%;
         opacity: 0;
       }
       .ripple.go { animation: r .5s ease-out }

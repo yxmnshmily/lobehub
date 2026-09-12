@@ -8,8 +8,10 @@ import {
   type ChatToolPayload,
   type LobeAgentConfig,
   type OperationToolDispatchPolicy,
+  resolveGroupDiscussionMaxRounds,
   type WorkRegistrationIntent,
 } from '@lobechat/types';
+import { TRPCError } from '@trpc/server';
 import debug from 'debug';
 
 import { WorkModel } from '@/database/models/work';
@@ -51,6 +53,16 @@ export const resolveGroupMemberId = (
 
   const matches = Object.entries(agentMap).filter(([, member]) => member.name === requestedAgentId);
   return matches.length === 1 ? matches[0][0] : requestedAgentId;
+};
+
+const decodeGroupReplyMessageId = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  try {
+    const decoded = decodeURIComponent(value);
+    return /^[\w-]{1,200}$/.test(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 export const archiveRuntimeToolResult = async (
@@ -358,8 +370,23 @@ export const buildServerAgentMemberRunner = (
   const groupId = state.metadata?.groupId ?? undefined;
   if (!agentId || !topicId || !groupId) return undefined;
 
+  const canDispatch = async () => {
+    if (['interrupted', 'done', 'error'].includes(state.status)) return false;
+    if (!ctx.loadAgentState) return true;
+    try {
+      const latest = await ctx.loadAgentState(ctx.operationId);
+      return !!latest && !['interrupted', 'done', 'error'].includes(latest.status);
+    } catch (error) {
+      log('buildServerAgentMemberRunner: cannot verify parent state: %O', error);
+      return false;
+    }
+  };
+
   return {
     run: async ({ members, mode, onComplete, disableTools, timeout }) => {
+      if (!(await canDispatch())) {
+        return { started: false, startedCount: 0 };
+      }
       const agentMap = (
         state.metadata?.agentGroup as { agentMap?: Record<string, { name: string }> } | undefined
       )?.agentMap;
@@ -373,6 +400,23 @@ export const buildServerAgentMemberRunner = (
       });
       const expectedMembers = resolvedMembers.length;
       if (expectedMembers === 0) return { started: false, startedCount: 0 };
+
+      // One speak/broadcast is one round. This lives in the persisted parent
+      // state, so queued steps/member callbacks do not reset the allowance.
+      // Reserve before the first write: parallel tool calls share this state.
+      // Durable tasks keep their existing independent execution budgets.
+      if (mode === 'in_group' && !state.metadata?.taskId && !state.metadata?.threadId) {
+        const maxRounds = resolveGroupDiscussionMaxRounds(
+          state.metadata?.agentGroup?.maxDiscussionRounds,
+        );
+        const rounds = state.metadata?.groupDiscussionRounds ?? 0;
+        if (!Number.isInteger(rounds) || rounds < 0 || rounds >= maxRounds) {
+          return { started: false, startedCount: 0 };
+        }
+        state.metadata!.groupDiscussionRounds = rounds + 1;
+        // Reuse the existing persisted finish disposition and K=N barrier.
+        if (rounds + 1 >= maxRounds) onComplete = 'finish';
+      }
 
       // In-group multi-member actions (broadcast) render as an AgentCouncil: each
       // member speaks DIRECTLY under the group tool message and the UI groups them
@@ -429,10 +473,34 @@ export const buildServerAgentMemberRunner = (
 
       // 3. Fork members.
       let startedCount = 0;
+      const failures: string[] = [];
       await Promise.all(
         resolvedMembers.map(async (member, i) => {
           const anchorMessageId = anchorIds[i];
+          let diagnosis = '启动异常，请管理员查看服务端执行日志后再重试。';
           try {
+            // Placeholder writes can yield long enough for the user to stop.
+            // Recheck at the actual dispatch boundary, not only at tool entry.
+            if (!(await canDispatch())) {
+              diagnosis = '上级执行已结束或状态无法确认，未启动成员。';
+              throw new Error('Parent operation is no longer available');
+            }
+            let replyToMessageId: string | undefined;
+            if (mode === 'in_group') {
+              const candidateId = decodeGroupReplyMessageId(member.replyToMessageId);
+              if (candidateId) {
+                const candidate = await ctx.messageModel.findById(candidateId);
+                if (
+                  candidate?.role === 'assistant' &&
+                  candidate.agentId &&
+                  candidate.agentId !== member.agentId &&
+                  candidate.groupId === groupId &&
+                  candidate.topicId === topicId
+                ) {
+                  replyToMessageId = candidateId;
+                }
+              }
+            }
             const result = await execGroupMember({
               agentId: member.agentId,
               anchorMessageId,
@@ -444,6 +512,7 @@ export const buildServerAgentMemberRunner = (
               mode,
               onComplete,
               parentOperationId: ctx.operationId,
+              ...(replyToMessageId ? { replyToMessageId } : {}),
               // The supervisor assistant message owning this tool call — council
               // members parent their response here (siblings of the council tool).
               supervisorMessageId: parentMessageId,
@@ -456,6 +525,21 @@ export const buildServerAgentMemberRunner = (
               return;
             }
           } catch (error) {
+            // Only emit fixed diagnoses for known boundary failures. Exception
+            // messages can contain credentials, private resources or provider data.
+            if (error instanceof TRPCError) {
+              if (
+                error.code === 'PRECONDITION_FAILED' &&
+                error.message.startsWith('该成员已加入默认群，运行配置待管理员完成：')
+              ) {
+                diagnosis =
+                  '运行配置尚未就绪，请管理员检查技能资源发布状态及运行环境；配置修复前不要重复调用该成员。';
+              } else if (error.code === 'FORBIDDEN' || error.code === 'UNAUTHORIZED') {
+                diagnosis = '执行权限校验未通过，请管理员检查授权；授权修复前不要重复调用该成员。';
+              } else if (error.code === 'NOT_FOUND') {
+                diagnosis = '执行资源不存在或不可访问，请管理员检查成员配置。';
+              }
+            }
             log(
               'buildServerAgentMemberRunner: member %s failed to start: %O',
               member.agentId,
@@ -464,9 +548,10 @@ export const buildServerAgentMemberRunner = (
           }
           // Member failed to start — its completion bridge will never fire, so
           // backfill the anchor as errored to keep the K=N barrier reachable.
+          failures[i] = `成员 "${member.agentId}"：${diagnosis}`;
           try {
             await ctx.messageModel.updateToolMessage(anchorMessageId, {
-              content: `Agent member "${member.agentId}" failed to start.`,
+              content: failures[i],
               pluginState: { status: 'error' },
             });
           } catch (error) {
@@ -490,7 +575,7 @@ export const buildServerAgentMemberRunner = (
             log('buildServerAgentMemberRunner: cleanup failed for %s: %O', id, error);
           }
         }
-        return { started: false, startedCount: 0 };
+        return { error: failures.filter(Boolean).join('\n'), started: false, startedCount: 0 };
       }
 
       return { started: true, startedCount };

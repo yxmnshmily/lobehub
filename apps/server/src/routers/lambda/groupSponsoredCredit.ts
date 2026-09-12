@@ -131,15 +131,13 @@ const safePolicy = (
     ? (() => {
         const defaultMemberTemplateEnabled = Boolean(
           policy.enabled &&
-            policy.defaultMemberSponsorshipEnabled &&
-            policy.defaultMemberPeriodLimitCredits &&
-            policy.defaultMemberRequestLimitCredits,
+          policy.defaultMemberSponsorshipEnabled &&
+          policy.defaultMemberPeriodLimitCredits &&
+          policy.defaultMemberRequestLimitCredits,
         );
         return {
           defaultMemberTemplate: {
-            billingResponsibility: defaultMemberTemplateEnabled
-              ? ('group_owner' as const)
-              : null,
+            billingResponsibility: defaultMemberTemplateEnabled ? ('group_owner' as const) : null,
             enabled: defaultMemberTemplateEnabled,
             maxCreditsPerPeriod: defaultMemberTemplateEnabled
               ? policy.defaultMemberPeriodLimitCredits
@@ -213,9 +211,7 @@ const defaultMemberTemplateInput = z
       })
       .strict(),
   ])
-  .refine(
-    (input) => !input.enabled || input.maxCreditsPerRequest <= input.maxCreditsPerPeriod,
-  );
+  .refine((input) => !input.enabled || input.maxCreditsPerRequest <= input.maxCreditsPerPeriod);
 
 export const groupSponsoredCreditRouter = router({
   disablePolicy: personalProcedure

@@ -8,7 +8,6 @@ import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
-import NavHeader from '@/features/NavHeader';
 import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useToolStore } from '@/store/tool';
 import { agentSkillsSelectors, builtinToolSelectors } from '@/store/tool/selectors';
@@ -29,15 +28,35 @@ const styles = createStaticStyles(({ css }) => ({
     flex: 1;
     min-width: 0;
   `,
+  mobileBack: css`
+    display: flex;
+    flex: none;
+    align-items: center;
+
+    min-height: 52px;
+    padding-inline: 8px;
+    border-block-end: 0.5px solid var(--ant-color-border-secondary);
+  `,
   root: css`
     overflow: hidden;
     display: flex;
     flex: 1;
-    height: 100%;
+    min-height: 0;
+    /* Gutter comes from the shared settings container. */
+
+    @media (max-width: 575px) {
+      padding: 0;
+    }
   `,
 }));
 
 interface ToolSettingsProps {
+  /**
+   * The settings route knows its target shell before responsive hooks hydrate.
+   * Prefer that explicit signal so mobile never flashes or keeps a desktop
+   * master-detail header.
+   */
+  mobile?: boolean;
   /**
    * Which surface to manage. Fixed per-route now that skills and connectors
    * each own a dedicated settings page (`/settings/skill` and
@@ -46,13 +65,17 @@ interface ToolSettingsProps {
   viewMode: SkillViewMode;
 }
 
-export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
+export const ToolSettings = memo<ToolSettingsProps>(({ mobile: routeMobile, viewMode }) => {
   const { t } = useTranslation('common');
+  const { t: tSetting } = useTranslation('setting');
   const { mobile: responsiveMobile = false } = useResponsive();
   const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
   const mobileViewport =
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 575px)').matches;
-  const mobile = shouldUseMobileToolLayout(responsiveMobile, runtimeMobile, mobileViewport);
+    routeMobile === undefined &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 575px)').matches;
+  const mobile =
+    routeMobile ?? shouldUseMobileToolLayout(responsiveMobile, runtimeMobile, mobileViewport);
   const [searchParams] = useSearchParams();
   const querySkillIdentifier = searchParams.get('skill');
   const [selected, setSelected] = useState<SelectedTool | null>(null);
@@ -108,10 +131,10 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
 
   return (
     <>
-      <NavHeader />
       <div className={styles.root}>
         {(!mobile || !selected) && (
           <LeftPanel
+            mobile={mobile}
             selectedIdentifier={selected?.identifier}
             viewMode={viewMode}
             onDeleteSelected={() => setSelected(null)}
@@ -122,13 +145,12 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
         {selected && (
           <div className={styles.detail}>
             {mobile && (
-              <div
-                style={{
-                  borderBlockEnd: '1px solid var(--ant-color-border-secondary)',
-                  padding: 8,
-                }}
-              >
-                <Button icon={ChevronLeft} size="small" onClick={() => setSelected(null)}>
+              <div className={styles.mobileBack}>
+                <Button
+                  icon={ChevronLeft}
+                  style={{ minHeight: 44 }}
+                  onClick={() => setSelected(null)}
+                >
                   {t('back')}
                 </Button>
               </div>
@@ -147,6 +169,14 @@ export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
 
 ToolSettings.displayName = 'ToolSettings';
 
-const Page = () => <ToolSettings viewMode="skill" />;
+interface PageProps {
+  mobile?: boolean;
+}
+
+export const ConnectorSettings = ({ mobile }: PageProps) => (
+  <ToolSettings mobile={mobile} viewMode="connector" />
+);
+
+const Page = ({ mobile }: PageProps) => <ToolSettings mobile={mobile} viewMode="skill" />;
 
 export default Page;

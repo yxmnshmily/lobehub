@@ -16,6 +16,7 @@ describe('documentPathFor', () => {
 
   it('serves other locales from the folded i18n tree', () => {
     expect(documentPathFor('/signup', 'zh-CN')).toBe('/__i18n/zh-CN/signup/index.html');
+    expect(documentPathFor('/signin', 'ja-JP')).toBe('/signin/index.html');
   });
 
   it('falls back to the SPA shell for param routes', () => {
@@ -25,7 +26,7 @@ describe('documentPathFor', () => {
 
 describe('resolveDocumentLocale', () => {
   it('keeps a prerendered locale', () => {
-    expect(resolveDocumentLocale('ja-JP')).toBe('ja-JP');
+    expect(resolveDocumentLocale('zh-CN')).toBe('zh-CN');
   });
 
   it('falls back to the default locale when the request is unknown', () => {
@@ -43,8 +44,8 @@ describe('prerender matrix', () => {
     ]);
   });
 
-  it('covers every locale that ships auth dictionaries', () => {
-    expect(PRERENDER_LOCALES).toHaveLength(18);
+  it('only prerenders the two supported locales', () => {
+    expect([...PRERENDER_LOCALES]).toEqual(['en-US', 'zh-CN']);
     expect(PRERENDER_LOCALES).toContain(DEFAULT_PRERENDER_LOCALE);
   });
 });

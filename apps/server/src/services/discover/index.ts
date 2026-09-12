@@ -69,11 +69,13 @@ import matter from 'gray-matter';
 import { isAiModelVisible } from 'model-bank';
 import urlJoin from 'url-join';
 
+import { appEnv } from '@/envs/app';
 import { type TrustedClientUserInfo } from '@/libs/trusted-client';
 import { normalizeLocale } from '@/locales/resources';
 import { AssistantStore } from '@/server/modules/AssistantStore';
 import { PluginStore } from '@/server/modules/PluginStore';
 import { MarketService } from '@/server/services/market';
+import { toStableAssetUrl } from '@/server/utils/stableAssetUrl';
 
 const log = debug('lobe-server:discover');
 
@@ -133,7 +135,7 @@ export class DiscoverService {
     const deviceId = await getDeviceId();
 
     const { client_id, client_secret } = await this.market.registerClient({
-      clientName: `LobeHub ${isDesktop ? 'Desktop' : 'Web'}`,
+      clientName: `旅游群 ${isDesktop ? 'Desktop' : 'Web'}`,
       clientType: isDesktop ? 'desktop' : 'web',
       deviceId,
       platform: isDesktop ? process.platform : userAgent,
@@ -904,6 +906,7 @@ export class DiscoverService {
    * report MCP plugin result marketplace
    */
   reportPluginInstallation = async (params: InstallReportRequest) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     await this.market.plugins.reportInstallation(params);
   };
 
@@ -911,6 +914,7 @@ export class DiscoverService {
    * record Agent plugin event
    */
   createAgentEvent = async (params: AgentEventRequest) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     await this.market.agents.createEvent(params);
   };
 
@@ -918,6 +922,7 @@ export class DiscoverService {
    * record MCP plugin event
    */
   createPluginEvent = async (params: PluginEventRequest) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     await this.market.plugins.createEvent(params);
   };
 
@@ -925,6 +930,7 @@ export class DiscoverService {
    * report plugin call result to marketplace
    */
   reportCall = async (params: CallReportRequest) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     await this.market.plugins.reportCall(params);
   };
 
@@ -934,6 +940,7 @@ export class DiscoverService {
    * Increase agent install count in marketplace
    */
   increaseAgentInstallCount = async (identifier: string) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     await this.market.agents.increaseInstallCount(identifier);
   };
 
@@ -1185,7 +1192,7 @@ export class DiscoverService {
         avatar: typeof composioTool.icon === 'string' ? composioTool.icon : '',
         category: undefined,
         createdAt: '',
-        description: `LobeHub Mcp Server: ${composioTool.label}`,
+        description: `旅游群 Mcp Server: ${composioTool.label}`,
         homepage: 'https://composio.dev',
         identifier: composioTool.identifier,
         manifest: undefined,
@@ -2037,8 +2044,10 @@ export class DiscoverService {
         plugins: transformedPlugins,
         skills: transformedSkills,
         user: {
-          avatarUrl: user.avatarUrl || null,
-          bannerUrl: user.meta?.bannerUrl || null,
+          // 资料里可能存着对象存储的临时签名 URL，签名过期后头像/横幅会直接加载失败，
+          // 这里统一还原为不带签名的稳定地址。
+          avatarUrl: toStableAssetUrl(user.avatarUrl) || null,
+          bannerUrl: toStableAssetUrl(user.meta?.bannerUrl) || null,
           createdAt: user.createdAt,
           description: user.meta?.description || null,
           displayName: user.displayName || null,
@@ -2139,6 +2148,7 @@ export class DiscoverService {
     identifier: string;
     source?: string;
   }) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     try {
       // TODO: SDK method not yet available
       await (this.market.agentGroups as any).createAgentGroupEvent?.(params);
@@ -2148,6 +2158,7 @@ export class DiscoverService {
   };
 
   increaseGroupAgentInstallCount = async (identifier: string) => {
+    if (appEnv.TELEMETRY_DISABLED) return;
     try {
       // TODO: SDK method not yet available
       await (this.market.agentGroups as any).increaseInstallCount?.(identifier);

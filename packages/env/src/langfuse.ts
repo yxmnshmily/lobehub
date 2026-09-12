@@ -4,7 +4,8 @@ import { z } from 'zod';
 export const getLangfuseConfig = () => {
   return createEnv({
     runtimeEnv: {
-      ENABLE_LANGFUSE: process.env.ENABLE_LANGFUSE === '1',
+      ENABLE_LANGFUSE:
+        process.env.TELEMETRY_DISABLED === '0' && process.env.ENABLE_LANGFUSE === '1',
       LANGFUSE_SECRET_KEY: process.env.LANGFUSE_SECRET_KEY || '',
       LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_PUBLIC_KEY || '',
       LANGFUSE_HOST: process.env.LANGFUSE_HOST || 'https://cloud.langfuse.com',

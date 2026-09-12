@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import ChatHeaderTitle from './ChatHeaderTitle';
 
 const toggleMobileTopic = vi.fn();
+const { usePersonalInbox } = vi.hoisted(() => ({ usePersonalInbox: vi.fn(() => false) }));
+
+vi.mock('@/features/AgentRoute/usePersonalInbox', () => ({ usePersonalInbox }));
 
 vi.mock('@lobehub/ui', () => ({
   Flexbox: ({
@@ -63,5 +66,13 @@ describe('ChatHeaderTitle', () => {
     fireEvent.click(toggles[0]);
     fireEvent.click(toggles[1]);
     expect(toggleMobileTopic).toHaveBeenCalledTimes(2);
+  });
+
+  it('labels retained personal inbox topics as history without hiding topic controls', () => {
+    usePersonalInbox.mockReturnValueOnce(true);
+    render(<ChatHeaderTitle />);
+
+    expect(screen.getByText('历史聊天记录 (1)')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'topic.title' })).toHaveLength(2);
   });
 });

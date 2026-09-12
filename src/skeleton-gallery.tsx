@@ -11,7 +11,7 @@ import MemoryDetailLoading from '@/routes/(main)/memory/features/DetailLoading';
 import MemoryLoading from '@/routes/(main)/memory/features/Loading';
 
 const Case = ({ children, title }: { children: ReactNode; title: string }) => (
-  <Flexbox gap={12} style={{ borderBottom: '1px solid #eee', padding: 24 }} width={'100%'}>
+  <Flexbox gap={12} style={{ borderBottom: '0.5px solid #eee', padding: 24 }} width={'100%'}>
     <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.5 }}>{title}</div>
     <Suspense fallback={null}>{children}</Suspense>
   </Flexbox>

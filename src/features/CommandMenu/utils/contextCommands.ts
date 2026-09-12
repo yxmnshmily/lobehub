@@ -45,7 +45,7 @@ const BUSINESS_SETTINGS_COMMANDS: ContextCommand[] = [
     icon: Coins,
     keywords: ['credits', 'balance', 'credit', 'money'],
     keywordsKey: 'cmdk.keywords.credits',
-    label: 'Credits',
+    label: '积分',
     labelKey: 'tab.credits',
     labelNamespace: 'subscription',
     path: '/settings/credits',
@@ -68,7 +68,7 @@ const BUSINESS_SETTINGS_COMMANDS: ContextCommand[] = [
     label: 'Billing',
     labelKey: 'tab.billing',
     labelNamespace: 'subscription',
-    path: '/settings/billing',
+    path: '/settings/credits#credit-ledger',
     subPath: 'billing',
   },
   {

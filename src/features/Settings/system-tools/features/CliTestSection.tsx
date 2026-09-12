@@ -5,6 +5,7 @@ import { Button, Text } from '@lobehub/ui/base-ui';
 import { memo, useCallback, useState } from 'react';
 
 import { electronSystemService } from '@/services/electron/system';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 interface CommandResult {
   args: string;
@@ -14,6 +15,7 @@ interface CommandResult {
 }
 
 const CliTestSection = memo(() => {
+  const translateTravel = useTravelTranslation();
   const [results, setResults] = useState<CommandResult[]>([]);
   const [running, setRunning] = useState(false);
   const [customCmd, setCustomCmd] = useState('');
@@ -34,7 +36,7 @@ const CliTestSection = memo(() => {
 
   return (
     <Flexbox gap={16} style={{ marginTop: 24 }}>
-      <Text style={{ fontSize: 18, fontWeight: 600 }}>CLI Embedded Test</Text>
+      <Text style={{ fontSize: 18, fontWeight: 600 }}>{translateTravel('命令行内嵌测试')}</Text>
 
       <Flexbox horizontal gap={8} wrap="wrap">
         {presetCommands.map((cmd) => (
@@ -46,7 +48,7 @@ const CliTestSection = memo(() => {
 
       <Flexbox horizontal gap={8}>
         <Input
-          placeholder="Custom args (e.g. connect --help)"
+          placeholder={translateTravel('自定义参数（例如：connect --help）')}
           style={{ flex: 1 }}
           value={customCmd}
           onChange={(e) => setCustomCmd(e.target.value)}
@@ -59,7 +61,7 @@ const CliTestSection = memo(() => {
           type="primary"
           onClick={() => runCommand(customCmd)}
         >
-          Run
+          {translateTravel('运行')}
         </Button>
       </Flexbox>
 
@@ -76,7 +78,8 @@ const CliTestSection = memo(() => {
           }}
         >
           <Text style={{ color: 'var(--ant-color-primary)', fontWeight: 600 }}>
-            $ lobehub {r.args} (exit: {r.exitCode})
+            $ lobehub {r.args} {translateTravel('（退出码：')}
+            {r.exitCode})
           </Text>
           {r.stdout && (
             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

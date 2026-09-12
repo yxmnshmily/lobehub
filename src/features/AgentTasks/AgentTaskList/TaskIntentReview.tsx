@@ -28,12 +28,12 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     padding-block: 8px;
     padding-inline: 8px 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   goalCallout: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   head: css`
@@ -83,7 +83,7 @@ const styles = createStaticStyles(({ css }) => ({
   instruction: css`
     overflow-y: auto;
     max-height: 220px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   tabs: css`

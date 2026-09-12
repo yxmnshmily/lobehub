@@ -2,7 +2,7 @@
 
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Flexbox, Form, Icon, ImageSelect } from '@lobehub/ui';
-import { Select, Skeleton, Tabs } from '@lobehub/ui/base-ui';
+import { Select, Tabs } from '@lobehub/ui/base-ui';
 import { useResponsive } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Ban, Gauge, Monitor, Moon, Mouse, Sun, Waves } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useTheme as useNextThemesTheme } from 'next-themes';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { imageUrl } from '@/const/url';
@@ -42,7 +43,7 @@ const Common = memo(() => {
     switchLocale(value);
   };
 
-  if (!(isStatusInit && isUserStateInit)) return <Skeleton.Text rows={5} />;
+  if (!(isStatusInit && isUserStateInit)) return <SkeletonText rows={5} />;
 
   const themeFormGroup: FormGroupItemType = {
     children: [

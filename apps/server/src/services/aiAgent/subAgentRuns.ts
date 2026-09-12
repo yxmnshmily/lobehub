@@ -6,7 +6,6 @@ import type {
   LobeAgentChatConfig,
 } from '@lobechat/types';
 import { ThreadStatus, ThreadType } from '@lobechat/types';
-import debug from 'debug';
 
 import type { AgentOperationModel } from '@/database/models/agentOperation';
 import type { MessageModel } from '@/database/models/message';
@@ -19,14 +18,14 @@ import type {
   ExecGroupMemberResult,
 } from '@/server/services/agentRuntime/types';
 
+import { formatErrorForMetadata } from './helpers/groupContext';
 import {
   createGroupActionMemberBridgeHook,
   createSubAgentBridgeHook,
   createThreadHooks,
 } from './hooks/threadRunHooks';
+import { aiAgentDebug as log } from './safeDebug';
 import type { InternalExecAgentParams } from './types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface SubAgentRunDeps {
   agentOperationModel: AgentOperationModel;
@@ -229,11 +228,12 @@ export const execAgentThreadRun = async (
   // 6. If operation failed to start, update thread status
   if (!result.success) {
     const completedAt = new Date().toISOString();
+    const publicError = 'Agent execution failed';
     await deps.threadModel.update(thread.id, {
       metadata: {
         completedAt,
         duration: Date.now() - new Date(startedAt).getTime(),
-        error: result.error,
+        error: formatErrorForMetadata(result.error),
         operationId: result.operationId,
         startedAt,
       },
@@ -245,7 +245,7 @@ export const execAgentThreadRun = async (
       hookDispatcher
         .dispatch(parentOperationId, 'onCallAgentError', {
           agentId,
-          error: result.error || 'Sub-agent execution failed',
+          error: publicError,
           operationId: parentOperationId,
           userId: deps.userId,
         })
@@ -267,7 +267,7 @@ export const execAgentThreadRun = async (
 
   return {
     assistantMessageId: result.assistantMessageId,
-    error: result.error,
+    error: result.success ? result.error : 'Agent execution failed',
     operationId: result.operationId,
     success: result.success ?? false,
     threadId: thread.id,
@@ -295,6 +295,7 @@ export const execAgentMember = async (
     instruction,
     onComplete,
     parentOperationId,
+    replyToMessageId,
     supervisorMessageId,
     topicId,
   } = params;
@@ -373,6 +374,7 @@ export const execAgentMember = async (
         mode: 'in_group',
         onComplete,
         parentOperationId,
+        replyToMessageId,
       }),
     ],
     parentMessageId: supervisorMessageId ?? groupToolMessageId,
@@ -391,7 +393,7 @@ export const execAgentMember = async (
   );
 
   return {
-    error: result.error,
+    error: result.success ? result.error : 'Agent execution failed',
     operationId: result.operationId,
     started: result.success ?? false,
   };

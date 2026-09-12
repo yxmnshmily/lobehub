@@ -124,7 +124,7 @@ const VisitorComposer = memo<VisitorComposerProps>(
           gap={8}
           style={{
             background: cssVar.colorFillQuaternary,
-            border: `1px solid ${cssVar.colorBorderSecondary}`,
+            border: `0.5px solid ${cssVar.colorBorderSecondary}`,
             borderRadius: 12,
             padding: '6px 6px 6px 12px',
           }}

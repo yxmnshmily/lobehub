@@ -11,7 +11,7 @@ import { ChatErrorType, type ErrorType } from '@lobechat/types';
  */
 const HETERO_DISPATCH_ERROR_HEADLINES: Record<string, string> = {
   DEVICE_CHANNEL_UNAVAILABLE:
-    "The device this agent runs on isn't reachable right now — it went offline, went to sleep, or is reconnecting. Check that the LobeHub desktop app (or the `lh` CLI) is running and connected, then try again.",
+    "The device this agent runs on isn't reachable right now — it went offline, went to sleep, or is reconnecting. Check that the 旅游群 desktop app (or the `lh` CLI) is running and connected, then try again.",
   DEVICE_GATEWAY_ERROR:
     'The device connection service hit an error while starting this run. Nothing started on the device. This is usually temporary — try again in a moment.',
   DEVICE_GATEWAY_RATE_LIMITED:
@@ -23,7 +23,7 @@ const HETERO_DISPATCH_ERROR_HEADLINES: Record<string, string> = {
   DEVICE_NOT_FOUND:
     'The device this agent is bound to is no longer registered with the connection service. Reconnect the device, or bind this agent to another online device.',
   DEVICE_OFFLINE:
-    "The device this agent runs on is offline, so the run couldn't start. Check that the LobeHub desktop app (or the `lh` CLI) is running and connected, then try again.",
+    "The device this agent runs on is offline, so the run couldn't start. Check that the 旅游群 desktop app (or the `lh` CLI) is running and connected, then try again.",
   DEVICE_RESPONSE_TIMEOUT:
     "The device didn't answer in time, so we can't tell whether this run started. Check the device before starting it again.",
   GATEWAY_NOT_CONFIGURED:

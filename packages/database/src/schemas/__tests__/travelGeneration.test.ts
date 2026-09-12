@@ -1,4 +1,5 @@
 // @vitest-environment node
+import type { ModelUsage } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -43,6 +44,30 @@ afterEach(async () => {
 });
 
 describe('travelGenerationTasks schema', () => {
+  it.each<ModelUsage>([
+    { cost: 0.12, totalTokens: 100 },
+    {
+      cost: 0.12,
+      costExchangeRate: {
+        rate: 7.1,
+        rateDate: '2026-09-01',
+        updatedAt: '2026-09-01T00:00:00.000Z',
+      },
+      totalTokens: 100,
+    },
+  ])('preserves token costs and any historical exchange-rate snapshot', async (usage) => {
+    const [task] = await serverDB
+      .insert(travelGenerationTasks)
+      .values({ groupId, input: {}, status: 'succeeded', type: 'copy', usage, userId })
+      .returning({ id: travelGenerationTasks.id });
+    const [persisted] = await serverDB
+      .select({ usage: travelGenerationTasks.usage })
+      .from(travelGenerationTasks)
+      .where(eq(travelGenerationTasks.id, task.id));
+
+    expect(persisted.usage).toEqual(usage);
+  });
+
   it('generates an application-side id when inserting a task', async () => {
     const [task] = await serverDB
       .insert(travelGenerationTasks)

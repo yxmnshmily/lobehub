@@ -5,11 +5,12 @@ import { isLocalOnlyMessage } from '@/store/chat/utils/localMessages';
 export const getMessageInteractionState = (
   message: UIChatMessage | undefined,
   disableEditing?: boolean,
+  readOnly?: boolean,
 ) => {
   const isLocalOnly = isLocalOnlyMessage(message);
 
   return {
-    effectiveDisableEditing: Boolean(disableEditing || isLocalOnly),
-    shouldSuppressContextMenu: isLocalOnly,
+    effectiveDisableEditing: Boolean(disableEditing || readOnly || isLocalOnly),
+    shouldSuppressContextMenu: Boolean(readOnly || isLocalOnly),
   };
 };

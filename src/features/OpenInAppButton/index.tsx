@@ -63,7 +63,7 @@ const styles = createStaticStyles(({ css }) => ({
     justify-content: center;
 
     padding-inline: 4px;
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     color: ${cssVar.colorTextSecondary};
 
@@ -80,7 +80,7 @@ const styles = createStaticStyles(({ css }) => ({
     align-items: stretch;
 
     height: 24px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
   `,
 }));

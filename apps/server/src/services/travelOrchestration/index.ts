@@ -103,6 +103,10 @@ const COPY_AS_VIDEO_CONTEXT_PATTERN = /口播片/g;
 const CONTEXTUAL_FOLLOW_UP_PATTERN =
   /^请?(?:继续(?:一下)?|接着[来做改](?:一下)?|再[来做改](?:一版|一次|一下)|重新[来做改](?:一版|一次|一下)|改短一点|改长一点|换个风格|优化一下|调整一下|完善一下)[吧呢啊呀。！!？?]*$/;
 const CONTEXTUAL_FOLLOW_UP_NEGATION_PATTERN = /不要|不用|不需要|无需|禁止|别|停止|取消|不再|算了/;
+const MULTI_AGENT_COLLABORATION_PATTERN =
+  /(?:多(?:个|位)?(?:智能体|助理)|(?:智能体|助理)(?:之间|互相)).{0,80}(?:协作|合作|沟通|讨论|接力|交接|互相|一起|引用)|(?:让|安排|叫).{0,80}(?:[和与、]|交给).{0,80}(?:协作|合作|沟通|讨论|检查|审核|评审|引用|接力|交接)/;
+const EXPLICIT_MULTI_AGENT_TURN_SCRIPT_PATTERN =
+  /(?:^|[\s，,；;])[A甲]\s*(?:先|再|最后)?(?:说|回复).{0,160}[\s，,；;][B乙]\s*(?:先|再|最后)?(?:引用\s*[A甲]\s*)?(?:说|回复|检查|审核)/i;
 const MAX_CONTEXTUAL_FOLLOW_UP_LENGTH = 512;
 const TRUSTED_PREVIOUS_TURN_KEYS = new Set(['confirmedIntents', 'taskStatus']);
 const TRUSTED_PREVIOUS_TASK_STATUSES = new Set([
@@ -443,6 +447,25 @@ export const routeTravelRequest = ({
   const compactMessage = compactRoutingMessage(message);
   const policyMessage = compactPolicyMessage(message);
   const routingMessage = normalizeRoutingMessage(message);
+  if (isPolicyDeniedMessage(policyMessage)) {
+    return {
+      intents: [],
+      memberIds: [],
+      mode: 'supervisor-fallback',
+      reason: 'policy-denied',
+    };
+  }
+  if (
+    MULTI_AGENT_COLLABORATION_PATTERN.test(compactMessage) ||
+    EXPLICIT_MULTI_AGENT_TURN_SCRIPT_PATTERN.test(compactMessage)
+  ) {
+    return {
+      intents: [],
+      memberIds: [],
+      mode: 'supervisor-fallback',
+      reason: 'unknown-intent',
+    };
+  }
   const explicitRules = INTENT_RULES.filter(({ requestPattern }) =>
     requestPattern.test(routingMessage),
   );

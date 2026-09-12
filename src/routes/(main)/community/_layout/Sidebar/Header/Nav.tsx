@@ -1,7 +1,7 @@
 'use client';
 
-import { Flexbox } from '@lobehub/ui';
 import { McpIcon, ProviderIcon, SkillsIcon } from '@lobehub/ui/icons';
+import { createStaticStyles } from 'antd-style';
 import { Bot, Brain, ShapesIcon } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,34 @@ import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { DiscoverTab } from '@/types/discover';
 import { isModifierClick } from '@/utils/navigation';
+
+const styles = createStaticStyles(({ css }) => ({
+  nav: css`
+    overflow-x: auto;
+    display: flex;
+    flex: 1;
+    flex-wrap: nowrap;
+    min-width: 0;
+    align-items: center;
+    gap: 2px;
+
+    /* Wrapping would grow past the fixed 64px header and overlap the content,
+       so the tabs scroll horizontally instead (same pattern as the memory and
+       group-profile tab strips). */
+    overscroll-behavior-x: none;
+    scrollbar-width: none;
+
+    [data-nav-item] > :first-child {
+      width: 20px;
+      height: 24px;
+    }
+
+    > a {
+      flex: none;
+      white-space: nowrap;
+    }
+  `,
+}));
 
 interface Item {
   icon: NavItemProps['icon'];
@@ -77,7 +105,7 @@ const Nav = memo(() => {
   );
 
   return (
-    <Flexbox gap={1} paddingInline={4}>
+    <nav aria-label={t('tab.community', { ns: 'common' })} className={styles.nav}>
       {items.map((item) => {
         const content = (
           <NavItem
@@ -92,6 +120,7 @@ const Nav = memo(() => {
 
         return (
           <WorkspaceLink
+            aria-current={tab.startsWith(item.key) ? 'page' : undefined}
             key={item.key}
             to={item.url}
             onClick={(e) => {
@@ -103,11 +132,19 @@ const Nav = memo(() => {
               }
             }}
           >
-            <NavItem active={tab.startsWith(item.key)} icon={item.icon} title={item.title} />
+            <NavItem
+              active={tab.startsWith(item.key)}
+              gap={4}
+              height={32}
+              icon={item.icon}
+              iconSize={16}
+              paddingInline={6}
+              title={item.title}
+            />
           </WorkspaceLink>
         );
       })}
-    </Flexbox>
+    </nav>
   );
 });
 

@@ -23,7 +23,7 @@ export const ACTION_COL_WIDTH = 64;
 /** Author avatar slot — reserved even when the author is unknown. */
 const AUTHOR_COL_WIDTH = 20;
 
-const styles = createStaticStyles(({ css, cssVar }) => ({
+export const agentRowStyles = createStaticStyles(({ css, cssVar }) => ({
   // The link spans the name column (not the whole row) — a management list
   // is for scanning and acting, and a full-row link turns clicks on the
   // author / timestamp / action columns into a navigation. The name column
@@ -131,14 +131,14 @@ const AgentRow = memo<AgentRowProps>(
         <Flexbox
           horizontal
           align={'center'}
-          className={styles.row}
+          className={agentRowStyles.row}
           gap={12}
           ref={setAnchor}
           onPointerEnter={activateMenu}
         >
           <WorkspaceLink
             aria-label={displayTitle}
-            className={styles.identity}
+            className={agentRowStyles.identity}
             to={type === 'group' ? GROUP_CHAT_URL(id) : AGENT_CHAT_URL(id, false)}
           >
             <AgentAvatar item={item} size={28} />
@@ -180,7 +180,7 @@ const AgentRow = memo<AgentRowProps>(
               </Flexbox>
             )}
             <Text
-              className={styles.updatedAt}
+              className={agentRowStyles.updatedAt}
               fontSize={12}
               title={updatedAt ? dayjs(updatedAt).format('YYYY-MM-DD HH:mm') : undefined}
             >
@@ -196,17 +196,17 @@ const AgentRow = memo<AgentRowProps>(
           >
             {onToggleSidebar && (
               <ActionIcon
+                color={cssVar.colorTextSecondary}
+                icon={sidebarHidden ? EyeOffIcon : EyeIcon}
+                style={{ opacity: sidebarHidden ? 0.5 : undefined }}
+                size={'small'}
+                // Hidden agents read as faded, mirroring the customize-sidebar
+                // modal's 0.5-opacity treatment of hidden rows.
                 aria-label={
                   sidebarHidden
                     ? t('agentViewAll.addToSidebar')
                     : t('agentViewAll.removeFromSidebar')
                 }
-                color={cssVar.colorTextSecondary}
-                icon={sidebarHidden ? EyeOffIcon : EyeIcon}
-                size={'small'}
-                // Hidden agents read as faded, mirroring the customize-sidebar
-                // modal's 0.5-opacity treatment of hidden rows.
-                style={{ opacity: sidebarHidden ? 0.5 : undefined }}
                 title={
                   sidebarHidden
                     ? t('agentViewAll.addToSidebar')

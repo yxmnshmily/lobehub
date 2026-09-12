@@ -296,6 +296,7 @@ export const messageCRUDSlice: StateCreator<
   },
 
   deleteMessage: async (id) => {
+    if (get().hooks.onDeleteMessage) return get().hooks.onDeleteMessage!(id);
     const state = get();
     const { internal_dispatchMessage, replaceMessages, context } = state;
 
@@ -402,6 +403,7 @@ export const messageCRUDSlice: StateCreator<
 
   // ===== Update Content ===== //
   updateMessageContent: async (id, content, extra) => {
+    if (get().hooks.onUpdateMessageContent) return get().hooks.onUpdateMessageContent!(id, content);
     const { internal_dispatchMessage, replaceMessages, context } = get();
 
     // Optimistic update

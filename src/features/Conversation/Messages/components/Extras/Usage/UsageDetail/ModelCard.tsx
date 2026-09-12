@@ -1,4 +1,9 @@
-import { getCachedTextInputUnitRate, getWriteCacheInputUnitRate } from '@lobechat/utils';
+import {
+  getCachedTextInputUnitRate,
+  getTextInputUnitRate,
+  getTextOutputUnitRate,
+  getWriteCacheInputUnitRate,
+} from '@lobechat/utils';
 import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
 import { Tabs } from '@lobehub/ui/base-ui';
@@ -8,6 +13,7 @@ import { type LobeDefaultAiModelListItem } from 'model-bank';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 
@@ -35,6 +41,7 @@ interface ModelCardProps extends LobeDefaultAiModelListItem {
 
 const ModelCard = memo<ModelCardProps>(({ pricing, id, provider, displayName }) => {
   const { t } = useTranslation('chat');
+  const { money } = useMonthlyExchangeRate();
 
   const isShowCredit = useGlobalStore(systemStatusSelectors.isShowCredit) && !!pricing;
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
@@ -92,6 +99,7 @@ const ModelCard = memo<ModelCardProps>(({ pricing, id, provider, displayName }) 
               <Tooltip
                 title={t('messages.modelCard.pricing.inputCachedTokens', {
                   amount: formatPrice.cachedInput,
+                  money: money(getCachedTextInputUnitRate(pricing), pricing?.currency, 6),
                 })}
               >
                 <Flexbox horizontal gap={2}>
@@ -104,6 +112,7 @@ const ModelCard = memo<ModelCardProps>(({ pricing, id, provider, displayName }) 
               <Tooltip
                 title={t('messages.modelCard.pricing.writeCacheInputTokens', {
                   amount: formatPrice.writeCacheInput,
+                  money: money(getWriteCacheInputUnitRate(pricing), pricing?.currency, 6),
                 })}
               >
                 <Flexbox horizontal gap={2}>
@@ -113,7 +122,10 @@ const ModelCard = memo<ModelCardProps>(({ pricing, id, provider, displayName }) 
               </Tooltip>
             )}
             <Tooltip
-              title={t('messages.modelCard.pricing.inputTokens', { amount: formatPrice.input })}
+              title={t('messages.modelCard.pricing.inputTokens', {
+                amount: formatPrice.input,
+                money: money(getTextInputUnitRate(pricing), pricing?.currency, 6),
+              })}
             >
               <Flexbox horizontal gap={2}>
                 <Icon icon={ArrowUpFromDot} />
@@ -121,7 +133,10 @@ const ModelCard = memo<ModelCardProps>(({ pricing, id, provider, displayName }) 
               </Flexbox>
             </Tooltip>
             <Tooltip
-              title={t('messages.modelCard.pricing.outputTokens', { amount: formatPrice.output })}
+              title={t('messages.modelCard.pricing.outputTokens', {
+                amount: formatPrice.output,
+                money: money(getTextOutputUnitRate(pricing), pricing?.currency, 6),
+              })}
             >
               <Flexbox horizontal gap={2}>
                 <Icon icon={ArrowDownToDot} />

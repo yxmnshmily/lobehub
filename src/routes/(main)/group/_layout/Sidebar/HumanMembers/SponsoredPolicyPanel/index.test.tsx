@@ -21,8 +21,8 @@ const mocks = vi.hoisted(() => ({
       enabled: false,
       groupPeriodLimitCredits: null as number | null,
       periodDurationSeconds: null as number | null,
-      periodEndsAt: null,
-      periodStartedAt: null,
+      periodEndsAt: null as Date | null,
+      periodStartedAt: null as Date | null,
       policyVersion: 0,
     },
     isError: false,
@@ -141,7 +141,7 @@ describe('SponsoredPolicyPanel', () => {
     expect(screen.getByText('群代付设置')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '启用群代付' })).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText('群周期 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('群周期积分上限'), {
       target: { value: '1000000' },
     });
     fireEvent.change(screen.getByLabelText('周期天数'), { target: { value: '30' } });
@@ -197,10 +197,10 @@ describe('SponsoredPolicyPanel', () => {
       />,
     );
 
-    expect(screen.getByText(/Credits 由群主承担/)).toBeInTheDocument();
+    expect(screen.getByText(/积分由群主承担/)).toBeInTheDocument();
     expect(screen.queryByText(/payer|余额|账单/i)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('群周期 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('群周期积分上限'), {
       target: { value: '2000000' },
     });
     fireEvent.click(screen.getByRole('button', { name: '更新群上限' }));
@@ -261,10 +261,10 @@ describe('SponsoredPolicyPanel', () => {
     fireEvent.click(toggle);
     expect(mocks.updateDefaultMemberTemplate).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('新成员单次 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('新成员单次积分上限'), {
       target: { value: '500' },
     });
-    fireEvent.change(screen.getByLabelText('新成员周期 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('新成员周期积分上限'), {
       target: { value: '3000' },
     });
     fireEvent.click(screen.getByRole('button', { name: '保存新成员代付设置' }));
@@ -291,8 +291,8 @@ describe('SponsoredPolicyPanel', () => {
     );
 
     expect(screen.getByRole('switch', { name: '新成员自动由群主代付' })).toBeDisabled();
-    expect(screen.getByLabelText('新成员单次 Credits 上限')).toBeDisabled();
-    expect(screen.getByLabelText('新成员周期 Credits 上限')).toBeDisabled();
+    expect(screen.getByLabelText('新成员单次积分上限')).toBeDisabled();
+    expect(screen.getByLabelText('新成员周期积分上限')).toBeDisabled();
     expect(screen.getByRole('button', { name: '保存新成员代付设置' })).toBeDisabled();
   });
 
@@ -331,14 +331,14 @@ describe('SponsoredPolicyPanel', () => {
       />,
     );
 
-    expect(screen.getByText('已配置额度：单次 1000 / 周期 10000 Credits')).toBeInTheDocument();
-    expect(screen.getByLabelText('锦绣单次 Credits 上限')).toHaveValue(1000);
-    expect(screen.getByLabelText('锦绣周期 Credits 上限')).toHaveValue(10_000);
+    expect(screen.getByText('已配置额度：单次 1000 / 周期 10000 积分')).toBeInTheDocument();
+    expect(screen.getByLabelText('锦绣单次积分上限')).toHaveValue(1000);
+    expect(screen.getByLabelText('锦绣周期积分上限')).toHaveValue(10_000);
 
-    fireEvent.change(screen.getByLabelText('锦绣单次 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('锦绣单次积分上限'), {
       target: { value: '1000' },
     });
-    fireEvent.change(screen.getByLabelText('锦绣周期 Credits 上限'), {
+    fireEvent.change(screen.getByLabelText('锦绣周期积分上限'), {
       target: { value: '10000' },
     });
     fireEvent.click(screen.getByRole('button', { name: '授予 锦绣 代付额度' }));

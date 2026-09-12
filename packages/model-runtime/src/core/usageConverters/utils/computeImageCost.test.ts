@@ -5,7 +5,66 @@ import type { ImageGenerationParams } from './computeImageCost';
 import { computeImageCost } from './computeImageCost';
 
 describe('computeImageCost', () => {
+  it('keeps decimal precision when multiplying price by image count', () => {
+    expect(
+      computeImageCost(
+        { units: [{ name: 'imageGeneration', strategy: 'fixed', unit: 'image', rate: 0.07 }] },
+        {},
+        3,
+      )?.totalCredits,
+    ).toBe(210000);
+  });
+  it('does not add a credit to an exact decimal charge', () => {
+    expect(
+      computeImageCost(
+        { units: [{ name: 'imageGeneration', strategy: 'fixed', unit: 'image', rate: 0.000123 }] },
+        {},
+        1,
+      )?.totalCredits,
+    ).toBe(123);
+  });
+  it.each([NaN, Infinity, -1, 0.5])('rejects invalid image count %s', (count) => {
+    expect(
+      computeImageCost(
+        { units: [{ name: 'imageGeneration', strategy: 'fixed', unit: 'image', rate: 0.06 }] },
+        {},
+        count,
+      ),
+    ).toBeUndefined();
+  });
+  it('does not treat a token lookup as a per-image price', () => {
+    expect(
+      computeImageCost(
+        {
+          units: [
+            {
+              name: 'imageGeneration',
+              strategy: 'lookup',
+              unit: 'millionTokens',
+              lookup: { pricingParams: ['quality'], prices: { hd: 10 } },
+            },
+          ],
+        },
+        { quality: 'hd' },
+        1,
+      ),
+    ).toBeUndefined();
+  });
   describe('lookup pricing strategy', () => {
+    it('uses provider-specific quality values without substituting another price tier', () => {
+      const pricing: Pricing = {
+        units: [
+          {
+            name: 'imageGeneration',
+            strategy: 'lookup',
+            unit: 'image',
+            lookup: { pricingParams: ['quality'], prices: { high: 0.08 } },
+          },
+        ],
+      };
+      expect(computeImageCost(pricing, { quality: 'high' }, 1)?.totalCredits).toBe(80000);
+      expect(computeImageCost(pricing, { quality: 'unknown' }, 1)).toBeUndefined();
+    });
     it('should compute dall-e-3 lookup pricing correctly', () => {
       // Arrange - Based on actual production logs
       const pricing: Pricing = {

@@ -1,3 +1,1 @@
-export default function WorkspaceNotification() {
-  return null;
-}
+export { default } from './Notification';

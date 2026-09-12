@@ -1,197 +1,55 @@
-import { SOCIAL_URL } from '@lobechat/business-const';
-import { DiscordIcon, GithubIcon } from '@lobehub/ui/icons';
+import { GROUP_CHAT_TOPIC_URL } from '@lobechat/const';
 import { Command } from 'cmdk';
-import {
-  Bot,
-  FeatherIcon,
-  FilePen,
-  LibraryBig,
-  MessageSquarePlusIcon,
-  Monitor,
-  Star,
-} from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 
-import { openFeedbackModal } from '@/components/FeedbackModal';
-import { getNavigableRoutes, getRouteById } from '@/config/routes';
-import { FEEDBACK } from '@/const/url';
-import { usePermission } from '@/hooks/usePermission';
-import { useChatStore } from '@/store/chat';
-import { topicSelectors } from '@/store/chat/selectors';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { lambdaQuery } from '@/libs/trpc/client';
 
-import { useCommandMenuContext } from './CommandMenuContext';
 import { CommandItem } from './components';
-import ContextCommands from './ContextCommands';
-import { useCommandMenu } from './useCommandMenu';
 
+/** 我的超级工作组（群话题）：从群页面 URL /group/<id>/topics 确认 */
+const SUPER_GROUP_ID = 'cg_h4b2CBuBznIb';
+const RECENT_TOPIC_LIMIT = 10;
+
+/**
+ * 命令面板主列表：按要求只保留「超级工作群的最近 10 条话题」。
+ * 原来的新建成员 / 新建文稿 / 设置 / 主题 / 导航等入口已移除。
+ * 点一条话题直接跳进该群的这个话题。
+ */
 const MainMenu = memo(() => {
-  const { pathname, menuContext, setPages, pages, onClose } = useCommandMenuContext();
-  const { t } = useTranslation('common');
-  const { allowed: canCreate } = usePermission('create_content');
-  // While the first send from the new-topic view is still creating the real
-  // topic, openNewTopicOrSaveTopic is a no-op — disable the command instead of
-  // letting it close the palette as a false success (same as the sidebar entry).
-  const isNewTopicSendInFlight = useChatStore(topicSelectors.isNewTopicSendInFlight);
+  const navigate = useWorkspaceAwareNavigate();
 
-  const {
-    handleCreateSession,
-    handleCreateTopic,
-    handleCreateLibrary,
-    handleCreatePage,
-    handleNavigate,
-    handleExternalLink,
-    handleCreateAgentTeam,
-  } = useCommandMenu();
+  const query = lambdaQuery.groupConversation.listTopics.useQuery(
+    { groupId: SUPER_GROUP_ID, limit: RECENT_TOPIC_LIMIT, recent: true },
+    { retry: false },
+  );
+
+  const topics = query.data?.items ?? [];
 
   return (
-    <>
-      <ContextCommands />
+    <Command.Group heading={'超级工作群 · 最近话题'}>
+      {query.isLoading && topics.length === 0 && (
+        <Command.Loading style={{ padding: '12px 8px', opacity: 0.6 }}>加载中…</Command.Loading>
+      )}
 
-      <Command.Group>
-        <CommandItem
-          disabled={!canCreate}
-          icon={<Bot />}
-          unpinned={menuContext === 'agent' || menuContext === 'page'}
-          value="create new agent assistant"
-          onSelect={handleCreateSession}
-        >
-          {t('cmdk.newAgent')}
-        </CommandItem>
+      {!query.isLoading && topics.length === 0 && (
+        <Command.Empty style={{ padding: '12px 8px', opacity: 0.6 }}>
+          这个群还没有话题
+        </Command.Empty>
+      )}
 
+      {topics.map((topic: any) => (
         <CommandItem
-          disabled={!canCreate}
-          icon={<Bot />}
-          unpinned={menuContext === 'agent' || menuContext === 'page'}
-          value="create new agent team"
-          onSelect={handleCreateAgentTeam}
+          icon={<MessageSquare />}
+          key={topic.id}
+          value={`topic ${topic.id} ${topic.title || topic.latestMessage || ''}`}
+          onSelect={() => navigate(GROUP_CHAT_TOPIC_URL(SUPER_GROUP_ID, topic.id))}
         >
-          {t('cmdk.newAgentTeam')}
+          {topic.title || topic.latestMessage || '未命名话题'}
         </CommandItem>
-
-        {menuContext === 'agent' && (
-          <CommandItem
-            disabled={!canCreate || isNewTopicSendInFlight}
-            icon={<MessageSquarePlusIcon />}
-            unpinned={menuContext !== 'agent'}
-            value="create new topic"
-            onSelect={handleCreateTopic}
-          >
-            {t('cmdk.newTopic')}
-          </CommandItem>
-        )}
-
-        <CommandItem
-          disabled={!canCreate}
-          icon={<FilePen />}
-          value="create new page"
-          onSelect={handleCreatePage}
-        >
-          {t('cmdk.newPage')}
-        </CommandItem>
-
-        <CommandItem
-          disabled={!canCreate}
-          icon={<LibraryBig />}
-          unpinned={menuContext !== 'resource'}
-          value="create new library"
-          onSelect={handleCreateLibrary}
-        >
-          {t('cmdk.newLibrary')}
-        </CommandItem>
-
-        {menuContext !== 'settings' &&
-          (() => {
-            const settingsRoute = getRouteById('settings');
-            const SettingsIcon = settingsRoute?.icon;
-            const keywords = settingsRoute?.keywordsKey
-              ? t(settingsRoute.keywordsKey as any).split(' ')
-              : settingsRoute?.keywords;
-            return (
-              <CommandItem
-                icon={SettingsIcon && <SettingsIcon />}
-                keywords={keywords}
-                value="settings"
-                onSelect={() => handleNavigate(settingsRoute?.path || '/settings')}
-              >
-                {t('cmdk.settings')}
-              </CommandItem>
-            );
-          })()}
-
-        <CommandItem
-          icon={<Monitor />}
-          value="theme"
-          onSelect={() => setPages([...pages, 'theme'])}
-        >
-          {t('cmdk.theme')}
-        </CommandItem>
-      </Command.Group>
-
-      <Command.Group heading={t('cmdk.navigate')}>
-        {getNavigableRoutes().map((route) => {
-          const RouteIcon = route.icon;
-          const keywords = route.keywordsKey
-            ? t(route.keywordsKey as any).split(' ')
-            : route.keywords;
-          return (
-            !pathname?.startsWith(route.pathPrefix) && (
-              <CommandItem
-                icon={<RouteIcon />}
-                key={route.id}
-                keywords={keywords}
-                value={route.id}
-                onSelect={() => handleNavigate(route.path)}
-              >
-                {t(route.cmdkKey as any)}
-              </CommandItem>
-            )
-          );
-        })}
-      </Command.Group>
-
-      <Command.Group heading={t('cmdk.about')}>
-        <CommandItem
-          icon={<FeatherIcon />}
-          keywords={t('cmdk.keywords.contactUs').split(' ')}
-          value="contact-via-email"
-          onSelect={() => {
-            // Close the palette through the context handler (which runs the exit
-            // animation and clears the local `isVisible` state) before opening the
-            // modal. `openFeedbackModal` only flips the store flag, which alone
-            // doesn't unmount the palette — so without this it stays on screen.
-            onClose();
-            openFeedbackModal();
-          }}
-        >
-          {t('cmdk.contactUs')}
-        </CommandItem>
-        <CommandItem
-          icon={<GithubIcon />}
-          keywords={t('cmdk.keywords.submitIssue').split(' ')}
-          value="submit-issue"
-          onSelect={() => handleExternalLink(FEEDBACK)}
-        >
-          {t('cmdk.submitIssue')}
-        </CommandItem>
-        <CommandItem
-          icon={<Star />}
-          keywords={t('cmdk.keywords.starGitHub').split(' ')}
-          value="star-github"
-          onSelect={() => handleExternalLink(SOCIAL_URL.github)}
-        >
-          {t('cmdk.starOnGitHub')}
-        </CommandItem>
-        <CommandItem
-          icon={<DiscordIcon />}
-          keywords={t('cmdk.keywords.discord').split(' ')}
-          value="discord"
-          onSelect={() => handleExternalLink(SOCIAL_URL.discord)}
-        >
-          {t('cmdk.communitySupport')}
-        </CommandItem>
-      </Command.Group>
-    </>
+      ))}
+    </Command.Group>
   );
 });
 

@@ -1,13 +1,15 @@
-import { CREDITS_PER_DOLLAR, USD_TO_CNY } from '@lobechat/const/currency';
+import { USD_TO_CNY } from '@lobechat/const/currency';
 import debug from 'debug';
 import type { FixedPricingUnit, LookupPricingUnit, Pricing } from 'model-bank';
+
+import { computeUsagePrice } from './computeUsagePrice';
 
 const log = debug('lobe-cost:computeImagePricing');
 
 export interface ImageGenerationParams {
   // Other possible parameters for future extensions
   [key: string]: any;
-  quality?: 'standard' | 'hd';
+  quality?: string;
   size?: string;
 }
 
@@ -33,6 +35,7 @@ export const computeImageCost = (
   params: ImageGenerationParams,
   imageNum: number,
 ): ImageCostResult | undefined => {
+  if (!Number.isSafeInteger(imageNum) || imageNum < 0) return undefined;
   // Find imageGeneration pricing unit
   const imageGenUnit = pricing.units.find((unit) => unit.name === 'imageGeneration');
   if (!imageGenUnit) {
@@ -41,6 +44,8 @@ export const computeImageCost = (
   }
 
   const currency = pricing.currency || 'USD';
+  if (currency !== 'USD' && currency !== 'CNY') return undefined;
+  if (imageGenUnit.unit !== 'image') return undefined;
   let pricePerImage: number;
   let lookupKey: string | undefined;
 
@@ -102,9 +107,10 @@ export const computeImageCost = (
     }
   }
 
-  const costInCurrency = pricePerImage * imageNum;
-  const totalCost = currency === 'CNY' ? costInCurrency / USD_TO_CNY : costInCurrency;
-  const totalCredits = Math.ceil(totalCost * CREDITS_PER_DOLLAR);
+  if (!Number.isFinite(pricePerImage) || pricePerImage < 0) return undefined;
+  const cost = computeUsagePrice(pricePerImage, imageNum, 1, currency === 'CNY' ? USD_TO_CNY : 1);
+  if (!cost) return undefined;
+  const { totalCost, totalCredits } = cost;
 
   log(
     `Image cost calculation: ${imageNum} images × ${pricePerImage} ${currency} = $${totalCost} USD (${totalCredits} credits)`,

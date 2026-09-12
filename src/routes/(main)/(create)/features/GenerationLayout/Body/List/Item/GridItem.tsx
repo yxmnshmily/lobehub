@@ -34,7 +34,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     }
   `,
   gridItemActive: css`
-    border: 2px solid ${cssVar.colorBgLayout} !important;
+    border: 0.5px solid ${cssVar.colorBgLayout} !important;
     box-shadow: 0 0 0 2px ${cssVar.colorPrimary};
   `,
 }));

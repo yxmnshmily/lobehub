@@ -1,9 +1,14 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useContext } from 'react';
 import { type NavigateFunction, type NavigateOptions, type To, useNavigate } from 'react-router';
 
 import { getActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
+import {
+  GroupProjectScopeContext,
+  scopeProjectPath,
+} from '@/features/Projects/Layout/GroupProjectScope';
+import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
 
 import { buildWorkspaceAwarePath, type WorkspaceAwareNavigateOptions } from './workspaceAwarePath';
 
@@ -30,6 +35,8 @@ export interface WorkspaceAwareNavigateFunction extends NavigateFunction {
  */
 export const useWorkspaceAwareNavigate = (): WorkspaceAwareNavigateFunction => {
   const navigate = useNavigate();
+  const projectScope = useContext(GroupProjectScopeContext);
+  const groupScope = useContext(GroupWorkScopeContext);
 
   return useCallback(
     ((to: To | number, options?: WorkspaceAwareNavigateOptions) => {
@@ -40,7 +47,11 @@ export const useWorkspaceAwareNavigate = (): WorkspaceAwareNavigateFunction => {
         // `Partial<Path>` object — pass through unchanged.
         return navigate(to, options as NavigateOptions | undefined);
       }
-      const target = buildWorkspaceAwarePath(to, getActiveWorkspaceSlug(), options);
+      const target = buildWorkspaceAwarePath(
+        scopeGroupWorkPath(scopeProjectPath(to, projectScope), groupScope),
+        getActiveWorkspaceSlug(),
+        options,
+      );
       const { escape: _escape, ...rest } = options ?? {};
       void _escape;
       // Stay a transparent drop-in for `useNavigate`: only forward a second arg
@@ -48,6 +59,6 @@ export const useWorkspaceAwareNavigate = (): WorkspaceAwareNavigateFunction => {
       // turn into `navigate(path, {})`.
       return Object.keys(rest).length > 0 ? navigate(target, rest) : navigate(target);
     }) as WorkspaceAwareNavigateFunction,
-    [navigate],
+    [navigate, projectScope, groupScope],
   );
 };

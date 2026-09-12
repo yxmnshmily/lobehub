@@ -1,9 +1,11 @@
+import type { ChatFileItem, ChatImageItem, UIChatMessage } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import {
+  type AccessibleConversationTopic,
   GROUP_CONVERSATION_IDEMPOTENCY_CONFLICT,
   GROUP_CONVERSATION_INVALID_INPUT,
   GroupConversationAccessRepository as ConversationRepository,
@@ -86,52 +88,141 @@ const safely = async <T>(operation: () => Promise<T>): Promise<T> => {
 const safeGroup = (item: Awaited<ReturnType<GroupRepository['getAccessibleGroupSummary']>>) => ({
   avatar: item.avatar,
   groupId: item.groupId,
+  // The repository matches the canonical default-group clientId for every returned row.
+  isDefaultGroup: true,
   joinedAt: item.joinedAt,
   kind: item.kind,
   membershipVersion: item.membershipVersion,
+  ownerDisplayName: item.ownerDisplayName,
   title: item.title,
 });
 
-const safeTopic = (item: { createdAt: Date; id: string; title: string | null }) => ({
+const safeTopic = (item: AccessibleConversationTopic) => ({
+  ...(item.favorite !== undefined ? { favorite: item.favorite } : {}),
+  ...(item.updatedAt
+    ? { updatedAt: item.updatedAt, status: item.status, trigger: item.trigger }
+    : {}),
+  ...(item.latestMessage
+    ? { latestMessage: item.latestMessage, latestMessageId: item.latestMessageId }
+    : {}),
   createdAt: item.createdAt,
   id: item.id,
   title: item.title,
 });
 
+const safeAttachments = (item: { fileList?: ChatFileItem[]; imageList?: ChatImageItem[] }) => ({
+  ...(item.fileList
+    ? {
+        fileList: item.fileList.map(({ id, name, size, fileType, url, downloadUrl }) => ({
+          id,
+          name,
+          size,
+          fileType,
+          url,
+          downloadUrl,
+        })),
+      }
+    : {}),
+  ...(item.imageList
+    ? { imageList: item.imageList.map(({ id, alt, url }) => ({ id, alt, url })) }
+    : {}),
+});
+
 const safeMessage = (item: {
   authorKind: 'member' | 'owner' | 'self';
   content: string;
+  fileList?: ChatFileItem[];
+  imageList?: ChatImageItem[];
   publicMessageId: string;
+  sender?: { avatar: string | null; fullName: string | null; id: string };
   topicId: string;
   visibleAt: Date;
 }) => ({
   authorKind: item.authorKind,
   content: item.content,
+  ...safeAttachments(item),
   publicMessageId: item.publicMessageId,
+  ...(item.sender
+    ? {
+        sender: {
+          avatar: item.sender.avatar,
+          fullName: item.sender.fullName,
+          id: item.sender.id,
+        },
+      }
+    : {}),
   topicId: item.topicId,
   visibleAt: item.visibleAt,
 });
 
 const safePublishedAssistantMessage = (item: {
+  agentId?: string | null;
   content: string;
+  executionMessages?: UIChatMessage[];
+  fileList?: ChatFileItem[];
+  imageList?: ChatImageItem[];
   id: string;
+  isGenerating?: boolean;
   kind: 'assistant';
   topicId: string;
   visibleAt: Date;
 }) => ({
+  ...(item.agentId ? { agentId: item.agentId } : {}),
+  ...safeAttachments(item),
   content: item.content,
+  ...(item.executionMessages ? { executionMessages: item.executionMessages } : {}),
   id: item.id,
+  ...(item.isGenerating ? { isGenerating: true } : {}),
   kind: item.kind,
   topicId: item.topicId,
   visibleAt: item.visibleAt,
 });
 
 export const groupConversationRouter = router({
+  updateTextMessage: personalGroupConversationProcedure
+    .input(
+      z
+        .object({
+          groupId: id,
+          publicMessageId: z.string().regex(/^[a-f\d]{64}$/),
+          visibleAt: z.date(),
+          content: nonBlank(8000).nullable(),
+        })
+        .strict(),
+    )
+    .mutation(({ ctx, input }) =>
+      safely(() =>
+        new ConversationRepository(ctx.serverDB).updateAccessibleTextMessage(ctx.userId, input),
+      ),
+    ),
+  listTasks: personalGroupConversationProcedure
+    .input(
+      z
+        .object({
+          groupId: id,
+          offset: z.number().int().min(0).default(0),
+          category: z
+            .enum(['all', 'running', 'success', 'failed', 'error', 'usage'])
+            .default('all'),
+        })
+        .strict(),
+    )
+    .query(({ ctx, input }) =>
+      safely(() =>
+        new ConversationRepository(ctx.serverDB).listAccessibleTasks(
+          ctx.userId,
+          input.groupId,
+          input.offset,
+          input.category,
+        ),
+      ),
+    ),
   createTextMessage: personalGroupConversationProcedure
     .input(
       z
         .object({
           content: nonBlank(8000),
+          fileIds: z.array(id).max(20).optional(),
           groupId: id,
           idempotencyKey,
           topicId: id,
@@ -170,13 +261,25 @@ export const groupConversationRouter = router({
   }),
 
   listPublishedAssistantMessages: personalGroupConversationProcedure
-    .input(z.object({ groupId: id, topicId: id }).strict())
+    .input(
+      z
+        .object({
+          groupId: id,
+          topicId: id.optional(),
+          includeInProgress: z.boolean().optional(),
+          recent: z.boolean().optional(),
+        })
+        .strict(),
+    )
     .query(async ({ ctx, input }) => {
       const items = await safely(() =>
         new ConversationRepository(ctx.serverDB).listAccessiblePublishedAssistantMessages(
           ctx.userId,
           input.groupId,
           input.topicId,
+          undefined,
+          input.includeInProgress,
+          input.recent,
         ),
       );
       return items.map(safePublishedAssistantMessage);
@@ -187,9 +290,11 @@ export const groupConversationRouter = router({
       z
         .object({
           cursor: messageCursor.optional(),
+          direction: z.enum(['latest', 'oldest', 'forward', 'backward']).optional(),
+          order: z.enum(['latest', 'oldest']).optional(),
           groupId: id,
           limit: page.limit,
-          topicId: id,
+          topicId: id.optional(),
         })
         .strict(),
     )
@@ -199,7 +304,11 @@ export const groupConversationRouter = router({
           ctx.userId,
           input.groupId,
           input.topicId,
-          { cursor: input.cursor, limit: input.limit },
+          {
+            cursor: input.cursor,
+            direction: input.order ?? (input.direction === 'latest' ? 'latest' : 'oldest'),
+            limit: input.limit,
+          },
         ),
       );
       return { items: result.items.map(safeMessage), nextCursor: result.nextCursor };
@@ -211,6 +320,10 @@ export const groupConversationRouter = router({
         .object({
           ...page,
           groupId: id,
+          recent: z.boolean().optional(),
+          keywords: z.string().trim().max(200).optional(),
+          order: z.enum(['latest', 'oldest']).optional(),
+          direction: z.enum(['forward', 'backward']).optional(),
         })
         .strict(),
     )
@@ -219,6 +332,9 @@ export const groupConversationRouter = router({
         new ConversationRepository(ctx.serverDB).listAccessibleTopics(ctx.userId, input.groupId, {
           cursor: input.cursor,
           limit: input.limit,
+          recent: input.recent,
+          keywords: input.keywords,
+          direction: input.order,
         }),
       );
       return { items: result.items.map(safeTopic), nextCursor: result.nextCursor };

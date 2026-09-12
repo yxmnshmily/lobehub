@@ -104,7 +104,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   list: css`
     position: relative;
     min-width: 0;
-    border-block: 1px solid ${cssVar.colorBorderSecondary};
+    border-block: 0.5px solid ${cssVar.colorBorderSecondary};
 
     /* Strip the first visible row's own top border — the list's
        border-block-start already provides the separator under the subheader,
@@ -119,8 +119,8 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 240px;
     min-height: 0;
     padding-block: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   arrow: css`
     flex-shrink: 0;
@@ -220,7 +220,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   groupEmpty: css`
     padding-block: 6px 10px;
     padding-inline: 10px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 12px;
     color: ${cssVar.colorTextTertiary};

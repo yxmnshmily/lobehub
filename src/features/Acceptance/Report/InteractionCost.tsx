@@ -55,7 +55,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-width: 0;
     padding-block: 9px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusSM};
   `,
   interactionMetricLabel: css`

@@ -22,6 +22,40 @@ describe('groupManagementRuntime', () => {
     run.mockResolvedValue({ started: true, startedCount: 1 });
   });
 
+  it.each([
+    ['interrupt', { taskId: 'task-a' }],
+    ['summarize', {}],
+    ['createWorkflow', { name: 'review', steps: [] }],
+    ['vote', { question: 'Accept?', options: [] }],
+  ])('reports unsupported %s as an inline failure, not completed work', async (method, params) => {
+    const result = await runtime()[method as string](params, makeCtx());
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatchObject({ code: 'NOT_IMPLEMENTED' });
+    expect(result.content).toBeTruthy();
+    expect(result.deferred).not.toBe(true);
+    expect(result.stop).not.toBe(true);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['speak', { agentId: 'a' }],
+    ['broadcast', { agentIds: ['a'] }],
+    ['delegate', { agentId: 'a' }],
+    ['executeAgentTask', { agentId: 'a', instruction: 'work' }],
+    ['executeAgentTasks', { tasks: [{ agentId: 'a', instruction: 'work' }] }],
+  ])('preserves the safe startup diagnosis for %s', async (method, params) => {
+    const diagnosis = '成员 a：运行配置尚未就绪，请检查技能资源发布状态。';
+    run.mockResolvedValue({ started: false, startedCount: 0, error: diagnosis });
+    const result = await runtime()[method as string](params, makeCtx());
+    expect(result).toMatchObject({
+      content: diagnosis,
+      error: { code: 'AGENT_MEMBER_START_FAILED', message: diagnosis },
+      success: false,
+    });
+    expect(result.deferred).not.toBe(true);
+  });
+
   describe('speak', () => {
     it('forks one in-group member and resumes the supervisor', async () => {
       const result = await runtime().speak({ agentId: 'agent-a', instruction: 'hi' }, makeCtx());
@@ -38,6 +72,29 @@ describe('groupManagementRuntime', () => {
     it('finishes the supervisor when skipCallSupervisor is set', async () => {
       await runtime().speak({ agentId: 'agent-a', skipCallSupervisor: true }, makeCtx());
       expect(run).toHaveBeenCalledWith(expect.objectContaining({ onComplete: 'finish' }));
+    });
+
+    it('forwards an explicit cross-agent reply target to the member runner', async () => {
+      await runtime().speak(
+        {
+          agentId: 'agent-b',
+          instruction: '我来检查你的文案',
+          replyToMessageId: 'msg%5FA',
+        } as any,
+        makeCtx(),
+      );
+
+      expect(run).toHaveBeenCalledWith({
+        members: [
+          {
+            agentId: 'agent-b',
+            instruction: '我来检查你的文案',
+            replyToMessageId: 'msg%5FA',
+          },
+        ],
+        mode: 'in_group',
+        onComplete: 'resume',
+      });
     });
 
     it('errors without agentId', async () => {

@@ -85,7 +85,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   tableWrapper: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
 }));

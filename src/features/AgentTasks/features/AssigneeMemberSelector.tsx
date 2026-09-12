@@ -42,7 +42,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-block: 6px;
     padding-inline: 10px;
     border: none;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: inherit;
     font-size: 13px;

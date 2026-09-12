@@ -9,18 +9,18 @@ import SkeletonBar from '@/components/Skeleton/Bar';
 const styles = createStaticStyles(({ css }) => ({
   acceptance: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   divider: css`
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   control: css`
     height: 32px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css }) => ({
     height: 108px;
     padding-block: 8px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
 }));

@@ -3,11 +3,12 @@
 import { type UserMemoryEffort } from '@lobechat/types';
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Form, Tooltip } from '@lobehub/ui';
-import { Skeleton, Switch } from '@lobehub/ui/base-ui';
+import { Switch } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import LevelSlider from '@/features/ModelSwitchPanel/components/ControlsForm/LevelSlider';
@@ -27,7 +28,7 @@ const MemorySetting = memo(() => {
   const [setSettings, isUserStateInit] = useUserStore((s) => [s.setSettings, s.isUserStateInit]);
   const { status: saveStatus, lastSavedAt, save, retry } = useSaveState();
 
-  if (!isUserStateInit) return <Skeleton.Text rows={3} />;
+  if (!isUserStateInit) return <SkeletonText rows={3} />;
 
   const memoryEnabledSwitch = (
     <Switch disabled={!canManageMemory} title={t('memory.enabled.title')} />
@@ -82,8 +83,9 @@ const MemorySetting = memo(() => {
   };
 
   return (
-    <Form
-      collapsible={false}
+    <div>
+      <Form
+        collapsible={false}
       form={form}
       initialValues={{ ...memory, enabled: memoryEnabled }}
       items={[memorySettings]}
@@ -94,8 +96,9 @@ const MemorySetting = memo(() => {
 
         save(() => setSettings({ memory: values }));
       }}
-      {...FORM_STYLE}
-    />
+        {...FORM_STYLE}
+      />
+    </div>
   );
 });
 

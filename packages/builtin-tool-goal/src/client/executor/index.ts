@@ -60,6 +60,7 @@ class GoalExecutor extends BaseExecutor<typeof GoalApiName> {
         agentId: ctx.agentId,
         createdByAgentId: ctx.agentId,
         config: {
+          ...(ctx.groupId ? { groupId: ctx.groupId } : {}),
           recovery: { maxAttemptsPerTask: resolveGoalAttemptBudget(params.maxIterations) },
           ...(scheduleConfig ? { schedule: scheduleConfig } : {}),
         },

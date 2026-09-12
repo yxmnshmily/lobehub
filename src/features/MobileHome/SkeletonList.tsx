@@ -1,3 +1,4 @@
+import SkeletonText from '@/components/Skeleton/Text';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
@@ -58,8 +59,8 @@ const SkeletonList = memo<SkeletonListProps>(({ count = 4 }) => {
           />
           <Flexbox flex={1} style={{ overflow: 'hidden' }}>
             <Flexbox gap={16} width={'100%'}>
-              <Skeleton.Text className={styles.title} width={'60%'} />
-              <Skeleton.Text className={styles.paragraph} width={'80%'} />
+              <SkeletonText className={styles.title} width={'60%'} />
+              <SkeletonText className={styles.paragraph} width={'80%'} />
             </Flexbox>
           </Flexbox>
         </Flexbox>

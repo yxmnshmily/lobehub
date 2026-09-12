@@ -370,6 +370,77 @@ afterAll(async () => {
 });
 
 describe('platform operations tRPC authorization and projections', () => {
+  it('reports deletion session revocation failures without inventing a running task', async () => {
+    mocks.revokeUser.mockRejectedValueOnce(new Error('private session backend details'));
+    await expect(
+      adminCaller().deleteUser({ targetUserId: targetId, confirmed: true }),
+    ).rejects.toMatchObject({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: '删除未完成：账号已停用，但登录会话清理失败。请重试；不继续删除可恢复用户。',
+    });
+    expect(await db.select().from(users).where(eq(users.id, targetId))).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      '用户仍有运行中的计费任务，请结束后再删除',
+      'CONFLICT',
+      '删除未完成：存在尚未关闭的计费预算。账号已停用，请检查对应任务和结算状态；不继续删除可恢复用户。',
+    ],
+    [
+      'AGENT_TRANSFER_PENDING_OWNER_DELETE',
+      'CONFLICT',
+      '删除未完成：存在尚未完成的成员转移。账号已停用，请处理转移任务后重试；不继续删除可恢复用户。',
+    ],
+    [
+      'private database constraint details',
+      'INTERNAL_SERVER_ERROR',
+      '删除未完成：数据清理失败，账号已停用。请检查服务端错误记录后重试；不继续删除可恢复用户。',
+    ],
+  ])('distinguishes deletion failures: %s', async (failure, code, message) => {
+    const deletion = vi.spyOn(UserModel, 'deleteUser').mockRejectedValueOnce(new Error(failure));
+    try {
+      await expect(
+        adminCaller().deleteUser({ targetUserId: targetId, confirmed: true }),
+      ).rejects.toMatchObject({ code, message });
+      expect(await db.select().from(users).where(eq(users.id, targetId))).toHaveLength(1);
+    } finally {
+      deletion.mockRestore();
+    }
+  });
+
+  it('protects permanent deletion and password setting from non-platform administrators', async () => {
+    for (const caller of [ordinaryCaller(), standardAdminCaller(), deletedAdminCaller()]) {
+      await expect(
+        caller.deleteUser({ targetUserId: targetId, confirmed: true }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(
+        caller.setUserPassword({ targetUserId: targetId, password: 'New-password-12345' }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+  });
+
+  it('rejects incorrect deletion confirmation and self deletion before revocation', async () => {
+    await expect(
+      adminCaller().deleteUser({ targetUserId: targetId, confirmed: false } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(
+      adminCaller().deleteUser({ targetUserId: adminId, confirmed: true }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(mocks.revokeUser).not.toHaveBeenCalled();
+  });
+
+  it('permanently deletes only the confirmed account after revoking its sessions', async () => {
+    const id = 'permanent-deletion-router-fixture';
+    await db.insert(users).values({ id });
+    await expect(adminCaller().deleteUser({ targetUserId: id, confirmed: true })).resolves.toEqual({
+      id,
+    });
+    expect(mocks.revokeUser).toHaveBeenCalledWith(id);
+    expect(await db.select().from(users).where(eq(users.id, id))).toHaveLength(0);
+    expect(await db.select().from(users).where(eq(users.id, targetId))).toHaveLength(1);
+  });
+
   it('summarizes one deduplicated user page without calling the per-user overview model', async () => {
     const accountId = '9bd6bb43-f1aa-4dde-af55-29478446109e';
     await db.insert(platformCreditAccounts).values({
@@ -1432,12 +1503,14 @@ describe('platform operations tRPC authorization and projections', () => {
   });
 
   it('keeps user, IP, and service-ledger results on a strict field allowlist', async () => {
+    await db.update(users).set({ phone: '13800138000' }).where(eq(users.id, targetId));
     const result = await adminCaller().listUsers({
       limit: 1,
       query: 'platform-operations-customer',
     });
     const item = result.items[0];
     if (!item) throw new Error('Expected one platform user result');
+    expect(item.phone).toBe('13800138000');
 
     expect(Object.keys(item).sort()).toEqual([
       'avatar',
@@ -1452,6 +1525,7 @@ describe('platform operations tRPC authorization and projections', () => {
       'lastActiveAt',
       'latestSessionAt',
       'latestSessionIp',
+      'phone',
       'travelServiceLedger',
       'username',
     ]);
@@ -1698,13 +1772,13 @@ describe('platform operations tRPC authorization and projections', () => {
   ])('never executes a review-required or unknown %s repair plan', async (issueCode, state) => {
     const healthState = {
       ...healthyTravelGroupHealth,
-      groupCount: state.groupCount ?? 1,
+      groupCount: 'groupCount' in state ? state.groupCount : 1,
       healthy: false,
       issueCodes: [issueCode],
       requiredMembers: { ...healthyTravelGroupHealth.requiredMembers },
       supervisor: {
         ...healthyTravelGroupHealth.supervisor,
-        count: state.supervisorCount ?? 1,
+        count: 'supervisorCount' in state ? state.supervisorCount : 1,
       },
     };
     vi.spyOn(travelServiceGroup, 'getDefaultTravelServiceGroupHealthSummary').mockResolvedValue(
@@ -1928,7 +2002,7 @@ describe('platform operations tRPC authorization and projections', () => {
         status: 'succeeded',
         type: 'copy',
         updatedAt: new Date('2026-09-02T12:00:00.000Z'),
-        usage: { input: 123_456 },
+        usage: { totalInputTokens: 123_456 },
         userId: targetId,
       },
       {

@@ -78,7 +78,7 @@ const frontmatterStyles = createStaticStyles(({ css }) => ({
   card: css`
     margin-block: 8px 12px;
     margin-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
 
     background: ${cssVar.colorBgContainer};
@@ -97,7 +97,7 @@ const frontmatterStyles = createStaticStyles(({ css }) => ({
     padding-inline: 12px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   value: css`

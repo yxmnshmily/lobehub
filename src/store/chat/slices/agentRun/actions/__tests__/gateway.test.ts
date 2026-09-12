@@ -11,6 +11,7 @@ import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 
 import type { GatewayConnection } from '../transports/gateway/gateway';
 import { GatewayActionImpl } from '../transports/gateway/gateway';
+import * as gatewayEvents from '../transports/gateway/gatewayEventHandler';
 
 vi.mock('@/services/aiAgent', () => ({
   aiAgentService: {
@@ -905,6 +906,115 @@ describe('GatewayActionImpl', () => {
         expect.anything(),
       );
     });
+
+    it('keeps a hosted retry in the visible group timeline while executing in its original topic', async () => {
+      const { action, startOperation } = createExecuteTestAction();
+      vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
+        agentId: 'agent-1',
+        assistantMessageId: 'ast-1',
+        autoStarted: true,
+        createdAt: new Date().toISOString(),
+        message: 'ok',
+        operationId: 'server-op-1',
+        status: 'created',
+        success: true,
+        timestamp: new Date().toISOString(),
+        token: 'test-token',
+        topicId: 'original-topic',
+        userMessageId: 'usr-1',
+      });
+      const messageContext = {
+        agentId: 'agent-1',
+        groupId: 'group-1',
+        scope: 'group' as const,
+        topicId: 'latest-topic',
+      };
+      await action.executeGatewayAgent({
+        billing: { idempotencyKey: 'retry-1' },
+        context: { ...messageContext, topicId: 'original-topic' },
+        messageContext,
+        message: '原来的问题',
+        parentMessageId: 'usr-1',
+      });
+      expect(aiAgentService.execAgentTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appContext: expect.objectContaining({ topicId: 'original-topic' }),
+          parentMessageId: 'usr-1',
+        }),
+        expect.anything(),
+      );
+      expect(startOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({ topicId: 'latest-topic', groupId: 'group-1' }),
+        }),
+      );
+    });
+
+    it.each(['step_start', 'agent_runtime_end'])(
+      'preserves other topics when a hosted retry receives a %s snapshot',
+      async (type) => {
+        const handler = vi.fn();
+        const spy = vi.spyOn(gatewayEvents, 'createGatewayEventHandler').mockReturnValue(handler);
+        try {
+          const { action, connectToGateway, state } = createExecuteTestAction();
+          const context = {
+            agentId: 'agent-1',
+            groupId: 'group-1',
+            scope: 'group' as const,
+            topicId: 'latest',
+          };
+          const other = {
+            id: 'other',
+            topicId: 'latest',
+            role: 'user',
+            content: '其他话题',
+            createdAt: 3,
+          };
+          const old = {
+            id: 'old',
+            topicId: 'original',
+            role: 'assistant',
+            content: '旧快照',
+            createdAt: 1,
+          };
+          state.dbMessagesMap = { [messageMapKey(context)]: [old, other] };
+          vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
+            agentId: 'agent-1',
+            assistantMessageId: 'reply',
+            autoStarted: true,
+            createdAt: new Date().toISOString(),
+            message: 'ok',
+            operationId: 'server-op-1',
+            status: 'created',
+            success: true,
+            timestamp: new Date().toISOString(),
+            token: 'test-token',
+            topicId: 'original',
+            userMessageId: 'user',
+          });
+          await action.executeGatewayAgent({
+            billing: { idempotencyKey: 'retry' },
+            context: { ...context, topicId: 'original' },
+            messageContext: context,
+            parentMessageId: 'user',
+            message: '重试',
+          });
+          const updated = { ...old, content: '新快照' };
+          connectToGateway.mock.calls[0][0].onEvent({
+            type,
+            operationId: 'server-op-1',
+            data: { uiMessages: [updated] },
+          });
+          expect(handler).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: { uiMessages: [updated, other] },
+            }),
+          );
+        } finally {
+          spy.mockRestore();
+        }
+      },
+    );
 
     it('forwards hosted group billing as a dedicated execAgentTask field', async () => {
       const { action } = createExecuteTestAction();
@@ -2203,6 +2313,29 @@ describe('GatewayActionImpl', () => {
 
       expect(startOperation).toHaveBeenCalledWith(
         expect.objectContaining({ context: expect.objectContaining({ agentId: 'agent-1' }) }),
+      );
+    });
+
+    it('reconnects a group run into the same isolated group topic bucket', async () => {
+      const { action, startOperation } = createReconnectTestAction({ createdAt: 1, id: 'ast-1' });
+      await action.reconnectToGatewayOperation({
+        agentId: 'agent-drawer',
+        groupId: 'group-1',
+        isolatedTopic: true,
+        assistantMessageId: 'ast-1',
+        operationId: 'server-op-1',
+        topicId: 'topic-1',
+      });
+      expect(startOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            agentId: 'agent-drawer',
+            groupId: 'group-1',
+            scope: 'group',
+            isolatedTopic: true,
+            topicId: 'topic-1',
+          }),
+        }),
       );
     });
 

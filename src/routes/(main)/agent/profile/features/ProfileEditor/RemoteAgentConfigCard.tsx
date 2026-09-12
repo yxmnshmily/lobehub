@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
   card: css`
     padding-block: 16px 4px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -48,7 +48,7 @@ const styles = createStaticStyles(({ css }) => ({
     font-weight: 500;
   `,
   detailList: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   detailRow: css`
     display: flex;
@@ -59,7 +59,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 6px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   detailLabel: css`

@@ -12,7 +12,13 @@ const mockSetSourceFilter = vi.fn();
 let canCreate = true;
 let category: FilesTabs = FilesTabs.All;
 let libraryId: string | undefined;
+let mobile = false;
 let sourceFilter: ResourceSourceFilter | undefined;
+
+vi.mock('antd-style', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useResponsive: () => ({ mobile }),
+}));
 
 vi.mock('@/features/LibraryModal', () => ({
   useCreateNewModal: () => ({ open: mockOpen }),
@@ -41,6 +47,7 @@ describe('EmptyPlaceholder', () => {
     canCreate = true;
     category = FilesTabs.All;
     libraryId = undefined;
+    mobile = false;
     sourceFilter = undefined;
     vi.clearAllMocks();
   });
@@ -67,6 +74,22 @@ describe('EmptyPlaceholder', () => {
     expect(screen.getByText('FileManager.emptyStatus.actions.knowledgeBase')).toBeInTheDocument();
     expect(screen.getByText('FileManager.emptyStatus.actions.file')).toBeInTheDocument();
     expect(screen.getByText('FileManager.emptyStatus.actions.folder')).toBeInTheDocument();
+  });
+
+  it('lays out all three top-level create actions in one row on mobile', () => {
+    mobile = true;
+
+    render(<EmptyPlaceholder />);
+
+    const createLibraryAction = screen.getByText(
+      'FileManager.emptyStatus.actions.knowledgeBase',
+    );
+    const actions = createLibraryAction.parentElement?.parentElement;
+
+    expect(actions).toHaveStyle({
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    });
   });
 
   it('should hide create actions when the user cannot create resources', () => {

@@ -1,3 +1,5 @@
+import { notifyUser } from '@/server/services/notification';
+
 export type TaskCommentActivityKind = 'commented' | 'mentioned';
 
 export interface TaskCommentActivityRecipient {
@@ -16,5 +18,26 @@ export interface NotifyTaskCommentActivityParams {
 }
 
 export async function notifyTaskCommentActivity(
-  _params: NotifyTaskCommentActivityParams,
-): Promise<void> {}
+  params: NotifyTaskCommentActivityParams,
+): Promise<void> {
+  const recipients = new Map<string, TaskCommentActivityKind>();
+  for (const recipient of params.recipients) {
+    if (recipient.userId !== params.actorUserId && recipients.get(recipient.userId) !== 'mentioned')
+      recipients.set(recipient.userId, recipient.kind);
+  }
+  await Promise.all(
+    [...recipients].map(([userId, kind]) =>
+      notifyUser({
+        userId,
+        workspaceId: params.workspaceId,
+        eventId: params.commentId,
+        type: kind === 'mentioned' ? 'task_mentioned' : 'task_commented',
+        content:
+          kind === 'mentioned'
+            ? '有人在任务评论中提及你，请查看详情。'
+            : '你参与的任务有新评论，请查看详情。',
+        actionUrl: '/task/' + encodeURIComponent(params.taskId),
+      }),
+    ),
+  );
+}

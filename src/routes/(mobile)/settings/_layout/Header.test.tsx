@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
 const navigate = vi.fn();
+const mobileWorkspaceState = { activeId: undefined as string | undefined, show: false };
 
 vi.mock('@lobehub/ui', () => ({
   Flexbox: ({ children }: { children?: React.ReactNode }) =>
@@ -18,14 +19,16 @@ vi.mock('@lobehub/ui/mobile', () => {
     center,
     left,
     showBackButton,
+    style,
   }: {
     center?: React.ReactNode;
     left?: React.ReactNode;
     showBackButton?: boolean;
+    style?: React.CSSProperties;
   }) =>
     React.createElement(
       'header',
-      undefined,
+      { style },
       left ?? (showBackButton ? React.createElement('button') : null),
       center,
     );
@@ -56,10 +59,22 @@ vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
   useWorkspaceAwareNavigate: () => navigate,
 }));
 
-vi.mock('@/hooks/useShowMobileWorkspace', () => ({ useShowMobileWorkspace: () => false }));
+vi.mock('@/features/CustomerCenter/Navigation', () => ({
+  isCustomerCenterPath: (pathname: string) =>
+    /^\/settings\/(?:profile|security|plans|usage|credits|billing)\/?$/.test(pathname),
+}));
+
+vi.mock('@/features/NavPanel/ToggleLeftPanelButton', () => ({
+  default: () => <button aria-label="toggle-sidebar" />,
+}));
+
+vi.mock('@/hooks/useShowMobileWorkspace', () => ({
+  useShowMobileWorkspace: () => mobileWorkspaceState.show,
+}));
 
 vi.mock('@/store/session', () => ({
-  useSessionStore: (selector: (state: { activeId?: string }) => unknown) => selector({}),
+  useSessionStore: (selector: (state: { activeId?: string }) => unknown) =>
+    selector({ activeId: mobileWorkspaceState.activeId }),
 }));
 
 const renderHeader = (tab: string) => {
@@ -72,6 +87,12 @@ const renderHeader = (tab: string) => {
 };
 
 describe('mobile settings Header', () => {
+  it('stays in the settings flex stack instead of overlaying the site header', () => {
+    renderHeader('appearance');
+
+    expect(screen.getByRole('banner')).toHaveStyle({ flex: 'none', position: 'relative' });
+  });
+
   it('uses the literal personal settings path when the route has no tab param', () => {
     const router = createMemoryRouter(
       [{ element: <Header />, handle: { settingsTab: 'credits' }, path: '/settings/credits' }],
@@ -79,7 +100,36 @@ describe('mobile settings Header', () => {
     );
     render(<RouterProvider router={router} />);
 
-    expect(within(screen.getByRole('banner')).getByText('Credits 余额')).toBeInTheDocument();
+    expect(within(screen.getByRole('banner')).getByText('积分余额')).toBeInTheDocument();
+  });
+
+  it('returns personal center pages to the settings home', () => {
+    const router = createMemoryRouter(
+      [{ element: <Header />, handle: { settingsTab: 'profile' }, path: '/settings/profile' }],
+      { initialEntries: ['/settings/profile'] },
+    );
+    navigate.mockClear();
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'back' }));
+    expect(navigate).toHaveBeenCalledWith('/me/settings', { escape: true });
+  });
+
+  it('returns personal settings to the settings home even when a mobile workspace is active', () => {
+    mobileWorkspaceState.activeId = 'session-1';
+    mobileWorkspaceState.show = true;
+    const router = createMemoryRouter(
+      [{ element: <Header />, handle: { settingsTab: 'appearance' }, path: '/settings/appearance' }],
+      { initialEntries: ['/settings/appearance'] },
+    );
+    navigate.mockClear();
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'back' }));
+    expect(navigate).toHaveBeenCalledWith('/me/settings', { escape: true });
+
+    mobileWorkspaceState.activeId = undefined;
+    mobileWorkspaceState.show = false;
   });
 
   it('gives the back button an accessible name', () => {
@@ -105,8 +155,8 @@ describe('mobile settings Header', () => {
     ['general', 'setting:workspaceSetting.tab.general'],
     ['members', 'setting:workspaceSetting.tab.members'],
     ['plans', 'subscription:tab.plans'],
-    ['billing', 'Credits 明细与服务订单'],
-    ['credits', 'Credits 余额'],
+    ['billing', '积分明细'],
+    ['credits', '积分余额'],
     ['credential', 'setting:tab.creds'],
     ['devices', 'setting:tab.devices'],
     ['oauth-apps', 'auth:tab.oauthApps'],

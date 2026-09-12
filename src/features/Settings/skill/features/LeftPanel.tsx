@@ -18,6 +18,12 @@ import { type ToolDetailType } from './SkillDetail';
 import SkillList, { type SkillViewMode } from './SkillList';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
+  actions: css`
+    display: flex;
+    flex: none;
+    gap: 8px;
+    align-items: center;
+  `,
   body: css`
     overflow-y: auto;
     flex: 1;
@@ -33,7 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: 42px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   root: css`
     overflow-y: auto;
@@ -42,11 +48,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 300px;
     min-width: 260px;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 
 interface LeftPanelProps {
+  mobile?: boolean;
   onDeleteSelected: () => void;
   onSelect: (identifier: string, type: ToolDetailType) => void;
   selectedIdentifier?: string;
@@ -54,9 +61,10 @@ interface LeftPanelProps {
 }
 
 const LeftPanel = memo<LeftPanelProps>(
-  ({ onDeleteSelected, onSelect, selectedIdentifier, viewMode }) => {
+  ({ mobile: routeMobile, onDeleteSelected, onSelect, selectedIdentifier, viewMode }) => {
     const { t } = useTranslation('setting');
-    const { mobile = false } = useResponsive();
+    const { mobile: responsiveMobile = false } = useResponsive();
+    const mobile = routeMobile ?? responsiveMobile;
     const [showAddConnector, setShowAddConnector] = useState(false);
 
     const handleOpenStore = useCallback(() => {
@@ -71,14 +79,17 @@ const LeftPanel = memo<LeftPanelProps>(
           className={styles.root}
           style={mobile ? { borderInlineEnd: 0, minWidth: 0, width: '100%' } : undefined}
         >
-          <div className={styles.header}>
-            <Text strong style={{ fontSize: 14 }}>
+          <div
+            className={styles.header}
+            style={mobile ? { height: 'auto', minHeight: 52, paddingBlock: 4 } : undefined}
+          >
+            <Text ellipsis strong style={{ fontSize: 14, minWidth: 0 }}>
               {isConnectorView
                 ? t('skillView.connectors', 'Connectors')
                 : t('skillView.skills', 'Skills')}
             </Text>
 
-            <div style={{ display: 'flex', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
               {isConnectorView ? (
                 // Connector view: single action to add a custom OAuth connector.
                 <Button

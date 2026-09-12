@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import { DEFAULT_LANG } from '@/const/locale';
 import { normalizeLocale } from '@/locales/resources';
+import { displayBrandingPostProcessor } from '@/utils/displayBranding';
 import { unwrapESMModule } from '@/utils/esm/unwrapESMModule';
 import { loadI18nNamespaceModule } from '@/utils/i18n/loadI18nNamespaceModule';
 
@@ -38,6 +39,7 @@ export const createWorkbenchI18n = (lang?: string, bundledResources?: Record<str
   const instance = i18next
     .createInstance()
     .use(initReactI18next)
+    .use(displayBrandingPostProcessor)
     .use(resourcesToBackend(loadWorkbenchNamespace));
 
   return {
@@ -51,6 +53,7 @@ export const createWorkbenchI18n = (lang?: string, bundledResources?: Record<str
         lng: locale,
         ns: [],
         partialBundledLanguages: true,
+        postProcess: ['displayBranding'],
         react: {
           bindI18nStore: 'added',
           useSuspense: false,

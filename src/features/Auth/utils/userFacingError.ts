@@ -1,6 +1,4 @@
-interface AuthErrorLike {
-  code?: string;
-}
+import { isRecord } from '@lobechat/utils/object';
 
 const EMAIL_IN_USE_CODES = new Set([
   'USER_ALREADY_EXISTS',
@@ -8,8 +6,8 @@ const EMAIL_IN_USE_CODES = new Set([
 ]);
 
 export const getEmailChangeErrorKey = (
-  error: AuthErrorLike,
+  error: unknown,
 ): 'profile.emailChangeError' | 'profile.emailInUse' =>
-  error.code && EMAIL_IN_USE_CODES.has(error.code)
+  isRecord(error) && typeof error.code === 'string' && EMAIL_IN_USE_CODES.has(error.code)
     ? 'profile.emailInUse'
     : 'profile.emailChangeError';

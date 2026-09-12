@@ -9,6 +9,7 @@ import {
 } from '@lobechat/database/schemas';
 import { and, eq, sql } from 'drizzle-orm';
 
+import { notifyCreditEntry } from '@/server/services/notification/credit';
 import type { ModelUsage } from '@/types/message';
 
 import { type PlatformUsageTokenDetails, preparePlatformUsageCharge } from './index';
@@ -90,18 +91,28 @@ const requireLeaseVersion = (value: number) => {
 
 const normalizeProviderRequestId = (value?: string | null) => {
   if (value === undefined || value === null) return null;
-  return requireText(value, 'INVALID_CONTEXT');
+  const normalized = value.trim();
+  if (!/^[A-Z0-9][\w.:/=-]{0,199}$/i.test(normalized)) {
+    throw new SponsoredPlatformUsageSettlementError(
+      'INVALID_CONTEXT',
+      'Sponsored settlement provider request identity is invalid.',
+    );
+  }
+  return normalized;
 };
 
 const sameTokenUsage = (
-  stored: Record<string, number> | null,
+  stored: (PlatformUsageTokenDetails & { cost?: number }) | null,
   expected: PlatformUsageTokenDetails,
 ) => {
   const current = stored ?? {};
   const currentTokenKeys = Object.keys(current).filter((key) => key !== 'cost');
   return (
     currentTokenKeys.length === Object.keys(expected).length &&
-    tokenFields.every((field) => current[field] === expected[field])
+    tokenFields.every((field) => current[field] === expected[field]) &&
+    current.costExchangeRate?.rate === expected.costExchangeRate?.rate &&
+    current.costExchangeRate?.rateDate === expected.costExchangeRate?.rateDate &&
+    current.costExchangeRate?.updatedAt === expected.costExchangeRate?.updatedAt
   );
 };
 
@@ -174,7 +185,7 @@ export class SponsoredPlatformUsageSettlement {
       );
     }
 
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       const database = tx as LobeChatDatabase;
       const [account] = await database
         .select()
@@ -222,6 +233,17 @@ export class SponsoredPlatformUsageSettlement {
           'Sponsored settlement reservation state is invalid.',
         );
       }
+      if (
+        reservation.providerRequestId &&
+        providerRequestId &&
+        reservation.providerRequestId !== providerRequestId
+      ) {
+        throw new SponsoredPlatformUsageSettlementError(
+          'IDEMPOTENCY_CONFLICT',
+          'Sponsored settlement provider request identity does not match recorded evidence.',
+        );
+      }
+      const effectiveProviderRequestId = reservation.providerRequestId ?? providerRequestId;
 
       let charge;
       try {
@@ -250,7 +272,7 @@ export class SponsoredPlatformUsageSettlement {
               .limit(1)
           : [];
         const actualUsage = reservation.actualUsage as
-          (Record<string, number> & { cost: number }) | null;
+          (PlatformUsageTokenDetails & { cost: number }) | null;
         if (
           !entry ||
           entry.accountId !== account.id ||
@@ -264,7 +286,7 @@ export class SponsoredPlatformUsageSettlement {
           entry.model !== reservation.model ||
           entry.provider !== reservation.provider ||
           entry.workspaceId !== null ||
-          reservation.providerRequestId !== providerRequestId ||
+          reservation.providerRequestId !== effectiveProviderRequestId ||
           actualUsage?.cost !== charge.costUsd ||
           !sameTokenUsage(entry.tokenUsage, charge.tokens) ||
           !sameTokenUsage(actualUsage, charge.tokens)
@@ -375,7 +397,7 @@ export class SponsoredPlatformUsageSettlement {
         .update(platformCreditReservations)
         .set({
           actualUsage: { cost: charge.costUsd, ...charge.tokens },
-          providerRequestId,
+          providerRequestId: effectiveProviderRequestId,
           settledCredits: charge.credits,
           status: 'settled',
           updatedAt: new Date(),
@@ -396,5 +418,7 @@ export class SponsoredPlatformUsageSettlement {
       }
       return { entry, reservation: settledReservation };
     });
+    await notifyCreditEntry(result.entry);
+    return result;
   }
 }

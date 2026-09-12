@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getTestDB } from '@/database/core/getTestDB';
+import { PlatformCreditModel } from '@/database/models/platformCredit';
 import {
   platformCreditAccounts,
   platformCreditEntries,
@@ -116,6 +117,9 @@ describe('platform Credits tRPC authorization and contracts', () => {
       caller.listUserEntries({ limit: 20, targetUserId: customerBId }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(
+      caller.listPendingReservations({ limit: 20, targetUserId: customerBId }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
       caller.topUp({
         credits: 1_000_000,
         idempotencyKey: 'forbidden-top-up',
@@ -140,6 +144,76 @@ describe('platform Credits tRPC authorization and contracts', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
+  it('returns only allowlisted unresolved provider-call metadata to an administrator', async () => {
+    const caller = adminCaller();
+    await caller.topUp({
+      credits: 100,
+      idempotencyKey: 'pending-route-top-up',
+      reason: '待对账接口测试',
+      targetUserId: customerAId,
+    });
+    const ledger = new PlatformCreditModel(db, customerAId);
+    const expiresAt = new Date(Date.now() + 60_000);
+    const budget = await ledger.reserveBudget({
+      authorizedCredits: 100,
+      expiresAt,
+      idempotencyKey: 'pending-route-budget',
+      requestHash: 'PENDING_ROUTE_REQUEST_HASH_MUST_NOT_LEAK',
+      sourceId: 'pending-route-source',
+      sourceType: 'agent-operation',
+    });
+    const reservation = await ledger.reserveCall({
+      budgetId: budget.id,
+      callKind: 'call_llm',
+      expiresAt,
+      generationId: 'pending-route-generation',
+      idempotencyKey: 'PENDING_ROUTE_IDEMPOTENCY_KEY_MUST_NOT_LEAK',
+      model: 'deepseek-chat',
+      provider: 'deepseek',
+      reservedCredits: 100,
+    });
+    await ledger.claimReservationForProvider({
+      leaseVersion: reservation.leaseVersion,
+      reservationId: reservation.id,
+    });
+
+    const items = await caller.listPendingReservations({
+      limit: 20,
+      targetUserId: customerAId,
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      actorUserId: customerAId,
+      id: reservation.id,
+      payerUserId: customerAId,
+      reservedCredits: 100,
+      settledCredits: 0,
+      status: 'provider_started',
+    });
+    expect(Object.keys(items[0]).sort()).toEqual([
+      'actorUserId',
+      'callKind',
+      'createdAt',
+      'expiresAt',
+      'generationId',
+      'generationType',
+      'id',
+      'model',
+      'payerUserId',
+      'provider',
+      'providerRequestId',
+      'reservedCredits',
+      'settledCredits',
+      'status',
+      'updatedAt',
+    ]);
+    expect(JSON.stringify(items)).not.toMatch(
+      /accountId|actualUsage|budgetId|idempotencyKey|leaseOwner|requestHash|tokenUsage|usageEntryId|workspaceId/,
+    );
+    expect(JSON.stringify(items)).not.toContain('MUST_NOT_LEAK');
+  });
+
   it('uses idempotent signed integer Credits and returns only the public ledger allowlist', async () => {
     const caller = adminCaller();
     const topUpInput = {
@@ -152,6 +226,13 @@ describe('platform Credits tRPC authorization and contracts', () => {
     const topUp = await caller.topUp(topUpInput);
     const replay = await caller.topUp(topUpInput);
     expect(replay.id).toBe(topUp.id);
+    expect(creditNotice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: topUpInput.targetUserId,
+        eventId: topUp.id,
+        type: 'credits_top_up_completed',
+      }),
+    );
 
     await db
       .update(platformCreditEntries)
@@ -266,10 +347,22 @@ describe('platform Credits tRPC authorization and contracts', () => {
       await expect(
         caller.listUserEntries({ limit, targetUserId: customerAId }),
       ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      await expect(
+        caller.listPendingReservations({ limit, targetUserId: customerAId }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
     }
+    await expect(caller.listPendingReservations({ targetUserId: '   ' })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    await expect(
+      caller.listPendingReservations({ targetUserId: customerAId, unknown: true } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
     await expect(caller.topUp({ ...validTopUp, unknown: true } as never)).rejects.toMatchObject({
       code: 'BAD_REQUEST',
     });
     await expect(caller.listUserEntries({ targetUserId: customerAId })).resolves.toEqual([]);
   });
 });
+
+const creditNotice = vi.hoisted(() => vi.fn(async (_event: unknown) => {}));
+vi.mock('@/server/services/notification/index', () => ({ notifyUser: creditNotice }));

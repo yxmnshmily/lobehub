@@ -106,6 +106,7 @@ interface InboxSection {
  */
 interface HomeInboxProps {
   hideNeedsYou?: boolean;
+  hideRecommendations?: boolean;
   /** Running activity belongs in the main column above recent topics. */
   hideRunning?: boolean;
   hideUnread?: boolean;
@@ -123,6 +124,7 @@ interface HomeInboxProps {
 const HomeInbox = memo<HomeInboxProps>((props) => {
   const {
     hideNeedsYou,
+    hideRecommendations = false,
     hideRunning,
     hideUnread,
     inlineRail,
@@ -188,7 +190,8 @@ const HomeInbox = memo<HomeInboxProps>((props) => {
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
 
   const topics = useHomeInboxTopics(isLogin);
-  const recommendationsVisible = useRecommendationsVisible();
+  const hasRecommendations = useRecommendationsVisible();
+  const recommendationsVisible = !hideRecommendations && hasRecommendations;
   const hiddenWidgets = useGlobalStore(systemStatusSelectors.hiddenHomeWidgets);
 
   // Business-slot widget: `enabled` false while it's toggled off or its column
@@ -255,7 +258,7 @@ const HomeInbox = memo<HomeInboxProps>((props) => {
       <Flexbox gap={12}>
         <BriefCardSkeleton />
         <BriefCardSkeleton />
-        <Recommendations variant={variant} />
+        {!hideRecommendations && <Recommendations variant={variant} />}
       </Flexbox>
     );
   }
@@ -599,7 +602,7 @@ const HomeInbox = memo<HomeInboxProps>((props) => {
         },
       )}
 
-      {!isMain && <Recommendations variant={variant} />}
+      {!isMain && !hideRecommendations && <Recommendations variant={variant} />}
       {usageCard}
     </Flexbox>
   );

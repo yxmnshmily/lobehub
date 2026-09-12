@@ -1,5 +1,5 @@
 import { Center, CopyButton, Flexbox, Icon, Input } from '@lobehub/ui';
-import { ActionIcon, Avatar, Button, Skeleton, Tag, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Avatar, Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { startCase } from 'es-toolkit/compat';
 import { LinkIcon, Share2Icon } from 'lucide-react';
@@ -7,6 +7,7 @@ import { type ComponentProps, type ReactNode } from 'react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import ImperativeModal from '@/components/ImperativeModal';
 import { useShare } from '@/hooks/useShare';
 
@@ -17,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     banner: css`
       overflow: hidden;
 
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgContainer};
@@ -31,14 +32,14 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       }
     `,
     icon: css`
-      border: 1px solid ${cssVar.colorFillSecondary};
+      border: 0.5px solid ${cssVar.colorFillSecondary};
 
       svg {
         fill: ${cssVar.colorTextSecondary};
       }
 
       &:hover {
-        border: 1px solid ${cssVar.colorBorderSecondary};
+        border: 0.5px solid ${cssVar.colorBorderSecondary};
 
         svg {
           fill: ${cssVar.colorText};
@@ -134,7 +135,7 @@ const ShareButton = memo<ShareButtonProps>(({ meta, ...rest }) => {
       </Center>
     );
   } else {
-    content = <Skeleton.Text rows={4} />;
+    content = <SkeletonText rows={4} />;
   }
 
   return (

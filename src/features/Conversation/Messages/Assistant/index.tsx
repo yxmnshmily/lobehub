@@ -2,6 +2,7 @@
 
 import { LOADING_FLAT } from '@lobechat/const';
 import type { EmojiReaction } from '@lobechat/types';
+import { Tag } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import type { MouseEventHandler, ReactNode } from 'react';
 import { memo, useCallback, useMemo } from 'react';
@@ -189,6 +190,11 @@ const AssistantMessage = memo<AssistantMessageProps>(
             />
             {footerRender}
           </>
+        }
+        titleAddon={
+          metadata?.isSupervisor || metadata?.orchestrationRole === 'supervisor' ? (
+            <Tag>主管</Tag>
+          ) : undefined
         }
         onDoubleClick={onDoubleClick}
         onMouseEnter={onMouseEnter}

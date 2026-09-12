@@ -5,6 +5,7 @@ import Body from './index';
 
 interface MockGlobalState {
   status: {
+    showLeftPanel?: boolean;
     hiddenSidebarSections?: string[];
     sidebarExpandedKeys?: string[];
     sidebarItems?: string[];
@@ -93,6 +94,7 @@ beforeEach(() => {
   };
   mocks.globalState = {
     status: {
+      showLeftPanel: true,
       hiddenSidebarSections: [],
       sidebarExpandedKeys: ['recents', 'agent'],
       sidebarItems: ['recents', 'agent'],
@@ -106,6 +108,14 @@ afterEach(() => {
 });
 
 describe('Home sidebar body', () => {
+  it('opens each collapsed section through an icon menu', async () => {
+    mocks.globalState.status.showLeftPanel = false;
+    render(<Body />);
+    expect(screen.queryByTestId('sidebar-item-recents')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'recents' }));
+    expect(await screen.findByTestId('sidebar-item-recents')).toBeInTheDocument();
+    expect(mocks.updateSystemStatus).not.toHaveBeenCalled();
+  });
   it('uses persisted sidebar accordion expanded keys', () => {
     mocks.globalState.status.sidebarExpandedKeys = ['agent'];
 
@@ -128,8 +138,8 @@ describe('Home sidebar body', () => {
   it('renders items strictly in sidebarItems order with the spacer at its stored position', () => {
     mocks.navLayout = {
       bottomMenuItems: [
-        { key: 'image', title: 'Image', url: '/image' },
-        { key: 'resource', title: 'Resource', url: '/resource' },
+        { key: 'settings', title: 'Settings', url: '/settings' },
+        { key: 'community', title: 'Community', url: '/community' },
       ],
       topNavItems: [
         { key: 'pages', title: 'Pages', url: '/page' },
@@ -141,9 +151,9 @@ describe('Home sidebar body', () => {
       'recents',
       'agent',
       '__spacer__',
-      'image',
+      'settings',
       'tasks',
-      'resource',
+      'community',
     ];
 
     render(<Body />);
@@ -156,18 +166,18 @@ describe('Home sidebar body', () => {
     expect(spacerIndex).toBe(2);
     expect(children[0]).toHaveTextContent('Pages');
     expect(children[1]).toHaveAttribute('data-testid', 'sidebar-accordion');
-    expect(children[3]).toHaveTextContent('Image');
+    expect(children[3]).toHaveTextContent('Settings');
     expect(children[4]).toHaveTextContent('Tasks');
-    expect(children[5]).toHaveTextContent('Resource');
+    expect(children[5]).toHaveTextContent('Community');
   });
 
   it('keeps a top item that was dragged past the spacer in its new position', () => {
     mocks.navLayout = {
-      bottomMenuItems: [{ key: 'image', title: 'Image', url: '/image' }],
+      bottomMenuItems: [{ key: 'settings', title: 'Settings', url: '/settings' }],
       topNavItems: [{ key: 'tasks', title: 'Tasks', url: '/tasks' }],
     };
-    // User dragged `tasks` from the top section to sit after `image`.
-    mocks.globalState.status.sidebarItems = ['recents', 'agent', '__spacer__', 'image', 'tasks'];
+    // Use mode-independent links to isolate ordering from workspace visibility.
+    mocks.globalState.status.sidebarItems = ['recents', 'agent', '__spacer__', 'settings', 'tasks'];
 
     render(<Body />);
 
@@ -175,7 +185,7 @@ describe('Home sidebar body', () => {
 
     expect(children[0]).toHaveAttribute('data-testid', 'sidebar-accordion');
     expect(children[1]).toHaveAttribute('data-sidebar-bottom-spacer');
-    expect(children[2]).toHaveTextContent('Image');
+    expect(children[2]).toHaveTextContent('Settings');
     expect(children[3]).toHaveTextContent('Tasks');
   });
 });

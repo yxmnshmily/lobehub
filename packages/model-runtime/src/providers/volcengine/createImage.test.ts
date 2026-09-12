@@ -524,6 +524,23 @@ describe('createVolcengineImage', () => {
       expect(requestOptions.webSearch).toBeUndefined();
     });
 
+    it('maps the generic on switch to the provider standard mode without changing image size', async () => {
+      mockGenerate.mockResolvedValue({ data: [{ url: 'https://example.com/test.jpg' }] });
+      payload.model = 'doubao-seedream-5-0-260128';
+      payload.params = { prompt: 'landscape', width: 1440, height: 2560, promptExtend: 'on' };
+
+      await createVolcengineImage(payload, options);
+
+      expect(mockGenerate).toHaveBeenCalledWith({
+        model: 'doubao-seedream-5-0-260128',
+        prompt: 'landscape',
+        size: '1440x2560',
+        watermark: false,
+        optimize_prompt_options: { mode: 'standard' },
+      });
+      expect(payload.params.promptExtend).toBe('on');
+    });
+
     it('should add optimize_prompt_options if promptExtend is provided and not "off"', async () => {
       const mockResponse = {
         data: [{ url: 'https://example.com/test.jpg' }],

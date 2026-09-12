@@ -14,12 +14,15 @@ import {
   useBusinessChatInputAlerts,
 } from '@/business/client/hooks/useBusinessChatInputSendAreaPrefix';
 import type { ActionKeys, ChatInputFeature } from '@/features/ChatInput';
-import { ChatInputProvider, DesktopChatInput, MobileChatInput } from '@/features/ChatInput';
+import { ChatInputProvider } from '@/features/ChatInput';
 import { useIsChatInputModelUnavailableForAgent } from '@/features/ChatInput/ChatInputNotice/useChatInputNotice';
+import InputSurface from '@/features/ChatInput/InputSurface';
 import {
   type SendButtonHandler,
   type SendButtonProps,
 } from '@/features/ChatInput/store/initialState';
+import GroupDraftQuote from '@/features/SuperGroup/GroupDraftQuote';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAgentStore } from '@/store/agent';
 import { chatConfigByIdSelectors } from '@/store/agent/selectors';
 import { useChatStore } from '@/store/chat';
@@ -198,12 +201,14 @@ const ChatInput = memo<ChatInputProps>(
     skipScrollMarginWithList,
   }) => {
     const { t } = useTranslation('chat');
-    const mobile = useServerConfigStore((s) => s.isMobile);
+    const mobileDevice = useServerConfigStore((s) => s.isMobile);
+    const narrowViewport = useIsMobile();
 
     // ConversationStore state
     const storeApi = useConversationStoreApi();
     const dbMessages = useConversationStore(dataSelectors.dbMessages);
     const context = useConversationStore((s) => s.context);
+    const mobile = mobileDevice || Boolean(context.groupId && narrowViewport);
     const contextKey = useMemo(() => messageMapKey(context), [context]);
     const canRecordVoiceMessage = useCanSendVoiceMessage(context);
     const [agentId, inputMessage, sendMessage, stopGenerating] = useConversationStore((s) => [
@@ -286,7 +291,10 @@ const ChatInput = memo<ChatInputProps>(
     // This component creates the ChatInput provider below, so use the agent id
     // already supplied by ConversationStore instead of reading that provider
     // before it exists (page copilot has no outer ChatInput provider).
-    const isModelUnavailable = useIsChatInputModelUnavailableForAgent(agentId);
+    const localModelUnavailable = useIsChatInputModelUnavailableForAgent(agentId);
+    const hasAuthorizedTransport = useConversationStore((s) => !!s.hooks.onSendMessage);
+    // Server-hosted transports resolve the centrally managed model on the server.
+    const isModelUnavailable = !hasAuthorizedTransport && localModelUnavailable;
 
     // Detect whether TodoProgress will render (mirrors its own gating) so we
     // can square the top corners of OpStatusTray when it sits flush below.
@@ -407,7 +415,7 @@ const ChatInput = memo<ChatInputProps>(
         if (billing === false) return;
 
         // Clear content immediately for responsive UX
-        clearComposer();
+        if (!hasAuthorizedTransport) clearComposer();
 
         const { contextSelections, pageSelections } =
           buildMessageContextSelections(currentContextList);
@@ -415,7 +423,7 @@ const ChatInput = memo<ChatInputProps>(
         // Fire and forget - send with captured message
         let accepted = false;
         try {
-          await sendMessage({
+          const result = await sendMessage({
             ...(billing ? { billing } : undefined),
             contextSelections,
             editorData,
@@ -432,12 +440,24 @@ const ChatInput = memo<ChatInputProps>(
             },
             pageSelections,
           });
+          // Admission may finish after the user has already typed the next message.
+          if (hasAuthorizedTransport && result === true && getMarkdownContent() === message) {
+            clearContent();
+            const latestFiles = fileChatSelectors.chatUploadFileList(useFileStore.getState());
+            if (
+              latestFiles.length === currentFileList.length &&
+              latestFiles.every((file, index) => file.id === currentFileList[index].id)
+            ) {
+              fileStore.clearChatUploadFileList();
+            }
+          }
         } finally {
           if (billing) onBilledSendSettled?.({ accepted });
         }
       },
       [
         createBillingForSend,
+        hasAuthorizedTransport,
         contextKey,
         sendMessage,
         storeApi,
@@ -523,29 +543,27 @@ const ChatInput = memo<ChatInputProps>(
           </Flexbox>
           {/* Append the armed-goal chip to every composer's action bar. While armed,
               the next message becomes the goal and the placeholder explains that state. */}
-          {mobile ? (
-            <MobileChatInput sendAreaPrefix={businessSendAreaPrefix} />
-          ) : (
-            <DesktopChatInput
-              actionBarStyle={actionBarStyle}
-              borderRadius={12}
-              compact={compact}
-              controlBarSlot={controlBarSlot}
-              hidden={hasPendingInterventions}
-              isConfigLoading={isConfigLoading}
-              leftContent={leftContent}
-              placeholderVariant={placeholderVariant}
-              sendAreaPrefix={businessSendAreaPrefix}
-              showControlBar={showControlBar}
-              extraActionItems={[
-                ...(extraActionItems ?? []),
-                { children: <GoalArmedChip />, key: 'goal-armed-chip' },
-              ]}
-              placeholder={
-                goalArmed ? t('acceptance.tray.goalArmedPlaceholder', { ns: 'verify' }) : undefined
-              }
-            />
-          )}
+          <GroupDraftQuote />
+          <InputSurface
+            actionBarStyle={actionBarStyle}
+            borderRadius={12}
+            compact={compact}
+            controlBarSlot={controlBarSlot}
+            hidden={hasPendingInterventions}
+            isConfigLoading={isConfigLoading}
+            leftContent={leftContent}
+            mobile={mobile}
+            placeholderVariant={placeholderVariant}
+            sendAreaPrefix={businessSendAreaPrefix}
+            showControlBar={showControlBar}
+            extraActionItems={[
+              ...(extraActionItems ?? []),
+              { children: <GoalArmedChip />, key: 'goal-armed-chip' },
+            ]}
+            placeholder={
+              goalArmed ? t('acceptance.tray.goalArmedPlaceholder', { ns: 'verify' }) : undefined
+            }
+          />
         </div>
       </WideScreenContainer>
     );
@@ -561,8 +579,9 @@ const ChatInput = memo<ChatInputProps>(
         feature={feature}
         getMessages={getMessages}
         leftActions={leftActions}
-         mentionItems={mentionItems}
-         mobile={mobile}
+        mentionItems={mentionItems}
+        mobile={mobile}
+        readOnlyConfig={hasAuthorizedTransport}
         resolveSendBlocked={resolveSendBlocked}
         rightActions={rightActions}
         sendButtonProps={sendButtonProps}

@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css }) => ({
   spinner: css`
     width: 28px;
     height: 28px;
-    border: 2px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-block-start-color: ${cssVar.colorTextSecondary};
     border-radius: 50%;
 

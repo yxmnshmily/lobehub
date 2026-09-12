@@ -10,9 +10,7 @@ import { useMatch, useMatches, useParams, useSearchParams } from 'react-router';
 
 import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
-import { useShowMobileWorkspace } from '@/hooks/useShowMobileWorkspace';
 import { SettingsTabs } from '@/store/global/initialState';
-import { useSessionStore } from '@/store/session';
 import { mobileHeaderSticky } from '@/styles/mobileHeader';
 
 // Explicit tab → i18n key map. Covers:
@@ -21,8 +19,8 @@ import { mobileHeaderSticky } from '@/styles/mobileHeader';
 //   Without an explicit entry, `setting:tab.${tab}` would resolve to a missing key and render the raw string.
 // - Profile: prefer shorter "Profile" (`auth:profile.title`) over "My Account" (`auth:tab.profile`) on mobile.
 const TAB_TITLE_KEY: Partial<Record<SettingsTabs, string>> = {
-  [SettingsTabs.Billing]: 'Credits 明细与服务订单',
-  [SettingsTabs.Credits]: 'Credits 余额',
+  [SettingsTabs.Billing]: '积分明细',
+  [SettingsTabs.Credits]: '积分余额',
   [SettingsTabs.Creds]: 'setting:tab.creds',
   [SettingsTabs.Labs]: 'labs:title',
   [SettingsTabs.OAuthApps]: 'auth:tab.oauthApps',
@@ -33,6 +31,7 @@ const TAB_TITLE_KEY: Partial<Record<SettingsTabs, string>> = {
   [SettingsTabs.ServiceOperations]: '平台用户运营',
   [SettingsTabs.Stats]: 'auth:tab.stats',
   [SettingsTabs.SystemTools]: 'setting:tab.systemTools',
+  [SettingsTabs.Usage]: 'common:travelUi.账户用量',
 };
 
 const WORKSPACE_TAB_TITLE_KEY: Record<string, string> = {
@@ -54,14 +53,12 @@ const getSettingsTabFromMatches = (matches: ReturnType<typeof useMatches>) => {
 
 const Header = memo(() => {
   const { t } = useTranslation(['setting', 'auth', 'labs', 'subscription']);
-  const showMobileWorkspace = useShowMobileWorkspace();
   const navigate = useWorkspaceAwareNavigate();
   const params = useParams<{ providerId?: string; tab?: string }>();
   const matches = useMatches();
   const [searchParams] = useSearchParams();
   const workspaceSettingsMatch = useMatch('/:workspaceSlug/settings/:workspaceTab/*');
 
-  const isSessionActive = useSessionStore((s) => !!s.activeId);
   // Personal provider details carry the id in the path; the workspace provider
   // page canonicalizes it into the `provider` query param instead.
   const queryProvider = searchParams.get('provider');
@@ -77,8 +74,6 @@ const Header = memo(() => {
       navigate('/settings/provider');
     } else if (workspaceSlug) {
       navigate(`/${workspaceSlug}`, { escape: true });
-    } else if (isSessionActive && showMobileWorkspace) {
-      navigate('/agent');
     } else if (params.providerId && params.providerId !== 'all') {
       navigate('/settings/provider/all', { escape: true });
     } else if (isProvider) {
@@ -103,7 +98,7 @@ const Header = memo(() => {
 
   return (
     <ChatHeader
-      style={mobileHeaderSticky}
+      style={{ ...mobileHeaderSticky, flex: 'none', position: 'relative' }}
       center={
         <ChatHeader.Title
           title={

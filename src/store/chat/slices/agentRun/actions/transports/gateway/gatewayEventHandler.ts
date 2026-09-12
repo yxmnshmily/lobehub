@@ -386,6 +386,8 @@ export const createGatewayEventHandler = (
   params: {
     assistantMessageId: string;
     context: ConversationContext;
+    /** Status belongs to the executed topic when the visible bucket is a group timeline. */
+    executionTopicId?: string;
     /**
      * Server-side operation id — used to look up the `AgentStreamClient` in
      * `gatewayConnections` so we can `sendToolResult` back over the same WS.
@@ -501,7 +503,8 @@ export const createGatewayEventHandler = (
   };
 
   const writeTopicStatus = (status: 'running' | 'waitingForHuman') => {
-    if (!context.topicId) return;
+    const topicId = params.executionTopicId ?? context.topicId;
+    if (!topicId) return;
     const statusWrite = get().updateTopicStatus?.({
       agentId: context.agentId,
       groupId: context.groupId,
@@ -509,7 +512,7 @@ export const createGatewayEventHandler = (
         ? { scope: context.scope }
         : {}),
       status,
-      topicId: context.topicId,
+      topicId,
     });
     void statusWrite?.catch((error) => {
       console.error('[gatewayEventHandler] updateTopicStatus failed:', error);

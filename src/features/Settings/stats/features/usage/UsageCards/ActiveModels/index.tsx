@@ -58,7 +58,8 @@ const tableTitleI18n = (
   return 'usage.activeModels.userTable';
 };
 
-const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveUser }) => {
+const ActiveModels = memo<UsageChartProps>(
+  ({ data, isLoading, groupBy, mobile, resolveUser }) => {
   const { t } = useTranslation('auth');
 
   const [open, setOpen] = useState(false);
@@ -70,7 +71,7 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveU
 
   const renderIcon = (item: string, i: number) => {
     const baseStyle = {
-      border: `2px solid ${cssVar.colorBgContainer}`,
+      border: `0.5px solid ${cssVar.colorBgContainer}`,
       boxSizing: 'content-box' as const,
       marginRight: -8,
       zIndex: i + 1,
@@ -101,6 +102,7 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveU
       <StatisticCard
         key={groupBy}
         loading={isLoading}
+        padding={mobile ? 12 : undefined}
         title={<TitleWithPercentage title={t(titleI18n(groupBy ?? GroupBy.Model))} />}
         extra={
           <ActionIcon
@@ -121,6 +123,9 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveU
           ),
           precision: 0,
           value: formatNumber(iconList?.length ?? 0),
+          valueStyle: mobile
+            ? { fontSize: 20, lineHeight: 1.2, whiteSpace: 'nowrap' }
+            : undefined,
         }}
       />
       <ImperativeModal
@@ -133,6 +138,7 @@ const ActiveModels = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveU
       </ImperativeModal>
     </>
   );
-});
+  },
+);
 
 export default ActiveModels;

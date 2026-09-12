@@ -1,5 +1,5 @@
 import { GROUP_CHAT_TOPIC_URL, GROUP_CHAT_URL } from '@lobechat/const';
-import { type NewChatGroup } from '@lobechat/types';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, type NewChatGroup } from '@lobechat/types';
 
 import { chatGroupService } from '@/services/chatGroup';
 import { useChatStore } from '@/store/chat';
@@ -70,6 +70,14 @@ export class ChatGroupLifecycleAction {
   switchTopic = (topicId?: string | null) => {
     const { activeGroupId, router } = this.#get();
     if (!activeGroupId || !router) return;
+
+    if (this.#get().groupMap[activeGroupId]?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID) {
+      router.push(
+        `${GROUP_CHAT_URL(activeGroupId)}${topicId ? `#${encodeURIComponent(`topic:${topicId}`)}` : ''}`,
+        { replace: true },
+      );
+      return;
+    }
 
     // Update chat store's activeTopicId
     useChatStore.getState().switchTopic(topicId ?? undefined);

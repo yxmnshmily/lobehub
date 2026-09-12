@@ -11,7 +11,7 @@ import { useCategory } from './useCategory';
 const styles = createStaticStyles(({ css }) => ({
   groupTitle: css`
     padding-block: 16px 4px;
-    padding-inline: 16px;
+    padding-inline: 0;
 
     font-size: 12px;
     font-weight: 500;

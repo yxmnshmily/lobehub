@@ -1,3 +1,4 @@
+import { formatLocalizedTokens } from '@lobechat/utils/format';
 import type {
   HeteroSessionDigest,
   HeteroSessionImportSource,
@@ -14,11 +15,7 @@ export const dirKeyOf = (source: HeteroSessionImportSource, workingDirectory: st
 export const topicClientIdOf = (digest: HeteroSessionDigest) =>
   `${digest.source}-session-${digest.sessionId}`;
 
-export const fmtTokens = (n: number): string => {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${Math.round(n / 1000)}K`;
-  return String(n);
-};
+export const fmtTokens = formatLocalizedTokens;
 
 export const baseName = (dir: string) => dir.split('/').pop() ?? dir;
 

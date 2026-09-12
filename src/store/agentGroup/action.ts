@@ -211,6 +211,19 @@ class ChatGroupInternalAction implements ResetableStore {
           }
           this.#clearGroupNotFound(groupId);
 
+          // A late response may update its own cache, but must not activate another group's agent.
+          // Also restore the supervisor on cache hits before skipping unchanged detail below.
+          if (this.#get().activeGroupId === groupDetail.id && groupDetail.supervisorAgentId) {
+            getAgentStoreState().setActiveAgentId(groupDetail.supervisorAgentId);
+            if (useChatStore.getState().activeAgentId !== groupDetail.supervisorAgentId) {
+              useChatStore.setState(
+                { activeAgentId: groupDetail.supervisorAgentId },
+                false,
+                'syncActiveAgentIdFromAgentGroup',
+              );
+            }
+          }
+
           // Update groupMap with detailed group info including agents
           const currentGroup = this.#get().groupMap[groupDetail.id];
           if (isEqual(currentGroup, groupDetail)) return;
@@ -244,16 +257,6 @@ class ChatGroupInternalAction implements ResetableStore {
               // AgentGroupMember extends AgentItem which shares fields with LobeAgentConfig
               agentStore.internal_dispatchAgentMap(agent.id, agent as any);
             }
-          }
-
-          // Set activeAgentId to supervisor for correct model resolution in sendMessage
-          if (groupDetail.supervisorAgentId) {
-            agentStore.setActiveAgentId(groupDetail.supervisorAgentId);
-            useChatStore.setState(
-              { activeAgentId: groupDetail.supervisorAgentId },
-              false,
-              'syncActiveAgentIdFromAgentGroup',
-            );
           }
         },
       },

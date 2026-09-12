@@ -5,10 +5,19 @@ import { createTRPCErrorLogger } from '@/libs/trpc/utils/errorLogger';
 import { verifyRouter } from '@/server/routers/lambda/verify';
 import { FileService } from '@/server/services/file';
 import type * as VerifyServiceModule from '@/server/services/verify';
+import type * as VerifyLifecycleModule from '@/server/services/verify/lifecycle';
+import type * as VerifyTaskAcceptanceModule from '@/server/services/verify/taskAcceptance';
 
 const modelMocks = vi.hoisted(() => ({
   createEvidence: vi.fn(),
   createRun: vi.fn(),
+  createVerifierAgentRunner: vi.fn(),
+  executeVerify: vi.fn(),
+  finalizeVerifyRun: vi.fn(),
+  findOperationById: vi.fn(),
+  resolveDeliverable: vi.fn(),
+  resolveTaskAcceptance: vi.fn(),
+  resolveVerifyModelConfig: vi.fn(),
   deleteResult: vi.fn(),
   deleteRun: vi.fn(),
   findRunByOperation: vi.fn(),
@@ -51,9 +60,28 @@ vi.mock('@/database/models/verifyEvidence', () => ({
   })),
 }));
 
+vi.mock('@/server/services/verify/lifecycle', async (importOriginal) => ({
+  ...(await importOriginal<typeof VerifyLifecycleModule>()),
+  resolveVerificationDeliverable: modelMocks.resolveDeliverable,
+}));
+
+vi.mock('@/server/services/verify/taskAcceptance', async (importOriginal) => ({
+  ...(await importOriginal<typeof VerifyTaskAcceptanceModule>()),
+  resolveTaskAcceptance: modelMocks.resolveTaskAcceptance,
+}));
+
+vi.mock('@/database/models/agentOperation', () => ({
+  AgentOperationModel: vi.fn(() => ({ findById: modelMocks.findOperationById })),
+}));
+
 vi.mock('@/server/services/verify', async (importOriginal) => ({
   ...(await importOriginal<typeof VerifyServiceModule>()),
-  VerifyExecutorService: class VerifyExecutorService {},
+  createVerifierAgentRunner: modelMocks.createVerifierAgentRunner,
+  finalizeVerifyRun: modelMocks.finalizeVerifyRun,
+  resolveVerifyModelConfig: modelMocks.resolveVerifyModelConfig,
+  VerifyExecutorService: class VerifyExecutorService {
+    execute = modelMocks.executeVerify;
+  },
   VerifyFeedbackService: class VerifyFeedbackService {},
   VerifyPlanGeneratorService: class VerifyPlanGeneratorService {
     generateCriteria = modelMocks.generateCriteria;
@@ -95,6 +123,60 @@ describe('verifyRouter', () => {
           getFullFileUrl: modelMocks.getFullFileUrl,
         }) as any,
     );
+  });
+
+  describe('executeVerify', () => {
+    it('runs agent checks through a verifier sub-agent on the one resolved deliverable', async () => {
+      modelMocks.findOperationById.mockResolvedValue({
+        id: 'op-1',
+        model: 'gpt-5',
+        provider: 'openai',
+        taskId: 'task-1',
+        topicId: 'topic-1',
+      });
+      modelMocks.resolveDeliverable.mockResolvedValue('resolved-deliverable');
+      modelMocks.resolveTaskAcceptance.mockResolvedValue({ config: { verifierAgentId: 'agt-1' } });
+      modelMocks.resolveVerifyModelConfig.mockResolvedValue({
+        model: 'verify-safe-model',
+        provider: 'verify-safe-provider',
+      });
+      modelMocks.createVerifierAgentRunner.mockReturnValue(async () => null);
+
+      await createCaller().executeVerify({
+        deliverable: 'raw-deliverable',
+        goal: 'ship the board',
+        modelConfig: { model: 'cli-model', provider: 'codex' },
+        operationId: 'op-1',
+      });
+
+      // The runner must judge with the verify-safe model — a CLI `--provider codex`
+      // cannot run LobeHub LLM calls and used to fail every agent check.
+      expect(modelMocks.createVerifierAgentRunner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliverable: 'resolved-deliverable',
+          model: 'verify-safe-model',
+          provider: 'verify-safe-provider',
+          topicId: 'topic-1',
+        }),
+      );
+      // Agent checks are judged at all (the regression): no runner meant `errored`.
+      expect(modelMocks.executeVerify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliverable: 'resolved-deliverable',
+          runVerifierAgent: expect.any(Function),
+        }),
+      );
+      // Report judges the same text as the judges did.
+      expect(modelMocks.finalizeVerifyRun).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'op-1',
+        expect.objectContaining({
+          report: expect.objectContaining({ deliverable: 'resolved-deliverable' }),
+        }),
+        undefined,
+      );
+    });
   });
 
   describe('generateCriteria', () => {

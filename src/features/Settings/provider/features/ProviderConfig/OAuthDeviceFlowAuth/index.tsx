@@ -25,7 +25,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     /* matches the borderless form below so both boxes end on the same edge */
     width: 100%;
     max-width: ${MAX_WIDTH}px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
   `,
   codeBox: css`

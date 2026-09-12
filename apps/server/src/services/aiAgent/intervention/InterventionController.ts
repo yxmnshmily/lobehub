@@ -6,7 +6,6 @@ import {
 } from '@lobechat/heterogeneous-agents';
 import { ThreadStatus } from '@lobechat/types';
 import { isRecord } from '@lobechat/utils/object';
-import debug from 'debug';
 
 import {
   deriveAgentInterventionQueueDeduplicationId,
@@ -21,8 +20,7 @@ import type { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { deviceGateway } from '@/server/services/deviceGateway';
 
 import { STOPPED_TOOL_CONTENT } from '../helpers/agentFactory';
-
-const log = debug('lobe-server:ai-agent-service');
+import { aiAgentDebug as log } from '../safeDebug';
 
 interface InterventionControllerDeps {
   agentOperationModel: AgentOperationModel;

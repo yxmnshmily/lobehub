@@ -100,6 +100,47 @@ const createFixture = async () => {
 };
 
 describe('PlatformUserAccountAdministrationService', () => {
+  it('sets a hashed password, revokes sessions and never returns password material', async () => {
+    const fixture = await createFixture();
+    const password = 'New-password-12345';
+    expect(
+      await fixture.service.setPassword({
+        operationId: 'admin-set-password',
+        operatorUserId,
+        targetUserId,
+        password,
+      }),
+    ).toEqual({ id: targetUserId });
+    const accounts = await fixture.context.internalAdapter.findAccounts(targetUserId);
+    const credential = accounts.find((account) => account.providerId === 'credential');
+    expect(credential?.password).not.toBe(password);
+    expect(await fixture.context.password.verify({ hash: credential!.password!, password })).toBe(
+      true,
+    );
+    expect(fixture.revokeUser).toHaveBeenCalled();
+  });
+
+  it('rejects self-targeting and short administrator passwords', async () => {
+    const fixture = await createFixture();
+    await expect(
+      fixture.service.setPassword({
+        operationId: 'invalid-password',
+        operatorUserId,
+        targetUserId,
+        password: 'short',
+      }),
+    ).rejects.toThrow();
+    await expect(
+      fixture.service.setPassword({
+        operationId: 'self-password',
+        operatorUserId,
+        targetUserId: operatorUserId,
+        password: 'New-password-12345',
+      }),
+    ).rejects.toThrow();
+    expect(fixture.revokeUser).not.toHaveBeenCalled();
+  });
+
   it('forwards the audit envelope through its default session revocation dependency', async () => {
     const fixture = await createFixture();
     const operationId = 'platform-account-default-revocation-audit';

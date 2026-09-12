@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   kvRow: css`
     display: flex;
     align-items: stretch;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     &:not(:last-child) {

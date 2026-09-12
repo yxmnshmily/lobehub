@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     margin-block-start: ${cssVar.marginXS};
     padding: ${cssVar.padding};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background-color: ${cssVar.colorBgContainer};
@@ -33,7 +33,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     margin-block-start: ${cssVar.margin};
     padding-block-start: ${cssVar.paddingXS};
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   markdown: css`
     p {

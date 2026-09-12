@@ -74,7 +74,8 @@ export const PageAgentProvider = memo<PageAgentProviderProps>(
         );
       }
 
-      if (syncedAgentIdRef.current === selectedAgentId && syncedPageIdRef.current === pageId) return;
+      if (syncedAgentIdRef.current === selectedAgentId && syncedPageIdRef.current === pageId)
+        return;
       syncedAgentIdRef.current = selectedAgentId;
       syncedPageIdRef.current = pageId;
 

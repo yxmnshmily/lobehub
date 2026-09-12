@@ -20,7 +20,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   container: css`
     width: 100%;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: 12px;
     background: ${cssVar.colorBgContainer};
   `,

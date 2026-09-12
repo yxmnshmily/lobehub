@@ -174,7 +174,7 @@ const SettingContent = memo<SettingContentProps>(({ initialValues, id }) => {
       </Form>
       <ModalFooter
         style={{
-          borderBlockStart: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderBlockStart: `0.5px solid ${cssVar.colorBorderSecondary}`,
           marginTop: 16,
           padding: 0,
         }}

@@ -9,6 +9,7 @@ interface PageSizeOption {
 }
 
 interface PageSizeSelectProps {
+  ariaLabel?: string;
   className?: string;
   disabled?: boolean;
   onChange?: (value: number) => void;
@@ -18,8 +19,9 @@ interface PageSizeSelectProps {
 
 /** The "N / page" picker in the table footer. */
 const PageSizeSelect = memo<PageSizeSelectProps>(
-  ({ className, disabled, onChange, options, value }) => (
+  ({ ariaLabel, className, disabled, onChange, options, value }) => (
     <Select
+      aria-label={ariaLabel}
       className={className}
       disabled={disabled}
       size={'small'}

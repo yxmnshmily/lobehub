@@ -21,12 +21,16 @@ import { mobileAgentSettingsRouteMeta } from '@/features/RouteMeta/mobileRouteMe
 import WorkspaceProviderRedirect from '@/features/WorkspaceSetting/ProviderRedirect';
 import { agentRouteMeta } from '@/routes/(main)/agent/features/routeMeta';
 import {
+  groupMembersRouteMeta,
   groupPermissionRouteMeta,
   groupProfileRouteMeta,
   groupRouteMeta,
+  groupTopicsRouteMeta,
 } from '@/routes/(main)/group/features/routeMeta';
 import { loadRouteWithBuiltinToolSurfaces } from '@/spa/initialize/toolSurfaces';
 import { dynamicElement, dynamicLayout, ErrorBoundary, redirectElement } from '@/utils/router';
+
+import { groupProjectRoutes, groupWorkRoutes } from './desktopRouter.shared';
 
 const mobileChatElement = dynamicElement(
   () => loadRouteWithBuiltinToolSurfaces(() => import('@/routes/(mobile)/chat')),
@@ -111,6 +115,13 @@ export const sharedMainAreaChildren: RouteObject[] = [
   {
     children: [
       {
+        element: dynamicElement(
+          () => import('@/features/SuperGroup/DefaultGroupEntry'),
+          'Default Work Group',
+        ),
+        path: 'default',
+      },
+      {
         element: redirectElement('..'),
         index: true,
       },
@@ -137,6 +148,24 @@ export const sharedMainAreaChildren: RouteObject[] = [
             handle: { meta: groupPermissionRouteMeta },
             path: 'permission',
           },
+          {
+            element: dynamicElement(
+              () => import('@/features/SuperGroup/GroupMembersPage'),
+              'Mobile > Agent Group > Members',
+            ),
+            handle: { meta: groupMembersRouteMeta },
+            path: 'members',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/features/SuperGroup/GroupTopicsPage'),
+              'Mobile > Agent Group > Topics',
+            ),
+            handle: { meta: groupTopicsRouteMeta },
+            path: 'topics',
+          },
+          groupProjectRoutes,
+          ...groupWorkRoutes,
           {
             element: mobileGroupChatElement,
             handle: { meta: groupRouteMeta },
@@ -533,6 +562,64 @@ export const mobileRoutes: RouteObject[] = [
   {
     children: [
       ...sharedMainAreaChildren,
+
+      // Memory is a personal-center destination. Reuse the responsive memory
+      // surface on mobile so the sidebar entry and all of its tabs stay inside
+      // the app instead of falling through to the home redirect.
+      {
+        children: [
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/(home)'),
+              'Mobile > Memory > Home',
+              { preloadId: 'memory' },
+            ),
+            index: true,
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/identities'),
+              'Mobile > Memory > Identities',
+            ),
+            path: 'identities',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/contexts'),
+              'Mobile > Memory > Contexts',
+            ),
+            path: 'contexts',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/preferences'),
+              'Mobile > Memory > Preferences',
+            ),
+            path: 'preferences',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/experiences'),
+              'Mobile > Memory > Experiences',
+            ),
+            path: 'experiences',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/memory/activities'),
+              'Mobile > Memory > Activities',
+            ),
+            path: 'activities',
+          },
+        ],
+        element: dynamicLayout(
+          () => import('@/routes/(main)/memory/_layout'),
+          'Mobile > Memory > Layout',
+          { preloadId: 'memory' },
+        ),
+        errorElement: <ErrorBoundary />,
+        path: 'memory',
+      },
 
       // Apps page (personal-only — never mirrored under /:workspaceSlug)
       {

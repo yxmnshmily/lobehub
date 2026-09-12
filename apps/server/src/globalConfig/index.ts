@@ -140,6 +140,7 @@ export const getServerGlobalConfig = async () => {
     oAuthSSOProviders: getBetterAuthSSOProviders(),
     systemAgent: parseSystemAgent(appEnv.SYSTEM_AGENT),
     telemetry: {
+      disabled: appEnv.TELEMETRY_DISABLED,
       langfuse: langfuseEnv.ENABLE_LANGFUSE,
     },
     // The client-driven chat path generates tool names in the browser, so the

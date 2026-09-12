@@ -1,30 +1,26 @@
 import { isDesktop } from '@lobechat/const';
-import { Avatar } from '@lobehub/ui/base-ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
 import {
   AppWindowIcon,
   BellIcon,
   Blocks,
   Brain,
-  BrainCircuit,
   ChartColumnBigIcon,
   Coins,
   CreditCard,
   Database,
   EllipsisIcon,
   EthernetPort,
-  FileClock,
   FlaskConical,
   FolderKanban,
   Gift,
-  Info,
   KeyboardIcon,
   KeyIcon,
   KeyRound,
-  Map,
   MessageCircleIcon,
   MonitorSmartphoneIcon,
   PaletteIcon,
+  Shapes,
   ShieldCheck,
   Sparkles,
   TagIcon,
@@ -35,8 +31,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { lambdaQuery } from '@/libs/trpc/client';
-import { useElectronStore } from '@/store/electron';
-import { electronSyncSelectors } from '@/store/electron/selectors';
 import { SettingsTabs } from '@/store/global/initialState';
 import {
   featureFlagsSelectors,
@@ -45,8 +39,8 @@ import {
 } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors } from '@/store/user/selectors';
-import { userProfileSelectors } from '@/store/user/slices/auth/selectors';
 import { userGeneralSettingsSelectors } from '@/store/user/slices/settings/selectors';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 export enum SettingsGroupKey {
   Account = 'account',
@@ -74,6 +68,7 @@ export interface CategoryGroup {
 }
 
 export const useCategory = (): CategoryGroup[] => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('setting');
   const { t: tAuth } = useTranslation('auth');
   const { t: tLabs } = useTranslation('labs');
@@ -81,55 +76,40 @@ export const useCategory = (): CategoryGroup[] => {
   const { data: isPlatformAdmin, isLoading: isPlatformAdminLoading } =
     lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
   const mobile = useServerConfigStore((s) => s.isMobile);
-  const { hideDocs, showApiKeyManage, showProvider } = useServerConfigStore(featureFlagsSelectors);
-  const [avatar, username] = useUserStore((s) => [
-    userProfileSelectors.userAvatar(s),
-    userProfileSelectors.nickName(s),
-  ]);
-  const remoteServerUrl = useElectronStore(electronSyncSelectors.remoteServerUrl);
+  const { showApiKeyManage, showProvider } = useServerConfigStore(featureFlagsSelectors);
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
   const enableOAuthApps = useUserStore(labPreferSelectors.enableOAuthApps);
   const enableBusinessFeatures = useServerConfigStore(serverConfigSelectors.enableBusinessFeatures);
-
-  const avatarUrl = useMemo(() => {
-    if (!avatar) return undefined;
-    if (isDesktop && avatar.startsWith('/') && remoteServerUrl) return remoteServerUrl + avatar;
-    return avatar;
-  }, [avatar, remoteServerUrl]);
 
   return useMemo(() => {
     const customerGroups: CategoryGroup[] = [
       {
         items: [
-          {
-            icon: avatarUrl ? <Avatar avatar={avatarUrl} shape={'square'} size={26} /> : undefined,
-            key: SettingsTabs.Profile,
-            label: username || tAuth('tab.profile'),
-          },
-          { icon: ShieldCheck, key: SettingsTabs.Security, label: '密码与安全' },
+          { icon: BellIcon, key: SettingsTabs.Notification, label: t('tab.notification') },
+          { icon: ShieldCheck, key: SettingsTabs.Security, label: translateTravel('密码与安全') },
         ],
         key: SettingsGroupKey.Account,
-        title: '账户',
+        title: translateTravel('账户'),
       },
       {
         items: [
-          { icon: Coins, key: SettingsTabs.Credits, label: 'Credits 余额' },
-          { icon: FileClock, key: SettingsTabs.Billing, label: 'Credits 明细与服务订单' },
+          { icon: CreditCard, key: SettingsTabs.Plans, label: translateTravel('套餐') },
           {
-            href: '/settings/credits?section=balance-usage',
+            href: '/settings/usage',
             icon: ChartColumnBigIcon,
             key: SettingsTabs.Usage,
-            label: 'Token 用量',
+            label: translateTravel('用量'),
           },
+          { icon: Coins, key: SettingsTabs.Credits, label: translateTravel('积分') },
           {
             href: '/settings/credits?section=my-creations',
             icon: FolderKanban,
             key: SettingsTabs.Works,
-            label: '本人生成记录',
+            label: translateTravel('本人生成记录'),
           },
         ],
         key: SettingsGroupKey.Service,
-        title: '旅行服务',
+        title: translateTravel('套餐费用'),
       },
     ];
 
@@ -137,16 +117,10 @@ export const useCategory = (): CategoryGroup[] => {
 
     const groups: CategoryGroup[] = [];
     const generalItems: CategoryItem[] = [
-      {
-        icon: avatarUrl ? <Avatar avatar={avatarUrl} shape={'square'} size={26} /> : undefined,
-        key: SettingsTabs.Profile,
-        label: username || tAuth('tab.profile'),
-      },
-      { icon: ChartColumnBigIcon, key: SettingsTabs.Stats, label: tAuth('tab.stats') },
       { icon: PaletteIcon, key: SettingsTabs.Appearance, label: t('tab.appearance') },
       { icon: MonitorSmartphoneIcon, key: SettingsTabs.Devices, label: t('tab.devices') },
       !mobile && { icon: KeyboardIcon, key: SettingsTabs.Hotkey, label: t('tab.hotkey') },
-      enableBusinessFeatures && {
+      {
         icon: BellIcon,
         key: SettingsTabs.Notification,
         label: t('tab.notification'),
@@ -157,10 +131,9 @@ export const useCategory = (): CategoryGroup[] => {
     if (enableBusinessFeatures) {
       groups.push({
         items: [
-          { icon: Map, key: SettingsTabs.Plans, label: tSubscription('tab.plans') },
+          { icon: CreditCard, key: SettingsTabs.Plans, label: tSubscription('tab.plans') },
           { icon: ChartColumnBigIcon, key: SettingsTabs.Usage, label: t('tab.usage') },
           { icon: Coins, key: SettingsTabs.Credits, label: tSubscription('tab.credits') },
-          { icon: CreditCard, key: SettingsTabs.Billing, label: tSubscription('tab.billing') },
           { icon: Gift, key: SettingsTabs.Referral, label: tSubscription('tab.referral') },
         ],
         key: SettingsGroupKey.Subscription,
@@ -175,9 +148,12 @@ export const useCategory = (): CategoryGroup[] => {
         { icon: SkillsIcon, key: SettingsTabs.Skill, label: t('tab.skill') },
         { icon: TagIcon, key: SettingsTabs.Labels, label: t('tab.labels') },
         { icon: Blocks, key: SettingsTabs.Connector, label: t('tab.connector') },
-        { icon: BrainCircuit, key: SettingsTabs.Memory, label: t('tab.memory') },
-        { icon: KeyRound, key: SettingsTabs.Creds, label: t('tab.creds') },
-        showApiKeyManage && { icon: KeyIcon, key: SettingsTabs.APIKey, label: tAuth('tab.apikey') },
+        {
+          href: '/community',
+          icon: Shapes,
+          key: SettingsTabs.Community,
+          label: t('tab.community', { ns: 'common' }),
+        },
         { icon: MessageCircleIcon, key: SettingsTabs.Messenger, label: t('tab.messenger') },
       ].filter(Boolean) as CategoryItem[],
       key: SettingsGroupKey.Agent,
@@ -186,53 +162,59 @@ export const useCategory = (): CategoryGroup[] => {
 
     groups.push({
       items: [
-        isDesktop && { icon: EthernetPort, key: SettingsTabs.Proxy, label: t('tab.proxy') },
-        isDesktop && {
-          icon: TerminalSquare,
-          key: SettingsTabs.SystemTools,
-          label: t('tab.systemTools'),
+        {
+          icon: EllipsisIcon,
+          key: SettingsTabs.Advanced,
+          label: t('tab.advanced.toolsAndDiagnostics.title'),
         },
-        { icon: Database, key: SettingsTabs.Storage, label: t('tab.storage') },
-        !hideDocs && { icon: Info, key: SettingsTabs.About, label: t('tab.about') },
-      ].filter(Boolean) as CategoryItem[],
-      key: SettingsGroupKey.System,
-      title: t('group.system'),
-    });
-
-    groups.push({
-      items: [
-        { icon: EllipsisIcon, key: SettingsTabs.Advanced, label: t('tab.advanced') },
-        isDevMode && { icon: KeyIcon, key: SettingsTabs.APIKey, label: tAuth('tab.apikey') },
+        { icon: KeyRound, key: SettingsTabs.Creds, label: t('tab.creds') },
+        (showApiKeyManage || isDevMode) && {
+          icon: KeyIcon,
+          key: SettingsTabs.APIKey,
+          label: tAuth('tab.apikey'),
+        },
         enableOAuthApps && {
           icon: AppWindowIcon,
           key: SettingsTabs.OAuthApps,
           label: tAuth('tab.oauthApps'),
         },
         { icon: FlaskConical, key: SettingsTabs.Labs, label: tLabs('title') },
+        { icon: Database, key: SettingsTabs.Storage, label: t('tab.storage') },
+        isDesktop && { icon: EthernetPort, key: SettingsTabs.Proxy, label: t('tab.proxy') },
+        isDesktop && {
+          icon: TerminalSquare,
+          key: SettingsTabs.SystemTools,
+          label: t('tab.systemTools'),
+        },
       ].filter(Boolean) as CategoryItem[],
       key: SettingsGroupKey.Developer,
-      title: t('group.developer'),
+      title: t('tab.advanced'),
     });
 
     groups.push({
       items: [
         {
+          href: '/settings/content-moderation',
+          icon: ShieldCheck,
+          key: SettingsTabs.ContentModeration,
+          label: translateTravel('内容审核'),
+        },
+        {
           href: '/settings/service-operations',
           icon: Users,
           key: SettingsTabs.ServiceOperations,
-          label: '服务运营 / 客户账户',
+          label: translateTravel('账户管理'),
         },
       ],
       key: SettingsGroupKey.Operations,
-      title: '旅行服务管理',
+      title: translateTravel('用户后台管理'),
     });
 
     return groups;
   }, [
-    avatarUrl,
+    translateTravel,
     enableBusinessFeatures,
     enableOAuthApps,
-    hideDocs,
     isDevMode,
     isPlatformAdmin,
     isPlatformAdminLoading,
@@ -243,6 +225,5 @@ export const useCategory = (): CategoryGroup[] => {
     tAuth,
     tLabs,
     tSubscription,
-    username,
   ]);
 };

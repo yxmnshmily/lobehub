@@ -9,8 +9,8 @@ import {
   type MessageActionSlot,
 } from '../../components/MessageActionBar';
 
-const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['copy'];
-const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy'];
+const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['copy', 'download'];
+const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy', 'download'];
 const DEFAULT_MENU: MessageActionSlot[] = [
   'edit',
   'copy',

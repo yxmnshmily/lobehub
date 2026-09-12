@@ -13,7 +13,6 @@ import {
   getActivePluginIds,
   getWorkingDirEffectivePath,
 } from '@lobechat/types';
-import debug from 'debug';
 
 import type { AgentModel } from '@/database/models/agent';
 import { AgentSkillModel } from '@/database/models/agentSkill';
@@ -33,13 +32,13 @@ import { FileService } from '@/server/services/file';
 
 import { pruneRegeneratedBranch } from '../pruneRegeneratedBranch';
 import { resolveDeviceWorkingDirectoryConfig } from '../resolveDeviceWorkingDirectory';
+import { aiAgentDebug as log } from '../safeDebug';
 import { applyShareGateToToolSet, filterPluginsByShareGate } from '../shareGate';
 import type { ExecRunContext, InternalExecAgentParams, ResolvedWorkspaceInit } from '../types';
 import { isWorkspaceCacheFresh, upsertWorkspaceScan } from '../workspaceInitCache';
+import { pruneUnansweredGroupTurns } from './historyCleanup';
 import type { ToolDiscoveryResult } from './toolDiscovery';
 import type { RunAttachments } from './turnSetup';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface HistoryLoaderInput {
   appContext?: InternalExecAgentParams['appContext'];
@@ -59,6 +58,7 @@ export const createHistoryMessagesLoader = (
   deps: {
     db: LobeChatDatabase;
     isShareVisitorRun: boolean;
+    groupTimeline?: boolean;
     messageModel: MessageModel;
     userId: string;
     workspaceId?: string;
@@ -89,7 +89,14 @@ export const createHistoryMessagesLoader = (
   // case that guard is ever bypassed or a future call site skips it — without
   // it, a non-share run pointed at a leaked visitor topicId would still load
   // the visitor's transcript into the owner's model context.
-  const historyQueryOptions = { allowShareVisitor: deps.isShareVisitorRun, postProcessUrl };
+  const historyQueryOptions = {
+    allowShareVisitor: deps.isShareVisitorRun,
+    // The supervisor coordinates the group timeline; a dispatched member must
+    // stay in its task/topic rather than importing the group's unrelated topic turns.
+    groupTimeline:
+      deps.groupTimeline && !deps.isShareVisitorRun && appContext?.orchestrationRole !== 'member',
+    postProcessUrl,
+  };
 
   return async () => {
     if (historyMessagesCache) return historyMessagesCache;
@@ -97,6 +104,7 @@ export const createHistoryMessagesLoader = (
     if (existingMessageIds.length > 0) {
       const messages = await deps.messageModel.query(
         {
+          groupId: appContext?.groupId,
           sessionId: appContext?.sessionId,
           threadId: appContext?.threadId,
           topicId: appContext?.topicId ?? undefined,
@@ -105,13 +113,14 @@ export const createHistoryMessagesLoader = (
       );
       const idSet = new Set(existingMessageIds);
       historyMessagesCache = messages.filter((msg) => idSet.has(msg.id));
-    } else if (appContext?.topicId) {
+    } else if (appContext?.topicId || (historyQueryOptions.groupTimeline && appContext?.groupId)) {
       // Follow-up message in existing topic: load all history for context.
       // Exclude the turn we just persisted above (`selfMessageIds`) — history
       // must be the PRIOR turns only; the current prompt is appended separately
       // as the in-memory `userMessage`, so leaving it in would double-count it.
       const messages = await deps.messageModel.query(
         {
+          groupId: appContext?.groupId,
           sessionId: appContext?.sessionId,
           threadId: appContext?.threadId,
           topicId: appContext?.topicId,
@@ -121,6 +130,10 @@ export const createHistoryMessagesLoader = (
       historyMessagesCache = messages.filter((msg) => !selfMessageIds.has(msg.id));
     } else {
       historyMessagesCache = [];
+    }
+
+    if (historyQueryOptions.groupTimeline) {
+      historyMessagesCache = pruneUnansweredGroupTurns(historyMessagesCache);
     }
 
     // ── Regenerate: drop the anchor user message's existing answer branch ──
@@ -1009,8 +1022,8 @@ export const prepareOperation = async (
   try {
     const expertiseModel = new ExpertiseModel(deps.db, deps.userId, deps.workspaceId);
     expertise = await buildExpertiseContextSnapshot(expertiseModel, expertiseAgentId);
-  } catch (error) {
-    console.error('Failed to build expertise snapshot for agent:', expertiseAgentId, error);
+  } catch {
+    log('execAgent: failed to build expertise snapshot');
   }
 
   return {

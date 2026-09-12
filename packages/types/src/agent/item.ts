@@ -175,6 +175,8 @@ export interface AgentItem {
   openingMessage?: string | null;
   openingQuestions?: string[];
   params?: any;
+  /** Sidebar pin state, including virtual agents displayed as group members. */
+  pinned?: boolean | null;
   plugins?: AgentPluginEntry[];
   /** Character sheet — traits and artwork; see {@link AgentProfile}. */
   profile?: AgentProfile | null;

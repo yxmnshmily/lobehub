@@ -7,8 +7,10 @@ import { initializeServerAnalytics } from '@/libs/analytics';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { FileS3 } from '@/server/modules/S3';
 
+import { grantRegistrationCredits } from './registrationCredits';
 import { initTravelServiceAccount } from './travelServiceAccount';
 import {
+  backfillDefaultTravelGroupSupervisorProfile,
   buildDefaultTravelServiceGroupRepairPlan,
   checkDefaultTravelServiceGroup,
   executeDefaultTravelServiceGroupRepairPlan,
@@ -45,6 +47,7 @@ export class UserService {
   }
 
   async initUser(user: CreatedUser) {
+    await grantRegistrationCredits(this.db, user.id);
     let travelAccountReady = false;
     try {
       await initTravelServiceAccount(this.db, user.id);
@@ -87,10 +90,14 @@ export class UserService {
   }
 
   async ensureTravelServiceReady(userId: string) {
+    await grantRegistrationCredits(this.db, userId);
     const current = await checkDefaultTravelServiceGroup(this.db, userId);
     if (current.accessState && current.accessState !== 'active') return current;
 
     if (current.ready) {
+      if (current.groupId) {
+        await backfillDefaultTravelGroupSupervisorProfile(this.db, userId, current.groupId);
+      }
       await initTravelServiceAccount(this.db, userId);
       return current;
     }

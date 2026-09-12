@@ -53,7 +53,7 @@ export interface DeviceTransportFailure {
 /** What the failed hop was carrying, used to open the sentence. */
 export type DeviceTransportOperation = 'tool call' | 'message API call' | 'RPC call' | 'agent run';
 
-const RECONNECT_HINT = `Tell the user to check that the LobeHub desktop app (or the \`lh\` CLI) is running and shows as connected.`;
+const RECONNECT_HINT = `Tell the user to check that the 旅游群 desktop app (or the \`lh\` CLI) is running and shows as connected.`;
 
 const describeStatus = (
   status: number,

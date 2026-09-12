@@ -56,6 +56,7 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     container_name: lobe-rustfs
+    restart: always
     network_mode: 'service:network-service'
     environment:
       - RUSTFS_CONSOLE_ENABLE=true

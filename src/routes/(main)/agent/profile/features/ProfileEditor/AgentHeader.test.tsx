@@ -233,14 +233,12 @@ describe('AgentHeader', () => {
     expect(view.container.textContent).not.toContain('settingAgent.personalName.placeholder');
   });
 
-  // The headline is the NAME slot. Borrowing the role printed it twice, since
-  // the role already has its own line right below.
-  it('does not borrow the role for the headline', () => {
+  it('shows the legacy title fallback only once', () => {
     mocks.permissionState.allowed = true;
     mocks.agentStoreState.agentMap = { 'agent-a': { slug: 'inbox', title: 'Lobe AI' } };
     const view = render(<AgentHeader />);
 
-    // Exactly once: on the role line, never as the headline.
+    // The role used as the legacy headline must not repeat on the secondary line.
     expect(view.container.textContent?.match(/Lobe AI/g)).toHaveLength(1);
   });
 
@@ -321,7 +319,7 @@ describe('AgentHeader', () => {
   // that fixes it — not a placeholder dressed up as a name.
   it('gives the headline slot to the naming prompt while unnamed', () => {
     mocks.permissionState.allowed = true;
-    mocks.agentStoreState.agentMap = { 'agent-a': { slug: 'inbox', title: 'Lobe AI' } };
+    mocks.agentStoreState.agentMap = { 'agent-a': { slug: 'inbox', title: '' } };
     const view = render(<AgentHeader />);
 
     expect(view.container.textContent).toContain('settingAgent.personalName.unnamed');
@@ -333,7 +331,7 @@ describe('AgentHeader', () => {
   // Read-only viewers get the plain label — an action they cannot take would be
   // worse than a stated absence.
   it('falls back to the unnamed label when edits are not allowed', () => {
-    mocks.agentStoreState.agentMap = { 'agent-a': { slug: 'inbox', title: 'Lobe AI' } };
+    mocks.agentStoreState.agentMap = { 'agent-a': { slug: 'inbox', title: '' } };
     const view = render(<AgentHeader />);
 
     expect(view.container.textContent).toContain('settingAgent.identity.untitled');
@@ -351,6 +349,15 @@ describe('AgentHeader', () => {
     expect(view.container.textContent).toContain('settingAgent.identity.edit');
   });
 
+  it('shows a legacy title-only identity instead of claiming the member is unnamed', () => {
+    mocks.permissionState.allowed = true;
+    mocks.agentStoreState.agentMap = { 'agent-a': { title: '旅游群', slug: 'inbox' } };
+    const view = render(<AgentHeader />);
+    expect(view.container.textContent).toContain('旅游群');
+    expect(view.container.textContent).not.toContain('settingAgent.personalName.unnamed');
+    expect(view.container.textContent).toContain('settingAgent.identity.edit');
+  });
+
   it('states the role is unset instead of leaving a bare slug', () => {
     mocks.permissionState.allowed = true;
     mocks.agentStoreState.agentMap = { 'agent-a': { name: '思远', slug: 'belong-pot-women' } };
@@ -362,7 +369,7 @@ describe('AgentHeader', () => {
 
   it('offers one-click naming for an agent with no name', async () => {
     mocks.permissionState.allowed = true;
-    mocks.agentStoreState.agentMap = { 'agent-a': { title: 'Health Assistant' } };
+    mocks.agentStoreState.agentMap = { 'agent-a': { title: '' } };
     mocks.sidebarAgents = [
       { id: 'agent-a', name: null },
       { id: 'agent-b', name: 'Alice' },

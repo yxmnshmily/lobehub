@@ -16,6 +16,12 @@ const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const SIBLINGS = 1;
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
+  controls: css`
+    @media (max-width: 575.98px) {
+      flex-shrink: 0;
+      min-width: max-content;
+    }
+  `,
   ellipsis: css`
     min-width: 24px;
     color: ${cssVar.colorTextQuaternary};
@@ -24,12 +30,34 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   root: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+
+    @media (max-width: 575.98px) {
+      overflow-x: auto;
+      min-width: 0;
+      overscroll-behavior-inline: contain;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
   `,
   total: css`
     font-size: 13px;
     font-variant-numeric: tabular-nums;
     color: ${cssVar.colorTextSecondary};
+
+    @media (max-width: 575.98px) {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+  `,
+  touchTarget: css`
+    @media (max-width: 575.98px) {
+      min-block-size: 36px !important;
+      min-inline-size: 36px !important;
+    }
   `,
 }));
 
@@ -107,8 +135,10 @@ const TablePagination = memo<TablePaginationProps>(
             total: formatIntergerNumber(total),
           })}
         </span>
-        <Flexbox horizontal align={'center'} gap={4}>
+        <Flexbox horizontal align={'center'} className={styles.controls} gap={4}>
           <PageSizeSelect
+            ariaLabel={t('table.pagination.perPage', { size: pageSize })}
+            className={styles.touchTarget}
             value={pageSize}
             options={pageSizeOptions.map((size) => ({
               label: t('table.pagination.perPage', { size }),
@@ -123,6 +153,7 @@ const TablePagination = memo<TablePaginationProps>(
           />
           <Button
             aria-label={t('table.pagination.prev')}
+            className={styles.touchTarget}
             disabled={page <= 1}
             icon={ChevronLeft}
             size={'small'}
@@ -132,6 +163,8 @@ const TablePagination = memo<TablePaginationProps>(
           {getPageItems(page, totalPages).map((item) =>
             typeof item === 'number' ? (
               <Button
+                aria-current={item === page ? 'page' : undefined}
+                className={styles.touchTarget}
                 key={item}
                 size={'small'}
                 type={item === page ? 'fill' : 'text'}
@@ -147,6 +180,7 @@ const TablePagination = memo<TablePaginationProps>(
           )}
           <Button
             aria-label={t('table.pagination.next')}
+            className={styles.touchTarget}
             disabled={page >= totalPages}
             icon={ChevronRight}
             size={'small'}

@@ -2,13 +2,14 @@
 
 import type { TopicIssue } from '@lobechat/conversation-flow';
 import { Flexbox, Icon } from '@lobehub/ui';
-import { Button, Skeleton, Text, toast, useModalContext } from '@lobehub/ui/base-ui';
+import { Button, Text, toast, useModalContext } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { CircleAlert, CircleCheck, EyeOff, Stethoscope } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { messageService } from '@/services/message';
 import { useChatStore } from '@/store/chat';
 
@@ -20,7 +21,7 @@ export interface TopicDoctorContentProps {
 const styles = createStaticStyles(({ css }) => ({
   issue: css`
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
   `,
 }));
@@ -36,7 +37,7 @@ const TopicDoctorContent = memo<TopicDoctorContentProps>(({ agentId, topicId }) 
     messageService.diagnoseTopic({ agentId, topicId }),
   );
 
-  if (isLoading) return <Skeleton.Text rows={3} />;
+  if (isLoading) return <SkeletonText rows={3} />;
 
   // Without this the check failing would leave the skeleton up forever: SWR clears `isLoading`
   // but never produces `data`, so a `!data` skeleton has no way back.

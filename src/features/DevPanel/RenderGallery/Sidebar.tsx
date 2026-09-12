@@ -26,7 +26,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 260px;
     height: 100%;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,

@@ -1,10 +1,10 @@
 import { BotIcon } from 'lucide-react';
 
-import { createSurfaceSkeleton } from '@/components/Skeleton/Surface';
+import MembersSkeleton from '@/components/Skeleton/Members';
 import { routeMeta } from '@/spa/router/routeMeta';
 
 export const agentsRouteMeta = routeMeta({
   icon: BotIcon,
-  Skeleton: createSurfaceSkeleton('grid'),
+  Skeleton: MembersSkeleton,
   titleKey: 'navigation.agents',
 });

@@ -122,7 +122,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px;
     padding-inline: 14px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};

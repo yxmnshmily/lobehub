@@ -1792,7 +1792,7 @@ describe('website AI routes', () => {
       });
 
     let responseSettled = false;
-    const responsePromise = request().then((response) => {
+    const responsePromise = Promise.resolve(request()).then((response) => {
       responseSettled = true;
       return response;
     });
@@ -2604,7 +2604,10 @@ describe('website AI routes', () => {
     const client = createContractClient();
 
     await expect(
-      client.submit({ prompt: '协议错误用例', signal: undefined, topicId: undefined }, () => {}),
+      client.submit(
+        { maxCredits: undefined, prompt: '协议错误用例', signal: undefined, topicId: undefined },
+        () => {},
+      ),
     ).rejects.toMatchObject(expected);
   });
 
@@ -2613,7 +2616,10 @@ describe('website AI routes', () => {
     const client = createContractClient();
 
     await expect(
-      client.submit({ prompt: '账号不可用', signal: undefined, topicId: undefined }, () => {}),
+      client.submit(
+        { maxCredits: undefined, prompt: '账号不可用', signal: undefined, topicId: undefined },
+        () => {},
+      ),
     ).rejects.toMatchObject({
       code: 'AUTH_REQUIRED',
       message: '请先登录统一账号后继续。',
@@ -2657,7 +2663,12 @@ describe('website AI routes', () => {
     const events: unknown[] = [];
 
     await client.submit(
-      { prompt: '同时制作文案、图片和文档', signal: undefined, topicId: undefined },
+      {
+        maxCredits: undefined,
+        prompt: '同时制作文案、图片和文档',
+        signal: undefined,
+        topicId: undefined,
+      },
       (event: unknown) => {
         events.push(event);
         display.apply(event);
@@ -2710,7 +2721,7 @@ describe('website AI routes', () => {
     const events: unknown[] = [];
 
     await client.submit(
-      { prompt: '中断用例', signal: undefined, topicId: undefined },
+      { maxCredits: undefined, prompt: '中断用例', signal: undefined, topicId: undefined },
       (event: unknown) => {
         events.push(event);
         display.apply(event);
@@ -2800,7 +2811,7 @@ describe('website AI routes', () => {
     const events: unknown[] = [];
 
     await client.submit(
-      { prompt: '制作桂林行程', signal: undefined, topicId: undefined },
+      { maxCredits: undefined, prompt: '制作桂林行程', signal: undefined, topicId: undefined },
       (event: unknown) => events.push(event),
     );
 

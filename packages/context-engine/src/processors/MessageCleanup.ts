@@ -7,6 +7,8 @@ declare module '../types' {
   interface PipelineContextMetadataOverrides {
     messageCleanup?: {
       cleanedCount: number;
+      /** Aligned with cleaned messages; internal identity map, never provider payload. */
+      sourceMessageIds: (string | undefined)[];
       totalMessages: number;
     };
   }
@@ -29,6 +31,7 @@ export class MessageCleanupProcessor extends BaseProcessor {
     const clonedContext = this.cloneContext(context);
 
     let cleanedCount = 0;
+    const sourceMessageIds = clonedContext.messages.map((message) => message.id);
 
     // Clean each message, keeping only necessary fields
     for (let i = 0; i < clonedContext.messages.length; i++) {
@@ -44,6 +47,7 @@ export class MessageCleanupProcessor extends BaseProcessor {
     // Update metadata
     clonedContext.metadata.messageCleanup = {
       cleanedCount,
+      sourceMessageIds,
       totalMessages: clonedContext.messages.length,
     };
 

@@ -50,7 +50,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
   `,
   headerDivider: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   identifier: css`
     flex-shrink: 0;

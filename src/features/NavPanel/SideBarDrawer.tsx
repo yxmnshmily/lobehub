@@ -6,6 +6,7 @@ import { createStaticStyles } from 'antd-style';
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { memo, Suspense, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
 
@@ -28,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgLayout};
   `,
   panel: css`
-    border-inline: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgLayout};
     box-shadow: 4px 0 8px -2px rgb(0 0 0 / 4%);
   `,
@@ -51,6 +52,7 @@ interface SideBarDrawerProps {
 
 const SideBarDrawer = memo<SideBarDrawerProps>(
   ({ subHeader, open, onClose, children, title, action, width = DRAWER_WIDTH }) => {
+    const { t } = useTranslation('common');
     const [overlayContainer, setOverlayContainer] = useState<HTMLDivElement | null>(null);
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
@@ -77,6 +79,17 @@ const SideBarDrawer = memo<SideBarDrawerProps>(
               placement={'left'}
               ref={setOverlayContainer}
               width={width}
+              popupStyle={
+                !portalContainer
+                  ? {
+                      position: 'fixed',
+                      insetInlineStart: 8,
+                      top: 'calc(var(--site-header-height, 0px) + 8px)',
+                      height: 'calc(100dvh - var(--site-header-height, 0px) - 16px)',
+                      maxWidth: 'calc(100vw - 16px)',
+                    }
+                  : undefined
+              }
             >
               <SideBarHeaderLayout
                 showBack={false}
@@ -99,6 +112,7 @@ const SideBarDrawer = memo<SideBarDrawerProps>(
                   <>
                     {action}
                     <ActionIcon
+                      aria-label={t('close')}
                       icon={XIcon}
                       size={DESKTOP_HEADER_ICON_SMALL_SIZE}
                       style={{ marginInlineEnd: -2 }}

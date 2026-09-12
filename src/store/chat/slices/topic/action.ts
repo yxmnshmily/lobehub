@@ -6,7 +6,12 @@ import {
   TOPIC_TITLE_JSON_SCHEMA,
   TOPIC_TITLE_PROMPT_VERSION,
 } from '@lobechat/prompts';
-import { type ChatTopicMetadata, type MessageMapScope, type UIChatMessage } from '@lobechat/types';
+import {
+  type ChatTopicMetadata,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+  type MessageMapScope,
+  type UIChatMessage,
+} from '@lobechat/types';
 import { toast } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { t } from 'i18next';
@@ -21,6 +26,7 @@ import { type GitLinkedPRSummary, gitService } from '@/services/git';
 import { messageService } from '@/services/message';
 import type { TopicBatchDeleteScope } from '@/services/topic';
 import { topicService } from '@/services/topic';
+import { useAgentGroupStore } from '@/store/agentGroup';
 import { type ChatStore } from '@/store/chat';
 import { evictMessageCache } from '@/store/chat/utils/evictMessageCache';
 import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
@@ -176,6 +182,13 @@ export class ChatTopicActionImpl {
   };
 
   openNewTopicOrSaveTopic = async (): Promise<void> => {
+    const groupId = this.#get().activeGroupId;
+    if (
+      groupId &&
+      useAgentGroupStore.getState().groupMap[groupId]?.clientId ===
+        DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID
+    )
+      return;
     const { switchTopic, saveToTopic, refreshMessages, activeTopicId } = this.#get();
     const hasTopic = !!activeTopicId;
 

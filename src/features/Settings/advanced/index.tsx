@@ -3,13 +3,14 @@
 import { isDesktop } from '@lobechat/const';
 import { type FormGroupItemType, type FormItemProps } from '@lobehub/ui';
 import { Form, Icon } from '@lobehub/ui';
-import { Select, Skeleton, Switch } from '@lobehub/ui/base-ui';
+import { Select, Switch } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Loader2Icon } from 'lucide-react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import SettingHeader from '@/features/Settings/features/SettingHeader';
@@ -29,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
 }));
 
-const Page = memo(() => {
+const Page = memo(({ showSettingHeader = true }: { showSettingHeader?: boolean }) => {
   const { t } = useTranslation('setting');
 
   const general = useUserStore((s) => settingsSelectors.currentSettings(s).general, isEqual);
@@ -83,7 +84,7 @@ const Page = memo(() => {
           onRetry={() => refreshUserState()}
         />
       );
-    return <Skeleton.Text rows={5} />;
+    return <SkeletonText rows={5} />;
   }
 
   const advancedGroup: FormGroupItemType = {
@@ -152,7 +153,7 @@ const Page = memo(() => {
 
   return (
     <>
-      <SettingHeader title={t('tab.advanced')} />
+      {showSettingHeader && <SettingHeader title={t('tab.advanced')} />}
       <Form
         collapsible={false}
         initialValues={general}

@@ -124,9 +124,9 @@ const EmailRow = () => {
       label={t('profile.email')}
       action={
         !isEditing && (
-          <Text style={{ cursor: 'pointer', fontSize: 13 }} onClick={handleStartEdit}>
+          <Button size="small" onClick={handleStartEdit}>
             {t('profile.updateEmail')}
-          </Text>
+          </Button>
         )
       }
     >

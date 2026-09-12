@@ -18,7 +18,7 @@ const GOAL_COLLAPSED_STORAGE_KEY = 'lobehub-acceptance-goal-collapsed';
 const styles = createStaticStyles(({ css }) => ({
   card: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
 
@@ -144,7 +144,7 @@ const AcceptanceGoal = ({ editSlot, reportSlot }: AcceptanceGoalProps) => {
         <Flexbox
           gap={8}
           paddingBlock={'12px 0'}
-          style={{ borderBlockStart: `1px solid ${cssVar.colorBorderSecondary}` }}
+          style={{ borderBlockStart: `0.5px solid ${cssVar.colorBorderSecondary}` }}
         >
           <Flexbox horizontal align={'center'} gap={8}>
             <Text fontSize={12} type={'secondary'}>

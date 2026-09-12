@@ -48,7 +48,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   configPanel: css`
     padding: 24px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillQuaternary};
   `,

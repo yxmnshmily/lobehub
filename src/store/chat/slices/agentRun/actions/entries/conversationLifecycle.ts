@@ -449,6 +449,23 @@ export class ConversationLifecycleActionImpl {
       workspaceId: agent?.workspaceId,
     });
     const isGatewayMode = this.#get().isGatewayModeEnabled(agentId);
+
+    // The managed travel group must execute with the platform credential that
+    // backs its credit balance. Deployments without Agent Gateway still expose
+    // the existing server SSE group transport, so use that path instead of
+    // falling through to the browser's BYOK provider and leaving a blank reply.
+    if (billing && context.groupId && !onlyAddUserMessage && !isGatewayMode) {
+      const accepted = await this.#get().sendGroupMessage({
+        billing,
+        context,
+        files,
+        message,
+      });
+      if (accepted) notifyMessagePersisted();
+      else onPreflightFailure?.();
+      return;
+    }
+
     // Legacy agents may only carry `model: '<cli-type>'`. Keep gateway routing
     // unchanged when it is available, but recover the provider before the
     // desktop-only local fallback so both runtime selection and the executor

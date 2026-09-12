@@ -41,6 +41,7 @@ export async function groupMemberCallback(c: Context): Promise<Response> {
     operationId,
     parentOperationId,
     reason,
+    replyToMessageId,
     threadId,
   } = body;
 
@@ -94,6 +95,7 @@ export async function groupMemberCallback(c: Context): Promise<Response> {
       operationId,
       parentOperationId,
       reason: reason ?? 'done',
+      replyToMessageId: replyToMessageId ?? undefined,
       threadId: threadId ?? undefined,
     });
 

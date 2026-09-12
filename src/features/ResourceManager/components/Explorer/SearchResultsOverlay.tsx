@@ -3,7 +3,7 @@
 import { Center, Flexbox } from '@lobehub/ui';
 import { Checkbox } from '@lobehub/ui/base-ui';
 import { VirtuosoMasonry } from '@virtuoso.dev/masonry';
-import { cssVar } from 'antd-style';
+import { cssVar, useResponsive } from 'antd-style';
 import { SearchIcon } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspace
 import AsyncError from '@/components/AsyncError';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
+import type { ViewMode } from '@/features/ResourceManager/store/initialState';
 import {
   getResourceQueryVisibility,
   getResourceSourceFilter,
@@ -25,6 +26,7 @@ import {
   DEFAULT_RESOURCE_MANAGER_COLUMN_WIDTHS,
   INITIAL_STATUS,
 } from '@/store/global/initialState';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import type { AsyncTaskStatus } from '@/types/asyncTask';
 import { type FileListItem, type ResourceSourceFilter } from '@/types/files';
 
@@ -34,8 +36,13 @@ import { getListViewMinWidth } from './ListView/ListItem/constants';
 import MasonryItemWrapper from './MasonryView/MasonryItem/MasonryItemWrapper';
 import { useMasonryColumnCount } from './useMasonryColumnCount';
 
+export const resolveSearchResultsViewMode = (viewMode: ViewMode, mobile: boolean): ViewMode =>
+  mobile ? 'masonry' : viewMode;
+
 const SearchResultsOverlay = memo(() => {
   const { t } = useTranslation('components');
+  const { mobile: responsiveMobile = false } = useResponsive();
+  const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
   const [searchQuery, libraryId, category, viewMode, listVisibility, sourceFilter] =
     useResourceManagerStore((s) => [
       s.searchQuery,
@@ -54,6 +61,10 @@ const SearchResultsOverlay = memo(() => {
     ...(s.status.resourceManagerColumnWidths || INITIAL_STATUS.resourceManagerColumnWidths),
   }));
   const columnCount = useMasonryColumnCount();
+  const effectiveViewMode = resolveSearchResultsViewMode(
+    viewMode,
+    responsiveMobile || runtimeMobile,
+  );
 
   const isActive = !!searchQuery && searchQuery.length > 0;
   // Personal account has only one uploader (the user themselves), so hide the
@@ -72,7 +83,7 @@ const SearchResultsOverlay = memo(() => {
       ? resourceKeys.search(
           {
             category: libraryId ? undefined : category,
-            includeContentPreview: viewMode === 'masonry',
+            includeContentPreview: effectiveViewMode === 'masonry',
             libraryId,
             q: searchQuery,
             // Search narrows the list the user is looking at, so it has to honour
@@ -179,7 +190,7 @@ const SearchResultsOverlay = memo(() => {
             </span>
           </Flexbox>
         </Center>
-      ) : viewMode === 'list' ? (
+      ) : effectiveViewMode === 'list' ? (
         <Flexbox height={'100%'}>
           <div style={{ flex: 1, overflow: 'auto hidden' }}>
             <Flexbox
@@ -187,7 +198,7 @@ const SearchResultsOverlay = memo(() => {
               align="center"
               paddingInline={8}
               style={{
-                borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`,
+                borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`,
                 color: cssVar.colorTextDescription as string,
                 fontSize: 12,
                 height: 40,

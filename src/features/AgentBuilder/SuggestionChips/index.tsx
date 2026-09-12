@@ -1,12 +1,13 @@
 'use client';
 
 import { Block, Flexbox } from '@lobehub/ui';
-import { ActionIcon, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { RefreshCw } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import SuggestQuestions, { type SuggestMode } from '@/features/SuggestQuestions';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
@@ -66,8 +67,8 @@ const ChipItem = memo<ChipItemProps>(({ title, prompt, index, tracingId, disable
 const ChipSkeleton = memo(() => (
   <Block style={{ borderRadius: cssVar.borderRadiusLG }} variant={'outlined'}>
     <Flexbox gap={8} paddingBlock={12} paddingInline={14}>
-      <Skeleton.Text fontSize={14} width={96} />
-      <Skeleton.Text rows={2} width={['100%', '60%']} />
+      <SkeletonText fontSize={14} width={96} />
+      <SkeletonText rows={2} width={['100%', '60%']} />
     </Flexbox>
   </Block>
 ));

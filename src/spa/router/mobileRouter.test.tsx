@@ -31,6 +31,37 @@ describe('mobileRouter agent share route', () => {
 });
 
 describe('mobileRouter task routes', () => {
+  it('registers the grouped settings home before workspace routes', () => {
+    const matches = matchRoutes(mobileRoutes, '/me/settings');
+
+    expect(matches, '/me/settings must match the mobile settings home').toBeTruthy();
+    expect(matches?.some(({ route }) => route.path === 'me')).toBe(true);
+    expect(matches?.at(-1)?.route.path).toBe('settings');
+    expect(matches?.at(-1)?.params.workspaceSlug).toBeUndefined();
+  });
+
+  it.each([
+    ['/memory', 'memory'],
+    ['/memory/identities', 'identities'],
+    ['/memory/contexts', 'contexts'],
+    ['/memory/preferences', 'preferences'],
+    ['/memory/experiences', 'experiences'],
+    ['/memory/activities', 'activities'],
+  ])('renders the mobile memory surface instead of the catch-all: %s', (pathname, expectedPath) => {
+    const matches = matchRoutes(mobileRoutes, pathname);
+
+    expect(matches, `${pathname} must match a route`).toBeTruthy();
+    expect(matches?.some(({ route }) => route.path === 'memory')).toBe(true);
+    expect(matches?.at(-1)?.route.path).toBe(expectedPath === 'memory' ? undefined : expectedPath);
+    expect(matches?.at(-1)?.route.path).not.toBe('*');
+  });
+
+  it('resolves group members as a page instead of a topic id', () => {
+    expect(matchRoutes(mobileRoutes, '/group/group-1/members')?.at(-1)?.route.path).toBe('members');
+  });
+  it('resolves group topics as a list page instead of a topic id', () => {
+    expect(matchRoutes(mobileRoutes, '/group/group-1/topics')?.at(-1)?.route.path).toBe('topics');
+  });
   it('keeps mobile navigation inside the /lobehub mount path', async () => {
     const source = await readFile(path.join(process.cwd(), 'src/spa/entry.mobile.tsx'), 'utf8');
 

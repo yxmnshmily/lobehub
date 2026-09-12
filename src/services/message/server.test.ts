@@ -23,6 +23,26 @@ describe('MessageService', () => {
   describe('getMessages', () => {
     const service = new MessageService();
 
+    it('isolates direct streaming refetches without dropping their read options', async () => {
+      vi.mocked(lambdaClient.message.getMessages.query).mockResolvedValue([]);
+      await service.getMessages({
+        agentId: 'a',
+        groupId: 'g',
+        topicId: 't',
+        isolatedTopic: true,
+        skipWorks: true,
+      });
+      expect(lambdaClient.message.getMessages.query).toHaveBeenCalledWith(
+        expect.objectContaining({
+          groupId: 'g',
+          topicId: 't',
+          topicOnly: true,
+          skipWorks: true,
+          includeFileWorks: true,
+        }),
+      );
+    });
+
     it('passes read parameters through without applying client cache policy', async () => {
       vi.mocked(lambdaClient.message.getMessages.query).mockResolvedValue([]);
       const params = {

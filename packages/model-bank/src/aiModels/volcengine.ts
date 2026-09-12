@@ -258,9 +258,9 @@ const doubaoChatModels: AIChatModelCard[] = [
     pricing: {
       currency: 'CNY',
       units: [
-        { name: 'textInput_cacheRead', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textInput', rate: 12, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textOutput', rate: 24, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 0.3, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput', rate: 9, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 27, strategy: 'fixed', unit: 'millionTokens' },
         { name: 'textInput_cacheWrite', rate: 0.017, strategy: 'fixed', unit: 'millionTokens' },
       ],
     },
@@ -292,9 +292,9 @@ const doubaoChatModels: AIChatModelCard[] = [
     pricing: {
       currency: 'CNY',
       units: [
-        { name: 'textInput_cacheRead', rate: 0.2, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textOutput', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 0.1, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput', rate: 3, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 9, strategy: 'fixed', unit: 'millionTokens' },
         { name: 'textInput_cacheWrite', rate: 0.017, strategy: 'fixed', unit: 'millionTokens' },
       ],
     },
@@ -353,7 +353,19 @@ const doubaoChatModels: AIChatModelCard[] = [
           strategy: 'lookup',
           unit: 'millionTokens',
         },
-        { name: 'textInput_cacheRead', rate: 0.64, strategy: 'fixed', unit: 'millionTokens' },
+        {
+          lookup: {
+            prices: {
+              '[0, 0.032]': 0.64,
+              '[0.032, 0.128]': 0.96,
+              '[0.128, 0.256]': 1.92,
+            },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textInput_cacheRead',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
         {
           lookup: { prices: { '1h': 0.017 }, pricingParams: ['ttl'] },
           name: 'textInput_cacheWrite',
@@ -417,7 +429,19 @@ const doubaoChatModels: AIChatModelCard[] = [
           strategy: 'lookup',
           unit: 'millionTokens',
         },
-        { name: 'textInput_cacheRead', rate: 0.12, strategy: 'fixed', unit: 'millionTokens' },
+        {
+          lookup: {
+            prices: {
+              '[0, 0.032]': 0.12,
+              '[0.032, 0.128]': 0.18,
+              '[0.128, 0.256]': 0.36,
+            },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textInput_cacheRead',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
         {
           lookup: { prices: { '1h': 0.017 }, pricingParams: ['ttl'] },
           name: 'textInput_cacheWrite',
@@ -481,7 +505,19 @@ const doubaoChatModels: AIChatModelCard[] = [
           strategy: 'lookup',
           unit: 'millionTokens',
         },
-        { name: 'textInput_cacheRead', rate: 0.04, strategy: 'fixed', unit: 'millionTokens' },
+        {
+          lookup: {
+            prices: {
+              '[0, 0.032]': 0.04,
+              '[0.032, 0.128]': 0.08,
+              '[0.128, 0.256]': 0.16,
+            },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textInput_cacheRead',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
         {
           lookup: { prices: { '1h': 0.017 }, pricingParams: ['ttl'] },
           name: 'textInput_cacheWrite',
@@ -545,7 +581,19 @@ const doubaoChatModels: AIChatModelCard[] = [
           strategy: 'lookup',
           unit: 'millionTokens',
         },
-        { name: 'textInput_cacheRead', rate: 0.64, strategy: 'fixed', unit: 'millionTokens' },
+        {
+          lookup: {
+            prices: {
+              '[0, 0.032]': 0.64,
+              '[0.032, 0.128]': 0.96,
+              '[0.128, 0.256]': 1.92,
+            },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textInput_cacheRead',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
         {
           lookup: { prices: { '1h': 0.017 }, pricingParams: ['ttl'] },
           name: 'textInput_cacheWrite',
@@ -766,6 +814,8 @@ const doubaoChatModels: AIChatModelCard[] = [
     description:
       'DeepSeek-V3.2 is the first hybrid reasoning model from DeepSeek that integrates thinking into tool usage. It uses efficient architecture to save computation, large-scale reinforcement learning to enhance capabilities, and large-scale synthetic task data to strengthen generalization. The combination of these three achieves performance comparable to GPT-5-High, with significantly reduced output length, notably decreasing computational overhead and user wait times.',
     displayName: 'DeepSeek V3.2',
+    // Retired: no per-token entry in Ark's online price table (checked 2026-09-10).
+    enabled: false,
     family: 'deepseek',
     generation: 'deepseek-v3.2',
     id: 'deepseek-v3.2',
@@ -832,7 +882,7 @@ const doubaoChatModels: AIChatModelCard[] = [
           lookup: {
             prices: {
               '[0, 0.032]': 0.8,
-              '[0.032, 0.128]': 2.4,
+              '[0.032, 0.128]': 1.2,
               '[0.128, infinity]': 4.8,
             },
             pricingParams: ['textInputRange'],
@@ -1010,6 +1060,8 @@ const doubaoChatModels: AIChatModelCard[] = [
     description:
       'Doubao-1.5-pro-256k is a comprehensive upgrade to Doubao-1.5-Pro, improving overall performance by 10%. It supports a 256k context window and up to 12k output tokens, delivering higher performance, a larger window, and strong value for broader use cases.',
     displayName: 'Doubao 1.5 Pro 256k',
+    // Retired: no per-token entry in Ark's online price table (checked 2026-09-10).
+    enabled: false,
     family: 'doubao',
     generation: 'doubao-1.5',
     id: 'doubao-1.5-pro-256k',
@@ -1082,6 +1134,8 @@ const doubaoChatModels: AIChatModelCard[] = [
     description:
       'Ultra-fast response with better value, offering more flexible choices across scenarios. Supports reasoning and fine-tuning with a 32k context window.',
     displayName: 'Doubao Lite 32k',
+    // Retired: no per-token entry in Ark's online price table (checked 2026-09-10).
+    enabled: false,
     family: 'doubao',
     id: 'doubao-lite-32k',
     maxOutput: 4096,
@@ -1102,6 +1156,8 @@ const doubaoChatModels: AIChatModelCard[] = [
     description:
       'The best-performing flagship model for complex tasks, with strong results in reference QA, summarization, creation, text classification, and roleplay. Supports reasoning and fine-tuning with a 32k context window.',
     displayName: 'Doubao Pro 32k',
+    // Retired: no per-token entry in Ark's online price table (checked 2026-09-10).
+    enabled: false,
     family: 'doubao',
     id: 'doubao-pro-32k',
     maxOutput: 4096,
@@ -1112,6 +1168,58 @@ const doubaoChatModels: AIChatModelCard[] = [
         { name: 'textOutput', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
       ],
     },
+    type: 'chat',
+  },
+  {
+    abilities: {
+      functionCall: true,
+    },
+    config: {
+      deploymentName: 'doubao-seed-character-260628',
+    },
+    description:
+      'Doubao Seed Character is ByteDance’s role-play model, tuned for consistent in-character dialogue across long sessions.',
+    displayName: 'Doubao Seed Character',
+    enabled: true,
+    family: 'doubao',
+    generation: 'doubao-character',
+    id: 'doubao-seed-character-260628',
+    pricing: {
+      currency: 'CNY',
+      // Ark prices input *and* output by input length (CNY per million tokens):
+      // [0, 32]k 0.80 in / 2.00 out, (32, 128]k 1.20 in / 6.00 out; cache hit 0.16
+      // flat, cache storage 0.017 per million tokens per hour. No context-window
+      // figure is published in the sources this was read from, so the card leaves
+      // it unset rather than guessing one.
+      units: [
+        {
+          lookup: {
+            prices: { '(0.032, 0.128]': 1.2, '[0, 0.032]': 0.8 },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textInput',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+        {
+          lookup: {
+            prices: { '(0.032, 0.128]': 6, '[0, 0.032]': 2 },
+            pricingParams: ['textInputRange'],
+          },
+          name: 'textOutput',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+        { name: 'textInput_cacheRead', rate: 0.16, strategy: 'fixed', unit: 'millionTokens' },
+        {
+          lookup: { prices: { '1h': 0.017 }, pricingParams: ['ttl'] },
+          name: 'textInput_cacheWrite',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+      ],
+    },
+    releasedAt: '2026-06-28',
     type: 'chat',
   },
 ];
@@ -1187,6 +1295,33 @@ const volcengineImageModels: AIImageModelCard[] = [
     releasedAt: '2025-09-09',
     type: 'image',
   },
+  {
+    description:
+      'Seedream 5.0 Pro is ByteDance’s highest-fidelity image model, supporting text-to-image, image editing and layer decomposition for design work.',
+    displayName: 'Seedream 5.0 Pro',
+    enabled: true,
+    id: 'doubao-seedream-5-0-pro-260628',
+    organization: 'ByteDance',
+    parameters: {
+      height: { default: 2048, max: 16_384, min: 480, step: 1 },
+      imageUrls: { default: [], maxCount: 10, maxFileSize: 10 * 1024 * 1024 },
+      prompt: { default: '' },
+      promptExtend: { default: 'off', enum: ['off', 'standard'] },
+      watermark: { default: false },
+      width: { default: 2048, max: 16_384, min: 480, step: 1 },
+    },
+    pricing: {
+      currency: 'CNY',
+      // Ark prices this model by output pixels and by scenario: single-image
+      // ≤2.61MP 0.30 (>2.61MP 0.60), layer decomposition 0.15 / 0.30, plus 0.02 per
+      // input image after the first free one. The card carries the default
+      // single-image tier — the pixel/scenario split needs a pricing param the
+      // image path does not supply yet.
+      units: [{ name: 'imageGeneration', rate: 0.3, strategy: 'fixed', unit: 'image' }],
+    },
+    releasedAt: '2026-06-28',
+    type: 'image',
+  },
 ];
 
 const volcengineVideoModels: AIVideoModelCard[] = [
@@ -1204,7 +1339,30 @@ const volcengineVideoModels: AIVideoModelCard[] = [
     },
     pricing: {
       currency: 'CNY',
-      units: [{ name: 'videoGeneration', rate: 37, strategy: 'fixed', unit: 'millionTokens' }],
+      // Ark prices this model per output resolution and per whether the input
+      // carries a video (CNY per million tokens): 480p/720p 46.00 (28.00 with
+      // input video), 1080p 51.00/31.00, 4k 26.00/16.00. Keys are
+      // `<resolution>_<withVideo>` — the order `pricingParams` joins them in.
+      units: [
+        {
+          lookup: {
+            prices: {
+              '1080p_false': 51,
+              '1080p_true': 31,
+              '480p_false': 46,
+              '480p_true': 28,
+              '4k_false': 26,
+              '4k_true': 16,
+              '720p_false': 46,
+              '720p_true': 28,
+            },
+            pricingParams: ['resolution', 'withVideo'],
+          },
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+      ],
     },
     releasedAt: '2026-01-28',
     type: 'video',
@@ -1223,7 +1381,23 @@ const volcengineVideoModels: AIVideoModelCard[] = [
     },
     pricing: {
       currency: 'CNY',
-      units: [{ name: 'videoGeneration', rate: 46, strategy: 'fixed', unit: 'millionTokens' }],
+      // Ark: 480p/720p 37.00 list (22.00 with input video), currently 25% off.
+      units: [
+        {
+          lookup: {
+            prices: {
+              '480p_false': 37,
+              '480p_true': 22,
+              '720p_false': 37,
+              '720p_true': 22,
+            },
+            pricingParams: ['resolution', 'withVideo'],
+          },
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+      ],
     },
     releasedAt: '2026-01-28',
     type: 'video',
@@ -1332,6 +1506,80 @@ const volcengineVideoModels: AIVideoModelCard[] = [
       units: [{ name: 'videoGeneration', rate: 15, strategy: 'fixed', unit: 'millionTokens' }],
     },
     releasedAt: '2025-05-28',
+    type: 'video',
+  },
+  {
+    description:
+      'Seedance 2.0 Mini by ByteDance is the lightweight member of the Seedance 2.0 family, supporting text-to-video and image-to-video with synchronized audio at 480p and 720p.',
+    displayName: 'Seedance 2.0 Mini',
+    enabled: true,
+    id: 'doubao-seedance-2-0-mini-260615',
+    organization: 'ByteDance',
+    parameters: {
+      ...seedance20Params,
+      watermark: { default: false },
+    },
+    pricing: {
+      currency: 'CNY',
+      // Ark: 480p/720p 23.00 list (14.00 with input video), currently 40% off.
+      // Anything above 720p is unsupported, so those keys stay absent and the
+      // cost is unpriced rather than guessed. Keys are `<resolution>_<withVideo>`.
+      units: [
+        {
+          lookup: {
+            prices: {
+              '480p_false': 23,
+              '480p_true': 14,
+              '720p_false': 23,
+              '720p_true': 14,
+            },
+            pricingParams: ['resolution', 'withVideo'],
+          },
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+      ],
+    },
+    releasedAt: '2026-06-15',
+    type: 'video',
+  },
+  {
+    description:
+      'Seedance 2.5 by ByteDance is the next generation of the Seedance video family, supporting text-to-video, image-to-video and reference-video generation with synchronized audio.',
+    displayName: 'Seedance 2.5',
+    enabled: true,
+    id: 'doubao-seedance-2-5-260628',
+    organization: 'ByteDance',
+    parameters: {
+      ...seedance20Params,
+      watermark: { default: false },
+      webSearch: { default: false },
+    },
+    pricing: {
+      currency: 'CNY',
+      // Ark: 480p/720p 70.00 (42.00 with input video), 1080p 77.00/46.00 list —
+      // CNY per million tokens, keyed `<resolution>_<withVideo>`.
+      units: [
+        {
+          lookup: {
+            prices: {
+              '1080p_false': 77,
+              '1080p_true': 46,
+              '480p_false': 70,
+              '480p_true': 42,
+              '720p_false': 70,
+              '720p_true': 42,
+            },
+            pricingParams: ['resolution', 'withVideo'],
+          },
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+        },
+      ],
+    },
+    releasedAt: '2026-06-28',
     type: 'video',
   },
 ];

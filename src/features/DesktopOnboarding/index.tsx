@@ -6,6 +6,7 @@ import { Skeleton } from '@lobehub/ui/base-ui';
 import { memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import Loading from '@/components/Loading/BrandTextLoading';
 import { remoteServerService } from '@/services/electron/remoteServer';
 import { electronSystemService } from '@/services/electron/system';
@@ -224,8 +225,8 @@ const DesktopOnboardingPage = memo(() => {
             <Flexbox gap={8}>
               <Skeleton.Avatar size={48} />
               <Flexbox gap={16} width={'100%'}>
-                <Skeleton.Text fontSize={24} width={'60%'} />
-                <Skeleton.Text rows={8} />
+                <SkeletonText fontSize={24} width={'60%'} />
+                <SkeletonText rows={8} />
               </Flexbox>
             </Flexbox>
           }

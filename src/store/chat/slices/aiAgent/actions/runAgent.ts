@@ -136,6 +136,18 @@ export class AgentActionImpl {
           this.#get().replaceMessages(uiMessages, { context: operation.context });
         }
 
+        // The persisted assistant row can still be an empty placeholder when
+        // execution fails before the first model token. Keep the runtime's
+        // classified terminal error on that bubble so a canonical uiMessages
+        // refresh cannot turn a useful failure into a silent blank reply.
+        if (finalState?.status === 'error' && finalState.error) {
+          internal_dispatchMessage({
+            id: assistantId,
+            type: 'updateMessage',
+            value: { error: finalState.error },
+          });
+        }
+
         // Update operation metadata with final state
         if (finalState) {
           this.#get().updateOperationMetadata(operationId, {

@@ -383,7 +383,7 @@ export class TravelGenerationSettlementService {
 
     const seenIds = new Set<string>();
     const seenUrls = new Set<string>();
-    const uniqueResolved = resolved.filter((artifact): artifact is TravelGenerationArtifact => {
+    const uniqueResolved = resolved.filter((artifact): artifact is NonNullable<typeof artifact> => {
       if (!artifact?.generationId || !artifact.url) return false;
       if (seenIds.has(artifact.generationId) || seenUrls.has(artifact.url)) return false;
       seenIds.add(artifact.generationId);

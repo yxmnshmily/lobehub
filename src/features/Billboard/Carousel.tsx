@@ -55,7 +55,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: 300px;
     max-width: calc(100vw - 32px);
     padding: 0;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 12px;
 
     background: ${cssVar.colorBgContainer};
@@ -114,7 +114,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 100%;
     height: 140px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     object-fit: cover;
   `,

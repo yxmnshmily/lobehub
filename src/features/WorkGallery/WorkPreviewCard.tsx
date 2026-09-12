@@ -1,7 +1,7 @@
 'use client';
 
 import type { WorkSummaryItem } from '@lobechat/types';
-import { formatTokenNumber } from '@lobechat/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@lobechat/utils/format';
 import { Flexbox } from '@lobehub/ui';
 import { Avatar, Tag } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
@@ -11,10 +11,12 @@ import { useTranslation } from 'react-i18next';
 
 import { formatTaskItemDate } from '@/features/AgentTasks/features/formatTaskItemDate';
 import { useAgentDisplayMeta } from '@/features/AgentTasks/shared/useAgentDisplayMeta';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+import ResourceQuickActions from '@/features/ResourceManager/components/Explorer/ItemDropdown/QuickActions';
 import { getWorkTypeDescriptor } from '@/features/Work/descriptors';
 import { getWorkVersionTotalTokens } from '@/utils/workCumulativeUsage';
-import { formatWorkVersionCost } from '@/utils/workVersionCost';
 
+import { getWorkResourceActions } from './resourceActions';
 import WorkPreview from './WorkPreview';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -38,7 +40,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: ${cssVar.colorBgContainer};
@@ -123,6 +125,7 @@ const styles = createStaticStyles(({ css }) => ({
 
 interface WorkPreviewCardProps {
   item: WorkSummaryItem;
+  onDeleted?: () => void;
   onOpen: (item: WorkSummaryItem) => void;
 }
 
@@ -152,8 +155,9 @@ const workTypeKey = (item: WorkSummaryItem) => {
   }
 };
 
-const WorkPreviewCard = memo<WorkPreviewCardProps>(({ item, onOpen }) => {
+const WorkPreviewCard = memo<WorkPreviewCardProps>(({ item, onOpen, onDeleted }) => {
   const { t, i18n } = useTranslation(['chat', 'common', 'file']);
+  const { formatOptional: formatWorkVersionCost } = useMonthlyExchangeRate();
   const agent = useAgentDisplayMeta(item.originAgentId);
   const descriptor = getWorkTypeDescriptor(item);
   const title =
@@ -182,6 +186,7 @@ const WorkPreviewCard = memo<WorkPreviewCardProps>(({ item, onOpen }) => {
   });
   const totalTokens = getWorkVersionTotalTokens(item.event.cumulativeUsage);
   const cost = formatWorkVersionCost(item.totalCost);
+  const resourceActions = getWorkResourceActions(item);
 
   return (
     <Flexbox
@@ -192,6 +197,11 @@ const WorkPreviewCard = memo<WorkPreviewCardProps>(({ item, onOpen }) => {
       <div className={styles.cardInfo}>
         <Flexbox horizontal align={'center'} className={styles.metaRow} gap={6}>
           <span className={styles.type}>{t(workTypeKey(item), { ns: 'file' })}</span>
+          {resourceActions && (
+            <div style={{ marginInlineStart: 'auto' }}>
+              <ResourceQuickActions {...resourceActions} onDeleted={onDeleted} />
+            </div>
+          )}
           {displayIdentifier &&
             item.resourceType !== 'document' &&
             item.resourceType !== 'github_pull_request' &&

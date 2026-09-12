@@ -19,12 +19,15 @@ describe('WeChat OAuth provider', () => {
   });
 
   it('applies an abort signal to token and userinfo requests', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      new Response(
-        JSON.stringify({ access_token: 'token', expires_in: 300, openid: 'openid' }),
-        { status: 200 },
-      ),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({ access_token: 'token', expires_in: 300, openid: 'openid' }),
+            { status: 200 },
+          ),
+      );
     const config = provider.build({ AUTH_WECHAT_ID: 'id', AUTH_WECHAT_SECRET: 'secret' });
 
     const tokens = await config.getToken!({ code: 'code', redirectURI: 'https://example.test' });

@@ -242,6 +242,8 @@ export function defineConfig() {
     '/oidc/interaction/(.*)',
     // market
     '/market-auth-callback',
+    // Only the invitation preview is public; joining is an authenticated mutation.
+    '/group-invite',
     // public share pages
     '/share(.*)',
     // standalone verification report viewer — the run id in the URL is the

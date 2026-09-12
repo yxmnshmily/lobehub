@@ -2,18 +2,16 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import Statistic from '@/components/Statistic';
-import StatisticCard from '@/components/StatisticCard';
-import TitleWithPercentage from '@/components/StatisticCard/TitleWithPercentage';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
 import { topicService } from '@/services/topic';
 import { formatIntergerNumber } from '@/utils/format';
 import { lastMonth } from '@/utils/time';
 
+import OverviewMetricCard from './OverviewMetricCard';
 import TotalCard from './ShareButton/TotalCard';
 
-const TotalMessages = memo<{ inShare?: boolean; mobile?: boolean }>(({ inShare }) => {
+const TotalMessages = memo<{ inShare?: boolean; mobile?: boolean }>(({ inShare, mobile }) => {
   const { t } = useTranslation('auth');
   const { data, isLoading, error, mutate } = useClientDataSWR(statsKeys.topics(), async () => ({
     count: await topicService.countTopics(),
@@ -27,25 +25,16 @@ const TotalMessages = memo<{ inShare?: boolean; mobile?: boolean }>(({ inShare }
 
   return (
     <AsyncBoundary data={data} error={error} errorVariant={'metric'} onRetry={() => mutate()}>
-      <StatisticCard
+      <OverviewMetricCard
+        count={data?.count}
         loading={isLoading || !data}
-        statistic={{
-          description: (
-            <Statistic
-              title={t('date.prevMonth')}
-              value={formatIntergerNumber(data?.prevCount) || '--'}
-            />
-          ),
-          precision: 0,
-          value: data?.count || '--',
-        }}
-        title={
-          <TitleWithPercentage
-            count={data?.count}
-            prvCount={data?.prevCount}
-            title={t('stats.topics')}
-          />
-        }
+        mobile={mobile}
+        precision={0}
+        prevCount={data?.prevCount}
+        previousTitle={t('date.prevMonth')}
+        previousValue={formatIntergerNumber(data?.prevCount) || '--'}
+        title={t('stats.topics')}
+        value={data?.count || '--'}
       />
     </AsyncBoundary>
   );

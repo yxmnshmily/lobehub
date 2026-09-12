@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     &:focus-visible {
       border-radius: 6px;
-      outline: 1px solid ${cssVar.colorBorder};
+      outline: 0.5px solid ${cssVar.colorBorder};
       outline-offset: 2px;
     }
 

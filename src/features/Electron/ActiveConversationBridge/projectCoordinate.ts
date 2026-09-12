@@ -48,7 +48,7 @@ export const projectActiveConversationCoordinate = (
             ? { activeThreadId: coordinate.threadId!, activeTopicId: coordinate.topicId! }
             : groupChanged
               ? { activeThreadId: undefined, activeTopicId: null! }
-            : {}),
+              : {}),
         },
         false,
         'ActiveConversationBridge/syncGroupRoute',

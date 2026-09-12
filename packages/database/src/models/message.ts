@@ -1,4 +1,4 @@
-import { INBOX_SESSION_ID } from '@lobechat/const';
+import { GROUP_RECENT_MESSAGE_LIMIT, INBOX_SESSION_ID } from '@lobechat/const';
 import { parse } from '@lobechat/conversation-flow';
 import type {
   AssistantContentBlock,
@@ -188,11 +188,15 @@ export interface QueryMessagesOptions {
    * Current page number (0-indexed)
    */
   current?: number;
+  /** Authenticated group timeline, including stored compression groups across topics. */
+  groupId?: string;
   /**
    * Opt-in for `file` work summaries in the payload (see
    * `QueryMessageParams.includeFileWorks`).
    */
   includeFileWorks?: boolean;
+  /** Internal exact-ID readers may expand archived rows without loading their group. */
+  includeGroupedMessages?: boolean;
   /**
    * Number of messages per page
    */
@@ -204,6 +208,8 @@ export interface QueryMessagesOptions {
     path: string | null,
     file: { fileType: string; id?: string | null },
   ) => Promise<string>;
+  /** Explicit history pagination must not discard leading rows between pages. */
+  preservePageBoundary?: boolean;
   /**
    * Skip the Work-summary assembly (see `QueryMessageParams.skipWorks`).
    */
@@ -1061,6 +1067,9 @@ export class MessageModel {
        * share-scoped read path ({@link MessageModel.queryForVisitor}) sets it.
        */
       allowShareVisitor?: boolean;
+      /** Server-only: read the authenticated group across its historical topics. */
+      groupTimeline?: boolean;
+      preservePageBoundary?: boolean;
       postProcessUrl?: (
         path: string | null,
         file: { fileType: string; id?: string | null },
@@ -1084,7 +1093,7 @@ export class MessageModel {
     // topic's visitor/creator identity, so a single indexed topic lookup is
     // strictly stronger than the correlated subquery repeated per row.
     let topicScopeVerified = false;
-    if (topicId && !includeVisitor) {
+    if (topicId && !includeVisitor && !options.groupTimeline) {
       const scope = await this.resolveTopicVisitorScope(topicId);
       if (scope === 'visitor') {
         logTiming(timing, 'db.message.query:done', {
@@ -1162,26 +1171,30 @@ export class MessageModel {
     if (groupId) {
       const whereCondition = and(
         eq(messages.groupId, groupId),
-        this.matchTopic(topicId),
+        options.groupTimeline ? undefined : this.matchTopic(topicId),
         this.matchThread(threadId),
       );
 
       const messageItems = await this.queryWithWhere({
         allowShareVisitor: effectiveIncludeVisitor,
         current,
+        groupId: options.groupTimeline ? groupId : undefined,
+        preservePageBoundary: options.preservePageBoundary,
         includeFileWorks,
         pageSize,
         postProcessUrl: options.postProcessUrl,
         skipWorks,
         timing,
-        topicId: topicId ?? undefined,
+        topicId: options.groupTimeline ? undefined : (topicId ?? undefined),
         where: whereCondition,
       });
       logTiming(timing, 'db.message.query:done', {
         messageCount: messageItems.length,
         stageMs: getDurationMs(queryStartedAt),
       });
-      return messageItems;
+      return options.groupTimeline
+        ? messageItems.slice(-Math.min(pageSize, GROUP_RECENT_MESSAGE_LIMIT))
+        : messageItems;
     }
 
     // A concrete topic is the conversation boundary and may legitimately
@@ -1369,7 +1382,9 @@ export class MessageModel {
     const {
       where,
       current = 0,
+      groupId,
       includeFileWorks,
+      includeGroupedMessages = false,
       pageSize = 1000,
       postProcessUrl,
       skipWorks,
@@ -1388,8 +1403,8 @@ export class MessageModel {
     const result = await runTimedStage(
       timing,
       'db.message.queryWithWhere.baseSelect',
-      () =>
-        this.db
+      () => {
+        const query = this.db
           .select({
             id: messages.id,
             role: messages.role,
@@ -1456,8 +1471,8 @@ export class MessageModel {
           .where(
             and(
               scope,
-              // Filter out messages that belong to MessageGroups
-              isNull(messages.messageGroupId),
+              // Normal timelines render the group node; exact-ID readers can opt into its rows.
+              includeGroupedMessages ? undefined : isNull(messages.messageGroupId),
               where,
             ),
           )
@@ -1473,9 +1488,11 @@ export class MessageModel {
           // possible slice for a chat transcript. The page is reversed back to
           // ascending immediately below, so every downstream consumer is
           // unaffected; only *which* rows are fetched changed. See.
-          .orderBy(desc(messages.createdAt), desc(messages.id))
-          .limit(pageSize)
-          .offset(offset),
+          .orderBy(desc(messages.createdAt), desc(messages.id));
+        return query
+          .limit(groupId ? Math.min(pageSize, GROUP_RECENT_MESSAGE_LIMIT) : pageSize)
+          .offset(offset);
+      },
       { current, pageSize },
     );
     logTiming(timing, 'db.message.queryWithWhere.baseSelect:rows', { rowCount: result.length });
@@ -1501,7 +1518,7 @@ export class MessageModel {
     // them. That is acceptable because nothing offset-walks this path; loading older
     // history is round-cursor based (see the follow-up), which supersedes offset
     // paging entirely and closes that gap by construction.
-    if (topicId && current === 0 && result.length >= pageSize) {
+    if (topicId && !options.preservePageBoundary && current === 0 && result.length >= pageSize) {
       const firstRoundStart = result.findIndex((message) => message.role === 'user');
       if (firstRoundStart > 0) result.splice(0, firstRoundStart);
     }
@@ -1511,6 +1528,7 @@ export class MessageModel {
     const messageGroupNodesPromise = this.queryMessageGroupNodesForPage({
       allowShareVisitor: allowShareVisitor || this.includeShareVisitor,
       current,
+      groupId,
       postProcessUrl,
       result,
       timing,
@@ -1685,6 +1703,7 @@ export class MessageModel {
   private queryMessageGroupNodesForPage = async ({
     allowShareVisitor,
     current,
+    groupId,
     postProcessUrl,
     result,
     timing,
@@ -1701,6 +1720,7 @@ export class MessageModel {
      */
     allowShareVisitor?: boolean;
     current: number;
+    groupId?: string;
     postProcessUrl?: (
       path: string | null,
       file: { fileType: string; id?: string | null },
@@ -1709,7 +1729,7 @@ export class MessageModel {
     timing?: ModelTimingContext;
     topicId?: string;
   }): Promise<UIChatMessage[]> => {
-    if (!topicId) return [];
+    if (!topicId && !groupId) return [];
 
     if (result.length === 0) {
       if (current !== 0) return [];
@@ -1720,6 +1740,7 @@ export class MessageModel {
         () =>
           this.queryMessageGroupNodes(topicId, undefined, postProcessUrl, timing, {
             allowShareVisitor,
+            groupId,
           }),
         { current, hasMessages: false, topicId },
       );
@@ -1732,6 +1753,7 @@ export class MessageModel {
         () =>
           this.queryMessageGroupNodes(topicId, undefined, postProcessUrl, timing, {
             allowShareVisitor,
+            groupId,
           }),
         { current, hasMessages: true, topicId },
       );
@@ -1752,7 +1774,7 @@ export class MessageModel {
           },
           postProcessUrl,
           timing,
-          { allowShareVisitor },
+          { allowShareVisitor, groupId },
         ),
       { current, hasMessages: true, topicId },
     );
@@ -2362,14 +2384,14 @@ export class MessageModel {
    * @param timeRange - Optional time range to filter groups (for pagination support)
    */
   private queryMessageGroupNodes = async (
-    topicId: string,
+    topicId: string | undefined,
     timeRange?: { endTime: Date; startTime: Date },
     postProcessUrl?: (
       path: string | null,
       file: { fileType: string; id?: string | null },
     ) => Promise<string>,
     timing?: ModelTimingContext,
-    options: { allowShareVisitor?: boolean } = {},
+    options: { allowShareVisitor?: boolean; groupId?: string } = {},
   ): Promise<UIChatMessage[]> => {
     // Effective visitor gate — see `queryMessageGroupNodesForPage`. Absent
     // this predicate, a creator's default `query({ topicId })` on a visitor
@@ -2381,7 +2403,23 @@ export class MessageModel {
     // 1. Query MessageGroups for this topic, optionally filtered by time range
     const whereConditions = [
       buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, messageGroups),
-      eq(messageGroups.topicId, topicId),
+      topicId
+        ? eq(messageGroups.topicId, topicId)
+        : inArray(
+            messageGroups.topicId,
+            this.db
+              .select({ id: topics.id })
+              .from(topics)
+              .where(
+                and(
+                  eq(topics.groupId, options.groupId!),
+                  buildWorkspaceWhere(
+                    { userId: this.userId, workspaceId: this.workspaceId },
+                    topics,
+                  ),
+                ),
+              ),
+          ),
       ...(includeVisitor ? [] : [notShareVisitorTopicRef(messageGroups.topicId)]),
     ];
 
@@ -2396,17 +2434,21 @@ export class MessageModel {
     const groups = await runTimedStage(
       timing,
       'db.message.messageGroups.groups.select',
-      () =>
-        this.db
+      () => {
+        const query = this.db
           .select()
           .from(messageGroups)
           .where(and(...whereConditions))
-          .orderBy(asc(messageGroups.createdAt)),
+          .orderBy(options.groupId ? desc(messageGroups.createdAt) : asc(messageGroups.createdAt));
+        return options.groupId ? query.limit(GROUP_RECENT_MESSAGE_LIMIT) : query;
+      },
       { hasTimeRange: !!timeRange, topicId },
     );
     logTiming(timing, 'db.message.messageGroups.groups.select:rows', { rowCount: groups.length });
 
     if (groups.length === 0) return [];
+
+    if (options.groupId) groups.reverse();
 
     const groupIds = groups.map((g) => g.id);
 
@@ -2779,7 +2821,7 @@ export class MessageModel {
     return result as DBMessageItem[];
   };
 
-  queryByKeyword = async (keyword: string) => {
+  queryByKeyword = async (keyword: string, groupId?: string) => {
     if (!keyword.trim()) return [];
 
     const bm25Query = sanitizeBm25Query(keyword);
@@ -2799,6 +2841,7 @@ export class MessageModel {
         and(
           this.ownership(),
           notShareVisitorMessage(),
+          groupId ? eq(messages.groupId, groupId) : undefined,
           candidateIds
             ? inJsonStringArray(messages.id, candidateIds)
             : sql`${messages.content} @@@ ${bm25Query}`,

@@ -11,6 +11,7 @@ import SimpleTitleBar from '@/features/Electron/titlebar/SimpleTitleBar';
 import LangButton from '@/features/User/UserPanel/LangButton';
 import ThemeButton from '@/features/User/UserPanel/ThemeButton';
 import { useIsDark } from '@/hooks/useIsDark';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { styles } from './style';
 
@@ -18,6 +19,7 @@ const contentContainer = css`
   overflow: auto;
 `;
 const OnboardingContainer: FC<PropsWithChildren> = ({ children }) => {
+  const translateTravel = useTravelTranslation();
   const isDarkMode = useIsDark();
   return (
     <Flexbox height={'100%'} width={'100%'}>
@@ -53,7 +55,7 @@ const OnboardingContainer: FC<PropsWithChildren> = ({ children }) => {
           </Flexbox>
           <Center padding={24}>
             <Text align={'center'} type={'secondary'}>
-              © 2026 LobeHub. All rights reserved.
+              {translateTravel('© 2026 LobeHub。保留所有权利。')}
             </Text>
           </Center>
         </Flexbox>

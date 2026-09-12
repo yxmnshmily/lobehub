@@ -8,11 +8,13 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 const Analytics = memo(() => {
   const { t } = useTranslation('setting');
+  const disabled = useServerConfigStore(serverConfigSelectors.telemetryDisabled);
   const checked = useUserStore(userGeneralSettingsSelectors.telemetry);
   const updateGeneralConfig = useUserStore((s) => s.updateGeneralConfig);
 
@@ -22,13 +24,16 @@ const Analytics = memo(() => {
         children: (
           <Switch
             checked={!!checked}
+            disabled={disabled}
             title={t('analytics.telemetry.title')}
             onChange={(e) => {
               updateGeneralConfig({ telemetry: e });
             }}
           />
         ),
-        desc: t('analytics.telemetry.desc', { appName: BRANDING_NAME }),
+        desc: disabled
+          ? t('analytics.telemetry.disabledBySystem')
+          : t('analytics.telemetry.desc', { appName: BRANDING_NAME }),
         label: t('analytics.telemetry.title'),
         minWidth: undefined,
         valuePropName: 'checked',

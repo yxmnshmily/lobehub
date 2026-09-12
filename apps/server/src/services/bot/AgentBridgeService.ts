@@ -14,6 +14,7 @@ import { createAbortError, isAbortError } from '@/server/services/agentRuntime/a
 import { AiAgentService } from '@/server/services/aiAgent';
 import { GatewayService } from '@/server/services/gateway';
 import { getMessageGatewayClient } from '@/server/services/gateway/MessageGatewayClient';
+import { executeMessengerGroup } from '@/server/services/messenger/groupExecution';
 import { isQueueAgentRuntimeEnabled } from '@/server/services/queue/impls';
 import { SystemAgentService } from '@/server/services/systemAgent';
 
@@ -163,6 +164,7 @@ interface BridgeHandlerOpts {
   charLimit?: number;
   client?: PlatformClient;
   displayToolCalls?: boolean;
+  groupId?: string;
   /**
    * Locale for system-generated reply text (errors, stopped notice, etc.).
    * Picked per platform — see `getBotReplyLocale`. When omitted we fall back
@@ -511,6 +513,7 @@ export class AgentBridgeService {
         // The final reply is edited into the progress message by onComplete
         const { topicId } = await this.executeWithCallback(thread, message, {
           agentId,
+          groupId: opts.groupId,
           botContext,
           channelContext,
           charLimit,
@@ -609,7 +612,10 @@ export class AgentBridgeService {
         await thread.setState({ ...threadState, topicId: undefined });
         return this.handleMention(thread, message, opts);
       }
-      if (existingTopic.agentId && existingTopic.agentId !== agentId) {
+      if (
+        (existingTopic.agentId && existingTopic.agentId !== agentId) ||
+        (existingTopic.groupId ?? undefined) !== opts.groupId
+      ) {
         log(
           'handleSubscribedMessage: cached topic=%s belongs to agent=%s but active agent is %s, creating new topic',
           topicId,
@@ -667,6 +673,7 @@ export class AgentBridgeService {
         // executeWithCallback handles progress message (post + edit at each step)
         await this.executeWithCallback(thread, message, {
           agentId,
+          groupId: opts.groupId,
           botContext,
           channelContext,
           charLimit,
@@ -728,6 +735,7 @@ export class AgentBridgeService {
     userMessage: Message,
     opts: {
       agentId: string;
+      groupId?: string;
       botContext?: ChatTopicBotContext;
       channelContext?: DiscordChannelContext;
       charLimit?: number;
@@ -815,6 +823,18 @@ export class AgentBridgeService {
     const aiAgentService = new AiAgentService(this.db, this.userId, {
       workspaceId: this.workspaceId,
     });
+    const executeAgent: AiAgentService['execAgent'] = (params) =>
+      opts.groupId
+        ? executeMessengerGroup({
+            db: this.db,
+            userId: this.userId,
+            workspaceId: this.workspaceId,
+            groupId: opts.groupId,
+            service: aiAgentService,
+            params,
+            requestKey: `${opts.botContext?.messengerInstallationKey}:${thread.id}:${userMessage.id}`,
+          })
+        : aiAgentService.execAgent(params);
     const timezone = await this.loadTimezone();
 
     // Make sure the person who triggered the run is a member of the reply
@@ -965,7 +985,7 @@ export class AgentBridgeService {
 
     // In queue mode, return immediately after startup — hooks handle the rest via webhooks
     if (queueMode) {
-      return this.executeWithHooksQueueMode(thread, userMessage, aiAgentService, {
+      return this.executeWithHooksQueueMode(thread, userMessage, executeAgent, {
         agentId,
         botContext,
         botPlatformContext,
@@ -984,7 +1004,7 @@ export class AgentBridgeService {
     }
 
     // In local mode, wrap in a Promise — hook handlers resolve/reject it in-process
-    return this.executeWithHooksLocalMode(thread, aiAgentService, {
+    return this.executeWithHooksLocalMode(thread, executeAgent, {
       agentId,
       botContext,
       botPlatformContext,
@@ -1012,7 +1032,7 @@ export class AgentBridgeService {
   private async executeWithHooksQueueMode(
     thread: Thread<ThreadState>,
     userMessage: Message,
-    aiAgentService: AiAgentService,
+    executeAgent: AiAgentService['execAgent'],
     opts: {
       agentId: string;
       botContext?: ChatTopicBotContext;
@@ -1050,7 +1070,7 @@ export class AgentBridgeService {
     let result: ExecAgentResult;
     try {
       result = await AgentBridgeService.runWithStartupSignal(thread.id, (signal) =>
-        aiAgentService.execAgent({
+        executeAgent({
           agentId,
           appContext: topicId ? { topicId } : undefined,
           autoStart: true,
@@ -1177,7 +1197,7 @@ export class AgentBridgeService {
    */
   private async executeWithHooksLocalMode(
     thread: Thread<ThreadState>,
-    aiAgentService: AiAgentService,
+    executeAgent: AiAgentService['execAgent'],
     opts: {
       agentId: string;
       botContext?: ChatTopicBotContext;
@@ -1247,7 +1267,7 @@ export class AgentBridgeService {
       const getElapsedMs = () => (operationStartTime > 0 ? Date.now() - operationStartTime : 0);
 
       AgentBridgeService.runWithStartupSignal(thread.id, (signal) =>
-        aiAgentService.execAgent({
+        executeAgent({
           agentId,
           appContext: topicId ? { topicId } : undefined,
           autoStart: true,

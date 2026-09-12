@@ -7,7 +7,7 @@ import { Block, ContextMenuTrigger, Flexbox, Icon, type MenuProps } from '@lobeh
 import { Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, responsive } from 'antd-style';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
-import { memo, useCallback, useRef, useState } from 'react';
+import { Fragment, memo, type ReactNode, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
@@ -20,7 +20,7 @@ import ItemActions from './ItemActions';
 // "In sidebar" overview: a collapsible card grid pinned above the main list
 // so the user can see at a glance which agents currently show in the sidebar
 // (mirrors the enabled-providers block on the provider settings page).
-const styles = createStaticStyles(({ css, cssVar }) => ({
+export const sidebarSectionStyles = createStaticStyles(({ css, cssVar }) => ({
   /* The headless ItemActions still renders an empty span; keeping it out of
      the flex flow stops it from claiming a `gap` and shifting the centering. */
   actions: css`
@@ -124,12 +124,12 @@ const SidebarMiniCard = memo<SidebarMiniCardProps>(({ item, onToggleSidebar }) =
           rendering it as a sibling would add a phantom grid item. */}
       <WorkspaceLink
         aria-label={displayTitle}
-        className={styles.link}
+        className={sidebarSectionStyles.link}
         ref={setAnchor}
         to={type === 'group' ? GROUP_CHAT_URL(id) : AGENT_CHAT_URL(id, false)}
         onPointerEnter={activateMenu}
       >
-        <Block clickable className={styles.card} height={'100%'} variant={'outlined'}>
+        <Block clickable className={sidebarSectionStyles.card} height={'100%'} variant={'outlined'}>
           <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0 }}>
             <AgentAvatar item={item} size={24} />
             <Text ellipsis style={{ minWidth: 0 }} weight={600}>
@@ -142,11 +142,11 @@ const SidebarMiniCard = memo<SidebarMiniCardProps>(({ item, onToggleSidebar }) =
             ) : null}
           </Flexbox>
           {description ? (
-            <Text className={styles.description} fontSize={12} type={'secondary'}>
+            <Text className={sidebarSectionStyles.description} fontSize={12} type={'secondary'}>
               {description}
             </Text>
           ) : null}
-          <span className={styles.actions}>
+          <span className={sidebarSectionStyles.actions}>
             <ItemActions
               hideTrigger
               includeSidebarToggle
@@ -169,62 +169,71 @@ SidebarMiniCard.displayName = 'SidebarMiniCard';
 interface SidebarAgentsSectionProps {
   items: SidebarAgentItem[];
   onToggleSidebar?: (item: SidebarAgentItem) => void;
+  renderItem?: (item: SidebarAgentItem) => ReactNode;
 }
 
-const SidebarAgentsSection = memo<SidebarAgentsSectionProps>(({ items, onToggleSidebar }) => {
-  const { t } = useTranslation('common');
-  const collapsed = useGlobalStore(systemStatusSelectors.agentListSidebarSectionCollapsed);
-  const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
-  const toggle = useCallback(
-    () =>
-      updateSystemStatus(
-        { agentListSidebarSectionCollapsed: !collapsed },
-        'toggleAgentListSidebarSection',
-      ),
-    [collapsed, updateSystemStatus],
-  );
+const SidebarAgentsSection = memo<SidebarAgentsSectionProps>(
+  ({ items, onToggleSidebar, renderItem }) => {
+    const { t } = useTranslation('common');
+    const collapsed = useGlobalStore(systemStatusSelectors.agentListSidebarSectionCollapsed);
+    const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
+    const toggle = useCallback(
+      () =>
+        updateSystemStatus(
+          { agentListSidebarSectionCollapsed: !collapsed },
+          'toggleAgentListSidebarSection',
+        ),
+      [collapsed, updateSystemStatus],
+    );
 
-  return (
-    <Flexbox className={styles.container} gap={12}>
-      <Flexbox
-        horizontal
-        align={'center'}
-        className={styles.header}
-        gap={8}
-        justify={'space-between'}
-        onClick={toggle}
-      >
-        <Flexbox horizontal align={'center'} gap={8}>
-          <Text fontSize={13} weight={500}>
-            {t('agentViewAll.sidebarSection.title')}
-          </Text>
-          <Text fontSize={12} type={'secondary'}>
-            {items.length}
-          </Text>
+    return (
+      <Flexbox className={sidebarSectionStyles.container} gap={12}>
+        <Flexbox
+          horizontal
+          align={'center'}
+          className={sidebarSectionStyles.header}
+          gap={8}
+          justify={'space-between'}
+          onClick={toggle}
+        >
+          <Flexbox horizontal align={'center'} gap={8}>
+            <Text fontSize={13} weight={500}>
+              {t('agentViewAll.sidebarSection.title')}
+            </Text>
+            <Text fontSize={12} type={'secondary'}>
+              {items.length}
+            </Text>
+          </Flexbox>
+          <Flexbox horizontal align={'center'} gap={4}>
+            <Text fontSize={12} type={'secondary'}>
+              {collapsed
+                ? t('agentViewAll.sidebarSection.expand')
+                : t('agentViewAll.sidebarSection.collapse')}
+            </Text>
+            <Icon
+              color={cssVar.colorTextSecondary}
+              icon={collapsed ? ChevronDownIcon : ChevronUpIcon}
+              size={14}
+            />
+          </Flexbox>
         </Flexbox>
-        <Flexbox horizontal align={'center'} gap={4}>
-          <Text fontSize={12} type={'secondary'}>
-            {collapsed
-              ? t('agentViewAll.sidebarSection.expand')
-              : t('agentViewAll.sidebarSection.collapse')}
-          </Text>
-          <Icon
-            color={cssVar.colorTextSecondary}
-            icon={collapsed ? ChevronDownIcon : ChevronUpIcon}
-            size={14}
-          />
-        </Flexbox>
+        {!collapsed && (
+          <div className={sidebarSectionStyles.grid}>
+            {items.map((item) => (
+              <Fragment key={item.id}>
+                {renderItem ? (
+                  renderItem(item)
+                ) : (
+                  <SidebarMiniCard item={item} onToggleSidebar={onToggleSidebar} />
+                )}
+              </Fragment>
+            ))}
+          </div>
+        )}
       </Flexbox>
-      {!collapsed && (
-        <div className={styles.grid}>
-          {items.map((item) => (
-            <SidebarMiniCard item={item} key={item.id} onToggleSidebar={onToggleSidebar} />
-          ))}
-        </div>
-      )}
-    </Flexbox>
-  );
-});
+    );
+  },
+);
 
 SidebarAgentsSection.displayName = 'SidebarAgentsSection';
 

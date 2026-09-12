@@ -1,13 +1,19 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { PlatformCreditAdminModel, PlatformCreditModel } from '@/database/models/platformCredit';
+import {
+  PlatformCreditAdminModel,
+  PlatformCreditModel,
+  type PlatformCreditPendingReservationItem,
+} from '@/database/models/platformCredit';
 import type {
   PlatformCreditAccountItem,
   PlatformCreditEntryItem,
 } from '@/database/schemas/platformCredit';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { notifyCreditEntry } from '@/server/services/notification/credit';
+import { getRegistrationCredits } from '@/server/services/user/registrationCredits';
 
 import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
@@ -31,7 +37,13 @@ const limit = z.number().int().min(1).max(200).optional();
 
 const listOwnEntriesInput = z.object({ limit }).strict().optional();
 const targetUserInput = z.object({ targetUserId }).strict();
-const listUserEntriesInput = z.object({ limit, targetUserId }).strict();
+const listUserEntriesInput = z
+  .object({
+    limit,
+    offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+    targetUserId,
+  })
+  .strict();
 const postCreditsInput = z
   .object({
     credits: safeIntegerCredits,
@@ -81,12 +93,35 @@ const toCustomerEntry = (entry: PlatformCreditEntryItem) => ({
   type: entry.type,
 });
 
+const toAdminPendingReservation = (reservation: PlatformCreditPendingReservationItem) => ({
+  actorUserId: reservation.actorUserId,
+  callKind: reservation.callKind,
+  createdAt: reservation.createdAt,
+  expiresAt: reservation.expiresAt,
+  generationId: reservation.generationId,
+  generationType: reservation.generationType,
+  id: reservation.id,
+  model: reservation.model,
+  payerUserId: reservation.payerUserId,
+  provider: reservation.provider,
+  providerRequestId: reservation.providerRequestId,
+  reservedCredits: assertSafeCredits(reservation.reservedCredits, false),
+  settledCredits: assertSafeCredits(reservation.settledCredits, false),
+  status: reservation.status,
+  updatedAt: reservation.updatedAt,
+});
+
 export const platformCreditRouter = router({
+  getOwnRegistrationCredits: customerProcedure
+    .input(z.undefined())
+    .query(({ ctx }) => getRegistrationCredits(ctx.serverDB, ctx.userId)),
   adjust: platformAdminProcedure
     .input(postCreditsInput.extend({ credits: nonZeroCredits }))
-    .mutation(async ({ ctx, input }) =>
-      toAdminEntry(await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).adjust(input)),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const entry = await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).adjust(input);
+      await notifyCreditEntry(entry);
+      return toAdminEntry(entry);
+    }),
 
   getOwnAccount: customerProcedure
     .input(z.undefined())
@@ -117,19 +152,31 @@ export const platformCreditRouter = router({
       const entries = await new PlatformCreditAdminModel(
         ctx.serverDB,
         ctx.userId,
-      ).listEntriesForUser(input.targetUserId, input.limit);
+      ).listEntriesForUser(input.targetUserId, input.limit, input.offset);
       return entries.map(toAdminEntry);
     }),
 
-  reverse: platformAdminProcedure
-    .input(reverseInput)
-    .mutation(async ({ ctx, input }) =>
-      toAdminEntry(await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).reverse(input)),
-    ),
+  listPendingReservations: platformAdminProcedure
+    .input(listUserEntriesInput)
+    .query(async ({ ctx, input }) => {
+      const reservations = await new PlatformCreditAdminModel(
+        ctx.serverDB,
+        ctx.userId,
+      ).listPendingReservationsForUser(input.targetUserId, input.limit, input.offset);
+      return reservations.map(toAdminPendingReservation);
+    }),
+
+  reverse: platformAdminProcedure.input(reverseInput).mutation(async ({ ctx, input }) => {
+    const entry = await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).reverse(input);
+    await notifyCreditEntry(entry);
+    return toAdminEntry(entry);
+  }),
 
   topUp: platformAdminProcedure
     .input(postCreditsInput.extend({ credits: positiveCredits }))
-    .mutation(async ({ ctx, input }) =>
-      toAdminEntry(await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).topUp(input)),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const entry = await new PlatformCreditAdminModel(ctx.serverDB, ctx.userId).topUp(input);
+      await notifyCreditEntry(entry);
+      return toAdminEntry(entry);
+    }),
 });

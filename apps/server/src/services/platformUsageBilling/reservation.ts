@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { type LobeChatDatabase, PlatformCreditModel } from '@lobechat/database';
 
+import { notifyCreditEntry } from '@/server/services/notification/credit';
 import type { ModelUsage } from '@/types/message';
 
 import { preparePlatformUsageCharge } from './index';
@@ -13,6 +14,11 @@ export type PlatformUsageHardLimitProof = {
 };
 
 export type PlatformUsageReservationLimit =
+  | {
+      /** Trusted server admission policy; each provider call must separately prove its ceiling. */
+      maxCredits: number;
+      source: 'server-policy';
+    }
   | {
       /** A maximum the user explicitly supplied for this request or call. */
       maxCredits: number;
@@ -70,6 +76,8 @@ export interface ReserveRemainingPlatformUsageCallInput extends Omit<
   budgetLeaseVersion: number;
   /** Server-derived digest of the exact provider input; raw prompts are never persisted. */
   inputHash: string;
+  /** Server policy ceiling for one metered provider call. */
+  maxCredits?: number;
 }
 
 export interface PlatformUsageReservationLeaseInput {
@@ -90,12 +98,17 @@ export interface CompleteAndSettlePlatformUsageInput extends PlatformUsageReserv
   usage?: ModelUsage;
 }
 
+export interface RecordPlatformProviderRequestIdInput extends PlatformUsageReservationLeaseInput {
+  providerRequestId: string;
+}
+
 type PlatformUsageReservationLedger = Pick<
   PlatformCreditModel,
   | 'claimReservationForProvider'
   | 'completeBudget'
   | 'getReservation'
   | 'recordProviderCompletion'
+  | 'recordProviderRequestId'
   | 'releaseReservation'
   | 'reserveBudget'
   | 'reserveCall'
@@ -125,8 +138,8 @@ const requestHash = (material: Record<string, unknown>) =>
 /**
  * Admission and reservation orchestration over PlatformCreditModel's atomic primitives.
  *
- * This boundary deliberately has no estimate or current-balance input. A caller must provide
- * either a user-explicit maximum or a referenced, externally guaranteed hard maximum.
+ * Request admission can use a trusted server policy or explicit user ceiling. Neither is a
+ * provider cost forecast: execution must separately prove that its worst case fits the hold.
  */
 export class PlatformUsageReservationService {
   private readonly actorUserId: string;
@@ -147,7 +160,7 @@ export class PlatformUsageReservationService {
       );
     }
 
-    if (input.source === 'user-explicit') {
+    if (input.source === 'user-explicit' || input.source === 'server-policy') {
       return { maxCredits: input.maxCredits, source: input.source };
     }
 
@@ -249,6 +262,7 @@ export class PlatformUsageReservationService {
       idempotencyKey,
       model: input.model,
       provider: input.provider,
+      reservedCredits: input.maxCredits,
       requestHash: callRequestHash,
       workspaceId: input.workspaceId,
     });
@@ -260,6 +274,10 @@ export class PlatformUsageReservationService {
 
   getReservation(reservationId: string) {
     return this.ledger.getReservation(reservationId);
+  }
+
+  recordProviderRequestId(input: RecordPlatformProviderRequestIdInput) {
+    return this.ledger.recordProviderRequestId(input);
   }
 
   completeRequest(budgetId: string) {
@@ -312,6 +330,8 @@ export class PlatformUsageReservationService {
     const request = input.completeRequest
       ? await this.ledger.completeBudget(reservation.budgetId)
       : undefined;
+
+    await notifyCreditEntry(entry);
 
     return {
       entry,

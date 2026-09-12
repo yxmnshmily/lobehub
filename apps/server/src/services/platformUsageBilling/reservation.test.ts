@@ -10,7 +10,7 @@ import {
   PlatformCreditModel,
 } from '@lobechat/database';
 import { drizzle } from 'drizzle-orm/pglite';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PGlite } from '../../../../../packages/database/node_modules/@electric-sql/pglite';
 import { PlatformUsageReservationError, PlatformUsageReservationService } from './index';
@@ -24,6 +24,7 @@ let db: LobeChatDatabase;
 let ledgerA: PlatformCreditModel;
 let serviceA: PlatformUsageReservationService;
 
+// Include sponsored-account columns now selected by the shared ledger model.
 const migrationPaths = [
   path.join(
     __dirname,
@@ -32,6 +33,10 @@ const migrationPaths = [
   path.join(
     __dirname,
     '../../../../../packages/database/migrations/0161_platform_credit_reservations.sql',
+  ),
+  path.join(
+    __dirname,
+    '../../../../../packages/database/migrations/0162_platform_credit_sponsored_membership_purchase.sql',
   ),
 ];
 
@@ -83,6 +88,7 @@ beforeEach(async () => {
 
   await client.exec(`
     CREATE TABLE users (id text PRIMARY KEY);
+    CREATE TABLE chat_groups (id text PRIMARY KEY);
     INSERT INTO users (id) VALUES ('${userA}'), ('${userB}'), ('${adminId}');
   `);
   for (const migrationPath of migrationPaths) await applyMigration(client, migrationPath);
@@ -346,6 +352,60 @@ describe('PlatformUsageReservationService', () => {
     });
   });
 
+  it('durably records the provider request id before completion and rejects a conflicting id', async () => {
+    const { reservation } = await reserveCall('provider-request-evidence');
+    const claim = await serviceA.claim({
+      leaseVersion: reservation.leaseVersion,
+      reservationId: reservation.id,
+    });
+
+    await expect(
+      serviceA.recordProviderRequestId({
+        leaseVersion: claim.reservation.leaseVersion,
+        providerRequestId: 'provider-request\nAuthorization: secret',
+        reservationId: reservation.id,
+      }),
+    ).rejects.toThrow('服务商请求 ID无效');
+    await expect(
+      serviceA.recordProviderRequestId({
+        leaseVersion: claim.reservation.leaseVersion,
+        providerRequestId: 'provider-request-evidence-1',
+        reservationId: reservation.id,
+      }),
+    ).resolves.toMatchObject({
+      providerRequestId: 'provider-request-evidence-1',
+      status: 'provider_started',
+    });
+    await expect(
+      serviceA.recordProviderRequestId({
+        leaseVersion: claim.reservation.leaseVersion,
+        providerRequestId: 'provider-request-evidence-1',
+        reservationId: reservation.id,
+      }),
+    ).resolves.toMatchObject({ providerRequestId: 'provider-request-evidence-1' });
+    await expect(
+      serviceA.recordProviderRequestId({
+        leaseVersion: claim.reservation.leaseVersion,
+        providerRequestId: 'provider-request-evidence-2',
+        reservationId: reservation.id,
+      }),
+    ).rejects.toThrow(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
+    await expect(
+      serviceA.completeAndSettle({
+        leaseVersion: claim.reservation.leaseVersion,
+        providerRequestId: 'provider-request-evidence-2',
+        reservationId: reservation.id,
+        usage: { cost: 0.00001, totalTokens: 10 },
+      }),
+    ).rejects.toThrow(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
+
+    await expect(ledgerA.getReservation(reservation.id)).resolves.toMatchObject({
+      providerRequestId: 'provider-request-evidence-1',
+      settledCredits: 0,
+      status: 'provider_started',
+    });
+  });
+
   it('reserves the whole remaining request budget without an estimate or catalog price', async () => {
     const request = await reserveRequest('remaining-service', 80);
 
@@ -502,4 +562,31 @@ describe('PlatformUsageReservationService', () => {
       }),
     ).rejects.toThrow('Credits 预留状态无效');
   });
+});
+
+const creditNotice = vi.hoisted(() => vi.fn(async (_event: unknown) => {}));
+vi.mock('@/server/services/notification/index', () => ({ notifyUser: creditNotice }));
+
+it('emits exhaustion after the final reserved charge, never while holding credits', async () => {
+  creditNotice.mockClear();
+  const { reservation } = await reserveCall('exhausted', 100);
+  expect(creditNotice).not.toHaveBeenCalled();
+  const claim = await serviceA.claim({
+    leaseVersion: reservation.leaseVersion,
+    reservationId: reservation.id,
+  });
+  const result = await serviceA.completeAndSettle({
+    leaseVersion: claim.reservation.leaseVersion,
+    reservationId: reservation.id,
+    completeRequest: true,
+    usage: { cost: 0.0001, totalTokens: 100 },
+  });
+  expect(result.entry.balanceAfterCredits).toBe(0);
+  expect(creditNotice).toHaveBeenCalledWith(
+    expect.objectContaining({
+      userId: userA,
+      eventId: result.entry.id,
+      type: 'credits_exhausted',
+    }),
+  );
 });

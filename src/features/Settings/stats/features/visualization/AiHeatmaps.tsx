@@ -2,19 +2,54 @@ import { type HeatmapsProps } from '@lobehub/charts';
 import { Heatmaps } from '@lobehub/charts';
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Tabs, Tag } from '@lobehub/ui/base-ui';
-import { cssVar } from 'antd-style';
+import { createStaticStyles, cssVar } from 'antd-style';
 import { CoinsIcon, FlameIcon, MessageSquareIcon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import AsyncBoundary from '@/components/AsyncBoundary';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
 import { messageService } from '@/services/message';
-import { formatIntergerNumber, formatShortenNumber } from '@/utils/format';
+import { formatIntergerNumber, formatLocalizedTokens as formatShortenNumber } from '@/utils/format';
 
 import { HeatmapType } from '../../types';
 import StatsFormGroup from '../components/StatsFormGroup';
 import HeatmapStats from './HeatmapStats';
+
+const styles = createStaticStyles(({ css }) => ({
+  /* 热力图月份标签行：上下各留 16px（原来贴得太紧） */
+  monthLabels: css`
+    g.legend-month {
+      padding-block: 16px;
+    }
+  `,
+  fullWidth: css`
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+
+    & > div > svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+  `,
+  mobileScroller: css`
+    scrollbar-width: none;
+
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+
+    max-width: 100%;
+
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
+}));
 
 const getShareMonthLabels = (startDate?: string) => {
   const parsedStartMonth = Number(startDate?.slice(5, 7)) - 1;
@@ -29,13 +64,13 @@ const getShareMonthLabels = (startDate?: string) => {
 const AiHeatmaps = memo<
   Omit<HeatmapsProps, 'data' | 'ref'> & { inShare?: boolean; mobile?: boolean }
 >(({ inShare, mobile, ...rest }) => {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const [type, setType] = useState<HeatmapType>(
     inShare ? HeatmapType.Messages : HeatmapType.Tokens,
   );
   const isTokens = type === HeatmapType.Tokens;
 
-  const { data, isLoading } = useClientDataSWR(statsKeys.heatmaps(type), async () =>
+  const { data, error, isLoading, mutate } = useClientDataSWR(statsKeys.heatmaps(type), async () =>
     isTokens ? messageService.getTokenHeatmaps() : messageService.getHeatmaps(),
   );
 
@@ -43,11 +78,12 @@ const AiHeatmaps = memo<
   const hotDays = data?.filter((item) => item.level >= 3).length || '--';
   const shareMonthLabels = getShareMonthLabels(data?.[0]?.date);
 
-  const content = (
+  const heatmap = (
     <Heatmaps
       blockMargin={mobile ? 3 : undefined}
       blockRadius={mobile ? 2 : undefined}
       blockSize={mobile ? 6 : 14}
+      className={!mobile && !inShare ? `${styles.fullWidth} ${styles.monthLabels}` : undefined}
       data={data || []}
       hideMonthLabels={inShare}
       hideTotalCount={isTokens}
@@ -56,7 +92,7 @@ const AiHeatmaps = memo<
       customTooltip={(activity) =>
         t(isTokens ? 'heatmaps.tooltipTokens' : 'heatmaps.tooltip', {
           count: isTokens
-            ? formatShortenNumber(activity.count)
+            ? formatShortenNumber(activity.count, i18n.language)
             : formatIntergerNumber(activity.count),
           date: activity.date,
         })
@@ -84,10 +120,24 @@ const AiHeatmaps = memo<
         totalCount: isTokens ? t('heatmaps.totalCountTokens') : t('heatmaps.totalCount'),
       }}
       style={{
-        alignSelf: 'center',
+        alignSelf: !mobile && !inShare ? 'stretch' : 'center',
+        // Give the month labels breathing room above the calendar grid
+        gap: mobile ? 12 : 24,
       }}
       {...rest}
     />
+  );
+
+  const content = (
+    <AsyncBoundary
+      data={data}
+      error={error}
+      isLoading={isLoading}
+      loading={heatmap}
+      onRetry={() => mutate()}
+    >
+      {heatmap}
+    </AsyncBoundary>
   );
 
   const typeSwitch = (
@@ -165,10 +215,12 @@ const AiHeatmaps = memo<
       <HeatmapStats />
       {mobile ? (
         <div
+          className={styles.mobileScroller}
           style={{
             maxWidth: '100%',
             overflowX: 'auto',
             overscrollBehaviorInline: 'contain',
+            scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
           }}
         >

@@ -6,10 +6,11 @@ import { type ChatMessageError, type ErrorType, type IToolErrorType } from '@lob
 import { ChatErrorType } from '@lobechat/types';
 import { isRecord } from '@lobechat/utils/object';
 import { Block, Highlighter } from '@lobehub/ui';
-import { type AlertProps, Skeleton } from '@lobehub/ui/base-ui';
+import { type AlertProps } from '@lobehub/ui/base-ui';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import useBusinessErrorAlertConfig from '@/business/client/hooks/useBusinessErrorAlertConfig';
 import useBusinessErrorContent from '@/business/client/hooks/useBusinessErrorContent';
 import useRenderBusinessChatErrorMessageExtra from '@/business/client/hooks/useRenderBusinessChatErrorMessageExtra';
@@ -82,7 +83,7 @@ const loading = () => (
       width: '100%',
     }}
   >
-    <Skeleton height={36} />
+    <SkeletonBar height={36} />
   </Block>
 );
 
@@ -417,8 +418,7 @@ const ErrorMessageExtra = memo<ErrorExtraProps>(
       );
     }
 
-    if (enableBusinessFeatures && businessChatErrorMessageExtra)
-      return businessChatErrorMessageExtra;
+    if (businessChatErrorMessageExtra) return businessChatErrorMessageExtra;
 
     switch (error?.type) {
       // Lightweight fallbacks for cloud billing errors, used in builds without a

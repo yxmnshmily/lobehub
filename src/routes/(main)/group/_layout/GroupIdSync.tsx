@@ -13,7 +13,7 @@ import { useElectronStore } from '@/store/electron';
 const GroupIdSync = () => {
   const tabId = use(TabIdContext);
   const activeTabId = useElectronStore((s) => s.activeTabId);
-  const params = useParams<{ gid?: string; topicId?: string }>();
+  const params = useParams<{ gid?: string; topicId?: string; projectId?: string }>();
   const prevGroupId = usePrevious(params.gid);
   const router = useQueryRoute();
   const isActiveTab = shouldSyncGroupRoute(isDesktop, tabId, activeTabId);
@@ -21,8 +21,9 @@ const GroupIdSync = () => {
   useLayoutEffect(() => {
     if (!isActiveTab) return;
     useAgentGroupStore.setState({ activeGroupId: params.gid, router });
-    useChatStore.setState({ activeGroupId: params.gid });
-  }, [isActiveTab, params.gid, router]);
+    // Projects keep the group sidebar, but their conversations belong to the project coordinator.
+    useChatStore.setState({ activeGroupId: params.projectId ? undefined : params.gid });
+  }, [isActiveTab, params.gid, params.projectId, router]);
 
   // Reset activeTopicId when switching to a different group
   // This prevents messages from being saved to the wrong topic bucket

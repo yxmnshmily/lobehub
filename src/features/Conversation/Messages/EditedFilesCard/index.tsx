@@ -46,7 +46,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
 
     width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};
@@ -143,7 +143,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-weight: 500;
   `,
   list: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   showMore: css`
     cursor: pointer;

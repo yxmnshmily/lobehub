@@ -2,11 +2,14 @@ import { agentDisplayName } from '@lobechat/types';
 import { Tag } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { type MouseEventHandler } from 'react';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, use, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { ChatItem } from '@/features/Conversation/ChatItem';
+import { GroupChatPresentation } from '@/features/SuperGroup/GroupChatPresentation';
+import { GroupMessageQuote } from '@/features/SuperGroup/GroupMessageQuote';
+import { parseMessageQuote, withoutQuoteParagraph } from '@/features/SuperGroup/messageQuote';
 import { useMessageCommentCount } from '@/features/TopicComment/hooks';
 import MessageCommentBadge from '@/features/TopicComment/MessageCommentBadge';
 import { useUserAvatar } from '@/hooks/useUserAvatar';
@@ -36,6 +39,22 @@ interface UserMessageProps {
 const UserMessage = memo<UserMessageProps>(({ id, disableEditing, index }) => {
   const item = useConversationStore(dataSelectors.getDisplayMessageById(id), isEqual)!;
   const { content, createdAt, error, role, extra, targetId, sender } = item;
+  const groupChat = use(GroupChatPresentation);
+  const parsed = useMemo(
+    () => (groupChat ? parseMessageQuote(content || '') : { content }),
+    [content, groupChat],
+  );
+  const displayItem = useMemo(
+    () =>
+      parsed.quote
+        ? {
+            ...item,
+            content: parsed.content,
+            editorData: withoutQuoteParagraph(item.editorData, parsed.quote.id),
+          }
+        : item,
+    [item, parsed],
+  );
 
   const { t } = useTranslation('chat');
   const selfAvatar = useUserAvatar();
@@ -49,7 +68,7 @@ const UserMessage = memo<UserMessageProps>(({ id, disableEditing, index }) => {
   // rows — see resolveSenderIdentity.
   const showSender = Boolean(activeWorkspaceId);
   const currentUserId = useUserStore(userProfileSelectors.userId);
-  const { avatar, title } = resolveSenderIdentity({
+  const { avatar, isOwn, title } = resolveSenderIdentity({
     currentUserId,
     selfAvatar,
     selfTitle,
@@ -102,12 +121,11 @@ const UserMessage = memo<UserMessageProps>(({ id, disableEditing, index }) => {
     <ChatItem
       actions={<Actions data={item} disableEditing={disableEditing} id={id} />}
       avatar={{ avatar, title }}
-      belowMessage={<ScheduledRunFooter id={id} />}
       editing={editing}
       id={id}
       message={content}
       messageExtra={<UserMessageExtra content={content} extra={extra} id={id} />}
-      placement={'right'}
+      placement={groupChat && !isOwn ? 'left' : 'right'}
       showAvatar={showSender}
       showTitle={showSender}
       time={createdAt}
@@ -117,10 +135,21 @@ const UserMessage = memo<UserMessageProps>(({ id, disableEditing, index }) => {
           <MessageCommentBadge count={commentCount} messageId={id} topicId={commentTopicId} />
         ) : undefined
       }
+      belowMessage={
+        <>
+          {parsed.quote && (
+            <GroupMessageQuote
+              placement={groupChat && !isOwn ? 'left' : 'right'}
+              quote={parsed.quote}
+            />
+          )}
+          <ScheduledRunFooter id={id} />
+        </>
+      }
       onDoubleClick={onDoubleClick}
       onMouseEnter={onMouseEnter}
     >
-      <UserMessageContent {...item} />
+      <UserMessageContent {...displayItem} />
     </ChatItem>
   );
 }, isEqual);

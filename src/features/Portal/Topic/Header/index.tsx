@@ -19,7 +19,7 @@ const Header = memo(() => {
       right={<ActionIcon icon={XIcon} size={'small'} onClick={closeTopicPortal} />}
       showTogglePanelButton={false}
       style={{
-        borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
+        borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
       }}
     />
   );

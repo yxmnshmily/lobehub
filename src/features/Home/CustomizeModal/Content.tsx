@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   footer: css`
     padding-block: 12px;
     padding-inline: 12px 20px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   header: css`
     padding-block: 16px 4px;

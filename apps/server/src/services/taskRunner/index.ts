@@ -12,15 +12,23 @@ import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
 import type { LobeChatDatabase } from '@/database/type';
 import { AiAgentService } from '@/server/services/aiAgent';
+import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
+import type { InternalExecAgentParams } from '@/server/services/aiAgent/types';
 import { TaskLifecycleService } from '@/server/services/taskLifecycle';
 
 import { buildTaskPrompt } from './buildTaskPrompt';
+import { resolveGroupExecution } from './groupExecution';
+import type { TaskExecutionContext } from './hostedExecution';
 
 const log = debug('task-runner');
 
 export interface RunTaskParams {
   continueTopicId?: string;
+  /** Server-only inherited request budget. Never accepted from task.run JSON. */
+  executionContext?: TaskExecutionContext;
   extraPrompt?: string;
+  /** Optional shared spending ceiling; never grants hosted execution access. */
+  maxCredits?: number;
   /** Optional per-operation cap. Omitted means the agent runtime remains uncapped. */
   maxSteps?: number;
   taskId: string;
@@ -71,10 +79,16 @@ export class TaskRunnerService {
     const {
       taskId: idOrIdentifier,
       continueTopicId,
+      executionContext,
       extraPrompt,
+      maxCredits,
       maxSteps,
       trigger = 'manual',
     } = params;
+
+    if (maxCredits !== undefined && (!Number.isSafeInteger(maxCredits) || maxCredits <= 0)) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid task spending ceiling' });
+    }
 
     const task = await this.taskModel.resolve(idOrIdentifier);
     if (!task) {
@@ -88,6 +102,26 @@ export class TaskRunnerService {
     let weSetRunning = false;
 
     try {
+      const groupExecution = await resolveGroupExecution(
+        this.db,
+        this.userId,
+        this.workspaceId,
+        task.config,
+        task.assigneeAgentId,
+      );
+      if (
+        executionContext &&
+        (executionContext.groupId !== groupExecution?.groupId ||
+          executionContext.capability.actorUserId !== this.userId ||
+          executionContext.capability.resourceOwnerUserId !== this.userId ||
+          !executionContext.capability.sharedBudget)
+      ) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Task budget does not belong to this group and principal' });
+      }
+      if (groupExecution && !task.assigneeAgentId) {
+        task.assigneeAgentId = groupExecution.agentId;
+        await this.taskModel.update(task.id, { assigneeAgentId: groupExecution.agentId });
+      }
       if (!task.assigneeAgentId) {
         const inboxAgent = await this.agentModel.getBuiltinAgent(INBOX_SESSION_ID);
         if (!inboxAgent) {
@@ -201,9 +235,10 @@ export class TaskRunnerService {
 
       log('runTask: %s (continue=%s)', taskIdentifier, continueTopicId);
 
-      const result = await aiAgentService.execAgent({
+      const executionParams: InternalExecAgentParams = {
         ...(isSlug ? { slug: agentRef } : { agentId: agentRef }),
         additionalPluginIds: pluginIds,
+        ...(maxCredits !== undefined ? { platformManagedMaxCredits: maxCredits } : {}),
         ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
         ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
         hooks: [
@@ -241,8 +276,27 @@ export class TaskRunnerService {
         title: extraPrompt ? extraPrompt.slice(0, 100) : task.name || task.identifier,
         trigger: TopicTrigger.RunTask,
         userInterventionConfig: { approvalMode: 'headless' },
-        ...(continueTopicId && { appContext: { topicId: continueTopicId } }),
-      });
+        ...((continueTopicId || groupExecution) && {
+          appContext: {
+            ...(continueTopicId ? { topicId: continueTopicId } : {}),
+            ...(groupExecution ? { groupId: groupExecution.groupId, taskId: task.id } : {}),
+          },
+        }),
+      };
+      const result = await aiAgentService.execAgent(
+        executionContext
+          ? grantPlatformManagedExecution(executionParams, executionContext.capability)
+          : executionParams,
+      );
+
+      // A rejected kickoff is not a running attempt. Use the same rollback and
+      // error propagation as a thrown startup failure for every caller.
+      if (result.success === false) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: typeof result.error === 'string' ? result.error : 'Task execution failed to start',
+        });
+      }
 
       if (result.topicId) {
         if (continueTopicId) {

@@ -10,6 +10,7 @@ import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspace
 import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
 import NavHeader from '@/features/NavHeader';
 import ToggleRightPanelButton from '@/features/RightPanel/ToggleRightPanelButton';
+import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -83,6 +84,7 @@ interface AgentTasksPageProps {
    * shows tasks across all agents.
    */
   agentId?: string;
+  groupId?: string;
   /** When provided, shows the complete task workspace scoped to one project. */
   projectId?: string;
 }
@@ -146,7 +148,7 @@ export const getMyTaskViewOptions = (viewOptions: TaskListViewOptions): TaskList
   ...PAGINATED_COLLECTION_VIEW,
 });
 
-const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
+const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId }) => {
   const { t } = useTranslation('chat');
   const navigate = useWorkspaceAwareNavigate();
   const isMobile = useIsMobile();
@@ -177,22 +179,30 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
   // groups, so there only the single page behind the empty-hero decision runs.
   const isListView = viewMode !== 'kanban';
   const { error, isLoading, mutate } = useFetchTaskList(
-    projectId
+    groupId
       ? {
+          groupId,
           automated: false,
           complete: isListView,
           enabled: isOrdinaryCollection,
-          projectId,
           visibility: 'all',
         }
-      : agentId
-        ? { agentId, automated: false, complete: isListView, enabled: isOrdinaryCollection }
-        : {
-            allAgents: true,
+      : projectId
+        ? {
             automated: false,
             complete: isListView,
             enabled: isOrdinaryCollection,
-          },
+            projectId,
+            visibility: 'all',
+          }
+        : agentId
+          ? { agentId, automated: false, complete: isListView, enabled: isOrdinaryCollection }
+          : {
+              allAgents: true,
+              automated: false,
+              complete: isListView,
+              enabled: isOrdinaryCollection,
+            },
   );
   // Drive the loading/empty boundary off the store's own init flag, NOT SWR's
   // per-key `data`. On a scope (agent ↔ all) or visibility switch the store
@@ -207,6 +217,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
   const isEmptyHero = useTaskStore(taskListSelectors.isListEmpty);
   const useFetchScheduledTaskList = useTaskStore((s) => s.useFetchScheduledTaskList);
   const scheduledSWR = useFetchScheduledTaskList({
+    groupId,
     agentId,
     enabled: isScheduledCollection,
     limit: COLLECTION_PAGE_SIZE,
@@ -277,14 +288,23 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
 
     if (!canCreateTask) return;
     createTaskModal({
+      groupId,
       agentId,
-      lockAssignee: !!agentId,
+      lockAssignee: !!agentId && !groupId,
       projectId,
       onCreated: (task) => {
         navigate(taskDetailPath(task.identifier, agentId ? task.agentId : undefined));
       },
     });
-  }, [agentId, canCreateTask, createActionBehavior.mode, navigate, projectId, updateSystemStatus]);
+  }, [
+    agentId,
+    groupId,
+    canCreateTask,
+    createActionBehavior.mode,
+    navigate,
+    projectId,
+    updateSystemStatus,
+  ]);
 
   const handleShowHiddenCompleted = useCallback(() => {
     setViewOptions((prev) => ({ ...prev, hideCompleted: false }));
@@ -329,7 +349,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
 
   const headerLeft = (
     <Flexbox horizontal align={'center'} gap={8}>
-      {headerVisibility.showBreadcrumb && <Breadcrumb />}
+      {!groupId && headerVisibility.showBreadcrumb && <Breadcrumb agentId={agentId} />}
       <TabsRoot size={'small'} value={collection} onValueChange={handleCollectionChange}>
         <TabsList>
           <TabsIndicator />
@@ -353,7 +373,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
   return (
     <Flexbox flex={1} height={'100%'}>
       <NavHeader
-        left={headerLeft}
+        left={groupId ? <GroupPageBreadcrumb groupId={groupId} title="任务" /> : headerLeft}
         right={
           <Flexbox horizontal align={'center'} gap={4}>
             {isOrdinaryCollection && !agentId && !projectId && <TaskListVisibilityFilter />}
@@ -379,13 +399,22 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
             )}
           </Flexbox>
         }
-        styles={{
-          left: {
-            paddingLeft: 4,
-            gap: 8,
-          },
-        }}
+        styles={
+          groupId
+            ? undefined
+            : {
+                left: {
+                  paddingLeft: 4,
+                  gap: 8,
+                },
+              }
+        }
       />
+      {groupId && (
+        <Flexbox paddingBlock={8} paddingInline={isMobile ? 10 : 16}>
+          {headerLeft}
+        </Flexbox>
+      )}
       {!isOrdinaryCollection ? (
         <WideScreenContainer
           fullWidth
@@ -430,6 +459,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
         <Flexbox flex={1} style={{ overflowX: 'auto', overflowY: 'hidden' }}>
           <KanbanBoard
             agentId={agentId}
+            groupId={groupId}
             options={viewOptions}
             projectId={projectId}
             routeScope={routeScope}
@@ -446,7 +476,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, projectId }) => {
           {!inlineCollapsed && (
             <CreateTaskInlineEntry
               agentId={agentId}
-              lockAssignee={!!agentId}
+              lockAssignee={!!agentId && !groupId}
               projectId={projectId}
             />
           )}

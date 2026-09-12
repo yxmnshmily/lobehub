@@ -318,6 +318,7 @@ export class MessageQueryActionImpl {
     const representableBucketKey = messageMapKey({
       agentId: ctx.agentId,
       groupId: ctx.groupId,
+      isolatedTopic: ctx.isolatedTopic,
       scope: ctx.threadId ? 'thread' : ctx.groupId ? 'group' : 'main',
       threadId: ctx.threadId,
       topicId: ctx.topicId,
@@ -350,7 +351,8 @@ export class MessageQueryActionImpl {
     const { skipFetch, revalidateOnFocus } = options ?? {};
 
     // Skip fetch when skipFetch is true or required fields are missing
-    const shouldFetch = !skipFetch && !!context.agentId && !!context.topicId;
+    const hasMessageScope = !!context.topicId || (context.scope === 'group' && !!context.groupId);
+    const shouldFetch = !skipFetch && !!context.agentId && hasMessageScope;
 
     return useClientDataSWRWithSync<UIChatMessage[]>(
       shouldFetch ? messageListKey(context) : null,
@@ -358,7 +360,7 @@ export class MessageQueryActionImpl {
       {
         ...getMessageListFetchPolicy(context),
         onData: (data) => {
-          if (!data || !context.topicId) return;
+          if (!data || !hasMessageScope) return;
 
           // Use replaceMessages to store the fetched messages
           this.#get().replaceMessages(data, { action: 'useFetchMessages', context });

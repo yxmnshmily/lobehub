@@ -94,14 +94,9 @@ const parseBinding = (value: unknown): HostedGroupSponsoredBudgetLocatorBinding 
   };
 };
 
-const parseLocator = (
-  value: unknown,
-  now: Date,
-): HostedGroupSponsoredBudgetLocator | undefined => {
+const parseLocator = (value: unknown, now: Date): HostedGroupSponsoredBudgetLocator | undefined => {
   if (!isExactRecord(value, LOCATOR_KEYS)) return undefined;
-  const binding = parseBinding(
-    Object.fromEntries(BINDING_KEYS.map((key) => [key, value[key]])),
-  );
+  const binding = parseBinding(Object.fromEntries(BINDING_KEYS.map((key) => [key, value[key]])));
   const expiresAt = canonicalText(value.expiresAt) ? Date.parse(value.expiresAt) : Number.NaN;
   if (
     !binding ||
@@ -169,10 +164,7 @@ export const resolveHostedGroupSponsoredBudgetLocator = async (
     throw unavailable();
   }
   const locator = parseLocator(value, now);
-  if (
-    !locator ||
-    BINDING_KEYS.some((key) => locator[key] !== expected[key])
-  ) {
+  if (!locator || BINDING_KEYS.some((key) => locator[key] !== expected[key])) {
     throw unavailable();
   }
 

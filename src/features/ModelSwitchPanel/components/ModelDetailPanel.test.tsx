@@ -9,6 +9,23 @@ import type { EnabledProviderWithModels } from '@/types/aiProvider';
 
 import ModelDetailPanel from './ModelDetailPanel';
 
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: {
+    customerCenter: {
+      getDisplayExchangeRate: {
+        useQuery: () => ({
+          data: {
+            month: '2026-09',
+            rate: 7,
+            rateDate: '2026-08-31',
+            updatedAt: '2026-09-01T00:00:00Z',
+          },
+        }),
+      },
+    },
+  },
+}));
+
 vi.mock('antd-style', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   createStaticStyles: () => ({
@@ -83,10 +100,10 @@ const translations: Record<string, string> = {
   'ModelSwitchPanel.detail.pricing.credits.millionTokens': 'credits/M tokens',
   'ModelSwitchPanel.detail.pricing.group.image': 'Image',
   'ModelSwitchPanel.detail.pricing.group.text': 'Text',
-  'ModelSwitchPanel.detail.pricing.input': 'Input ${{amount}}/M',
-  'ModelSwitchPanel.detail.pricing.output': 'Output ${{amount}}/M',
-  'ModelSwitchPanel.detail.pricing.perImage': '~ ${{amount}} / image',
-  'ModelSwitchPanel.detail.pricing.perVideo': '~ ${{amount}} / video',
+  'ModelSwitchPanel.detail.pricing.input': 'Input {{amount}}/M',
+  'ModelSwitchPanel.detail.pricing.output': 'Output {{amount}}/M',
+  'ModelSwitchPanel.detail.pricing.perImage': '~ {{amount}} / image',
+  'ModelSwitchPanel.detail.pricing.perVideo': '~ {{amount}} / video',
   'ModelSwitchPanel.detail.pricing.unit.imageGeneration': 'Image Generation',
   'ModelSwitchPanel.detail.pricing.unit.textInput': 'Input',
   'ModelSwitchPanel.detail.pricing.unit.textOutput': 'Output',
@@ -105,6 +122,7 @@ const translations: Record<string, string> = {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
+    i18n: { language: 'en-US' },
     t: (
       key: string,
       options?: Record<string, string | boolean> & {

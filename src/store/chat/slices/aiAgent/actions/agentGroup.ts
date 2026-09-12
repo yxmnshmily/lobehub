@@ -29,14 +29,22 @@ export class ChatGroupChatActionImpl {
     this.#get = get;
   }
 
-  sendGroupMessage = async ({ context, message, files }: SendGroupMessageParams): Promise<void> => {
-    if (!message.trim() && (!files || files.length === 0)) return;
+  sendGroupMessage = async ({
+    billing,
+    context,
+    message,
+    files,
+    onComplete,
+    parentMessageId,
+    parentOperationId,
+  }: SendGroupMessageParams): Promise<boolean> => {
+    if (!message.trim() && (!files || files.length === 0) && !parentMessageId) return false;
 
     const { agentId, groupId, topicId } = context;
 
     if (!agentId || !groupId) {
       log('sendGroupMessage: missing agentId or groupId in context');
-      return;
+      return false;
     }
 
     const { internal_handleAgentStreamEvent, optimisticCreateTmpMessage, startOperation } =
@@ -60,8 +68,16 @@ export class ChatGroupChatActionImpl {
     const { operationId: execOperationId, abortController: execAbortController } = startOperation({
       context: { ...context, messageId: tempUserId },
       label: 'Execute Server Agent',
+      parentOperationId,
       type: 'execServerAgentRuntime',
     });
+
+    let completionNotified = false;
+    const notifyComplete = () => {
+      if (completionNotified) return;
+      completionNotified = true;
+      onComplete?.();
+    };
 
     // 1. Optimistic update - create temp messages immediately for instant UI feedback
     // Pass operationId so internal_dispatchMessage uses the correct context
@@ -93,7 +109,7 @@ export class ChatGroupChatActionImpl {
       // 2. Call backend execGroupAgent - creates messages and triggers Agent
       // Pass AbortSignal to allow cancellation during the API call
       const result = await lambdaClient.aiAgent.execGroupAgent.mutate(
-        { agentId, files: fileIds, groupId, message, topicId },
+        { agentId, billing, files: fileIds, groupId, message, parentMessageId, topicId },
         { signal: execAbortController.signal },
       );
 
@@ -164,7 +180,14 @@ export class ChatGroupChatActionImpl {
           message: result.error || 'Agent operation failed to start',
           type: 'AgentStartupError',
         });
-        return;
+        if (parentOperationId) {
+          this.#get().failOperation(parentOperationId, {
+            message: result.error || 'Agent operation failed to start',
+            type: 'AgentStartupError',
+          });
+        }
+        notifyComplete();
+        return true;
       }
 
       // 9. Create streaming context - use assistantMessageId from backend response
@@ -192,6 +215,7 @@ export class ChatGroupChatActionImpl {
 
       // 11. Connect to SSE stream
       // Server will automatically close the connection after sending agent_runtime_end event
+      let terminalEventReceived = false;
       const eventSource = agentRuntimeClient.createStreamConnection(result.operationId, {
         includeHistory: false,
         onConnect: () => {
@@ -202,9 +226,15 @@ export class ChatGroupChatActionImpl {
           // Complete both operations when stream disconnects (either by server close or client abort)
           this.#get().completeOperation(result.operationId);
           this.#get().completeOperation(execOperationId);
+          notifyComplete();
         },
         onError: (error: Error) => {
           log('Stream error for %s: %O', result.operationId, error);
+          // Closing the response body after a terminal server event can surface as
+          // `BodyStreamBuffer was aborted`. The canonical assistant error/content
+          // has already arrived in that case, so do not overwrite it with a
+          // transport-level abort message.
+          if (terminalEventReceived) return;
           // Fail the stream operation on error
           this.#get().failOperation(result.operationId, {
             message: error.message,
@@ -215,7 +245,11 @@ export class ChatGroupChatActionImpl {
           }
         },
         onEvent: async (event: StreamEvent) => {
+          if (event.type === 'agent_runtime_end' || event.type === 'error') {
+            terminalEventReceived = true;
+          }
           await internal_handleAgentStreamEvent(result.operationId, event, streamContext);
+          if (event.type === 'agent_runtime_end' || event.type === 'error') notifyComplete();
         },
       });
 
@@ -224,6 +258,8 @@ export class ChatGroupChatActionImpl {
         log('Cancelling SSE stream for operation %s', result.operationId);
         eventSource.abort();
       });
+      if (parentOperationId) this.#get().completeOperation(parentOperationId);
+      return true;
     } catch (error) {
       // Check if this is an abort error (user cancelled the operation)
       const isAbortError =
@@ -261,7 +297,14 @@ export class ChatGroupChatActionImpl {
           message: error instanceof Error ? error.message : 'Unknown error',
           type: 'SendGroupMessageError',
         });
+        if (parentOperationId) {
+          this.#get().failOperation(parentOperationId, {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            type: 'SendGroupMessageError',
+          });
+        }
       }
+      return false;
     } finally {
       this.#set({ isCreatingMessage: false }, false, n('sendGroupMessage/end'));
     }

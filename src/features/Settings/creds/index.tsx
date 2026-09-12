@@ -1,12 +1,11 @@
 'use client';
 
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
-import { Button, Text } from '@lobehub/ui/base-ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import NavHeader from '@/features/NavHeader';
 import SettingContainer from '@/features/Setting/SettingContainer';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -33,17 +32,24 @@ const Page = ({ mobile }: PageProps) => {
   };
 
   const createButton = (
-    <Tooltip title={reason}>
-      <Button
-        disabled={!canManageCredentials}
-        icon={<Icon icon={Plus} />}
-        size={mobile ? 'large' : 'small'}
-        type={'primary'}
-        onClick={handleCreate}
-      >
-        {t('creds.create')}
-      </Button>
-    </Tooltip>
+    /* Centred and capped: a primary button stretched across the whole pane
+       reads as a banner, not a button. */
+    <Flexbox horizontal justify={'center'} width={'100%'}>
+      <div style={{ maxWidth: 480, width: '100%' }}>
+        <Tooltip title={reason}>
+          <Button
+            disabled={!canManageCredentials}
+            icon={<Icon icon={Plus} />}
+            size={mobile ? 'large' : 'small'}
+            style={{ width: '100%' }}
+            type={'primary'}
+            onClick={handleCreate}
+          >
+            {t('creds.create')}
+          </Button>
+        </Tooltip>
+      </div>
+    </Flexbox>
   );
 
   if (mobile) {
@@ -59,10 +65,8 @@ const Page = ({ mobile }: PageProps) => {
 
   return (
     <>
-      <NavHeader right={createButton} styles={{ center: { alignItems: 'center' } }}>
-        <Text weight={500}>{t('tab.creds')}</Text>
-      </NavHeader>
-      <SettingContainer maxWidth={1024} paddingBlock={'24px 128px'} paddingInline={24}>
+      <SettingContainer maxWidth={'100%'}>
+        {createButton}
         <CredsList key={refreshKey} />
       </SettingContainer>
     </>

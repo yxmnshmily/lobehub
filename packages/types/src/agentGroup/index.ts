@@ -21,7 +21,19 @@ export interface LobeChatGroupMetaConfig {
 
 export interface LobeChatGroupChatConfig {
   allowDM?: boolean;
+  /** Maximum speak/broadcast rounds per ordinary group-chat run (1–10). */
+  maxDiscussionRounds?: number;
   forkedFromIdentifier?: string;
+  /** Server-managed member configuration, exposed for display only. */
+  memberSlots?: Array<{
+    agentId?: string;
+    configurable: boolean;
+    key: string;
+    label: string;
+    role: 'participant' | 'supervisor';
+    skillSlots?: string[];
+    status?: 'configured' | 'unconfigured';
+  }>;
   openingMessage?: string;
   openingQuestions?: string[];
   revealDM?: boolean;
@@ -34,12 +46,17 @@ export type LobeChatGroupConfig = LobeChatGroupChatConfig;
 // Zod schema for ChatGroupConfig (database insert)
 export const ChatGroupConfigSchema = z.object({
   allowDM: z.boolean().optional(),
+  maxDiscussionRounds: z.number().int().min(1).max(10).optional(),
   forkedFromIdentifier: z.string().optional(),
   openingMessage: z.string().optional(),
   openingQuestions: z.array(z.string()).optional(),
   revealDM: z.boolean().optional(),
   systemPrompt: z.string().optional(),
 });
+
+/** Legacy groups retain the existing client's ten-round ceiling. */
+export const resolveGroupDiscussionMaxRounds = (value: unknown): number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10 ? value : 10;
 
 // Zod schema for inserting ChatGroup
 export const InsertChatGroupSchema = z.object({

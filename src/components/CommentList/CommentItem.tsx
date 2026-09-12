@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     padding-block: 22px;
     padding-inline: 24px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 22px;
 
     background: ${cssVar.colorBgContainer};

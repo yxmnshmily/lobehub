@@ -35,6 +35,7 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { FileService } from '@/server/services/file';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
 import {
   getPlatformAiRuntimeMarker,
   PLATFORM_MANAGED_AI_RUNTIME,
@@ -354,6 +355,14 @@ export const videoRouter = router({
         await asyncTaskModel.update(asyncTaskId, {
           error: createVideoTaskSubmitError(e, providerContentPolicyMessage),
           status: AsyncTaskStatus.Error,
+        });
+
+        await notifyGenerationFailed({
+          kind: 'video',
+          asyncTaskId,
+          topicId: generationTopicId,
+          userId,
+          workspaceId: wsId,
         });
 
         if (prechargeResult) {

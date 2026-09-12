@@ -9,7 +9,10 @@ import { authSelectors, userProfileSelectors } from '@/store/user/selectors';
 
 type TaggedReadiness = { readiness: MyTravelGroupReadiness; userId: string };
 
-export const useMyTravelGroupReadiness = ({ manageLifecycle = true } = {}) => {
+export const useMyTravelGroupReadiness = ({
+  manageLifecycle = true,
+  refreshAgentList = manageLifecycle,
+} = {}) => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const userId = useUserStore(userProfileSelectors.userId);
   const activeWorkspaceId = useActiveWorkspaceId();
@@ -19,11 +22,11 @@ export const useMyTravelGroupReadiness = ({ manageLifecycle = true } = {}) => {
 
   const [localResult, setLocalResult] = useState<TaggedReadiness | undefined>();
   const [pendingUserId, setPendingUserId] = useState<string | undefined>();
-  const attemptedUserIdRef = useRef<string | undefined>();
+  const attemptedUserIdRef = useRef<string | undefined>(undefined);
   const inFlightRef = useRef<
     { promise: Promise<MyTravelGroupReadiness | undefined>; userId: string } | undefined
-  >();
-  const refreshedReadyRef = useRef<string | undefined>();
+  >(undefined);
+  const refreshedReadyRef = useRef<string | undefined>(undefined);
 
   const { data, error, mutate } = useClientDataSWR<MyTravelGroupReadiness>(
     enabled ? ['home:my-travel-group-readiness', userId] : null,
@@ -82,12 +85,12 @@ export const useMyTravelGroupReadiness = ({ manageLifecycle = true } = {}) => {
   }, [data?.status, enabled, manageLifecycle, retry, userId]);
 
   useEffect(() => {
-    if (!manageLifecycle || readiness?.status !== 'ready' || !userId) return;
+    if (!refreshAgentList || readiness?.status !== 'ready' || !userId) return;
     const readyKey = `${userId}:${readiness.groupId}`;
     if (refreshedReadyRef.current === readyKey) return;
     refreshedReadyRef.current = readyKey;
     void getHomeStoreState().refreshAgentList();
-  }, [manageLifecycle, readiness, userId]);
+  }, [readiness, refreshAgentList, userId]);
 
   return {
     groupId: readiness?.status === 'ready' ? readiness.groupId : undefined,

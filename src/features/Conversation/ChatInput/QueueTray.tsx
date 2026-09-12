@@ -27,7 +27,7 @@ const PREVIEW_SIZE = 28;
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-block-end: none;
     border-radius: 12px 12px 0 0;
     background: ${cssVar.colorBgElevated};
@@ -40,7 +40,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     height: 28px;
     padding-block: 0;
     padding-inline: 6px;
-    border: 1px solid ${cssVar.colorFillTertiary};
+    border: 0.5px solid ${cssVar.colorFillTertiary};
     border-radius: 6px;
 
     font-size: 12px;
@@ -61,7 +61,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 28px !important;
     height: 28px !important;
     margin-block: 0 !important;
-    border: 1px solid ${cssVar.colorFillTertiary};
+    border: 0.5px solid ${cssVar.colorFillTertiary};
     border-radius: 6px;
 
     box-shadow: none;
@@ -77,7 +77,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px 8px;
   `,
   itemDivider: css`
-    border-block-start: 1px solid ${cssVar.colorFillTertiary};
+    border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
   `,
   text: css`
     overflow: hidden;

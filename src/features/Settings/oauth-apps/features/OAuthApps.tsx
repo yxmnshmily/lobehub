@@ -1,12 +1,13 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useClientDataSWR } from '@/libs/swr';
 import { authKeys } from '@/libs/swr/keys';
@@ -19,7 +20,7 @@ import AppItem from './AppItem';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   listCol: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -59,8 +60,8 @@ const OAuthApps: FC<OAuthAppsProps> = ({ canEdit }) => {
     if (isLoading)
       return (
         <Flexbox gap={12} padding={12}>
-          <Skeleton.Text rows={2} />
-          <Skeleton.Text rows={2} />
+          <SkeletonText rows={2} />
+          <SkeletonText rows={2} />
         </Flexbox>
       );
 

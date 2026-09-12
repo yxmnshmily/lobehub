@@ -81,7 +81,9 @@ export async function createVolcengineImage(
     ...(params.webSearch && { tools: [{ type: 'web_search' }] }),
     ...(params.promptExtend &&
       params.promptExtend !== 'off' && {
-        optimize_prompt_options: { mode: params.promptExtend },
+        optimize_prompt_options: {
+          mode: params.promptExtend === 'on' ? 'standard' : params.promptExtend,
+        },
       }),
     ...userInput,
   };

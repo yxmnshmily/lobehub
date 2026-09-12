@@ -87,7 +87,7 @@ export const notificationDeliveries = pgTable(
       .notNull(),
 
     /** Delivery channel: `inbox` | `email` | `push` | `im` (messenger DM) */
-    channel: text('channel').$type<'email' | 'im' | 'inbox' | 'push'>().notNull(),
+    channel: text('channel').$type<'email' | 'im' | 'inbox' | 'push' | 'sms'>().notNull(),
     /** Lifecycle status: `pending` | `sent` | `delivered` | `failed` */
     status: text('status').$type<'delivered' | 'failed' | 'pending' | 'sent'>().notNull(),
 

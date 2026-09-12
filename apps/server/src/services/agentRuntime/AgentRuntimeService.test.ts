@@ -18,6 +18,13 @@ import {
   type StartExecutionParams,
 } from './types';
 
+const budgetContinuation = vi.hoisted(() => ({ snapshot: vi.fn(), restore: vi.fn() }));
+vi.mock('@/server/services/platformUsageBilling/sharedBudget', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getPlatformUsageSharedBudgetSnapshot: budgetContinuation.snapshot,
+  restorePlatformUsageSharedBudgetForOperation: budgetContinuation.restore,
+}));
+
 vi.mock('@lobechat/model-runtime', () => ({
   // RuntimeExecutors (loaded transitively) resolves extend params via this
   // helper; an empty result keeps the runtime payload unchanged.
@@ -480,6 +487,52 @@ describe('AgentRuntimeService', () => {
       expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
     });
 
+    it.each([true, false])(
+      'persists the admitted budget before dispatch (persisted=%s)',
+      async (persisted) => {
+        const snapshot = {
+          actorUserId: mockParams.userId,
+          budgetId: 'server-budget',
+          leaseVersion: 1,
+          version: 1,
+        };
+        budgetContinuation.snapshot.mockReturnValueOnce(snapshot);
+        const recordStart = vi
+          .spyOn((service as any).completionLifecycle, 'recordStart')
+          .mockResolvedValue(persisted);
+        vi.spyOn((service as any).agentOperationModel, 'findById').mockResolvedValue({
+          userId: mockUserId,
+          workspaceId: null,
+          metadata: { platformUsageBudget: snapshot },
+        });
+        const run = service.createOperation(mockParams);
+        if (persisted) await expect(run).resolves.toMatchObject({ success: true });
+        else await expect(run).rejects.toThrow('Failed to durably persist platform budget binding');
+        expect(recordStart).toHaveBeenCalledWith(
+          expect.objectContaining({ metadata: { platformUsageBudget: snapshot } }),
+        );
+        expect(mockQueueService.scheduleMessage).toHaveBeenCalledTimes(persisted ? 1 : 0);
+      },
+    );
+
+    it('rejects a conflicting durable locator even when recordStart reports success', async () => {
+      budgetContinuation.snapshot.mockReturnValueOnce({
+        actorUserId: mockParams.userId,
+        budgetId: 'new-budget',
+        leaseVersion: 1,
+        version: 1,
+      });
+      vi.spyOn((service as any).completionLifecycle, 'recordStart').mockResolvedValue(true);
+      vi.spyOn((service as any).agentOperationModel, 'findById').mockResolvedValue({
+        userId: mockParams.userId,
+        metadata: { platformUsageBudget: { budgetId: 'old-budget' } },
+      });
+      await expect(service.createOperation(mockParams)).rejects.toThrow(
+        'Platform budget operation identity conflict',
+      );
+      expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
+    });
+
     it('durably persists the opaque hosted member run binding before dispatch', async () => {
       const binding = createHostedGroupRunBinding({
         actorUserId: 'invited-member',
@@ -858,6 +911,30 @@ describe('AgentRuntimeService', () => {
           userId: 'group-owner',
         }),
       );
+    });
+
+    it('restores the budget before creating executors and propagates restore failures', async () => {
+      budgetContinuation.restore.mockRejectedValueOnce(new Error('invalid persisted budget'));
+      const runtime = (service as any).createAgentRuntime({
+        metadata: {
+          agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+          billingActorUserId: 'test-user',
+          resourceOwnerUserId: 'test-user',
+          userId: 'test-user',
+        },
+        operationId: 'restore-budget-before-tools',
+        stepIndex: 2,
+      });
+      await expect(runtime).rejects.toThrow('invalid persisted budget');
+      expect(budgetContinuation.restore).toHaveBeenCalledWith(
+        mockDb,
+        'restore-budget-before-tools',
+        {
+          actorUserId: 'test-user',
+          workspaceId: undefined,
+        },
+      );
+      expect(createRuntimeExecutors).not.toHaveBeenCalled();
     });
 
     it('should execute step successfully', async () => {
@@ -2495,6 +2572,89 @@ describe('AgentRuntimeService', () => {
         { parentOperationId: 'parent-1' },
         { scheduleVerifyOnHold: true },
       );
+    });
+
+    it('persists a canonical quote marker on the replying member message before resuming', async () => {
+      const updateMessage = vi.fn().mockResolvedValue({ success: true });
+      (service as any).messageModel.update = updateMessage;
+
+      await service.completeGroupActionMember({
+        anchorMessageId: 'grp-tool-1',
+        expectedMembers: 1,
+        finalState: {
+          ...memberState,
+          messages: [
+            { content: 'question', role: 'user' },
+            { content: '我来检查你的文案', id: 'msg_B', role: 'assistant' },
+          ],
+        } as any,
+        groupToolMessageId: 'grp-tool-1',
+        mode: 'in_group',
+        onComplete: 'resume',
+        operationId: 'child-1',
+        parentOperationId: 'parent-1',
+        reason: 'done',
+        replyToMessageId: 'msg_A',
+      } as any);
+
+      expect(updateMessage).toHaveBeenCalledWith('msg_B', {
+        content: '<group_reply ref="msg%5FA" />\n我来检查你的文案',
+      });
+      expect(updateMessage.mock.invocationCallOrder[0]).toBeLessThan(
+        updateToolMessage.mock.invocationCallOrder[0],
+      );
+      expect(resumeSpy).toHaveBeenCalled();
+    });
+
+    it('retries queue delivery when the quoted member message cannot be loaded', async () => {
+      vi.spyOn(service as any, 'resolveLastAssistantMessageFromDB').mockRejectedValue(
+        new Error('temporary database failure'),
+      );
+
+      await expect(
+        service.completeGroupActionMember({
+          anchorMessageId: 'grp-tool-1',
+          expectedMembers: 1,
+          finalState: {
+            ...memberState,
+            messages: undefined,
+          } as any,
+          groupToolMessageId: 'grp-tool-1',
+          mode: 'in_group',
+          onComplete: 'resume',
+          operationId: 'child-1',
+          parentOperationId: 'parent-1',
+          reason: 'done',
+          replyToMessageId: 'msg_A',
+        } as any),
+      ).rejects.toThrow('temporary database failure');
+      expect(updateToolMessage).not.toHaveBeenCalled();
+      expect(resumeSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not add a quote marker when no reply target was requested', async () => {
+      const updateMessage = vi.fn();
+      (service as any).messageModel.update = updateMessage;
+
+      await service.completeGroupActionMember({
+        anchorMessageId: 'grp-tool-1',
+        expectedMembers: 1,
+        finalState: {
+          ...memberState,
+          messages: [
+            { content: 'question', role: 'user' },
+            { content: '我继续完善这条文案', id: 'msg_A2', role: 'assistant' },
+          ],
+        } as any,
+        groupToolMessageId: 'grp-tool-1',
+        mode: 'in_group',
+        onComplete: 'resume',
+        operationId: 'child-1',
+        parentOperationId: 'parent-1',
+        reason: 'done',
+      });
+
+      expect(updateMessage).not.toHaveBeenCalled();
     });
 
     it('single isolated member: backfills the final answer', async () => {

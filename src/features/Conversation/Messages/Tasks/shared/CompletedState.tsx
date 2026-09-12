@@ -9,8 +9,10 @@ import { Footprints, Timer, Wrench } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+
 import Markdown from '../../../Markdown';
-import { formatCost, formatDuration } from './utils';
+import { formatDuration } from './utils';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   collapseContent: css`
@@ -142,11 +144,15 @@ MetricsRow.displayName = 'MetricsRow';
 
 const CompletedState = memo<CompletedStateProps>(
   ({ taskDetail, content, expanded = false, variant = 'detail' }) => {
+    const { formatOptional: formatCost } = useMonthlyExchangeRate();
     const { duration, totalToolCalls, totalSteps, totalCost } = taskDetail;
 
     // Format duration and cost using shared utilities
     const formattedDuration = useMemo(() => formatDuration(duration), [duration]);
-    const formattedCost = useMemo(() => formatCost(totalCost), [totalCost]);
+    const formattedCost = useMemo(
+      () => (totalCost ? formatCost(totalCost) : null),
+      [totalCost, formatCost],
+    );
 
     const hasContent = content && content.trim().length > 0;
     const hasMetrics =

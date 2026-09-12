@@ -13,7 +13,6 @@ import {
   resolveHeterogeneousProviderTopicModel,
 } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
-import debug from 'debug';
 
 import type { MessageModel } from '@/database/models/message';
 import type { TopicModel } from '@/database/models/topic';
@@ -28,11 +27,10 @@ import { markdownToTxt } from '@/utils/markdownToTxt';
 import type { DeviceAccessReason } from '../deviceAccessPolicy';
 import { resolveDeviceAccessPolicy } from '../deviceAccessPolicy';
 import { ingestAttachment } from '../ingestAttachment';
+import { aiAgentDebug as log } from '../safeDebug';
 import type { AgentShareGate } from '../shareGate';
 import { reserveShareVisitorTopic, reserveShareVisitorTurn } from '../shareVisitorAbuseGuards';
 import type { InternalExecAgentParams } from '../types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface TurnSetupDeps {
   db: LobeChatDatabase;

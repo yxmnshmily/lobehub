@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FileListItem from './index';
+
+const { mockHandleItemClick } = vi.hoisted(() => ({
+  mockHandleItemClick: vi.fn(),
+}));
 
 vi.mock('@lobehub/ui', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -44,7 +48,7 @@ vi.mock('@/store/file', () => ({
 }));
 
 vi.mock('../../hooks/useFileItemClick', () => ({
-  useFileItemClick: () => vi.fn(),
+  useFileItemClick: () => mockHandleItemClick,
 }));
 
 vi.mock('../../ItemDropdown/useFileItemDropdown', () => ({
@@ -121,6 +125,10 @@ const baseProps = {
 };
 
 describe('FileListItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('hides uploader identity when the private resource library is active', () => {
     render(<FileListItem {...baseProps} showUploader={false} />);
 
@@ -133,5 +141,15 @@ describe('FileListItem', () => {
     render(<FileListItem {...baseProps} selectable={false} />);
 
     expect(screen.getByRole('checkbox')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('opens the resource from the keyboard through the row click surface', () => {
+    render(<FileListItem {...baseProps} />);
+
+    const row = screen.getByRole('button', { name: 'Report.txt' });
+    fireEvent.keyDown(row, { key: 'Enter' });
+    fireEvent.keyDown(row, { key: ' ' });
+
+    expect(mockHandleItemClick).toHaveBeenCalledTimes(2);
   });
 });

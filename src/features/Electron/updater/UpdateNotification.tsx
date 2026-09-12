@@ -12,6 +12,7 @@ import { autoUpdateService } from '@/services/electron/autoUpdate';
 import { rendererOtaService } from '@/services/electron/rendererOta';
 import { useUserStore } from '@/store/user';
 import { userGeneralSettingsSelectors } from '@/store/user/selectors';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { selectUpdateInfo } from './selectUpdateInfo';
 
@@ -136,6 +137,7 @@ const openUpdateDetailModal = (updateInfo: UpdateInfo) =>
   });
 
 export const UpdateNotification: React.FC = () => {
+  const translateTravel = useTravelTranslation();
   const { t: tElectron } = useTranslation('electron');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [installConfirmMode, setInstallConfirmMode] = useState<
@@ -185,7 +187,7 @@ export const UpdateNotification: React.FC = () => {
       <div className={styles.installLaterToast}>
         {tElectron('updater.willInstallLater')}
         <button
-          aria-label="Close"
+          aria-label={translateTravel('关闭')}
           className={styles.installLaterCloseButton}
           type="button"
           onClick={() => setInstallConfirmMode(null)}

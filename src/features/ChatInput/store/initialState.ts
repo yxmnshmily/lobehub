@@ -72,6 +72,8 @@ export interface PublicState {
   onMarkdownContentChange?: (content: string) => void;
   onSend?: SendButtonHandler;
   onVoiceMessageSend?: VoiceMessageSendHandler;
+  /** Centrally configured conversations expose chat controls, not configuration writes. */
+  readOnlyConfig?: boolean;
   /**
    * Live send gate consulted by `handleSendButton` instead of
    * `sendButtonProps.disabled`. The disabled flag mirrors editor content

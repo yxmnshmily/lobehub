@@ -59,7 +59,7 @@ const SessionList = memo<SessionListProps>(({ dataSource, groupId, showAddButton
           to={resolveSessionUrl({
             agentId: (res as any).config?.id,
             id,
-            mobile,
+            mobile: !!mobile,
             type: res.type,
           })}
           onClick={(e) => {

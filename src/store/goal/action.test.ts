@@ -24,6 +24,15 @@ beforeEach(() => {
 });
 
 describe('GoalAction', () => {
+  it('queries all group executors and isolates their cache from the supervisor list', () => {
+    useGoalStore.getState().useFetchGoals('supervisor', undefined, 'travel');
+    const [key, fetcher] = vi.mocked(useClientDataSWR).mock.calls[0];
+    expect(key).toEqual(['task:sidebarGroups', 'group:travel:goals-page']);
+    void (fetcher as () => unknown)();
+    expect(goalService.list).toHaveBeenCalledWith(
+      expect.objectContaining({ groupId: 'travel', agentId: undefined }),
+    );
+  });
   describe('useFetchGoalGraph', () => {
     const refreshIntervalFor = (status: string) => {
       useGoalStore.getState().useFetchGoalGraph('goal-1');

@@ -47,7 +47,7 @@ export const elementPickerScript = (labels: ElementPickerLabels) => `((labels) =
     const root = host.attachShadow({ mode: 'closed' });
     root.innerHTML =
       '<style>' +
-      '.box { position: fixed; display: none; border: 1.5px solid #2f54eb; border-radius: 2px; background: rgba(47,84,235,.12); transition: all .06s ease-out; }' +
+      '.box { position: fixed; display: none; border: 0.5px solid #2f54eb; border-radius: 2px; background: rgba(47,84,235,.12); transition: all .06s ease-out; }' +
       '.box.on { display: block }' +
       '.tag { position: absolute; inset-inline-start: -1.5px; max-width: 60vw; overflow: hidden; padding: 2px 6px; border-radius: 4px; font: 500 11px/16px system-ui, sans-serif; color: #fff; white-space: nowrap; text-overflow: ellipsis; background: #2f54eb; }' +
       '.hint { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); padding: 4px 10px; border-radius: 16px; font: 12px system-ui, sans-serif; color: #fff; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); white-space: nowrap; }' +

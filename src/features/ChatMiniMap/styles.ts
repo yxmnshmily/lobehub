@@ -22,6 +22,8 @@ export const minimapStyles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     flex-direction: column;
     align-items: end;
+
+    min-width: 44px;
   `,
   previewPanel: css`
     pointer-events: none;
@@ -37,7 +39,7 @@ export const minimapStyles = createStaticStyles(({ css, cssVar }) => ({
 
     min-width: 240px;
     max-width: 360px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
 
     opacity: 0;
@@ -89,7 +91,7 @@ export const indicatorStyles = createStaticStyles(({ css, cssVar }) => ({
 
     flex-shrink: 0;
 
-    min-width: 5px;
+    min-width: 8px;
     height: 12px;
     padding-block: 5px;
   `,

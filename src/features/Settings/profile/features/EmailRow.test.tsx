@@ -14,9 +14,10 @@ vi.mock('@lobehub/ui', () => ({
     onPressEnter: _onPressEnter,
     status: _status,
     ...props
-  }: React.InputHTMLAttributes<HTMLInputElement> & { onPressEnter?: () => void; status?: string }) => (
-    <input {...props} />
-  ),
+  }: React.InputHTMLAttributes<HTMLInputElement> & {
+    onPressEnter?: () => void;
+    status?: string;
+  }) => <input {...props} />,
 }));
 vi.mock('@lobehub/ui/base-ui', () => ({
   Button: ({

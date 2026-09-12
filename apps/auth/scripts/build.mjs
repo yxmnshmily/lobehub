@@ -19,7 +19,7 @@ const AUTH_NAMESPACES = ['auth', 'authError', 'common', 'error', 'marketAuth', '
 const assertLocaleMatrix = async () => {
   const localesDir = path.resolve(appRoot, '../../locales');
   const onDisk = (await readdir(localesDir, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && PRERENDER_LOCALES.includes(entry.name))
     .map((entry) => entry.name);
 
   const complete = [];

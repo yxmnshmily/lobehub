@@ -5,6 +5,7 @@ import {
   PlatformManagedImageUsageSettlement,
   PlatformManagedTextUsageSettlement,
   PlatformManagedTextUsageSettlementError,
+  PlatformManagedVideoUsageSettlement,
 } from './settlement';
 
 const createLedger = (balanceCredits: number) =>
@@ -25,20 +26,35 @@ const createSettlement = (balanceCredits: number) => {
 };
 
 describe('PlatformManagedTextUsageSettlement', () => {
-  it('allows the provider call only when the actor has a positive Credits balance', async () => {
-    const { settlement } = createSettlement(1);
-
-    await expect(settlement.assertCanCallProvider()).resolves.toBeUndefined();
-  });
-
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5])(
-    'fails the provider preflight for an invalid or empty balance (%s)',
+  it.each([50_000, 50_001, 1_000_000])(
+    'allows a provider round when the current balance is at least 50,000 (%s)',
     async (balanceCredits) => {
       const { settlement } = createSettlement(balanceCredits);
 
-      await expect(settlement.assertCanCallProvider()).rejects.toBeInstanceOf(
-        PlatformManagedTextUsageSettlementError,
-      );
+      await expect(settlement.assertCanCallProvider()).resolves.toBeUndefined();
+    },
+  );
+
+  it.each([49_999, 1, 0, -1])(
+    'stops before the provider when the current balance is below 50,000 (%s)',
+    async (balanceCredits) => {
+      const { settlement } = createSettlement(balanceCredits);
+
+      await expect(settlement.assertCanCallProvider()).rejects.toMatchObject({
+        code: 'BALANCE_FLOOR_REACHED',
+        message: expect.stringContaining('积分预算不足'),
+      });
+    },
+  );
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, 1.5])(
+    'fails closed when the stored balance is invalid (%s)',
+    async (balanceCredits) => {
+      const { settlement } = createSettlement(balanceCredits);
+
+      await expect(settlement.assertCanCallProvider()).rejects.toMatchObject({
+        code: 'BALANCE_INVALID',
+      });
     },
   );
 
@@ -157,11 +173,11 @@ describe('PlatformManagedImageUsageSettlement', () => {
     return { ledger, settlement };
   };
 
-  it('requires a positive Credits balance before the image provider call', async () => {
+  it('applies the same 50,000 Credits floor before the image provider call', async () => {
     const { settlement } = createImageSettlement(0);
 
     await expect(settlement.assertCanCallProvider()).rejects.toMatchObject({
-      code: 'BALANCE_EMPTY',
+      code: 'BALANCE_FLOOR_REACHED',
     });
   });
 
@@ -235,3 +251,53 @@ describe('PlatformManagedImageUsageSettlement', () => {
     expect(ledger.chargeUsage).not.toHaveBeenCalled();
   });
 });
+
+describe('PlatformManagedVideoUsageSettlement', () => {
+  const createVideoSettlement = (balanceCredits: number) => {
+    const ledger = createLedger(balanceCredits);
+    const settlement = new PlatformManagedVideoUsageSettlement(
+      {} as LobeChatDatabase,
+      'customer-1',
+      ledger,
+    );
+
+    return { ledger, settlement };
+  };
+
+  it('applies the same 50,000 Credits floor before the video provider call', async () => {
+    const { settlement } = createVideoSettlement(0);
+
+    await expect(settlement.assertCanCallProvider()).rejects.toMatchObject({
+      code: 'BALANCE_FLOOR_REACHED',
+    });
+  });
+
+  it('settles the video charge from the callback usage under the async task identity', async () => {
+    const { ledger, settlement } = createVideoSettlement(1000);
+
+    await settlement.settleVideo({
+      asyncTaskId: 'task-1',
+      generationId: 'generation-1',
+      model: 'doubao-seedance-2-0-260128',
+      provider: 'volcengine',
+      usage: { cost: 0.006474, totalTokens: 1_000_000 },
+      workspaceId: 'workspace-1',
+    });
+
+    expect(ledger.chargeUsage).toHaveBeenCalledWith({
+      actorUserId: 'customer-1',
+      costUsd: 0.006474,
+      credits: 6474,
+      generationId: 'generation-1:async-task:task-1:video',
+      generationType: 'platform-managed-video',
+      idempotencyKey: expect.stringMatching(/^platform-usage:v1:[a-f0-9]{64}$/),
+      model: 'doubao-seedance-2-0-260128',
+      provider: 'volcengine',
+      tokenUsage: { totalTokens: 1_000_000 },
+      workspaceId: 'workspace-1',
+    });
+  });
+});
+
+const creditNotice = vi.hoisted(() => vi.fn(async (_event: unknown) => {}));
+vi.mock('@/server/services/notification/index', () => ({ notifyUser: creditNotice }));

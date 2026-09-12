@@ -29,6 +29,7 @@ import { MODEL_LIST_CONFIGS, processModelList } from '../../utils/modelParse';
 import { StreamingResponse } from '../../utils/response';
 import { getRuntimeSignatureScopeSource } from '../../utils/signatureScope';
 import type { LobeRuntimeAI } from '../BaseAI';
+import { type BoundedChatModelLimits, prepareBoundedChat } from '../boundedChat';
 import {
   buildAnthropicMessages,
   buildAnthropicTools,
@@ -562,6 +563,32 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
       }
 
       return { ...requestPayload, model: mappedModel };
+    }
+
+    async prepareChatBounded(
+      payload: ChatStreamPayload,
+      maxOutputTokens: number,
+      limits: BoundedChatModelLimits,
+    ) {
+      const runtime = new LobeAnthropicCompatibleAI({
+        ...this._options,
+        ...this.modelIdMappingOptions,
+        maxRetries: 0,
+      });
+      return prepareBoundedChat({
+        chat: runtime.chat.bind(runtime),
+        maxOutputTokens,
+        // DeepSeek's catalog maximum includes all generated tokens, not just the answer.
+        outputTokenLimit:
+          provider === 'deepseek' &&
+          /^deepseek-v4-(?:flash|pro)$/.test(
+            resolveMappedModelId(payload.model, this.modelIdMappingOptions),
+          )
+            ? limits.maxOutput
+            : undefined,
+        limits,
+        payload,
+      });
     }
 
     async chat(payload: ChatStreamPayload, options?: ChatMethodOptions) {

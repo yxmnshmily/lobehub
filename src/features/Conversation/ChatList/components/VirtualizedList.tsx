@@ -13,20 +13,15 @@ import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 import WideScreenContainer from '../../../WideScreenContainer';
 import { MessageForwardSelectToHere } from '../../MessageForward';
 import {
-  dataSelectors,
   inputSelectors,
   messageStateSelectors,
   useConversationStore,
   virtuaListSelectors,
 } from '../../store';
-import {
-  CONVERSATION_SPACER_TRANSITION_MS,
-  useConversationScroll,
-} from '../hooks/useConversationScroll';
+import { useConversationScroll } from '../hooks/useConversationScroll';
 import { useSelectionMessageIds } from '../hooks/useSelectionMessageIds';
 import { useTopicScrollPersist } from '../hooks/useTopicScrollPersist';
 import type { ResolvedMessageDeepLink } from '../utils/messageDeepLink';
-import AutoScroll from './AutoScroll';
 import { AT_BOTTOM_THRESHOLD } from './AutoScroll/const';
 import { useAutoScrollEnabled } from './AutoScroll/useAutoScrollEnabled';
 import BackBottom from './BackBottom';
@@ -42,6 +37,7 @@ interface VirtualizedListProps {
   dataSource: string[];
   footerSlot?: ReactNode;
   headerSlot?: ReactNode;
+  initialPosition?: 'start' | 'restore';
   itemContent: (index: number, data: string) => ReactNode;
   messageDeepLink?: ResolvedMessageDeepLink;
 }
@@ -52,7 +48,7 @@ interface VirtualizedListProps {
  * Based on ConversationStore data flow, no dependency on global ChatStore.
  */
 const VirtualizedList = memo<VirtualizedListProps>(
-  ({ dataSource, footerSlot, headerSlot, itemContent, messageDeepLink }) => {
+  ({ dataSource, footerSlot, headerSlot, initialPosition, itemContent, messageDeepLink }) => {
     const virtuaRef = useRef<VListHandle>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,37 +66,27 @@ const VirtualizedList = memo<VirtualizedListProps>(
     // so we key the scroll snapshot by the message-map key derived from
     // ConversationStore's `context`.
     const contextKey = useConversationStore((s) => messageMapKey(s.context));
-    const { recordScroll } = useTopicScrollPersist({
+    const { cancelRestore, recordScroll } = useTopicScrollPersist({
       contextKey,
       containerRef,
       dataSourceLength: dataSource.length,
       headerOffset,
+      initialPosition,
       messageDeepLink,
       virtuaRef,
     });
 
-    // Second-to-last message is the user turn when sending (user + assistant pair)
-    const isSecondLastMessageFromUser = useConversationStore(
-      dataSelectors.isSecondLastMessageFromUser,
-    );
-
-    const {
-      isScrollShrinking,
-      isSpacerMessage,
-      listData,
-      onScrollOffset,
-      registerSpacerNode,
-      spacerActive,
-      spacerHeight,
-    } = useConversationScroll({
+    const isAutoScrollEnabled = useAutoScrollEnabled();
+    const { onScrollOffset, pauseFollowing, resumeFollowing } = useConversationScroll({
+      autoScrollEnabled: isAutoScrollEnabled,
+      cancelRestore,
+      containerRef,
       contextKey,
       dataSource,
+      footerOffset: footerSlot ? 1 : 0,
       headerOffset,
-      isSecondLastMessageFromUser,
       virtuaRef,
     });
-
-    const isAutoScrollEnabled = useAutoScrollEnabled();
     const devDockMounted = useDevDockMounted();
 
     // While multi-selecting, let message rows span the full stream width so the
@@ -167,7 +153,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
 
       setScrollState({ isScrolling: true });
 
-      // Shrink spacer on scroll up when not streaming
+      // Only actual user scrolling may pause bottom following.
       const ref = virtuaRef.current;
       if (ref) {
         const hasUserScrollIntent =
@@ -205,6 +191,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
         // Index-based methods accept MESSAGE indices; the header slot row is a
         // private implementation detail translated away right here.
         registerVirtuaScrollMethods({
+          pauseFollowing,
           getItemOffset: (index) => ref.getItemOffset(index + headerOffsetRef.current),
           getItemSize: (index) => ref.getItemSize(index + headerOffsetRef.current),
           getScrollOffset: () => ref.scrollOffset,
@@ -228,7 +215,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
       return () => {
         registerVirtuaScrollMethods(null);
       };
-    }, [registerVirtuaScrollMethods, setActiveIndex]);
+    }, [pauseFollowing, registerVirtuaScrollMethods, setActiveIndex]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -270,7 +257,6 @@ const VirtualizedList = memo<VirtualizedListProps>(
     }, [dataSource, streamingIndices, selectionMessageIds]);
 
     const atBottom = useConversationStore(virtuaListSelectors.atBottom);
-    const scrollToBottom = useConversationStore((s) => s.scrollToBottom);
 
     // The ChatInput's floating overlay (TodoProgress + QueueTray) covers the
     // bottom of this scroll viewport like a layer. Extend VList's internal
@@ -284,10 +270,10 @@ const VirtualizedList = memo<VirtualizedListProps>(
     const dataWithSlots = useMemo(
       () => [
         ...(headerSlot ? [CONVERSATION_HEADER_ID] : []),
-        ...listData,
+        ...dataSource,
         ...(footerSlot ? [CONVERSATION_FOOTER_ID] : []),
       ],
-      [footerSlot, headerSlot, listData],
+      [footerSlot, headerSlot, dataSource],
     );
 
     const keepMountedIndicesWithSlots = useMemo(
@@ -296,7 +282,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
     );
 
     // Mirror the latest data length into a ref so the scroll-methods registered
-    // once on mount can read the current total count (including spacer/footer,
+    // once on mount can read the current total count (including the footer,
     // but excluding the leading header row — the count stays in the same
     // message-index space as the registered scrollToIndex) without
     // re-registering on every render.
@@ -322,6 +308,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
           </Suspense>
         )}
         <VList
+          data-conversation-viewport
           bufferSize={typeof window !== 'undefined' ? window.innerHeight : 0}
           data={dataWithSlots}
           keepMounted={keepMountedIndicesWithSlots}
@@ -345,34 +332,8 @@ const VirtualizedList = memo<VirtualizedListProps>(
                 </WideScreenContainer>
               );
             }
-            if (isSpacerMessage(messageId)) {
-              // Only animate the collapse-to-zero (unmount). Any non-zero height
-              // change (initial mount, shrink as assistant grows) is applied
-              // instantly so virtua's scrollSize updates in a single frame and
-              // scrollToIndex can reach the user message without trailing behind
-              // a 200ms transition.
-              const shouldAnimate = !isScrollShrinking && spacerHeight === 0;
-              return (
-                <WideScreenContainer key={messageId} style={{ position: 'relative' }}>
-                  <div
-                    aria-hidden
-                    ref={registerSpacerNode}
-                    style={{
-                      height: spacerHeight,
-                      pointerEvents: 'none',
-                      transition: shouldAnimate
-                        ? `height ${CONVERSATION_SPACER_TRANSITION_MS}ms ease`
-                        : 'none',
-                      width: '100%',
-                    }}
-                  />
-                </WideScreenContainer>
-              );
-            }
-
             const isAgentCouncil = messageId.includes('agentCouncil');
             const messageIndex = headerSlot ? index - 1 : index;
-            const isLastItem = messageIndex === dataSource.length - 1;
             const content = itemContent(messageIndex, messageId);
 
             if (isAgentCouncil) {
@@ -380,8 +341,6 @@ const VirtualizedList = memo<VirtualizedListProps>(
               return (
                 <div key={messageId} style={{ position: 'relative', width: '100%' }}>
                   {content}
-                  {/* AutoScroll is placed inside the last Item so it only triggers when the last Item is visible */}
-                  {isLastItem && isAutoScrollEnabled && !spacerActive && <AutoScroll />}
                 </div>
               );
             }
@@ -393,7 +352,6 @@ const VirtualizedList = memo<VirtualizedListProps>(
                 style={{ position: 'relative' }}
               >
                 {content}
-                {isLastItem && isAutoScrollEnabled && !spacerActive && <AutoScroll />}
               </WideScreenContainer>
             );
           }}
@@ -404,7 +362,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
             atBottom={atBottom}
             bottomOffset={overlayHeight}
             visible={!atBottom}
-            onScrollToBottom={() => scrollToBottom(true)}
+            onScrollToBottom={resumeFollowing}
           />
         </WideScreenContainer>
       </div>

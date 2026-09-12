@@ -11,6 +11,7 @@ import MCPStdioCommandInput from '@/components/MCPStdioCommandInput';
 import ArgsInput from '@/features/PluginDevModal/MCPManifestForm/ArgsInput';
 import { useToolStore } from '@/store/tool';
 import { pluginSelectors } from '@/store/tool/selectors';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   compactForm: css`
@@ -30,7 +31,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
   configFormContainer: css`
     padding: ${cssVar.paddingLG};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillAlter};
   `,
@@ -46,14 +47,14 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
   connectionForm: css`
     padding: ${cssVar.paddingMD};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillAlter};
   `,
 
   connectionPreview: css`
     padding: ${cssVar.paddingMD};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillAlter};
   `,
@@ -66,7 +67,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
   emptyState: css`
     padding: ${cssVar.paddingXL};
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorTextTertiary};
@@ -97,7 +98,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 0;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
 
@@ -141,7 +142,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
       flex: 1;
 
-      height: 1px;
+      height: 0.5px;
       margin-inline-start: ${cssVar.marginMD};
 
       background: linear-gradient(to right, ${cssVar.colorBorder}, transparent);
@@ -164,6 +165,7 @@ const Settings = ({
   identifier,
   hideFooter,
 }: SettingsProps & { ref?: React.RefObject<SettingsRef | null> }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation(['plugin', 'common']);
   const [connectionForm] = AForm.useForm();
   const [envForm] = AForm.useForm();
@@ -338,7 +340,7 @@ const Settings = ({
                       name={'args'}
                       rules={[{ message: t('settings.rules.argsRequired'), required: true }]}
                     >
-                      <ArgsInput placeholder="e.g: mcp-hello-world" />
+                      <ArgsInput placeholder={translateTravel('例如：mcp-hello-world')} />
                     </AForm.Item>
                   </>
                 )}

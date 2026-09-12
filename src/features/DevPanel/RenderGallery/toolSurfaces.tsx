@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   missingShell: css`
     padding-block: 12px;
     padding-inline: 16px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
     font-size: 12px;

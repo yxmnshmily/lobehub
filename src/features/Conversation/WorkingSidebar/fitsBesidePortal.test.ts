@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { CHAT_PORTAL_WIDE_WIDTH, CHAT_PORTAL_WIDTH } from '@/const/layoutTokens';
+import {
+  CHAT_PORTAL_WIDE_WIDTH,
+  CHAT_PORTAL_WIDTH,
+  CONVERSATION_KEEP_WIDTH,
+} from '@/const/layoutTokens';
 
 import { fitsBesidePortal, sidebarWidthBudget } from './fitsBesidePortal';
 
@@ -15,9 +19,10 @@ describe('sidebarWidthBudget', () => {
   });
 
   it('reserves the conversation share beside an open portal', () => {
-    // 1710 - 840 - 420
+    expect(CONVERSATION_KEEP_WIDTH).toBe(640);
+    // 1710 - 840 - 640
     expect(sidebarWidthBudget({ availableWidth: 1710, portalWidth: CHAT_PORTAL_WIDE_WIDTH })).toBe(
-      450,
+      230,
     );
   });
 });
@@ -47,10 +52,10 @@ describe('fitsBesidePortal', () => {
     ).toBe(false);
   });
 
-  it('keeps all three when the row is wide enough', () => {
+  it('keeps all three only when the conversation still has a readable 640px column', () => {
     expect(
       fitsBesidePortal({
-        availableWidth: 1710,
+        availableWidth: 1840,
         portalWidth: CHAT_PORTAL_WIDE_WIDTH,
         sidebarWidth: SIDEBAR,
       }),
@@ -66,7 +71,7 @@ describe('fitsBesidePortal', () => {
   it('still fits a narrow portal at the same row width that a wide one does not', () => {
     expect(
       fitsBesidePortal({
-        availableWidth: 1182,
+        availableWidth: 1500,
         portalWidth: CHAT_PORTAL_WIDTH,
         sidebarWidth: SIDEBAR,
       }),

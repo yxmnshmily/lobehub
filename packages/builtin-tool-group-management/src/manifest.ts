@@ -24,6 +24,11 @@ export const GroupManagementManifest: BuiltinToolManifest = {
               "Optional instruction or context to guide the agent's response. If omitted, the agent responds based on conversation context.",
             type: 'string',
           },
+          replyToMessageId: {
+            description:
+              "Set only when this member is directly answering another member. Copy that existing assistant message_reference ID exactly. Omit for self-talk, progress updates, new contributions, or continuing the same member's own work.",
+            type: 'string',
+          },
           skipCallSupervisor: {
             default: false,
             description:

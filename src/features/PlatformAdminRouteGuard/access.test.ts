@@ -25,7 +25,14 @@ describe('resolvePlatformAdminRouteAccess', () => {
   });
 
   it('keeps the customer and platform settings boundaries explicit', () => {
-    expect(CUSTOMER_SETTINGS_TAB_PATHS).toEqual(['profile', 'security', 'credits', 'billing']);
+    expect(CUSTOMER_SETTINGS_TAB_PATHS).toEqual([
+      'profile',
+      'security',
+      'plans',
+      'usage',
+      'credits',
+      'billing',
+    ]);
     expect(PLATFORM_SETTINGS_TAB_PATHS).toEqual([
       'apikey',
       'credential',
@@ -39,9 +46,41 @@ describe('resolvePlatformAdminRouteAccess', () => {
 
 describe('resolveCustomerMainRouteAccess', () => {
   it.each([
+    '',
+    '/conversation',
+    '/conversation/topic-1',
+    '/tasks',
+    '/goals',
+    '/acceptance',
+    '/task/T-1',
+    '/goal/G-1',
+    '/acceptance/A-1',
+    '/acceptance/A-1/check/C-1',
+  ])(
+    'allows the embedded project page without opening unrelated configuration routes: %s',
+    (suffix) => {
+      expect(
+        resolveCustomerMainRouteAccess({
+          isLoading: false,
+          isPlatformAdmin: false,
+          pathname: `/group/group-1/project/project-1${suffix}`,
+        }),
+      ).toBe('allow');
+      expect(
+        resolveCustomerMainRouteAccess({
+          isLoading: false,
+          isPlatformAdmin: false,
+          pathname: '/group/group-1/project/project-1/settings',
+        }),
+      ).toBe('redirect');
+    },
+  );
+  it.each([
     '/',
     '/settings',
     '/settings/profile',
+    '/settings/plans',
+    '/settings/usage',
     '/settings/security/password',
     '/settings/credits',
     '/settings/billing/history',
@@ -50,10 +89,17 @@ describe('resolveCustomerMainRouteAccess', () => {
     '/page/work-1',
     '/image',
     '/video',
+    '/memory',
+    '/memory/identities',
+    '/memory/contexts',
+    '/memory/preferences',
+    '/memory/experiences',
+    '/memory/activities',
     '/me',
     '/me/profile',
     '/me/settings',
     '/group/customer-private-group',
+    '/group/customer-private-group/profile',
     '/group/customer-private-group/topic-123',
   ])('keeps customer account and owned-work pages accessible: %s', (pathname) => {
     expect(
@@ -61,19 +107,23 @@ describe('resolveCustomerMainRouteAccess', () => {
     ).toBe('allow');
   });
 
-  it.each(['?active=profile', '?active=security', '?active=credits', '?active=billing'])(
-    'allows customer tabs on the legacy mobile settings query route: %s',
-    (search) => {
-      expect(
-        resolveCustomerMainRouteAccess({
-          isLoading: false,
-          isPlatformAdmin: false,
-          pathname: '/settings',
-          search,
-        }),
-      ).toBe('allow');
-    },
-  );
+  it.each([
+    '?active=profile',
+    '?active=security',
+    '?active=plans',
+    '?active=usage',
+    '?active=credits',
+    '?active=billing',
+  ])('allows customer tabs on the legacy mobile settings query route: %s', (search) => {
+    expect(
+      resolveCustomerMainRouteAccess({
+        isLoading: false,
+        isPlatformAdmin: false,
+        pathname: '/settings',
+        search,
+      }),
+    ).toBe('allow');
+  });
 
   it.each(['balance-usage', 'my-creations', 'private-group'])(
     'keeps a refreshed customer-center section accessible: %s',
@@ -105,7 +155,6 @@ describe('resolveCustomerMainRouteAccess', () => {
 
   it.each([
     '/agent/default-travel-copywriter',
-    '/group/customer-private-group/profile',
     '/group/customer-private-group/permission',
     '/group/customer-private-group/settings',
     '/group/customer-private-group/members',
@@ -116,7 +165,6 @@ describe('resolveCustomerMainRouteAccess', () => {
     '/tasks',
     '/resource',
     '/community',
-    '/memory',
     '/settings/apikey',
     '/settings/credential',
     '/settings/labs',
@@ -127,6 +175,8 @@ describe('resolveCustomerMainRouteAccess', () => {
     '/settings/skill',
     '/settings/storage',
     '/settings/users',
+    '/settings/usage/admin',
+    '/acme/settings/usage',
     '/settings/memory',
     '/users',
     '/settings/works/work-1',
@@ -148,9 +198,33 @@ describe('resolveCustomerMainRouteAccess', () => {
     ).toBe('allow');
   });
 
-  it('does not render the main app while authorization is loading', () => {
-    expect(resolveCustomerMainRouteAccess({ isLoading: true, pathname: '/settings/profile' })).toBe(
-      'loading',
-    );
+  it.each([
+    '/group/group-1',
+    '/group/group-1/topic-1',
+    '/settings/profile',
+    '/settings/credits',
+    '/me',
+  ])(
+    'does not replace an allowed customer page while the admin check is pending: %s',
+    (pathname) => {
+      expect(resolveCustomerMainRouteAccess({ isLoading: true, pathname })).toBe('allow');
+    },
+  );
+
+  it.each(['/settings/provider/all', '/group/group-1/settings', '/settings/users'])(
+    'still waits before rendering an admin-only route: %s',
+    (pathname) => {
+      expect(resolveCustomerMainRouteAccess({ isLoading: true, pathname })).toBe('loading');
+    },
+  );
+
+  it('does not render protected settings tabs while authorization is loading', () => {
+    expect(
+      resolveCustomerMainRouteAccess({
+        isLoading: true,
+        pathname: '/settings',
+        search: '?active=service-operations',
+      }),
+    ).toBe('loading');
   });
 });

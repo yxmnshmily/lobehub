@@ -6,7 +6,7 @@ import {
   groupTopicsByUpdatedTime,
 } from '@lobechat/utils/client/topic';
 import { Flexbox } from '@lobehub/ui';
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AsyncError from '@/components/AsyncError';
@@ -23,6 +23,7 @@ import { useTopicsViewStore } from './store';
 import Toolbar from './Toolbar';
 import TopicGrid from './TopicGrid';
 import TopicListView from './TopicListView';
+import type { TopicManagementActions } from './types';
 import {
   buildBotChannelOptions,
   getProjectFilterLabel,
@@ -38,9 +39,28 @@ import {
 // triggers `loadMoreTopics` which appends another page into `topicDataMap`.
 const PAGE_SIZE = 30;
 
-const AgentTopicManager = memo(() => {
+/** Optional group adapter: the page stays shared, while access and navigation stay with its host. */
+export interface TopicPageSource {
+  error?: Error | null;
+  getArchiveTopics?: () => Promise<ChatTopic[]>;
+  hasMore: boolean;
+  header: ReactNode;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  loadMore: () => void;
+  loadMoreError?: Error | null;
+  management?: TopicManagementActions;
+  onOpen: (topicId?: string) => void;
+  retry: () => void;
+  scopeKey: string;
+  topics: ChatTopic[];
+}
+
+const AgentTopicManager = memo(({ source }: { source?: TopicPageSource }) => {
   const { t } = useTranslation('topic');
   const activeAgentId = useChatStore((s) => s.activeAgentId);
+  const scopeKey = source?.scopeKey ?? activeAgentId;
+  const sourceBacked = !!source;
   // Use the management page's dedicated SWR pipeline so the heavier
   // `withDetails` fetch doesn't share a bucket with the sidebar's cheap
   // fetch (the shared bucket let whichever response landed last clobber the
@@ -51,10 +71,15 @@ const AgentTopicManager = memo(() => {
 
   // Read directly from the view's topic map so `loadMore` appends are visible
   // here without waiting for SWR revalidation.
-  const allTopics = useChatStore(topicSelectors.agentTopicsViewTopics);
-  const hasMore = useChatStore(topicSelectors.agentTopicsViewHasMore);
-  const isLoadingMore = useChatStore(topicSelectors.agentTopicsViewIsLoadingMore);
-  const loadMoreError = useChatStore(topicSelectors.agentTopicsViewLoadMoreError);
+  const agentTopics = useChatStore(topicSelectors.agentTopicsViewTopics);
+  const allTopics = source?.topics ?? agentTopics;
+  const agentHasMore = useChatStore(topicSelectors.agentTopicsViewHasMore);
+  const hasMore = source?.hasMore ?? agentHasMore;
+  const agentLoadingMore = useChatStore(topicSelectors.agentTopicsViewIsLoadingMore);
+  const isLoadingMore = source?.isLoadingMore ?? agentLoadingMore;
+  const agentLoadMoreError = useChatStore(topicSelectors.agentTopicsViewLoadMoreError);
+  const loadMoreError = source ? source.loadMoreError : agentLoadMoreError;
+  const loadMore = source?.loadMore ?? loadMoreAgentTopicsView;
 
   const reset = useTopicsViewStore((s) => s.reset);
   const search = useTopicsViewStore((s) => s.search);
@@ -81,9 +106,11 @@ const AgentTopicManager = memo(() => {
   // stale IDs from another agent.
   useEffect(() => {
     reset();
-  }, [activeAgentId, reset]);
+    if (sourceBacked) setTriggers([]);
+    return reset;
+  }, [scopeKey, reset, setTriggers, sourceBacked]);
 
-  const { error, isLoading, mutate } = useFetchAgentTopicsView(true, {
+  const agentQuery = useFetchAgentTopicsView(!source, {
     agentId: activeAgentId,
     pageSize: PAGE_SIZE,
     // Opt into the heavier card-detail columns (firstUserMessage,
@@ -92,16 +119,19 @@ const AgentTopicManager = memo(() => {
     withDetails: true,
   });
 
+  const error = source ? source.error : agentQuery.error;
+  const isLoading = source?.isLoading ?? agentQuery.isLoading;
+  const mutate = source?.retry ?? agentQuery.mutate;
   const trimmedSearch = search.trim();
   const { data: searchResults } = useSearchTopics(
-    trimmedSearch.length > 0 ? trimmedSearch : undefined,
+    !source && trimmedSearch.length > 0 ? trimmedSearch : undefined,
     { agentId: activeAgentId },
   );
 
   const baseTopics: ChatTopic[] = useMemo(() => {
-    if (trimmedSearch.length > 0) return searchResults ?? [];
+    if (!source && trimmedSearch.length > 0) return searchResults ?? [];
     return allTopics ?? [];
-  }, [trimmedSearch, searchResults, allTopics]);
+  }, [source, trimmedSearch, searchResults, allTopics]);
 
   // Pool with every filter EXCEPT status applied. Reused for the final
   // filtered list AND for the per-status count badges so each tab shows
@@ -138,7 +168,7 @@ const AgentTopicManager = memo(() => {
 
   // Search results are flat — grouping by time confuses the relevance order
   // returned by the BM25 keyword search.
-  const isSearchMode = trimmedSearch.length > 0;
+  const isSearchMode = trimmedSearch.length > 0 && !source;
   const useGroups = groupBy !== 'none' && !isSearchMode;
 
   const renderGroups = useMemo(() => {
@@ -200,20 +230,20 @@ const AgentTopicManager = memo(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && hasMore && !isLoadingMore && !loadMoreError) {
-          void loadMoreAgentTopicsView();
+          void loadMore();
         }
       },
       { root, rootMargin: '300px' },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isSearchMode, loadMoreAgentTopicsView, loadMoreError]);
+  }, [hasMore, isLoading, isLoadingMore, isSearchMode, loadMore, loadMoreError]);
 
-  if (!activeAgentId) return <TopicsSkeleton />;
+  if (!scopeKey) return <TopicsSkeleton />;
 
   return (
     <Flexbox flex={1} height={'100%'} style={{ overflow: 'hidden' }}>
-      <Header agentId={activeAgentId} />
+      <Header agentId={activeAgentId} breadcrumb={source?.header} />
       <div
         ref={scrollContainerRef}
         style={{
@@ -222,23 +252,24 @@ const AgentTopicManager = memo(() => {
           flexDirection: 'column',
           minWidth: 0,
           overflowY: 'auto',
-          padding: '20px 24px',
+          padding: '20px 16px',
         }}
       >
         <Flexbox
           gap={16}
           style={{
-            marginInline: 'auto',
-            maxWidth: 1440,
             width: '100%',
           }}
         >
           <Toolbar
             botChannelOptions={botChannelOptions}
+            getArchiveTopics={source?.getArchiveTopics}
+            management={source?.management}
             projects={projects}
+            readOnly={!!source && !source.management}
             statusCounts={statusCounts}
           />
-          <BulkActionBar />
+          {(!source || source.management) && <BulkActionBar management={source?.management} />}
           {!isSearchMode && error && !isLoading && baseTopics.length === 0 ? (
             <AsyncError
               error={error}
@@ -254,6 +285,7 @@ const AgentTopicManager = memo(() => {
               agentId={activeAgentId}
               hasFilters={hasActiveFilters}
               onClearFilters={clearFilters}
+              onStart={source ? () => source.onOpen() : undefined}
             />
           ) : (
             <>
@@ -262,38 +294,42 @@ const AgentTopicManager = memo(() => {
                   agentId={activeAgentId}
                   groupBy={groupBy}
                   groups={renderGroups}
+                  readOnly={!!source && !source.management}
                   showGroupTitles={useGroups}
+                  onOpen={source?.onOpen}
                 />
               ) : (
                 <TopicListView
                   agentId={activeAgentId}
                   groupBy={groupBy}
                   groups={renderGroups}
+                  readOnly={!!source && !source.management}
                   showGroupTitles={useGroups}
+                  onOpen={source?.onOpen}
                 />
               )}
-              {!isSearchMode && hasMore && (
-                <div aria-hidden ref={sentinelRef} style={{ height: 1 }} />
-              )}
-              {!isSearchMode && isLoadingMore && (
-                <Flexbox align={'center'} paddingBlock={12}>
-                  <span className={shinyTextStyles.shinyText} style={{ fontSize: 12 }}>
-                    {t('management.loadingMore')}
-                  </span>
-                </Flexbox>
-              )}
-              {!isSearchMode && loadMoreError && !isLoadingMore && (
-                <Flexbox align={'center'} paddingBlock={12}>
-                  <AsyncError
-                    error={loadMoreError}
-                    variant={'inline'}
-                    onRetry={() => {
-                      void loadMoreAgentTopicsView();
-                    }}
-                  />
-                </Flexbox>
-              )}
             </>
+          )}
+          {!isSearchMode && !isLoading && !error && hasMore && (
+            <div aria-hidden ref={sentinelRef} style={{ height: 1 }} />
+          )}
+          {!isSearchMode && isLoadingMore && (
+            <Flexbox align={'center'} paddingBlock={12}>
+              <span className={shinyTextStyles.shinyText} style={{ fontSize: 12 }}>
+                {t('management.loadingMore')}
+              </span>
+            </Flexbox>
+          )}
+          {!isSearchMode && loadMoreError && !isLoadingMore && (
+            <Flexbox align={'center'} paddingBlock={12}>
+              <AsyncError
+                error={loadMoreError}
+                variant={'inline'}
+                onRetry={() => {
+                  void loadMore();
+                }}
+              />
+            </Flexbox>
           )}
         </Flexbox>
       </div>

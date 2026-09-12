@@ -17,11 +17,29 @@ class MessengerService {
     return lambdaClient.messenger.listAgentsForBinding.query({ workspaceId: workspaceId ?? null });
   };
 
+  listGroupsForBinding = async (workspaceId?: string | null) => {
+    return lambdaClient.messenger.listGroupsForBinding.query({ workspaceId: workspaceId ?? null });
+  };
+
+  setActiveGroup = async (params: {
+    groupId: string | null;
+    platform: MessengerPlatform;
+    tenantId?: string;
+    workspaceId?: string | null;
+  }) => {
+    return lambdaClient.messenger.setActiveGroup.mutate(params);
+  };
+
   listBindingScopes = async () => {
     return lambdaClient.messenger.listBindingScopes.query();
   };
 
-  confirmLink = async (params: { initialAgentId: string; randomId: string }) => {
+  confirmLink = async (params: {
+    initialAgentId?: string;
+    initialGroupId?: string;
+    workspaceId?: string | null;
+    randomId: string;
+  }) => {
     return lambdaClient.messenger.confirmLink.mutate(params);
   };
 

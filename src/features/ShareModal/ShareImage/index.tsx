@@ -31,10 +31,10 @@ const ShareImage = memo<{ mobile?: boolean }>(() => {
   const currentAgentTitle = useAgentStore(agentSelectors.currentAgentDisplayName);
   const [fieldValue, setFieldValue] = useState<FieldType>(DEFAULT_FIELD_VALUE);
   const { t } = useTranslation(['chat', 'common']);
-  const { context, dbMessages } = useShareData();
+  const { context, dbMessages, isSnapshot, title: sharedTitle } = useShareData();
   const { loading, onDownload, title } = useScreenshot({
     imageType: fieldValue.imageType,
-    title: currentAgentTitle ?? undefined,
+    title: isSnapshot ? sharedTitle : (currentAgentTitle ?? undefined),
   });
   const { loading: copyLoading, onCopy } = useImgToClipboard();
 
@@ -101,7 +101,13 @@ const ShareImage = memo<{ mobile?: boolean }>(() => {
   return (
     <>
       <Flexbox className={styles.body} gap={16} horizontal={!isMobile}>
-        <Preview context={context} messages={dbMessages} title={title} {...fieldValue} />
+        <Preview
+          context={context}
+          messages={dbMessages}
+          title={title}
+          {...fieldValue}
+          hideAgentDetails={isSnapshot}
+        />
         <Flexbox className={styles.sidebar} gap={12}>
           <Form
             initialValues={DEFAULT_FIELD_VALUE}

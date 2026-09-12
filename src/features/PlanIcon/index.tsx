@@ -102,7 +102,7 @@ const PlanIcon = memo<PlanIconProps>(
         ? null
         : {
             ...theme,
-            border: isFree ? undefined : `2px solid ${theme.color}`,
+            border: isFree ? undefined : `0.5px solid ${theme.color}`,
           }),
       alignItems: 'center',
       borderRadius: radius,

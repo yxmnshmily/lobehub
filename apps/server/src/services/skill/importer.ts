@@ -16,6 +16,7 @@ import debug from 'debug';
 import { AgentSkillModel } from '@/database/models/agentSkill';
 import { GitHub, GitHubNotFoundError, GitHubParseError } from '@/server/modules/GitHub';
 import { FileService } from '@/server/services/file';
+import { saveSkillWithSuperGroupTemplate } from '@/server/services/user/travelServiceGroupTemplate';
 
 import { SkillImportError, SkillManifestError } from './errors';
 import { SkillParser } from './parser';
@@ -32,6 +33,7 @@ export class SkillImporter {
   private userId: string;
   private workspaceId?: string;
   private workspaceRole?: string;
+  private db: LobeChatDatabase;
 
   constructor(
     db: LobeChatDatabase,
@@ -39,6 +41,7 @@ export class SkillImporter {
     workspaceId?: string,
     options?: { workspaceRole?: string },
   ) {
+    this.db = db;
     this.skillModel = new AgentSkillModel(db, userId, workspaceId);
     this.parser = new SkillParser();
     this.resourceService = new SkillResourceService(db, userId, workspaceId);
@@ -274,14 +277,20 @@ export class SkillImporter {
     if (existing) {
       this.assertCanOverwrite(existing);
       log('importFromGitHub: skill exists but content changed, updating id=%s', existing.id);
-      const skill = await this.skillModel.update(existing.id, {
-        content,
-        description: manifest.description,
-        manifest: fullManifest,
-        name: manifest.name,
-        resources: resourceIds,
-        zipFileHash,
-      });
+      const skill = await saveSkillWithSuperGroupTemplate(
+        this.db,
+        this.userId,
+        existing.id,
+        {
+          content,
+          description: manifest.description,
+          manifest: fullManifest,
+          name: manifest.name,
+          resources: resourceIds,
+          zipFileHash,
+        },
+        this.workspaceId,
+      );
       log('importFromGitHub: updated skill id=%s', skill.id);
       return { skill, status: 'updated' };
     }
@@ -473,14 +482,20 @@ export class SkillImporter {
 
       this.assertCanOverwrite(existing);
       log('importFromUrl: skill exists but content changed, updating id=%s', existing.id);
-      const skill = await this.skillModel.update(existing.id, {
-        content: skillContent,
-        description: manifest.description,
-        manifest: fullManifest,
-        name: manifest.name,
-        ...(resourceMap && { resources: resourceMap }),
-        ...(zipFileHash && { zipFileHash }),
-      });
+      const skill = await saveSkillWithSuperGroupTemplate(
+        this.db,
+        this.userId,
+        existing.id,
+        {
+          content: skillContent,
+          description: manifest.description,
+          manifest: fullManifest,
+          name: manifest.name,
+          ...(resourceMap && { resources: resourceMap }),
+          ...(zipFileHash && { zipFileHash }),
+        },
+        this.workspaceId,
+      );
       log('importFromUrl: updated skill id=%s', skill.id);
       return { skill, status: 'updated' };
     }

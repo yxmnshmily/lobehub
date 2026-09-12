@@ -25,7 +25,7 @@ const FileList = () => {
     <Center
       gap={8}
       paddingBlock={24}
-      style={{ border: `1px dashed ${cssVar.colorSplit}`, borderRadius: 8, marginInline: 12 }}
+      style={{ border: `0.5px dashed ${cssVar.colorSplit}`, borderRadius: 8, marginInline: 12 }}
     >
       <Avatar
         avatar={<Icon icon={InboxIcon} size={'large'} />}

@@ -3,12 +3,13 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
 
 import ArticleSkeleton from '@/components/Skeleton/Article';
+import NavHeader from '@/features/NavHeader';
 
 const styles = createStaticStyles(({ css }) => ({
   card: css`
     aspect-ratio: 0.9;
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: ${cssVar.colorBgContainer};
@@ -28,7 +29,8 @@ const styles = createStaticStyles(({ css }) => ({
     }
 
     @media (width <= 620px) {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
   `,
   scroll: css`
@@ -38,6 +40,10 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 0;
     padding-block: 8px 24px;
     padding-inline: 24px;
+
+    @media (width <= 620px) {
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    }
   `,
 }));
 
@@ -55,6 +61,7 @@ WorkGalleryCardsSkeleton.displayName = 'WorkGalleryCardsSkeleton';
 
 const WorkGallerySkeleton = () => (
   <Flexbox aria-busy height={'100%'}>
+    <NavHeader />
     <Flexbox className={styles.scroll}>
       <WorkGalleryCardsSkeleton />
     </Flexbox>

@@ -46,7 +46,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     max-width: min(560px, 80vw);
     padding-block-end: 6px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 12px;

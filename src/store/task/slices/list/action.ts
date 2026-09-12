@@ -198,6 +198,7 @@ export class TaskListSliceActionImpl {
   useFetchTaskGroupList = (
     options: {
       agentId?: string;
+      groupId?: string;
       allAgents?: boolean;
       automated?: boolean;
       enabled?: boolean;
@@ -213,13 +214,16 @@ export class TaskListSliceActionImpl {
       enabled = true,
       excludeStatuses,
       groupBy = 'status',
+      groupId,
       projectId,
     } = options;
-    const effectiveKey = projectId
-      ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
-      : allAgents
-        ? ALL_AGENTS_LIST_KEY
-        : agentId;
+    const effectiveKey = groupId
+      ? `__group__:${groupId}`
+      : projectId
+        ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
+        : allAgents
+          ? ALL_AGENTS_LIST_KEY
+          : agentId;
     const excludeStatusesSignature = excludeStatuses?.length
       ? [...excludeStatuses].sort().join(',')
       : undefined;
@@ -283,7 +287,8 @@ export class TaskListSliceActionImpl {
         : null,
       async () => {
         return taskService.groupList({
-          assigneeAgentId: allAgents ? undefined : agentId,
+          assigneeAgentId: allAgents || groupId ? undefined : agentId,
+          groupId,
           ...(automated === undefined ? {} : { automated }),
           excludeStatuses: excludeStatuses?.length ? [...excludeStatuses] : undefined,
           ...(groupBy === 'status' ? { groups: DEFAULT_KANBAN_GROUPS } : { groupBy }),
@@ -328,21 +333,30 @@ export class TaskListSliceActionImpl {
   useFetchScheduledTaskList = (
     options: {
       agentId?: string;
+      groupId?: string;
       enabled?: boolean;
       limit?: number;
       offset?: number;
       projectId?: string;
     } = {},
   ) => {
-    const { agentId, enabled = true, limit, offset, projectId } = options;
-    const scopeKey = projectId
-      ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
-      : (agentId ?? ALL_AGENTS_LIST_KEY);
+    const { agentId, groupId, enabled = true, limit, offset, projectId } = options;
+    const scopeKey = groupId
+      ? `__group__:${groupId}`
+      : projectId
+        ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
+        : (agentId ?? ALL_AGENTS_LIST_KEY);
     return useClientDataSWR(
       enabled ? taskKeys.scheduledList(scopeKey, 'all', limit, offset) : null,
       async () =>
         this.fetchTaskList({
-          ...(projectId ? { projectId } : agentId ? { assigneeAgentId: agentId } : {}),
+          ...(groupId
+            ? { groupId }
+            : projectId
+              ? { projectId }
+              : agentId
+                ? { assigneeAgentId: agentId }
+                : {}),
           automated: true,
           limit,
           offset,
@@ -382,6 +396,7 @@ export class TaskListSliceActionImpl {
   useFetchTaskList = (
     options: {
       agentId?: string;
+      groupId?: string;
       allAgents?: boolean;
       /**
        * Server-side automation filter: `false` excludes the tasks that still
@@ -426,15 +441,18 @@ export class TaskListSliceActionImpl {
       complete = false,
       enabled = true,
       orderBy,
+      groupId,
       projectId,
       statuses,
       visibility,
     } = options;
-    const effectiveKey = projectId
-      ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
-      : allAgents
-        ? ALL_AGENTS_LIST_KEY
-        : agentId;
+    const effectiveKey = groupId
+      ? `__group__:${groupId}`
+      : projectId
+        ? `${PROJECT_LIST_KEY_PREFIX}${projectId}`
+        : allAgents
+          ? ALL_AGENTS_LIST_KEY
+          : agentId;
     const listVisibility = visibility ?? this.#get().listVisibility;
     // Order-insensitive signature, only for change detection in the scope guard.
     const statusesSignature = statuses?.length ? [...statuses].sort().join(',') : undefined;
@@ -483,7 +501,8 @@ export class TaskListSliceActionImpl {
         : null,
       async ([, id]: [string, string]) => {
         const params = {
-          ...(allAgents || projectId ? {} : { assigneeAgentId: id }),
+          ...(allAgents || projectId || groupId ? {} : { assigneeAgentId: id }),
+          groupId,
           automated,
           orderBy,
           projectId,
@@ -494,6 +513,7 @@ export class TaskListSliceActionImpl {
       },
       {
         onSuccess: (data: { data: TaskListItem[]; total: number }) => {
+          if (this.#get().listAgentId !== effectiveKey) return;
           this.#set(
             {
               isTaskListInit: true,

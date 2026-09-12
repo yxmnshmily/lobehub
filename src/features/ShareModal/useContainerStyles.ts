@@ -11,7 +11,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
       max-width: var(--preview-max-width, none);
       max-height: 70dvh;
       margin: var(--preview-margin, 0);
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgContainer};

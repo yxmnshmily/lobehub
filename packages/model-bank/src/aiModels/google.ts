@@ -1194,7 +1194,18 @@ const googleVideoModels: AIVideoModelCard[] = [
       seed: { default: null },
     },
     pricing: {
-      units: [{ name: 'videoGeneration', rate: 0.6, strategy: 'fixed', unit: 'second' }],
+      // Gemini API standard video with audio; checked 2026-09-07.
+      units: [
+        {
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'second',
+          lookup: {
+            pricingParams: ['resolution'],
+            prices: { '720p': 0.4, '1080p': 0.4, '4k': 0.6 },
+          },
+        },
+      ],
     },
     releasedAt: '2026-01-13',
     type: 'video',
@@ -1226,7 +1237,18 @@ const googleVideoModels: AIVideoModelCard[] = [
       seed: { default: null },
     },
     pricing: {
-      units: [{ name: 'videoGeneration', rate: 0.35, strategy: 'fixed', unit: 'second' }],
+      // Gemini API fast video with audio; checked 2026-09-07.
+      units: [
+        {
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'second',
+          lookup: {
+            pricingParams: ['resolution'],
+            prices: { '720p': 0.1, '1080p': 0.12, '4k': 0.3 },
+          },
+        },
+      ],
     },
     releasedAt: '2026-01-13',
     type: 'video',

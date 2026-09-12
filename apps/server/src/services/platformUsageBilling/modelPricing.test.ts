@@ -1,4 +1,7 @@
 import type { LobeChatDatabase } from '@lobechat/database';
+import deepseekModels from 'model-bank/deepseek';
+import moonshotModels from 'model-bank/moonshot';
+import qwenModels from 'model-bank/qwen';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
@@ -7,9 +10,13 @@ import { PlatformCredentialResolver } from '@/server/services/platformAiRuntime'
 import { pricePlatformTextUsage, resolvePlatformModelPricing } from './modelPricing';
 
 const mocks = vi.hoisted(() => ({
+  getBillingExchangeRate: vi.fn(),
   getAiProviderModelList: vi.fn(),
   getServerGlobalConfig: vi.fn(),
   resolveOwnerId: vi.fn(),
+}));
+vi.mock('@/server/services/monthlyExchangeRate', () => ({
+  getBillingExchangeRate: mocks.getBillingExchangeRate,
 }));
 
 vi.mock('@/database/repositories/aiInfra', () => ({
@@ -61,10 +68,103 @@ const resolveCatalogPricing = async (candidatePricing: unknown) => {
 };
 
 describe('platform model pricing contract', () => {
+  it.each(['qwen3.8-max', 'kimi/kimi-k3', 'ZHIPU/GLM-5.2'])(
+    'includes billing metadata for enabled Qwen model %s',
+    (id) => {
+      const model = qwenModels.find((item) => item.id === id);
+      expect(model?.contextWindowTokens).toBeGreaterThan(0);
+      expect(model?.maxOutput).toBeGreaterThan(0);
+      expect(model?.pricing?.units.map((unit) => unit.name)).toEqual(
+        expect.arrayContaining(['textInput', 'textOutput']),
+      );
+    },
+  );
   beforeEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
+    mocks.getBillingExchangeRate.mockResolvedValue({
+      month: '2026-09',
+      rate: 7.12,
+      rateDate: '2026-09-04',
+      updatedAt: '2026-09-07T00:00:00Z',
+    });
     mocks.resolveOwnerId.mockResolvedValue('platform-admin');
     mocks.getServerGlobalConfig.mockResolvedValue({ aiProvider: { custom: { enabled: true } } });
+  });
+
+  it('freezes the latest FX for CNY admission and charges that quote after it changes', async () => {
+    mocks.getBillingExchangeRate.mockResolvedValue({
+      month: '2026-09',
+      rate: 7,
+      rateDate: '2026-09-07',
+      updatedAt: '2026-09-07T10:00:00Z',
+    });
+    const snapshot = await resolveCatalogPricing({
+      ...pricing,
+      currency: 'CNY',
+      units: pricing.units.map((unit) => ({ ...unit, rate: unit.rate * 7 })),
+    });
+    mocks.getBillingExchangeRate.mockResolvedValue({
+      month: '2026-09',
+      rate: 8,
+      rateDate: '2026-09-07',
+      updatedAt: '2026-09-07T11:00:00Z',
+    });
+    const result = pricePlatformTextUsage(snapshot!, { totalInputTokens: 1_000_000 });
+    expect(result.cost).toBe(1);
+    expect(result.costExchangeRate).toEqual({
+      rate: 7,
+      rateDate: '2026-09-07',
+      updatedAt: '2026-09-07T10:00:00Z',
+    });
+    expect(snapshot!.pricing.currency).toBe('USD');
+    expect(snapshot!.pricing.units[1]).toMatchObject({ rate: 2 });
+  });
+
+  it('does not admit CNY pricing when the latest FX cannot be obtained', async () => {
+    mocks.getBillingExchangeRate.mockRejectedValue(new Error('FX unavailable'));
+    await expect(resolveCatalogPricing({ ...pricing, currency: 'CNY' })).rejects.toThrow(
+      'FX unavailable',
+    );
+  });
+
+  it('charges the default domestic Kimi K3 input in CNY, not USD', () => {
+    const result = pricePlatformTextUsage(
+      {
+        model: 'kimi-k3',
+        provider: 'moonshot',
+        pricing: moonshotModels[0].pricing!,
+        exchangeRate: { rate: 7.12, rateDate: '2026-09-04', updatedAt: '2026-09-07T00:00:00Z' },
+      },
+      { totalInputTokens: 1_000_000 },
+    );
+    expect(result.cost).toBe(2.808989);
+  });
+
+  it.each([
+    ['2026-09-07T00:59:59Z', 0.702248],
+    ['2026-09-07T01:00:00Z', 1.404495],
+    ['2026-09-07T03:59:59Z', 1.404495],
+    ['2026-09-07T04:00:00Z', 0.702248],
+    ['2026-09-07T06:00:00Z', 1.404495],
+    ['2026-09-07T10:00:00Z', 0.702248],
+    ['2026-09-06T01:00:00Z', 0.702248],
+  ])('freezes the default DeepSeek rate at admission time %s', async (now, cost) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+    mocks.getAiProviderModelList.mockResolvedValue([deepseekModels[0]]);
+    const snapshot = await resolvePlatformModelPricing({} as LobeChatDatabase, {
+      model: 'deepseek-v4-flash',
+      provider: 'deepseek',
+    });
+    vi.setSystemTime(new Date('2026-09-08T00:00:00Z'));
+    expect(
+      pricePlatformTextUsage(snapshot!, {
+        totalInputTokens: 1_000_000,
+        totalOutputTokens: 1_000_000,
+      }).cost,
+    ).toBe(cost);
+    vi.useRealTimers();
   });
 
   it('resolves the exact enabled model from the validated platform owner catalog', async () => {
@@ -251,6 +351,25 @@ describe('platform model pricing contract', () => {
       pricing: multimodalPricing,
       provider: 'custom-provider',
     });
+  });
+
+  it('admits ordinary text when an unused cache-write price requires TTL', async () => {
+    const snapshot = await resolveCatalogPricing({
+      ...pricing,
+      units: [
+        ...pricing.units,
+        {
+          name: 'textInput_cacheWrite',
+          strategy: 'lookup',
+          unit: 'millionTokens',
+          lookup: { pricingParams: ['ttl'], prices: { '1h': 0.017 } },
+        },
+      ],
+    });
+    expect(snapshot).toBeDefined();
+    expect(
+      pricePlatformTextUsage(snapshot!, { totalInputTokens: 1000, totalOutputTokens: 100 }).cost,
+    ).toBeCloseTo(0.0012);
   });
 
   it('fails closed when exact pricing cannot produce a trustworthy token cost', () => {

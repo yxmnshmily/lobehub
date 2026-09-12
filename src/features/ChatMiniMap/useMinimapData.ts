@@ -10,7 +10,7 @@ import { getIndicatorWidth, getPreviewText } from './utils';
 const log = debug('lobe-react:chat-minimap');
 
 export const useMinimapData = () => {
-  const scrollMethods = useConversationStore(conversationSelectors.virtuaScrollMethods);
+  const scrollToIndex = useConversationStore((s) => s.scrollToIndex);
   const activeIndex = useConversationStore(conversationSelectors.activeIndex);
   const messages = useConversationStore(conversationSelectors.displayMessages, isEqual);
 
@@ -58,9 +58,10 @@ export const useMinimapData = () => {
 
   const handleJump = useCallback(
     (virtIndex: number) => {
-      scrollMethods?.scrollToIndex(virtIndex, { align: 'start', smooth: true });
+      // Let virtua measure distant rows before settling instead of animating estimated offsets.
+      scrollToIndex(virtIndex, { align: 'start', smooth: false });
     },
-    [scrollMethods],
+    [scrollToIndex],
   );
 
   return {

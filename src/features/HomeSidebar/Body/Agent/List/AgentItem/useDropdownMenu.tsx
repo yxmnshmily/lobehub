@@ -230,6 +230,16 @@ export const useAgentDropdownMenu = ({
         ...(canConfigure
           ? [
               {
+                icon: <Icon icon={Settings2Icon} />,
+                key: 'manage',
+                label: t('agent.manage', { ns: 'common' }),
+                onClick: ({ domEvent }: any) => {
+                  domEvent?.stopPropagation();
+                  navigate(`/agent/${encodeURIComponent(id)}/profile`);
+                },
+                sfSymbol: 'gearshape',
+              },
+              {
                 // Renaming is config co-editing, which stays collaborative for
                 // shared agents — only ownership actions remain creator/owner-scoped.
                 icon: <Icon icon={Pen} />,

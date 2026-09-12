@@ -1,8 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AuthContainer from './AuthContainer';
+
+const sessionState = vi.hoisted(() => ({
+  data: null as null | { user: { id: string } },
+  isPending: false,
+}));
+vi.mock('@/libs/better-auth/auth-client', () => ({ useSession: () => sessionState }));
+
+beforeEach(() => {
+  sessionState.data = null;
+  sessionState.isPending = false;
+  window.history.replaceState({}, '', '/lobehub/signin');
+  vi.spyOn(window.location, 'replace').mockImplementation(() => {});
+});
 
 vi.mock('@lobehub/ui', () => ({
   Center: ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
@@ -34,6 +47,7 @@ vi.mock('./style', () => ({
 
 afterEach(() => {
   document.title = '';
+  vi.restoreAllMocks();
 });
 
 const AuthRouteHarness = () => {
@@ -49,6 +63,86 @@ const AuthRouteHarness = () => {
 };
 
 describe('AuthContainer', () => {
+  it('does not mount the login form while the session is being checked', () => {
+    sessionState.isPending = true;
+    render(
+      <MemoryRouter initialEntries={['/signin']}>
+        <AuthContainer>login form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('login form')).toBeNull();
+    expect(window.location.replace).not.toHaveBeenCalled();
+  });
+
+  it.each(['/signin', '/signup'])(
+    'returns a signed-in visitor from %s to the original destination',
+    (path) => {
+      sessionState.data = { user: { id: 'signed-in-user' } };
+      render(
+        <MemoryRouter initialEntries={[`${path}?callbackUrl=%2Flobehub%2Fsettings%2Fplans`]}>
+          <AuthContainer>login form</AuthContainer>
+        </MemoryRouter>,
+      );
+      expect(window.location.replace).toHaveBeenCalledWith('/lobehub/settings/plans');
+      expect(screen.queryByText('login form')).toBeNull();
+    },
+  );
+
+  it.each([
+    'https://evil.example/',
+    '//evil.example',
+    '/foo/..//evil.example',
+    '/signin',
+    '/lobehub/signup?callbackUrl=/signin',
+    '/lobehub/foo/../signin',
+    '/%73ignin',
+  ])('rejects unsafe or looping callback %s', (callback) => {
+    sessionState.data = { user: { id: 'signed-in-user' } };
+    render(
+      <MemoryRouter initialEntries={[`/signin?callbackUrl=${encodeURIComponent(callback)}`]}>
+        <AuthContainer>login form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(window.location.replace).toHaveBeenCalledWith('/lobehub/group/default');
+  });
+
+  it('preserves a callback to the public website without adding the app mount', () => {
+    sessionState.data = { user: { id: 'signed-in-user' } };
+    render(
+      <MemoryRouter initialEntries={['/signin?callbackUrl=%2Findex.html']}>
+        <AuthContainer>login form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(window.location.replace).toHaveBeenCalledWith('/index.html');
+  });
+
+  it('leaves password recovery and verification pages accessible to signed-in users', () => {
+    sessionState.data = { user: { id: 'signed-in-user' } };
+    render(
+      <MemoryRouter initialEntries={['/reset-password']}>
+        <AuthContainer>recovery form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('recovery form')).toBeInTheDocument();
+    expect(window.location.replace).not.toHaveBeenCalled();
+  });
+
+  it('does not interrupt a guest form when its own sign-up flow establishes a session', () => {
+    const view = render(
+      <MemoryRouter initialEntries={['/signup']}>
+        <AuthContainer>signup form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('signup form')).toBeInTheDocument();
+    sessionState.data = { user: { id: 'new-user' } };
+    view.rerender(
+      <MemoryRouter initialEntries={['/signup']}>
+        <AuthContainer>signup form</AuthContainer>
+      </MemoryRouter>,
+    );
+    expect(window.location.replace).not.toHaveBeenCalled();
+    expect(screen.getByText('signup form')).toBeInTheDocument();
+  });
   it('does not render the brand logo on auth pages', () => {
     render(
       <MemoryRouter initialEntries={['/signin']}>

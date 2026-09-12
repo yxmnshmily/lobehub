@@ -1,11 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
+import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useAgentStore } from '@/store/agent';
 
 import type * as ConversationStoreModule from '../store';
 import { useConversationStore } from '../store';
-import { useAgentMeta, useIsBuiltinAgent } from './useAgentMeta';
+import { GroupAgentMetaContext, useAgentMeta, useIsBuiltinAgent } from './useAgentMeta';
 
 // Mock the ConversationStore
 vi.mock('../store', async (importOriginal) => {
@@ -17,6 +18,20 @@ vi.mock('../store', async (importOriginal) => {
 });
 
 describe('useAgentMeta', () => {
+  it('uses authorized group metadata without loading the owner agent store', () => {
+    const meta = { title: '旅游群主 AI', avatar: 'group-host.png' };
+    const { result } = renderHook(() => useAgentMeta('joined-group-host'), {
+      wrapper: ({ children }) =>
+        createElement(
+          GroupAgentMetaContext.Provider,
+          {
+            value: { 'joined-group-host': meta },
+          },
+          children,
+        ),
+    });
+    expect(result.current).toEqual(meta);
+  });
   it('should return agent meta for regular (non-builtin) agents', () => {
     const mockAgentId = 'regular-agent-123';
     const mockMeta = {

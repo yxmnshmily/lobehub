@@ -7,11 +7,15 @@ import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { VideoGenerationService } from '@/server/services/generation/video';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
 import { AsyncTaskError, AsyncTaskStatus } from '@/types/asyncTask';
 import { FileSource } from '@/types/files';
 
 const initPlatformRuntime = vi.hoisted(() => vi.fn());
 
+vi.mock('@/server/services/notification/generation', () => ({
+  notifyGenerationFailed: vi.fn(async () => {}),
+}));
 vi.mock('@lobechat/business-const', async (importOriginal) => ({
   ...((await importOriginal()) as any),
   ENABLE_BUSINESS_FEATURES: true,
@@ -249,6 +253,17 @@ describe('videoBackgroundPolling', () => {
         status: AsyncTaskStatus.Error,
       });
 
+      expect(notifyGenerationFailed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'video',
+          asyncTaskId: 'task-123',
+          topicId: 'topic-789',
+          userId: 'user-xyz',
+        }),
+      );
+      expect(mockAsyncTaskModel.update.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(notifyGenerationFailed).mock.invocationCallOrder[0],
+      );
       const errorCall = mockAsyncTaskModel.update.mock.calls[0][1];
       expect(errorCall.error).toBeInstanceOf(AsyncTaskError);
       expect(errorCall.error?.name).toBe('ServerError');

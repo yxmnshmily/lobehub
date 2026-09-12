@@ -1,18 +1,29 @@
 import { createHmac } from 'node:crypto';
 
-import { ChatGroupSponsoredCreditModel, type LobeChatDatabase } from '@lobechat/database';
+import {
+  CHAT_GROUP_SPONSORED_CREDIT_MEMBER_NOT_AUTHORIZED,
+  CHAT_GROUP_SPONSORED_CREDIT_POLICY_DISABLED,
+  ChatGroupSponsoredCreditModel,
+  type LobeChatDatabase,
+} from '@lobechat/database';
 import { TRPCError } from '@trpc/server';
 
 import { ChatGroupModel } from '@/database/models/chatGroup';
 import { AgentService } from '@/server/services/agent';
+import { assertGroupAiPhoneVerified } from '@/server/services/aiAgent/verifiedPhone';
 import { resolveGroupConversationPrincipal } from '@/server/services/groupConversationAccess/principal';
 import { isQueueAgentRuntimeEnabled } from '@/server/services/queue/impls';
 import {
   DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
   TRAVEL_SPECIALIST_TEMPLATES,
 } from '@/server/services/user/travelServiceGroup';
+import {
+  getSuperGroupTemplate,
+  getSuperGroupTemplateMemberClientId,
+} from '@/server/services/user/travelServiceGroupTemplate';
 import { runWebsiteAiStartIdempotently } from '@/server/services/websiteAi/idempotency';
 
+import { PlatformManagedTextUsageSettlementError } from './settlement';
 import {
   createPlatformUsageSharedBudget,
   createSponsoredPlatformUsageSharedBudget,
@@ -31,7 +42,7 @@ export interface HostedGroupBillingPrincipal {
   actorUserId: string;
   billingUserId: string;
   groupId: string;
-  kind: 'owner' | 'owner-sponsored-member';
+  kind: 'member-self-paid' | 'owner' | 'owner-sponsored-member';
   membershipVersion: number;
   policyVersion: number;
   resourceOwnerUserId: string;
@@ -97,7 +108,7 @@ export const deriveHostedGroupChatRequestIdentity = (input: {
 
 export interface HostedGroupChatBillingInput {
   idempotencyKey: string;
-  maxCredits: number;
+  maxCredits?: number;
 }
 
 const assertOwnerBillingPrincipal = (principal: HostedGroupBillingPrincipal) => {
@@ -123,19 +134,26 @@ export const runHostedGroupChatWithBudget = async <T>(input: {
   principal: HostedGroupBillingPrincipal;
   secret: string;
   start: (context: {
-    maxCredits: number;
+    maxCredits?: number;
     sharedBudget: PlatformUsageSharedBudgetHandle;
   }) => Promise<T>;
   topicId?: string;
 }): Promise<T> => {
+  await assertGroupAiPhoneVerified(input.db, input.principal.actorUserId, input.principal);
   // The shared-budget handle is deliberately server-only and process-local. Until workers can
   // reconstruct it from a durable locator, dispatching through QStash could lose the authorization
   // context between admission and provider execution.
   if (isQueueAgentRuntimeEnabled()) throw hostedGroupChatBillingUnavailable();
 
   let billingPrincipal = input.principal;
+  let maxCredits = input.billing.maxCredits;
+  let sponsoredAdmission:
+    Awaited<ReturnType<ChatGroupSponsoredCreditModel['resolveAdmission']>> | undefined;
   if (input.principal.kind === 'owner') {
     assertOwnerBillingPrincipal(input.principal);
+    // Owner/admin execution uses the account-wide per-round gate and actual-usage settlement.
+    // Ignore legacy request ceilings so an old client cannot recreate a Credits hold.
+    maxCredits = undefined;
   } else {
     const { principal } = input;
     if (
@@ -151,34 +169,66 @@ export const runHostedGroupChatWithBudget = async <T>(input: {
       throw hostedGroupChatBillingUnavailable();
     }
 
-    let admission;
     try {
-      admission = await new ChatGroupSponsoredCreditModel(
+      sponsoredAdmission = await new ChatGroupSponsoredCreditModel(
         input.db,
         principal.actorUserId,
       ).resolveAdmission({
         chatGroupId: principal.groupId,
-        maxCredits: input.billing.maxCredits,
+        // One Credit safely probes whether owner sponsorship exists. The final
+        // server-derived ceiling is rechecked atomically when the hold is created.
+        maxCredits: maxCredits ?? 1,
       });
-    } catch {
-      throw hostedGroupChatBillingUnavailable();
+    } catch (error) {
+      const sponsorshipUnavailable =
+        error instanceof Error &&
+        (error.message === CHAT_GROUP_SPONSORED_CREDIT_POLICY_DISABLED ||
+          error.message === CHAT_GROUP_SPONSORED_CREDIT_MEMBER_NOT_AUTHORIZED);
+      if (maxCredits !== undefined || !sponsorshipUnavailable) {
+        throw hostedGroupChatBillingUnavailable();
+      }
+      // Invitation links intentionally work without an owner sponsorship policy.
+      // In that case the member pays from their own visible Credits balance while
+      // the fixed group agent configuration remains owned by the group owner.
+      billingPrincipal = {
+        ...principal,
+        billingUserId: principal.actorUserId,
+        kind: 'member-self-paid',
+        policyVersion: 0,
+      };
     }
-    if (
-      admission.actorUserId !== principal.actorUserId ||
-      admission.chatGroupId !== principal.groupId ||
-      admission.payerUserId !== principal.resourceOwnerUserId ||
-      admission.membershipVersion !== principal.membershipVersion ||
-      admission.workspaceId !== null ||
-      !Number.isSafeInteger(admission.policyVersion) ||
-      admission.policyVersion <= 0
-    ) {
-      throw hostedGroupChatBillingUnavailable();
+    if (sponsoredAdmission) {
+      if (
+        sponsoredAdmission.actorUserId !== principal.actorUserId ||
+        sponsoredAdmission.chatGroupId !== principal.groupId ||
+        sponsoredAdmission.payerUserId !== principal.resourceOwnerUserId ||
+        sponsoredAdmission.membershipVersion !== principal.membershipVersion ||
+        sponsoredAdmission.workspaceId !== null ||
+        !Number.isSafeInteger(sponsoredAdmission.policyVersion) ||
+        sponsoredAdmission.policyVersion <= 0
+      ) {
+        throw hostedGroupChatBillingUnavailable();
+      }
+      billingPrincipal = {
+        ...principal,
+        policyVersion: sponsoredAdmission.policyVersion,
+      };
     }
-    billingPrincipal = {
-      ...principal,
-      policyVersion: admission.policyVersion,
-    };
   }
+  const usesAutomaticMetering = maxCredits === undefined;
+  if (usesAutomaticMetering && sponsoredAdmission) {
+    // Sponsored member execution still obeys the owner's explicit sponsorship policy.
+    // Owner/self-paid execution deliberately keeps maxCredits undefined so no hold is created.
+    maxCredits = Math.min(
+      sponsoredAdmission.maxCreditsPerRequest,
+      sponsoredAdmission.maxCreditsPerPeriod,
+      sponsoredAdmission.groupPeriodLimitCredits,
+    );
+  }
+  if (maxCredits !== undefined && (!Number.isSafeInteger(maxCredits) || maxCredits <= 0)) {
+    throw hostedGroupChatBillingUnavailable();
+  }
+  const billing = { ...input.billing, maxCredits };
   const requestIdentity = deriveHostedGroupChatRequestIdentity({
     idempotencyKey: input.billing.idempotencyKey,
     principal: billingPrincipal,
@@ -187,27 +237,54 @@ export const runHostedGroupChatWithBudget = async <T>(input: {
 
   return runWebsiteAiStartIdempotently({
     idempotencyKey: requestIdentity,
-    maxCredits: input.billing.maxCredits,
+    maxCredits: billing.maxCredits,
     message: JSON.stringify(input.fingerprint),
     start: async () => {
       const expiresAt = new Date(Date.now() + 15 * 60_000);
-      const sharedBudget =
-        billingPrincipal.kind === 'owner-sponsored-member'
-          ? await createSponsoredPlatformUsageSharedBudget(input.db, billingPrincipal.actorUserId, {
+      let sharedBudget: PlatformUsageSharedBudgetHandle;
+      try {
+        if (billingPrincipal.kind === 'owner-sponsored-member') {
+          if (billing.maxCredits === undefined) throw hostedGroupChatBillingUnavailable();
+          sharedBudget = await createSponsoredPlatformUsageSharedBudget(
+            input.db,
+            billingPrincipal.actorUserId,
+            {
               chatGroupId: billingPrincipal.groupId,
               expectedMembershipVersion: billingPrincipal.membershipVersion,
               expectedPolicyVersion: billingPrincipal.policyVersion,
               expiresAt,
-              maxCredits: input.billing.maxCredits,
+              maxCredits: billing.maxCredits,
               requestIdentity,
-            })
-          : await createPlatformUsageSharedBudget(input.db, billingPrincipal.billingUserId, {
+            },
+          );
+        } else {
+          sharedBudget = await createPlatformUsageSharedBudget(
+            input.db,
+            billingPrincipal.billingUserId,
+            {
               expiresAt,
-              maxCredits: input.billing.maxCredits,
+              maxCredits: billing.maxCredits,
               requestIdentity,
               workspaceId: billingPrincipal.workspaceId,
-            });
-      return input.start({ maxCredits: input.billing.maxCredits, sharedBudget });
+            },
+          );
+        }
+      } catch (error) {
+        if (
+          error instanceof PlatformManagedTextUsageSettlementError &&
+          error.code === 'BALANCE_FLOOR_REACHED'
+        ) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message:
+              billingPrincipal.kind === 'owner-sponsored-member'
+                ? '[GROUP_OWNER_CREDITS_EMPTY] 该群主余额不足，AI 任务未启动。请联系群主补充 Credits。'
+                : '[PLATFORM_CREDITS_EMPTY] Credits 余额不足，AI 任务未启动，请补充额度后重试。',
+          });
+        }
+        throw error;
+      }
+      return input.start({ maxCredits: billing.maxCredits, sharedBudget });
     },
     topicId: input.topicId,
     userId: billingPrincipal.actorUserId,
@@ -250,17 +327,27 @@ export const resolveHostedTravelGroupTarget = async (input: {
     throw hostedGroupChatBillingUnavailable();
   }
 
-  const [supervisorId, roster] = await Promise.all([
+  const [supervisorId, roster, template] = await Promise.all([
     groupModel.getSupervisorAgentId(group.id),
     groupModel.getGroupAgentsWithMeta(group.id),
+    getSuperGroupTemplate(input.db),
   ]);
-  const requiredClientIds = new Set(TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId }) => clientId));
+  const requiredClientIds = new Set<string>(
+    template.revision > 0
+      ? template.members.map(({ key }) => getSuperGroupTemplateMemberClientId(key))
+      : TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId }) => clientId),
+  );
   const rosterClientIds = new Set(roster.map(({ clientId }) => clientId).filter(Boolean));
   if (
     !supervisorId ||
     (input.agentId !== undefined && supervisorId !== input.agentId) ||
     !roster.some(({ agentId, role }) => agentId === supervisorId && role === 'supervisor') ||
-    [...requiredClientIds].some((clientId) => !rosterClientIds.has(clientId))
+    [...requiredClientIds].some((clientId) => !rosterClientIds.has(clientId)) ||
+    (template.revision > 0 &&
+      roster.some(
+        ({ agentId, clientId }) =>
+          agentId !== supervisorId && (!clientId || !requiredClientIds.has(clientId)),
+      ))
   ) {
     throw hostedGroupChatBillingUnavailable();
   }
@@ -269,6 +356,7 @@ export const resolveHostedTravelGroupTarget = async (input: {
   const configs = await Promise.all(
     roster.map(({ agentId }) => agentService.getAgentConfig(agentId)),
   );
+  const supervisorIndex = roster.findIndex(({ agentId }) => agentId === supervisorId);
   const copywriterTemplate = TRAVEL_SPECIALIST_TEMPLATES.find(({ key }) => key === 'copywriter');
   const copywriterIndex = roster.findIndex(
     ({ clientId }) => clientId === copywriterTemplate?.clientId,
@@ -276,19 +364,22 @@ export const resolveHostedTravelGroupTarget = async (input: {
   if (configs.some((config) => !isFixedPlatformAgent(config, resourceOwnerUserId, null))) {
     throw hostedGroupChatBillingUnavailable();
   }
+  const supervisorConfig = configs[supervisorIndex] as { model: string; provider: string };
   if (
-    !copywriterTemplate ||
-    copywriterIndex < 0 ||
-    !hasRequiredPlugins(configs[copywriterIndex], [
-      ...copywriterTemplate.plugins,
-      ...copywriterTemplate.skillSlots,
-    ])
+    template.revision === 0 &&
+    (!copywriterTemplate ||
+      copywriterIndex < 0 ||
+      !hasRequiredPlugins(configs[copywriterIndex], [
+        ...copywriterTemplate.plugins,
+        ...copywriterTemplate.skillSlots,
+      ]))
   ) {
     throw hostedGroupChatBillingUnavailable();
   }
 
   return {
     groupId: group.id,
+    platformModel: { model: supervisorConfig.model, provider: supervisorConfig.provider },
     principal: {
       actorUserId: input.userId,
       billingUserId: resourceOwnerUserId,

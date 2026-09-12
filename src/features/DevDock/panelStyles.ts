@@ -4,13 +4,13 @@ export const devDockPanelStyles = createStaticStyles(({ css }) => ({
   flatSection: css`
     flex-shrink: 0;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   paneDividerEnd: css`
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   paneDividerStart: css`
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   paneHeader: css`
     display: flex;
@@ -19,7 +19,7 @@ export const devDockPanelStyles = createStaticStyles(({ css }) => ({
 
     height: 36px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: ${cssVar.fontSizeSM};
     font-weight: 600;
@@ -31,7 +31,7 @@ export const devDockPanelStyles = createStaticStyles(({ css }) => ({
     align-items: stretch;
 
     height: 44px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   root: css`
     overflow: hidden;
@@ -60,7 +60,7 @@ export const devDockPanelStyles = createStaticStyles(({ css }) => ({
 
     height: 28px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: ${cssVar.fontSizeSM};
@@ -74,6 +74,6 @@ export const devDockPanelStyles = createStaticStyles(({ css }) => ({
 
     height: 44px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));

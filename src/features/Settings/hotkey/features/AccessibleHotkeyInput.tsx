@@ -24,10 +24,7 @@ const AccessibleHotkeyInput = memo<AccessibleHotkeyInputProps>(
 
     return (
       <div ref={rootRef} style={{ display: 'contents' }}>
-        <HotkeyInput
-          {...rest}
-          texts={{ ...texts, clear: clearLabel, reset: resetLabel }}
-        />
+        <HotkeyInput {...rest} texts={{ ...texts, clear: clearLabel, reset: resetLabel }} />
       </div>
     );
   },

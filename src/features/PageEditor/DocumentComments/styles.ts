@@ -154,7 +154,7 @@ export const styles = createStaticStyles(({ css }) => ({
   `,
   thread: css`
     padding-block-end: 20px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: 0;

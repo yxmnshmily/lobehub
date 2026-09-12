@@ -5,12 +5,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type StatusFilterValue =
-  | 'published'
-  | 'unpublished'
-  | 'deprecated'
-  | 'archived'
-  | 'forked'
-  | 'favorite';
+  'published' | 'unpublished' | 'deprecated' | 'archived' | 'forked' | 'favorite';
 
 interface StatusFilterProps {
   onChange: (value: StatusFilterValue) => void;

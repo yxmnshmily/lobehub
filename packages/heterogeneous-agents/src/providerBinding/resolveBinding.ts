@@ -266,7 +266,7 @@ export const formatHeterogeneousProviderBindingError = (
 ): string => {
   switch (error.code) {
     case 'agentUnsupported': {
-      return `${error.agentType} does not support LobeHub Provider binding.`;
+      return `${error.agentType} does not support 旅游群 Provider binding.`;
     }
     case 'configMissing': {
       return 'A provider and model binding is required.';

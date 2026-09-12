@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   avatar: css`
     flex: none;
     align-self: stretch;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorFillQuaternary};
   `,
   openLabel: css`
@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: 28px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 6px;
 
     font-size: 13px;
@@ -47,7 +47,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: 28px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 6px;
 
     font-size: 13px;
@@ -71,7 +71,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 100%;
     height: 64px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
     color: ${cssVar.colorText};

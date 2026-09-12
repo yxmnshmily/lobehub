@@ -1,6 +1,5 @@
 import type { AgentHookEvent, AgentState } from '@lobechat/agent-runtime';
 import { ThreadStatus } from '@lobechat/types';
-import debug from 'debug';
 
 import type { MessageModel } from '@/database/models/message';
 import type { ThreadModel } from '@/database/models/thread';
@@ -14,8 +13,14 @@ import type {
 } from '@/server/services/agentRuntime/types';
 
 import { formatErrorForMetadata } from '../helpers/groupContext';
+import { aiAgentDebug as log, aiAgentOperationalError } from '../safeDebug';
 
-const log = debug('lobe-server:ai-agent-service');
+const logCompletionOutcome = (reason: StepCompletionReason, duration: number): void => {
+  if (reason === 'error') return log('execAgent: execution failed', duration);
+  if (reason === 'interrupted') return log('execAgent: execution aborted', duration);
+  if (reason === 'done') return log('execAgent: execution completed', duration);
+  log('execAgent: execution lifecycle updated', duration);
+};
 
 export function calculateTotalTokens(usage?: AgentState['usage']): number | undefined {
   if (!usage) return undefined;
@@ -103,9 +108,7 @@ export function createThreadMetadataCallbacks(
       }
 
       // Log error when the isolated run fails
-      if (reason === 'error' && finalState.error) {
-        console.error('%s: run failed for thread %s:', logScope, threadId, finalState.error);
-      }
+      if (reason === 'error' && finalState.error) log(`${logScope}: execution failed`);
 
       try {
         // Extract summary from last assistant message and update source message content
@@ -140,15 +143,9 @@ export function createThreadMetadataCallbacks(
           status,
         });
 
-        log(
-          '%s: thread %s completed with status %s, reason: %s',
-          logScope,
-          threadId,
-          status,
-          reason,
-        );
-      } catch (error) {
-        console.error('%s: failed to update thread on completion: %O', logScope, error);
+        logCompletionOutcome(reason, duration);
+      } catch {
+        log(`${logScope}: failed to update thread on completion`);
       }
     },
   };
@@ -227,14 +224,7 @@ export function createThreadHooks(
           }
         }
 
-        if (event.reason === 'error' && finalState.error) {
-          console.error(
-            '%s: thread hook onComplete run failed for thread %s:',
-            logScope,
-            threadId,
-            finalState.error,
-          );
-        }
+        if (event.reason === 'error' && finalState.error) log(`${logScope}: execution failed`);
 
         try {
           // Update source message with summary
@@ -266,15 +256,9 @@ export function createThreadHooks(
             status,
           });
 
-          log(
-            '%s: thread hook onComplete thread %s status=%s reason=%s',
-            logScope,
-            threadId,
-            status,
-            event.reason,
-          );
-        } catch (error) {
-          console.error('%s: thread hook onComplete failed to update: %O', logScope, error);
+          logCompletionOutcome((event.reason ?? 'done') as StepCompletionReason, duration);
+        } catch {
+          log(`${logScope}: failed to update thread on completion`);
         }
       },
       id: 'thread-completion',
@@ -318,12 +302,8 @@ export function createSubAgentBridgeHook(
           threadId,
           toolMessageId,
         });
-      } catch (error) {
-        console.error(
-          'Sub-agent bridge: failed to complete bridge for parent %s: %O',
-          parentOperationId,
-          error,
-        );
+      } catch {
+        aiAgentOperationalError('ai_agent.bridge.subagent.error');
       }
     },
     id: 'sub-agent-bridge',
@@ -366,6 +346,7 @@ export function createGroupActionMemberBridgeHook(
     mode: GroupActionMemberMode;
     onComplete: GroupActionOnComplete;
     parentOperationId: string;
+    replyToMessageId?: string;
     threadId?: string;
   },
 ): AgentHook {
@@ -376,6 +357,7 @@ export function createGroupActionMemberBridgeHook(
     mode,
     onComplete,
     parentOperationId,
+    replyToMessageId,
     threadId,
   } = params;
   return {
@@ -391,14 +373,11 @@ export function createGroupActionMemberBridgeHook(
           operationId: event.operationId,
           parentOperationId,
           reason: event.reason ?? 'done',
+          replyToMessageId,
           threadId,
         });
-      } catch (error) {
-        console.error(
-          'Group-member bridge: failed to complete bridge for parent %s: %O',
-          parentOperationId,
-          error,
-        );
+      } catch {
+        aiAgentOperationalError('ai_agent.bridge.group_member.error');
       }
     },
     id: 'group-member-bridge',
@@ -411,6 +390,7 @@ export function createGroupActionMemberBridgeHook(
         mode,
         onComplete,
         parentOperationId,
+        replyToMessageId,
         threadId,
       },
       delivery: 'qstash' as const,

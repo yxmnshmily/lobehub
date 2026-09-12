@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: min(360px, 72vw);
     max-height: 240px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};

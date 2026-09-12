@@ -33,6 +33,7 @@ import { tasks } from '@/database/schemas';
 import { appEnv } from '@/envs/app';
 import { taskRouter } from '@/server/routers/lambda/task';
 import { TaskService } from '@/server/services/task';
+import { carryTaskExecutionContext } from '@/server/services/taskRunner/hostedExecution';
 import { after } from '@/server/utils/scheduleAfterResponse';
 
 import { type ServerRuntimeRegistration } from './types';
@@ -61,6 +62,7 @@ export interface TaskRuntimeDeps {
   // anchor, NOT the source user message. Recorded as `context.origin.messageId`.
   assistantMessageId?: string;
   db?: LobeChatDatabase;
+  groupId?: string | null;
   // Pointers to the conversation that invoked the createTask tool. Recorded into
   // `tasks.context.origin` so the task's handoff result can later be delivered
   // back to this session. All optional — a task can be created
@@ -151,6 +153,7 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
     id: string;
     identifier: string;
     name: string | null;
+    updatedAt?: Date;
   }) => {
     const { assigneeUserId } = task;
     if (!assigneeUserId || !deps.userId || assigneeUserId === deps.userId) return;
@@ -158,6 +161,7 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
       actorUserId: deps.userId,
       assigneeUserId,
       taskId: task.id,
+      eventId: task.updatedAt ? `${task.id}:${task.updatedAt.getTime()}` : undefined,
       taskIdentifier: task.identifier,
       taskName: task.name,
       workspaceId: deps.workspaceId,
@@ -227,6 +231,7 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
     // member owns the outcome, the agent executes) — a member owner does not
     // suppress the usual current-agent default.
     const task = await taskService().createTask({
+      ...(deps.groupId ? { config: { groupId: deps.groupId } } : {}),
       assigneeAgentId: args.assigneeAgentId ?? (scope === 'task' ? undefined : agentId),
       assigneeUserId: args.assigneeUserId,
       context: origin ? { origin } : undefined,
@@ -504,11 +509,14 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
     }) => {
       const normalized = normalizeListTasksParams(args, {
         currentAgentId: agentId,
-        defaultScope: scope === 'task' ? 'allAgents' : 'currentAgent',
+        defaultScope: deps.groupId || scope === 'task' ? 'allAgents' : 'currentAgent',
       });
 
       try {
-        const result = await taskCaller().list(normalized.query);
+        const result = await taskCaller().list({
+          ...normalized.query,
+          ...(deps.groupId ? { groupId: deps.groupId } : {}),
+        });
 
         return {
           content: formatTaskList(result.data, normalized.displayFilters),
@@ -955,6 +963,7 @@ export const taskRuntime: ServerRuntimeRegistration = {
     // method without re-creating the runtime.
     const deps = {
       agentId,
+      groupId: context.groupId,
       assistantMessageId,
       operationId,
       rootOperationId: context.rootOperationId ?? operationId,
@@ -973,7 +982,7 @@ export const taskRuntime: ServerRuntimeRegistration = {
       agentModel: new AgentModel(db, userId),
       taskModel: new TaskModel(db, userId),
       taskService: new TaskService(db, userId),
-      taskCaller: taskRouter.createCaller({ userId }),
+      taskCaller: taskRouter.createCaller(carryTaskExecutionContext({ userId }, context)),
     } as TaskRuntimeDeps;
 
     let resolved = false;
@@ -989,7 +998,9 @@ export const taskRuntime: ServerRuntimeRegistration = {
       deps.agentModel = new AgentModel(db, userId, wsId);
       deps.taskModel = new TaskModel(db, userId, wsId);
       deps.taskService = new TaskService(db, userId, wsId);
-      deps.taskCaller = taskRouter.createCaller({ userId, workspaceId: wsId });
+      deps.taskCaller = taskRouter.createCaller(
+        carryTaskExecutionContext({ userId, workspaceId: wsId }, context),
+      );
     };
 
     const baseRuntime = createTaskRuntime(deps);

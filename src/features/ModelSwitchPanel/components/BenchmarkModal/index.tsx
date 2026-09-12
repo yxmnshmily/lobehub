@@ -28,7 +28,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 2px;
     padding-inline: 8px;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: 16px;
 
     font-size: 12px;
@@ -72,7 +72,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     max-width: 200px;
     padding-block: 2px;
     padding-inline: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     font-size: 12px;
@@ -157,7 +157,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   tableDivider: css`
     grid-column: 1 / -1;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   tableHeader: css`
     font-size: 12px;

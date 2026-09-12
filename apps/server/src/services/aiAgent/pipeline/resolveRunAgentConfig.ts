@@ -15,16 +15,14 @@ import {
   resolveAgentAgencyConfig,
   resolveAgentModelConfig,
 } from '@lobechat/types';
-import debug from 'debug';
 
 import { UserModel } from '@/database/models/user';
 import { WorkspaceUserSettingsModel } from '@/database/models/workspaceUserSettings';
 import type { AgentConfigWithId } from '@/server/services/agent';
 import { isResourceAuthorOrAdmin } from '@/server/services/resourcePermission';
 
+import { aiAgentDebug as log } from '../safeDebug';
 import type { InternalExecAgentParams } from '../types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface ResolveRunAgentConfigDeps {
   db: LobeChatDatabase;

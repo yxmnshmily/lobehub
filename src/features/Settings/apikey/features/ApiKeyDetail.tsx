@@ -21,7 +21,7 @@ import { ApiKeyDisplay, EditableCell } from './index';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   fullAccessCard: css`
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   label: css`

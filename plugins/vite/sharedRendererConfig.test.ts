@@ -1,3 +1,7 @@
+import { realpathSync } from 'node:fs';
+import path from 'node:path';
+
+import { createServer } from 'vite';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -30,6 +34,34 @@ describe('sharedOptimizeDeps', () => {
 });
 
 describe('sharedRendererDedupe', () => {
+  it('resolves editor UI consumers to the same provider instance as the app', async () => {
+    const server = await createServer({
+      configFile: false,
+      envFile: false,
+      optimizeDeps: { noDiscovery: true },
+      resolve: { dedupe: sharedRendererDedupe },
+      server: { hmr: false, middlewareMode: true, watch: null },
+    });
+    try {
+      const resolver = server.environments.client.pluginContainer;
+      const appUI = await resolver.resolveId(
+        '@lobehub/ui',
+        path.resolve('src/layout/GlobalProvider/AppTheme.tsx'),
+      );
+      const editorUI = await resolver.resolveId(
+        '@lobehub/ui',
+        path.resolve(
+          realpathSync('node_modules/@lobehub/editor'),
+          'es/react/FloatActions/components/CollapsedActions.js',
+        ),
+      );
+      expect(appUI?.id).toBeTruthy();
+      expect(editorUI?.id).toBe(appUI?.id);
+    } finally {
+      await server.close();
+    }
+  });
+
   it('keeps editor entrypoints on one shared context instance', () => {
     expect(sharedRendererDedupe).toContain('@lobehub/editor');
   });

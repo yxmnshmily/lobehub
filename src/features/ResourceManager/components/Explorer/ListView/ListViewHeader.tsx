@@ -79,7 +79,7 @@ const ListViewHeader = ({
         className={styles.header}
         paddingInline={8}
         style={{
-          borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`,
           fontSize: 12,
           minWidth: getListViewMinWidth(showUploader),
         }}

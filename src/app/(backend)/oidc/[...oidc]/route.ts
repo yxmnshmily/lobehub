@@ -80,8 +80,15 @@ const handler = async (req: NextRequest) => {
     log('Final Response Status: %d', finalStatus);
     log('Final Response Headers: %O', finalHeaders);
 
+    // A HeadersInit record coerces arrays into comma-joined strings, which corrupts
+    // separate signed session cookies. Preserve each upstream header value.
+    const headers = new Headers();
+    for (const [name, values] of Object.entries(finalHeaders)) {
+      for (const value of Array.isArray(values) ? values : [values]) headers.append(name, value);
+    }
+
     return new NextResponse(finalBody, {
-      headers: finalHeaders as HeadersInit,
+      headers,
       status: finalStatus,
     });
   } catch (error) {

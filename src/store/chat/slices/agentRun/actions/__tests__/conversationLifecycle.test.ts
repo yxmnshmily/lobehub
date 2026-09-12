@@ -1754,6 +1754,39 @@ describe('ConversationLifecycle actions', () => {
         );
       });
 
+      it('uses the server SSE group transport for hosted billing when Gateway is unavailable', async () => {
+        const { result } = renderHook(() => useChatStore());
+        const context = {
+          agentId: TEST_IDS.SESSION_ID,
+          groupId: 'group-1',
+          scope: 'group' as const,
+          threadId: null,
+          topicId: TEST_IDS.TOPIC_ID,
+        };
+        const sendGroupMessage = vi.fn().mockResolvedValue(true);
+        act(() => {
+          useChatStore.setState({
+            isGatewayModeEnabled: () => false,
+            sendGroupMessage,
+          });
+        });
+
+        await act(async () => {
+          await result.current.sendMessage({
+            billing: { idempotencyKey: 'request-2', maxCredits: 40 },
+            context,
+            message: '写一篇西藏旅游文案',
+          });
+        });
+
+        expect(sendGroupMessage).toHaveBeenCalledWith({
+          billing: { idempotencyKey: 'request-2', maxCredits: 40 },
+          context,
+          files: undefined,
+          message: '写一篇西藏旅游文案',
+        });
+      });
+
       it('should keep the sidebar spinner on through a hetero new-topic run and stop it at the end', async () => {
         mockConstEnv.isDesktop = true;
         setupMockSelectors({

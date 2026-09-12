@@ -1,6 +1,6 @@
 import { type AgentState, type ExecutorResult } from '@lobechat/agent-runtime';
 import { GroupOrchestrationRuntime, GroupOrchestrationSupervisor } from '@lobechat/agent-runtime';
-import { type TaskStatusResult } from '@lobechat/types';
+import { resolveGroupDiscussionMaxRounds, type TaskStatusResult } from '@lobechat/types';
 import debug from 'debug';
 import { type SWRResponse } from 'swr';
 
@@ -79,7 +79,8 @@ export class GroupOrchestrationActionImpl {
   triggerSpeak = async (
     params: Parameters<GroupOrchestrationCallbacks['triggerSpeak']>[0],
   ): Promise<void> => {
-    const { supervisorAgentId, agentId, instruction, skipCallSupervisor } = params;
+    const { supervisorAgentId, agentId, instruction, replyToMessageId, skipCallSupervisor } =
+      params;
     log(
       '[triggerSpeak] Starting orchestration with speak: supervisorAgentId=%s, agentId=%s, instruction=%s, skipCallSupervisor=%s',
       supervisorAgentId,
@@ -102,7 +103,7 @@ export class GroupOrchestrationActionImpl {
         type: 'supervisor_decided',
         payload: {
           decision: 'speak',
-          params: { agentId, instruction },
+          params: { agentId, instruction, replyToMessageId },
           skipCallSupervisor,
         },
       },
@@ -276,7 +277,15 @@ export class GroupOrchestrationActionImpl {
     // 2. Get Group Configuration
     const groupConfig = {
       supervisorAgentId,
-      maxRounds: DEFAULT_MAX_ROUNDS,
+      maxRounds:
+        (this.#get().activeGroupId === groupId && this.#get().activeThreadId) ||
+        (initialResult.type === 'supervisor_decided' &&
+          ['execute_task', 'execute_tasks'].includes(initialResult.payload.decision))
+          ? DEFAULT_MAX_ROUNDS
+          : resolveGroupDiscussionMaxRounds(
+              agentGroupByIdSelectors.groupById(groupId)(getChatGroupStoreState())?.config
+                ?.maxDiscussionRounds,
+            ),
     };
 
     log('[internal_execGroupOrchestration] Group config: %o', groupConfig);
@@ -324,12 +333,17 @@ export class GroupOrchestrationActionImpl {
     let currentResult: ExecutorResult | undefined = initialResult;
     let stepCount = 0;
 
-    while (currentResult && state.status !== 'done' && state.status !== 'error') {
+    while (
+      currentResult &&
+      state.status !== 'done' &&
+      state.status !== 'error' &&
+      state.status !== 'interrupted'
+    ) {
       // Check if operation has been cancelled
       const currentOperation = this.#get().operations[operationId];
       if (currentOperation?.status === 'cancelled') {
         log('[internal_execGroupOrchestration] Operation cancelled, stopping loop');
-        state = { ...state, status: 'done' };
+        state = { ...state, status: 'interrupted' };
         break;
       }
 

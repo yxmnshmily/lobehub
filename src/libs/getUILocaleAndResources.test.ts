@@ -28,14 +28,14 @@ describe('getUILocaleAndResources', () => {
     expect(translateFromUILocaleResources(result.resources, 'form.submit')).toBe('提交');
   });
 
-  it('should merge en built-in fallback resources for non-en/zh partial business ui.json resources', async () => {
+  it('falls back to English resources for a retired language', async () => {
     const result = await getUILocaleAndResources('de-DE');
 
-    expect(result.locale).toBe('de-DE');
+    expect(result.locale).toBe('en-US');
     expect(translateFromUILocaleResources(result.resources, 'image.copy')).toBe('Copy');
     expect(translateFromUILocaleResources(result.resources, 'hotkey.clear')).toBe('Clear binding');
     expect(translateFromUILocaleResources(result.resources, 'common.empty')).toBe('(empty)');
-    expect(translateFromUILocaleResources(result.resources, 'form.submit')).toBe('Absenden');
+    expect(translateFromUILocaleResources(result.resources, 'form.submit')).toBe('Submit');
   });
 
   it('should return zh-CN locale and zhCn resources for zh-TW', async () => {
@@ -70,21 +70,21 @@ describe('getUILocaleAndResources', () => {
     }
   });
 
-  it('should return ar locale and custom resources for ar', async () => {
+  it('falls back to English for ar', async () => {
     const result = await getUILocaleAndResources('ar');
-    expect(result.locale).toBe('ar');
+    expect(result.locale).toBe('en-US');
     expect(result.resources).toBeDefined();
   });
 
-  it('should return de-DE locale and custom resources for de-DE', async () => {
+  it('falls back to English for de-DE', async () => {
     const result = await getUILocaleAndResources('de-DE');
-    expect(result.locale).toBe('de-DE');
+    expect(result.locale).toBe('en-US');
     expect(result.resources).toBeDefined();
   });
 
-  it('should return es-ES locale and custom resources for es-ES', async () => {
+  it('falls back to English for es-ES', async () => {
     const result = await getUILocaleAndResources('es-ES');
-    expect(result.locale).toBe('es-ES');
+    expect(result.locale).toBe('en-US');
     expect(result.resources).toBeDefined();
   });
 

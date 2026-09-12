@@ -33,7 +33,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   chipDivider: css`
     flex-shrink: 0;
     align-self: stretch;
-    width: 1px;
+    width: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   chipIcon: css`

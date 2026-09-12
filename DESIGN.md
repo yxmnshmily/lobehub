@@ -44,8 +44,8 @@ elevation:
   boxShadowSecondary: '0 8px 16px -4px rgba(0, 0, 0, 0.2)' # popovers, menus
   boxShadow: '0 20px 20px -8px rgba(0, 0, 0, 0.24)' # modals, dialogs
 typography:
-  fontFamily: 'Geist, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif'
-  fontFamilyCode: '"Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Code", Consolas, "HarmonyOS Sans SC", monospace'
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Hiragino Sans GB", "HarmonyOS Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif'
+  fontFamilyCode: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Code", Consolas, "HarmonyOS Sans SC", monospace'
   # Body & label scale (lobe-ui)
   fontSizeSM: 12 # captions, dense metadata
   fontSize: 14 # default body and UI text
@@ -111,7 +111,7 @@ Applying tokens in components. The text ramp and the functional tints are full t
 
 ## Typography
 
-`Geist` sets UI and prose; `Geist Mono` sets code, data, and tabular figures. Use the scale tokens rather than setting size, weight, or line height by hand:
+Platform system fonts set UI and prose; the platform monospace stack sets code, data, and tabular figures. The default path makes no font network request: macOS resolves to SF/PingFang, Windows to Segoe UI/Microsoft YaHei, and Android to Roboto. An explicitly selected user font remains the first choice; an environment-provided web font is fallback-only after installed system families. Use the scale tokens rather than setting size, weight, or line height by hand:
 
 - Body & labels — `fontSize` (14px) covers most UI and body text; `fontSizeSM` (12px) for captions and dense metadata; `fontSizeLG` (16px) for emphasis and large controls. Line height is generous (\~1.57) for readability. The body/label scale is 12 / 14 / 16 — there is no 13px token. Some legacy UI hard-codes `fontSize={13}` for secondary text; treat that as drift and round to 12 or 14, and rank text with the `colorText*` opacity ramp rather than reaching for an in-between size. Don't introduce new off-scale sizes.
 - Headings — `fontSizeHeading1`–`fontSizeHeading5` (38 → 16px) title pages and sections; pair with `fontWeightStrong` (600).
@@ -124,6 +124,21 @@ Spacing follows a 4px scale via lobe-ui padding/margin tokens: `XXS` 4, `XS` 8, 
 The 4px scale governs gaps, padding, and margins — and only those. Two things are deliberately not on it: radius is a separate scale (see [Shapes](#shapes); it includes a 6px step, `borderRadiusSM`), so never reuse a radius value as spacing; and icon pixel sizes (12 / 14 / 16 / 18 / 20) and 1px hairline borders are dimensions, not spacing. Off-scale spacing values (6, 10, 13…) are drift — round to the nearest scale step. Reserve a one-off off-scale value for genuine optical tuning, never as a default.
 
 Layouts must work across appearances and form factors: every surface ships light and dark and desktop and mobile variants. Mobile is not an afterthought — `src/routes/(mobile)` and `.mobile`/`.desktop` component variants exist for exactly this. Center primary content and let side padding grow at wider breakpoints.
+
+### Adaptive application shell
+
+The application shell follows one structural hierarchy at every width: navigation provides context, the center column owns the current task, and the right side provides optional detail. Those regions negotiate space instead of scaling every column down together.
+
+- Keep the center task/conversation column readable. It receives at least 640px before a secondary working panel may remain beside it.
+- At `lg` and above, navigation may honor the user's expanded width. At wide desktop widths (`xl` and above), a right detail surface may sit inline.
+- At medium widths (below `lg`), an icon-capable navigation panel presents as the 64px rail without overwriting the user's saved expanded preference. When wide space returns, the saved width returns too.
+- Below `xl`, right-side detail surfaces float over the center instead of compressing it. On phone layouts, the same detail content uses the existing full-screen mobile surface rather than a narrow fixed column.
+- A shell is a fixed-height frame with `min-width: 0`, `min-height: 0`, and `overflow: hidden`; exactly one descendant owns scrolling in each visible region. Avoid page-level scrolling around a second independently scrolling conversation or settings body.
+- Use `100dvh` for phone-height overlays and reserve `env(safe-area-inset-*)` where controls touch a viewport edge. Every browser entry declares `viewport-fit=cover` so those insets are exposed on notched devices. Headers and composers remain visible while their content region scrolls.
+- Large settings dialogs use a bounded responsive frame (800px maximum, 16px minimum viewport gutters) with a dedicated 20px surface radius. Their shell stays fixed and clips overflow; the content region is the only vertical scroll owner, so a short screen never gains nested scrollbars. A 64px title row, 184px left category rail, and 24px desktop content gutter establish the settings hierarchy. Below 768px the category rail becomes a horizontally scrollable row, while the title row and content gutter compact to 56px / 16px.
+- Desktop work surfaces use one `colorBgContainer` panel with the platform radius and no outline or shadow. The panel sits flush beside navigation without an extra gray padded shell; operational dashboards and management pages use the available width with a 24–32px content gutter, while reading-focused detail and conversation content may retain a bounded line length for readability. Never stack a gray outer frame around a second white page card.
+- Personal settings use one flat, full-width content surface: group titles sit above a single hairline divider and setting rows continue on the same surface. Do not combine a tinted group shell, an outlined inner card, and a card shadow. Reuse the same 64px settings header and 24px desktop content gutter across form, provider, skill, connector, credential, statistics and operations views. On phones, current-group items use a horizontal top strip and primary groups use a safe-area-aware bottom navigation with no more than five items.
+- Concession order is consistent: collapse the secondary working panel, float the right detail surface, compact the left navigation, then use the dedicated mobile surface. Never squeeze the primary task column to zero or introduce horizontal page scrolling.
 
 ## Elevation & Depth
 

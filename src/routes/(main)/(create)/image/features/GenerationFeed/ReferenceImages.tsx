@@ -12,6 +12,21 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 48px;
     height: 48px;
     margin-inline-start: -16px;
+
+    @media (width <= 767px) {
+      width: 44px;
+      height: 44px;
+      margin-inline-start: -8px;
+    }
+  `,
+  group: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      overflow: hidden;
+      max-width: 100%;
+      padding-inline-start: 8px;
+    }
   `,
   image: css`
     padding: 2px;
@@ -57,7 +72,7 @@ export const ReferenceImages = memo<ReferenceImagesProps>(({ imageUrl, imageUrls
 
   return (
     <Image.PreviewGroup>
-      <Flexbox horizontal align={'flex-end'} flex={'none'} wrap="wrap">
+      <Flexbox horizontal align={'flex-end'} className={styles.group} flex={'none'} wrap="wrap">
         <ActionIcon
           glass
           className={styles.icon}

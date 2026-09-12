@@ -5,6 +5,7 @@ import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useHomeAgentRows } from './useHomeAgentRows';
+import { useResolvedHomeAgentId } from './useResolvedHomeAgentId';
 
 const mocks = vi.hoisted(() => ({
   activeWorkspaceId: undefined as string | undefined,
@@ -13,7 +14,11 @@ const mocks = vi.hoisted(() => ({
     builtinAgentIdMap: { inbox: 'agt_inbox' } as Record<string, string>,
   },
   currentUserId: 'member-1',
+  readiness: { isEnabled: false, groupId: undefined as string | undefined },
+  participants: undefined as { assistants: any[] } | undefined,
+  selectedAgentId: undefined as string | undefined,
   homeState: {
+    isAgentListInit: true,
     agentGroups: [] as any[],
     pinnedAgents: [] as any[],
     privateAgentGroups: [] as any[],
@@ -24,6 +29,15 @@ const mocks = vi.hoisted(() => ({
   sidebarHiddenAgentIds: [] as string[],
   sidebarHiddenGroupIds: [] as string[],
   sidebarVisibilityOverrides: {} as Record<string, boolean>,
+}));
+
+vi.mock('@/hooks/useMyTravelGroupReadiness', () => ({
+  useMyTravelGroupReadiness: () => mocks.readiness,
+}));
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: {
+    groupMembership: { listParticipants: { useQuery: () => ({ data: mocks.participants }) } },
+  },
 }));
 
 vi.mock('@/business/client/hooks/useActiveWorkspaceId', () => ({
@@ -75,11 +89,15 @@ vi.mock('@/store/user/selectors', () => ({
 }));
 
 vi.mock('@/store/global', () => ({
-  useGlobalStore: (selector: (state: unknown) => unknown) => selector({}),
+  useGlobalStore: (selector: (state: unknown) => unknown) =>
+    selector({ updateSystemStatus: vi.fn() }),
 }));
 
 vi.mock('@/store/global/selectors', () => ({
-  systemStatusSelectors: { agentPageSize: () => 10 },
+  systemStatusSelectors: {
+    agentPageSize: () => 10,
+    homeSelectedAgentId: () => mocks.selectedAgentId,
+  },
 }));
 
 const agent = (id: string, title: string, extra: Record<string, unknown> = {}) => ({
@@ -95,6 +113,9 @@ const ids = (rows: { id: string }[]) => rows.map((row) => row.id);
 describe('useHomeAgentRows', () => {
   beforeEach(() => {
     mocks.activeWorkspaceId = undefined;
+    mocks.readiness = { isEnabled: false, groupId: undefined };
+    mocks.participants = undefined;
+    mocks.selectedAgentId = undefined;
     mocks.currentUserId = 'member-1';
     mocks.sidebarHiddenAgentIds = [];
     mocks.sidebarHiddenGroupIds = [];
@@ -106,6 +127,70 @@ describe('useHomeAgentRows', () => {
     mocks.homeState.privatePinnedAgents = [];
     mocks.homeState.privateUngroupedAgents = [];
     mocks.homeState.ungroupedAgents = [];
+  });
+
+  it('selects the actual travel-group supervisor, never the separate legacy Inbox', () => {
+    mocks.readiness = { isEnabled: true, groupId: 'group_travel' };
+    mocks.participants = {
+      assistants: [{ id: 'agt_supervisor', title: '旅游群', subtitle: 'AI', isSupervisor: true }],
+    };
+    mocks.homeState.ungroupedAgents = [agent('agt_inbox', 'Old Inbox'), agent('agt_a', 'Writer')];
+
+    const { result, rerender } = renderHook(() => useHomeAgentRows());
+    expect(ids(result.current.workspaceRows)).toEqual(['agt_supervisor', 'agt_a']);
+    expect(result.current.workspaceRows[0]).toMatchObject({
+      title: '旅游群',
+      subtitle: 'AI · 主管',
+    });
+
+    mocks.participants = {
+      assistants: [
+        { id: 'agt_supervisor', title: '新名字', subtitle: '旅行顾问', isSupervisor: true },
+      ],
+    };
+    rerender();
+    expect(result.current.workspaceRows[0]).toMatchObject({
+      id: 'agt_supervisor',
+      title: '新名字',
+      subtitle: '旅行顾问 · 主管',
+    });
+  });
+
+  it('does not briefly offer the wrong Inbox while the personal supervisor is loading', () => {
+    mocks.readiness = { isEnabled: true, groupId: 'group_travel' };
+    const { result } = renderHook(() => useHomeAgentRows());
+    expect(ids(result.current.workspaceRows)).toEqual([]);
+  });
+
+  it.each([undefined, 'agt_inbox', 'agt_supervisor'])(
+    'resolves home selection %s to the real supervisor',
+    (selected) => {
+      mocks.readiness = { isEnabled: true, groupId: 'group_travel' };
+      mocks.participants = {
+        assistants: [{ id: 'agt_supervisor', title: '旅游群', subtitle: 'AI', isSupervisor: true }],
+      };
+      mocks.selectedAgentId = selected;
+      const { result } = renderHook(() => useResolvedHomeAgentId());
+      expect(result.current.agentId).toBe('agt_supervisor');
+      expect(result.current.isInbox).toBe(false);
+    },
+  );
+
+  it('keeps an explicitly selected ordinary member instead of forcing the supervisor', () => {
+    mocks.readiness = { isEnabled: true, groupId: 'group_travel' };
+    mocks.homeState.ungroupedAgents = [agent('agt_writer', 'Writer')];
+    mocks.selectedAgentId = 'agt_writer';
+    const { result } = renderHook(() => useResolvedHomeAgentId());
+    expect(result.current.agentId).toBe('agt_writer');
+  });
+
+  it('does not carry the personal supervisor into a workspace even with cached participants', () => {
+    mocks.activeWorkspaceId = 'ws_1';
+    mocks.participants = {
+      assistants: [{ id: 'agt_supervisor', title: '旅游群', isSupervisor: true }],
+    };
+    const { result } = renderHook(() => useResolvedHomeAgentId());
+    expect(result.current.agentId).toBe('agt_inbox');
   });
 
   it('drops agents the caller removed from their sidebar', () => {

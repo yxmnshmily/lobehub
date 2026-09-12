@@ -28,7 +28,7 @@ const TopicPanel = memo<OriginTopicPanelProps>(
           gap={8}
           paddingBlock={12}
           paddingInline={12}
-          style={{ borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`, flexShrink: 0 }}
+          style={{ borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`, flexShrink: 0 }}
         >
           <ActionIcon
             icon={ArrowLeft}

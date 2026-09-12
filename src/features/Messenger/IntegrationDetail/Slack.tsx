@@ -131,7 +131,9 @@ const SlackDetail = memo<SlackDetailProps>(({ appId, botUsername, name, onBack }
             extraLabel={workspace}
             key={link.id}
             link={link}
-            onSetActive={(agentId) => handleSetActive(link.tenantId, agentId)}
+            onSetActive={(groupId, workspaceId) =>
+              handleSetActive(link.tenantId, groupId, workspaceId)
+            }
             onUnlink={() => handleUnlink(link.tenantId)}
           />
         );

@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex: 1;
 
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};

@@ -26,7 +26,7 @@ import { PAGE_SIZE, useNotificationList } from './useNotificationList';
 
 const styles = createStaticStyles(({ css }) => ({
   item: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:hover {
       background: ${cssVar.colorFillSecondary};

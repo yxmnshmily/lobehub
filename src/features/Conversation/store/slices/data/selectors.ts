@@ -4,6 +4,7 @@ import type {
   UIChatMessage,
 } from '@lobechat/types';
 
+import { LOADING_FLAT } from '@/const/message';
 import { useChatStore } from '@/store/chat';
 import { topicSelectors } from '@/store/chat/selectors';
 
@@ -17,21 +18,33 @@ const dbMessages = (s: State) => s.dbMessages;
 const messagesInit = (s: State) => s.messagesInit;
 const skipFetch = (s: State) => s.skipFetch;
 
-const getDisplayMessageById = (id: string) => (s: State) => {
-  // First, try to find in top-level displayMessages
-  const topLevelMessage = s.displayMessages.find((m) => m.id === id);
-  if (topLevelMessage) return topLevelMessage;
+const getDisplayMessageById =
+  (id: string) =>
+  (s: State): UIChatMessage | undefined => {
+    // First, try to find in top-level displayMessages
+    const topLevelMessage = s.displayMessages.find((m) => m.id === id);
+    if (topLevelMessage) return topLevelMessage;
 
-  // If not found, search in agentCouncil members
-  for (const message of s.displayMessages) {
-    if (message.role === 'agentCouncil' && (message as any).members) {
-      const member = (message as any).members.find((m: UIChatMessage) => m.id === id);
-      if (member) return member;
+    // If not found, search in agentCouncil members
+    for (const message of s.displayMessages) {
+      if (message.role === 'agentCouncil' && (message as any).members) {
+        const member = (message as any).members.find((m: UIChatMessage) => m.id === id);
+        if (member) return member;
+      }
     }
-  }
 
-  return undefined;
-};
+    // Work panels also render records retained inside compressed topic history.
+    for (const message of s.displayMessages) {
+      if (!message.compressedMessages) continue;
+      const nested = getDisplayMessageById(id)({
+        ...s,
+        displayMessages: message.compressedMessages,
+      });
+      if (nested) return nested;
+    }
+
+    return undefined;
+  };
 const getDbMessageById = (id: string) => (s: State) => s.dbMessages.find((m) => m.id === id);
 const getDbMessageByToolCallId = (id: string) => (s: State) =>
   s.dbMessages.find((m) => m.tool_call_id === id);
@@ -114,33 +127,17 @@ const findLastMessageId = (id: string) => (s: State) => {
 };
 
 /**
- * Gets the latest message block from a group message that doesn't contain tools
- * Returns undefined if the last block contains tools or if message is not a group message
+ * Gets the latest nonempty text block, including text beside a tool call.
+ * Used consistently for editing, text utilities and collapse.
  */
-const getGroupLatestMessageWithoutTools = (id: string) => (s: State) => {
-  const message = s.displayMessages.find((m) => m.id === id);
+const getGroupLatestTextMessage = (id: string) => (s: State) => {
+  const message = getDisplayMessageById(id)(s);
+  // Supervisors use the same grouped renderer and keep their prose in children.
+  if (!message || !['assistantGroup', 'supervisor'].includes(message.role)) return;
 
-  if (
-    !message ||
-    message.role !== 'assistantGroup' ||
-    !message.children ||
-    message.children.length === 0
-  )
-    return;
-
-  // Get the last child
-  const lastChild = message.children.at(-1);
-
-  if (!lastChild) return;
-
-  // Return the last child only if it doesn't have tools
-  if (!lastChild.tools || lastChild.tools.length === 0) {
-    if (!lastChild.content) return;
-
-    return lastChild;
-  }
-
-  return;
+  return [...(message.children ?? []), ...(message.taskCompletions ?? [])].findLast(
+    (child) => child.content !== LOADING_FLAT && !!child.content?.trim(),
+  );
 };
 
 // ===== Topic-related selectors (bridged from ChatStore) =====
@@ -283,7 +280,7 @@ export const dataSelectors = {
   getBlockContent,
   getBlockHasTools,
   getDisplayMessageById,
-  getGroupLatestMessageWithoutTools,
+  getGroupLatestTextMessage,
   getToolInBlock,
   getToolMessageCreatedAt,
   getToolsInBlock,

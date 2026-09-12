@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-inline: 10px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   creditCollapse: css`
@@ -54,7 +54,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   creditList: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorFillQuaternary};
   `,
@@ -69,7 +69,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   feedback: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorInfoBorder};
+    border: 0.5px solid ${cssVar.colorInfoBorder};
     border-radius: ${cssVar.borderRadius};
 
     color: ${cssVar.colorInfoText};
@@ -90,7 +90,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   resetCredits: css`
     padding-block-start: 8px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 

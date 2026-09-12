@@ -87,7 +87,21 @@ const canonicalTimestamp = (value: unknown) => {
     : undefined;
 };
 
-const parseCreateInput = (value: unknown, now: Date) => {
+const parseCreateInput = (
+  value: unknown,
+  now: Date,
+):
+  | {
+      actorUserId: string;
+      artifactInternalId: string;
+      artifactKind: HostedGroupArtifactKind;
+      groupId: string;
+      membershipVersion: number;
+      operationId: string;
+      ownerUserId: string;
+      publishedAt: string;
+    }
+  | undefined => {
   if (!isExactRecord(value, CREATE_KEYS)) return undefined;
   const publishedAt = canonicalTimestamp(value.publishedAt);
   if (

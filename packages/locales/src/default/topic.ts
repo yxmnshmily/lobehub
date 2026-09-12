@@ -217,6 +217,7 @@ export default {
   'management.empty.noTopics.desc':
     'Start a conversation with this agent to create your first topic.',
   'management.empty.noTopics.title': 'No topics yet',
+  'management.filters.add': 'Add filter',
   'management.filters.botChannel.empty': 'No channels',
   'management.filters.botChannel.label': 'Channel',
   'management.filters.project.empty': 'No projects',

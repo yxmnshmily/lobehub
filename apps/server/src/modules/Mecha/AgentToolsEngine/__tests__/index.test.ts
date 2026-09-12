@@ -622,6 +622,8 @@ describe('createServerAgentToolsEngine', () => {
     });
 
     expect(result.enabledToolIds).toContain(GroupManagementManifest.identifier);
+    expect(result.enabledToolIds).toContain('lobe-goal');
+    expect(result.enabledToolIds).toContain('lobe-task');
     // group-agent-builder has no server runtime, so it is deliberately NOT
     // advertised on a server-side supervisor run (it would throw if called).
     expect(result.enabledToolIds).not.toContain(GroupAgentBuilderManifest.identifier);

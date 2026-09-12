@@ -9,6 +9,8 @@ import { type CSSProperties, lazy, memo, type PropsWithChildren, Suspense } from
 import { LobeAnalyticsProviderWrapper } from '@/components/Analytics/LobeAnalyticsProviderWrapper';
 import { DragUploadProvider } from '@/components/DragUploadZone/DragUploadProvider';
 import { isDesktop } from '@/const/version';
+import { styles as authStyles } from '@/features/AuthShell/style';
+import { MonthlyExchangeRateRefresh } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import AuthProvider from '@/layout/AuthProvider';
 import { MarketAuthProvider } from '@/layout/AuthProvider/MarketAuth';
 import AppTheme from '@/layout/GlobalProvider/AppTheme';
@@ -56,6 +58,7 @@ const SPAGlobalProvider = memo<PropsWithChildren>(({ children }) => {
     <AuthProvider>
       <MarketAuthProvider isDesktop={isDesktop}>
         <StoreInitialization />
+        <MonthlyExchangeRateRefresh />
 
         {isDesktop && <ServerVersionOutdatedAlert />}
         <FaviconProvider>
@@ -78,7 +81,7 @@ const SPAGlobalProvider = memo<PropsWithChildren>(({ children }) => {
                 </TooltipGroup>
                 <ModalHost />
                 <BaseModalHost />
-                <ToastHost />
+                <ToastHost className={authStyles.toastViewport} position="top" />
                 <ContextMenuHost />
                 <Suspense>
                   <ImperativeMountHost />

@@ -40,10 +40,11 @@ export const useAuthLocale = (defaultLang = 'zh-CN') => {
 
   useEffect(() => {
     const handleLang = (lng: string) => {
+      const locale = normalizeLocale(lng);
       document.documentElement.dir = 'ltr';
-      document.documentElement.lang = lng;
-      setLang((prev) => (prev === lng ? prev : lng));
-      syncBackendLanguagePreference(lng);
+      document.documentElement.lang = locale;
+      setLang((prev) => (prev === locale ? prev : locale));
+      syncBackendLanguagePreference(locale);
     };
 
     document.documentElement.dir = 'ltr';

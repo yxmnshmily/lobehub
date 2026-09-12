@@ -106,6 +106,38 @@ function makeEvent(type: AgentStreamEvent['type'], data?: any): AgentStreamEvent
   return { data, id: '1', operationId: 'op-1', stepIndex: 0, timestamp: Date.now(), type };
 }
 
+it('writes retry status to the execution topic without changing the visible message bucket', async () => {
+  const store = createMockStore();
+  const context = {
+    agentId: 'agent-1',
+    groupId: 'group-1',
+    scope: 'group' as const,
+    topicId: 'latest',
+  };
+  const handler = createGatewayEventHandler(() => store as any, {
+    assistantMessageId: 'msg-initial',
+    context,
+    operationId: 'op-1',
+    executionTopicId: 'original',
+  });
+  handler(
+    makeEvent('step_start', {
+      phase: 'human_approval',
+      requiresApproval: true,
+      pendingToolsCalling: [],
+      uiMessages: [],
+    }),
+  );
+  await flush();
+  expect(store.updateTopicStatus).toHaveBeenCalledWith(
+    expect.objectContaining({
+      topicId: 'original',
+      status: 'waitingForHuman',
+    }),
+  );
+  expect(store.replaceMessages).toHaveBeenCalledWith([], expect.objectContaining({ context }));
+});
+
 /** Flush the async processing queue by draining microtasks + setTimeout queue */
 const flush = async () => {
   for (let i = 0; i < 5; i++) {

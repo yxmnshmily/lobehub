@@ -15,7 +15,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-inline: 10px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   header: css`
@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   list: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   reason: css`

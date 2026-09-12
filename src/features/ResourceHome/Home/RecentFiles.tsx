@@ -13,6 +13,7 @@ import {
   RESOURCE_HOME_SECTIONS,
   ResourceSectionSkeleton,
 } from '@/components/Skeleton/ResourceHome';
+import ResourceQuickActions from '@/features/ResourceManager/components/Explorer/ItemDropdown/QuickActions';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
 import { getResourceQueryVisibility } from '@/features/ResourceManager/store/selectors';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -32,7 +33,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex-direction: column;
 
     padding: 0;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     text-align: start;
@@ -49,6 +50,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   grid: css`
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    align-items: start;
     gap: 12px;
   `,
   meta: css`
@@ -71,7 +73,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     aspect-ratio: 16 / 10;
     width: 100%;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorFillQuaternary};
   `,
@@ -113,24 +115,33 @@ const RecentFiles = memo(() => {
           {data?.map((item) => {
             const isImage = item.fileType?.startsWith('image');
             return (
-              <button
-                className={styles.card}
-                key={item.id}
-                type={'button'}
-                onClick={() => navigate(`/resource?file=${item.id}`)}
-              >
-                <div className={styles.preview}>
-                  {isImage && item.url ? (
-                    <img alt={item.name} className={styles.thumbnail} src={item.url} />
-                  ) : (
-                    <FileIcon fileName={item.name} fileType={item.fileType} size={40} />
-                  )}
-                </div>
-                <Flexbox gap={4} padding={12}>
-                  <span className={styles.name}>{item.name}</span>
-                  <span className={styles.meta}>{formatTime(item.createdAt)}</span>
-                </Flexbox>
-              </button>
+              <div className={styles.card} key={item.id}>
+                <button
+                  className={styles.card}
+                  style={{
+                    border: 0,
+                    borderRadius: 0,
+                    boxShadow: 'none',
+                    width: '100%',
+                    flex: 'none',
+                  }}
+                  type={'button'}
+                  onClick={() => navigate(`/resource?file=${item.id}`)}
+                >
+                  <div className={styles.preview}>
+                    {isImage && item.url ? (
+                      <img alt={item.name} className={styles.thumbnail} src={item.url} />
+                    ) : (
+                      <FileIcon fileName={item.name} fileType={item.fileType} size={40} />
+                    )}
+                  </div>
+                  <Flexbox gap={4} padding={12}>
+                    <span className={styles.name}>{item.name}</span>
+                    <span className={styles.meta}>{formatTime(item.createdAt)}</span>
+                  </Flexbox>
+                </button>
+                <ResourceQuickActions {...item} filename={item.name} url={item.url || ''} />
+              </div>
             );
           })}
         </div>

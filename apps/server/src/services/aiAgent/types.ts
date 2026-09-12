@@ -164,6 +164,8 @@ export interface InternalExecAgentParams extends ExecAgentParams {
   mentionedAgents?: RuntimeMentionedAgent[];
   /** Parent message ID to continue from. Only takes effect when resume is true */
   parentMessageId?: string;
+  /** Requested spending ceiling, not a capability. Existing hosted authorization still applies. */
+  platformManagedMaxCredits?: number;
   queueRetries?: number;
   queueRetryDelay?: string;
   /** Whether to continue execution from an existing persisted message */

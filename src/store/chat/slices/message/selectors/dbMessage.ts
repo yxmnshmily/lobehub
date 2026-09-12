@@ -236,9 +236,8 @@ export const selectActivatedSkillsFromMessages = (
  * @param messages - Array of chat messages to search
  * @returns The latest todos state or undefined if not found
  */
-export const selectTodosFromMessages = (
-  messages: UIChatMessage[],
-): StepContextTodos | undefined => extractTodosFromMessages(messages);
+export const selectTodosFromMessages = (messages: UIChatMessage[]): StepContextTodos | undefined =>
+  extractTodosFromMessages(messages);
 
 /**
  * Select todos from the current agent turn only — messages after the last

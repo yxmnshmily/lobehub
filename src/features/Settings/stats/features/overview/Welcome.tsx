@@ -1,10 +1,11 @@
 import { BRANDING_NAME } from '@lobechat/business-const';
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { Clock3Icon, ClockArrowUp } from 'lucide-react';
 import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
 import { userService } from '@/services/user';
@@ -21,7 +22,7 @@ const formatEnglishNumber = (number: number) => {
   return `${formatIntergerNumber(number)}th`;
 };
 
-const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
+const Welcome = memo<{ mobile?: boolean }>(({ mobile: _mobile }) => {
   const { t, i18n } = useTranslation('auth');
   const [nickname, username] = useUserStore((s) => [
     userProfileSelectors.nickName(s),
@@ -33,14 +34,17 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
   );
 
   return (
-    <Flexbox padding={mobile ? 16 : 0}>
+    <Flexbox style={{ minWidth: 0 }}>
       <Flexbox
         horizontal
         align={'center'}
         gap={8}
+        wrap={'wrap'}
         style={{
           fontSize: 16,
           fontWeight: 500,
+          lineHeight: 1.5,
+          minWidth: 0,
         }}
       >
         <Trans
@@ -49,9 +53,9 @@ const Welcome = memo<{ mobile?: boolean }>(({ mobile }) => {
           components={{
             span:
               isLoading || !data ? (
-                <Skeleton height={24} style={{ minWidth: 40 }} width={40} />
+                <SkeletonBar height={24} style={{ minWidth: 40 }} width={40} />
               ) : (
-                <span style={{ fontWeight: 'bold' }} />
+                <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }} />
               ),
           }}
           values={{

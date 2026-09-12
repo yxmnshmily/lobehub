@@ -11,6 +11,7 @@ import CustomerCenter, {
   type CustomerGenerationFilters,
 } from '@/features/CustomerCenter';
 import { lambdaQuery } from '@/libs/trpc/client';
+import { translateTravel, useTravelTranslation } from '@/utils/i18n/travel';
 
 import {
   buildCustomerCenterData,
@@ -50,48 +51,137 @@ const useCursorPager = () => {
 };
 
 const copy: CustomerCenterCopy = {
-  accountSecurityTitle: '头像、名称与密码',
-  balancesTitle: 'Credits 余额',
-  balanceUnavailable: 'Credits 余额暂时无法读取',
+  get accountSecurityTitle() {
+    return translateTravel('登录安全');
+  },
+  get balancesTitle() {
+    return translateTravel('积分余额');
+  },
+  get balanceUnavailable() {
+    return translateTravel('积分余额暂时无法读取');
+  },
   creationStatus: {
-    failed: '失败',
-    processing: '制作中',
-    succeeded: '已完成',
-    unavailable: '当前不可用',
-    unknown: '状态未知',
+    get failed() {
+      return translateTravel('失败');
+    },
+    get processing() {
+      return translateTravel('制作中');
+    },
+    get succeeded() {
+      return translateTravel('已完成');
+    },
+    get unavailable() {
+      return translateTravel('当前不可用');
+    },
+    get unknown() {
+      return translateTravel('状态未知');
+    },
   },
-  creationsUnavailable: '生成记录暂时无法读取',
-  creditBalanceLabel: '可用 Credits',
-  creditsChangeLabel: 'Credits 变动',
-  defaultRechargeSource: '余额变动',
-  generationTasksEmpty: '暂无生成任务',
-  generationTasksTitle: '生成任务',
-  generationSettlementPending: '结算完成后可查看成果',
-  generationUnavailableVideo: '视频生成功能当前不可用，未产生任何视频作品',
-  inputTokensLabel: '输入',
-  outputTokensLabel: '输出',
-  ordersEmpty: '暂无服务订单',
-  orderStatus: { cancelled: '已取消', completed: '已完成', pending: '待处理', refunded: '已退款' },
-  ordersTitle: '服务订单',
-  pageNextLabel: '下一页',
-  pagePreviousLabel: '上一页',
-  rechargeEmpty: '暂无充值或余额变动记录',
-  rechargeTitle: 'Credits 充值与变动',
+  get creationsUnavailable() {
+    return translateTravel('生成记录暂时无法读取');
+  },
+  get creditBalanceLabel() {
+    return translateTravel('可用积分');
+  },
+  get creditsChangeLabel() {
+    return translateTravel('积分变动');
+  },
+  get defaultRechargeSource() {
+    return translateTravel('余额变动');
+  },
+  get generationTasksEmpty() {
+    return translateTravel('暂无生成任务');
+  },
+  get generationTasksTitle() {
+    return translateTravel('生成任务');
+  },
+  get generationSettlementPending() {
+    return translateTravel('结算完成后可查看成果');
+  },
+  get generationUnavailableVideo() {
+    return translateTravel('视频生成功能当前不可用，未产生任何视频作品');
+  },
+  get inputTokensLabel() {
+    return translateTravel('输入');
+  },
+  get outputTokensLabel() {
+    return translateTravel('输出');
+  },
+  get ordersEmpty() {
+    return translateTravel('暂无服务订单');
+  },
+  orderStatus: {
+    get cancelled() {
+      return translateTravel('已取消');
+    },
+    get completed() {
+      return translateTravel('已完成');
+    },
+    get pending() {
+      return translateTravel('待处理');
+    },
+    get refunded() {
+      return translateTravel('已退款');
+    },
+  },
+  get ordersTitle() {
+    return translateTravel('服务订单');
+  },
+  get pageNextLabel() {
+    return translateTravel('下一页');
+  },
+  get pagePreviousLabel() {
+    return translateTravel('上一页');
+  },
+  get rechargeEmpty() {
+    return translateTravel('暂无充值或余额变动记录');
+  },
+  get rechargeTitle() {
+    return translateTravel('积分充值与变动');
+  },
   sections: {
-    'account-security': '账号与安全',
-    'balance-usage': 'Credits 与 Token 用量',
-    'my-creations': '我的生成',
-    'recharge-history': 'Credits 明细与服务订单',
+    get 'account-security'() {
+      return translateTravel('账号与安全');
+    },
+    get 'balance-usage'() {
+      return translateTravel('账户用量');
+    },
+    get 'my-creations'() {
+      return translateTravel('我的生成');
+    },
+    get 'plans'() {
+      return translateTravel('费用套餐');
+    },
+    get 'recharge-history'() {
+      return translateTravel('积分明细');
+    },
   },
-  sessionSecurityNotice: '修改或重置密码后，其他设备上的登录会话会自动退出。',
-  title: '个人中心',
-  totalTokensLabel: '合计',
-  usageEmpty: '暂无可用的模型用量记录',
-  worksEmpty: '暂无作品或文稿',
-  worksTitle: '作品与文稿',
+  get sessionSecurityNotice() {
+    return translateTravel('修改或重置密码后，其他设备上的登录会话会自动退出。');
+  },
+  get title() {
+    return translateTravel('个人中心');
+  },
+  get totalTokensLabel() {
+    return translateTravel('合计');
+  },
+  get usageEmpty() {
+    return translateTravel('暂无可用的模型用量记录');
+  },
+  get worksEmpty() {
+    return translateTravel('暂无作品或文稿');
+  },
+  get worksTitle() {
+    return translateTravel('作品与文稿');
+  },
 };
 
-const CustomerCenterPage = ({ defaultSection }: { defaultSection: CustomerCenterSectionKey }) => {
+const CustomerCenterPage = ({
+  defaultSection = 'account-security',
+}: {
+  defaultSection?: CustomerCenterSectionKey;
+}) => {
+  const translateTravel = useTravelTranslation();
   const { i18n } = useTranslation();
   const ledgerPager = useCursorPager();
   const orderPager = useCursorPager();
@@ -136,7 +226,7 @@ const CustomerCenterPage = ({ defaultSection }: { defaultSection: CustomerCenter
   );
   const data = useMemo(() => {
     const overviewData = buildCustomerCenterData(overview.data, {
-      error: overview.error ? '个人中心数据暂时无法读取，请稍后重试' : undefined,
+      error: overview.error ? translateTravel('个人中心数据暂时无法读取，请稍后重试') : undefined,
       isLoading: overview.isLoading,
     });
     const pageData = buildCustomerCenterPageData(
@@ -149,19 +239,19 @@ const CustomerCenterPage = ({ defaultSection }: { defaultSection: CustomerCenter
       },
       {
         generation: {
-          error: generationPage.error ? '生成任务暂时无法读取' : undefined,
+          error: generationPage.error ? translateTravel('生成任务暂时无法读取') : undefined,
           isLoading: generationPage.isLoading,
         },
         ledger: {
-          error: ledgerPage.error ? '充值与余额记录暂时无法读取' : undefined,
+          error: ledgerPage.error ? translateTravel('充值与余额记录暂时无法读取') : undefined,
           isLoading: ledgerPage.isLoading,
         },
         order: {
-          error: orderPage.error ? '服务订单暂时无法读取' : undefined,
+          error: orderPage.error ? translateTravel('服务订单暂时无法读取') : undefined,
           isLoading: orderPage.isLoading,
         },
         work: {
-          error: workPage.error ? '作品与文稿暂时无法读取' : undefined,
+          error: workPage.error ? translateTravel('作品与文稿暂时无法读取') : undefined,
           isLoading: workPage.isLoading,
         },
       },
@@ -169,6 +259,7 @@ const CustomerCenterPage = ({ defaultSection }: { defaultSection: CustomerCenter
 
     return { ...overviewData, ...pageData };
   }, [
+    translateTravel,
     generationPage.data,
     generationPage.error,
     generationPage.isLoading,
@@ -190,11 +281,14 @@ const CustomerCenterPage = ({ defaultSection }: { defaultSection: CustomerCenter
     () =>
       selectedGenerationId
         ? buildCustomerGenerationDetail(generationDetailQuery.data, {
-            error: generationDetailQuery.error ? '生成详情暂时无法读取' : undefined,
+            error: generationDetailQuery.error
+              ? translateTravel('生成详情暂时无法读取')
+              : undefined,
             isLoading: generationDetailQuery.isLoading,
           })
         : undefined,
     [
+      translateTravel,
       generationDetailQuery.data,
       generationDetailQuery.error,
       generationDetailQuery.isLoading,

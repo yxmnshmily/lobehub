@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { useLocation } from 'react-router';
 
 import NavHeader from '@/features/NavHeader';
+import Nav from '@/routes/(main)/community/_layout/Sidebar/Header/Nav';
 import StoreSearchBar from '@/routes/(main)/community/features/Search';
 import UserAvatar from '@/routes/(main)/community/features/UserAvatar';
 
@@ -22,18 +23,19 @@ const Header = memo(() => {
   return (
     <NavHeader
       className={styles.headerContainer}
-      left={<StoreSearchBar />}
+      height={64}
+      left={<Nav />}
       style={cssVariables}
       right={
-        !isHome && (
-          <>
-            <SortButton />
-            <UserAvatar />
-          </>
-        )
+        <>
+          <StoreSearchBar />
+          {!isHome && <SortButton />}
+          {!isHome && <UserAvatar />}
+        </>
       }
       styles={{
-        left: { flex: 1 },
+        left: { flex: 1, minWidth: 0 },
+        right: { flex: '0 1 360px', minWidth: 140 },
       }}
     />
   );

@@ -16,7 +16,9 @@ const defaultLoaders = import.meta.glob([
   '!../../../packages/locales/src/default/*.vite.ts',
   '!../../../packages/locales/src/default/index.ts',
 ]) as NamespaceLoaderMap;
-const localeLoaders = import.meta.glob('../../../locales/*/*.json') as NamespaceLoaderMap;
+const localeLoaders = import.meta.glob(
+  '../../../locales/{en-US,zh-CN}/*.json',
+) as NamespaceLoaderMap;
 
 const getDefaultKey = (ns: string) => `../../../packages/locales/src/default/${ns}.ts`;
 const getLocaleKey = (lng: string, ns: string) => `../../../locales/${lng}/${ns}.json`;

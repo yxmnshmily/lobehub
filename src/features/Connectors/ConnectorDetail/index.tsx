@@ -218,7 +218,7 @@ const ConnectorDetail = memo<ConnectorDetailProps>(
         <div
           style={{
             alignItems: mobile ? 'stretch' : 'center',
-            borderBlockEnd: '1px solid var(--ant-color-border-secondary)',
+            borderBlockEnd: '0.5px solid var(--ant-color-border-secondary)',
             display: 'flex',
             flexDirection: mobile ? 'column' : 'row',
             flexShrink: 0,

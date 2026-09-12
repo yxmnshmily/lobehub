@@ -3,6 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LoginSessions from './LoginSessions';
 
+vi.mock('react-i18next', async (importOriginal) => {
+  const { createInstance } = await import('i18next');
+  const i18n = createInstance();
+  await i18n.init({ lng: 'zh-CN', resources: {} });
+  const t = i18n.t.bind(i18n);
+  return {
+    ...(await importOriginal<Record<string, unknown>>()),
+    useTranslation: () => ({ i18n, t }),
+  };
+});
+
 const mocks = vi.hoisted(() => ({
   confirmModal: vi.fn(),
   listSessions: vi.fn(),
@@ -144,7 +155,7 @@ describe('LoginSessions', () => {
 
     expect(await screen.findByText('Safari 1 · iPhone')).toBeTruthy();
     expect(screen.queryByText('Safari 10 · iPhone')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: '显示更多设备（剩余 5）' }));
+    fireEvent.click(screen.getByRole('button', { name: /显示更多设备（剩余\s*5）/ }));
     expect(await screen.findByText('Safari 14 · iPhone')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /显示更多设备/ })).toBeNull();
   });

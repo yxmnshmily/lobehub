@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { marketSDK, marketUserInfo, serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { toStableAssetUrl } from '@/server/utils/stableAssetUrl';
 
 const log = debug('lambda-router:market:user');
 
@@ -56,8 +57,8 @@ export const userRouter = router({
         const { user } = response;
 
         return {
-          avatarUrl: user.avatarUrl || null,
-          bannerUrl: user.meta?.bannerUrl || null,
+          avatarUrl: toStableAssetUrl(user.avatarUrl) || null,
+          bannerUrl: toStableAssetUrl(user.meta?.bannerUrl) || null,
           createdAt: user.createdAt,
           description: user.meta?.description || null,
           displayName: user.displayName || null,
@@ -102,10 +103,16 @@ export const userRouter = router({
       log('updateUserProfile input: %O', input);
 
       try {
-        // Ensure meta is at least an empty object
+        // Ensure meta is at least an empty object. Also drop object-storage
+        // signatures before persisting: a signed URL expires (X-Amz-Expires) and
+        // the avatar/banner then fails to load for everyone.
         const normalizedPayload = {
           ...input,
-          meta: input.meta ?? {},
+          avatarUrl: toStableAssetUrl(input.avatarUrl),
+          meta: {
+            ...input.meta,
+            bannerUrl: toStableAssetUrl(input.meta?.bannerUrl) ?? undefined,
+          },
         };
 
         const response = await ctx.marketSDK.user.updateUserInfo(normalizedPayload);

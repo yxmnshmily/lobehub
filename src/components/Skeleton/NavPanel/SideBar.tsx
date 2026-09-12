@@ -12,9 +12,15 @@ const isMacDesktop = isDesktop && isMacOS();
 
 export type SideBarHeaderVariant = 'breadcrumb' | 'title';
 
+const HEADER_ROW_HEIGHT = 64;
+const HEADER_ROW_PADDING_BLOCK = 8;
+
 const headerContentHeight = (variant: SideBarHeaderVariant) => {
   if (variant === 'title') return 32;
-  return isMacDesktop ? 22 : 28;
+  // The real breadcrumb row is a fixed 64px tall (see SideBarHeaderLayout), so
+  // the placeholder has to measure exactly the same — otherwise the sidebar
+  // jumps by the difference the moment the real header mounts.
+  return HEADER_ROW_HEIGHT - HEADER_ROW_PADDING_BLOCK * 2;
 };
 
 export const SideBarHeaderSkeleton = ({
@@ -22,8 +28,13 @@ export const SideBarHeaderSkeleton = ({
 }: {
   variant?: SideBarHeaderVariant;
 }) => (
-  <Flexbox horizontal align={'center'} flex={'none'} padding={'8px 6px'}>
-    <Flexbox flex={1} height={headerContentHeight(variant)} justify={'center'} paddingInline={6}>
+  <Flexbox
+    horizontal
+    align={'center'}
+    flex={'none'}
+    paddingBlock={HEADER_ROW_PADDING_BLOCK}
+  >
+    <Flexbox flex={1} height={headerContentHeight(variant)} justify={'center'}>
       <SkeletonBar height={variant === 'title' ? 18 : 14} width={variant === 'title' ? 96 : 72} />
     </Flexbox>
   </Flexbox>
@@ -142,7 +153,7 @@ export const NAV_SKELETON_SHAPES: Record<string, NavSkeletonShape> = {
   'group': { groups: [3, 8], headerVariant: 'title' },
   'home': { bodyGap: 1, groups: [5, 7, 3], headerVariant: 'title', leadingRows: 2, navRows: 2 },
   'image': { bodyGap: 1, groups: [4], groupTitleHeight: 40, navGap: 0, navRows: 2 },
-  'memory': { navRows: 7 },
+  'memory': { navRows: 6 },
   'page': { bodyGap: 1, groups: [12], headerVariant: 'title', navRows: 1 },
   'resource': { bodyPaddingBlock: 8, groups: [5], navRows: 6 },
   'resourceLibrary': { bodyPaddingBlock: 8, groups: [6], search: true },

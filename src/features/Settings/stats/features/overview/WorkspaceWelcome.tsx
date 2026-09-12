@@ -1,10 +1,11 @@
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import dayjs from 'dayjs';
 import { Clock3Icon, UsersIcon } from 'lucide-react';
 import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useActiveWorkspace } from '@/business/client/hooks/useActiveWorkspace';
 import { useWorkspaceMembers } from '@/business/client/hooks/useWorkspaceMembers';
 import { formatIntergerNumber } from '@/utils/format';
@@ -24,7 +25,7 @@ const WorkspaceWelcome = memo<{ mobile?: boolean }>(({ mobile }) => {
   const members = useWorkspaceMembers();
 
   if (!workspace) {
-    return <Skeleton height={24} style={{ minWidth: 200 }} width={200} />;
+    return <SkeletonBar height={24} style={{ minWidth: 200 }} width={200} />;
   }
 
   const days = Math.max(1, dayjs().diff(dayjs(workspace.createdAt), 'day'));

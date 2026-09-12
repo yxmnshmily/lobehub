@@ -107,8 +107,12 @@ export const createRepairRunner = (params: {
 
     // Re-run the original agent in the same topic. The feedback lives on the
     // verify message (surfaced into context by VerifyMessageProcessor), so we run
-    // off history instead of injecting a user turn; `instruction` is passed only
-    // for the operation title / logs. `verifyMessageId` parents the new turn under
+    // off history instead of injecting a persisted user turn. The turn still needs
+    // its own user-role message: without `ephemeralUserMessage` the context is
+    // bare history, which ends on the agent's own assistant output — the repair
+    // brief never reaches the model, and providers that read a trailing assistant
+    // turn as a continuation prefix reject the request outright (Ark:
+    // `MissingParameter: partial`). `verifyMessageId` parents the new turn under
     // the verify card it responds to.
     const result = await new AiAgentService(db, userId, { workspaceId }).execAgent({
       agentId,
@@ -116,6 +120,9 @@ export const createRepairRunner = (params: {
       autoStart: true,
       ...(model ? { model } : {}),
       ...(verifyMessageId ? { parentMessageId: verifyMessageId } : {}),
+      // Drives this turn's user message without persisting a row, so the repair
+      // reads the failures it must fix while the topic timeline stays as it was.
+      ephemeralUserMessage: instruction,
       parentOperationId: operationId,
       prompt: instruction,
       ...(provider ? { provider } : {}),

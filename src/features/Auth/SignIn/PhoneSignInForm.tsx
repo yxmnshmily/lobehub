@@ -1,6 +1,7 @@
-import { Flexbox, Input } from '@lobehub/ui';
-import { Button, Text } from '@lobehub/ui/base-ui';
+import { Flexbox, Icon, Input } from '@lobehub/ui';
+import { Button, toast } from '@lobehub/ui/base-ui';
 import { Form } from 'antd';
+import { MessageSquare, Phone } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -20,7 +21,6 @@ export const PhoneSignInForm = ({ callbackUrl }: { callbackUrl: string }) => {
   const [sending, setSending] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const [verifying, setVerifying] = useState(false);
-  const [error, setError] = useState<string>();
   const sendingRef = useRef(false);
 
   useEffect(() => {
@@ -40,14 +40,13 @@ export const PhoneSignInForm = ({ callbackUrl }: { callbackUrl: string }) => {
     try {
       const { phone } = await form.validateFields(['phone']);
       setSending(true);
-      setError(undefined);
       const result = await phoneNumber.sendOtp({ phoneNumber: normalizePhone(phone) });
       if (result.error) throw new Error('SEND_FAILED');
       setCodeSent(true);
       setResendSeconds(60);
     } catch (error) {
       if (isFormValidationError(error)) return;
-      setError(t('betterAuth.phone.sendFailed'));
+      toast.error(t('betterAuth.phone.sendFailed'));
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -56,13 +55,12 @@ export const PhoneSignInForm = ({ callbackUrl }: { callbackUrl: string }) => {
 
   const verifyCode = async ({ code, phone }: { code: string; phone: string }) => {
     setVerifying(true);
-    setError(undefined);
     try {
       const result = await phoneNumber.verify({ code, phoneNumber: normalizePhone(phone) });
       if (result.error) throw new Error('VERIFY_FAILED');
       window.location.assign(callbackUrl);
     } catch {
-      setError(t('betterAuth.phone.verifyFailed'));
+      toast.error(t('betterAuth.phone.verifyFailed'));
     } finally {
       setVerifying(false);
     }
@@ -85,7 +83,7 @@ export const PhoneSignInForm = ({ callbackUrl }: { callbackUrl: string }) => {
           autoComplete="tel"
           inputMode="tel"
           placeholder={t('betterAuth.phone.phonePlaceholder')}
-          prefix="+86"
+          prefix={<Icon icon={Phone} size={16} style={{ marginInline: 6 }} />}
           size="large"
           style={{ padding: 6 }}
         />
@@ -101,11 +99,12 @@ export const PhoneSignInForm = ({ callbackUrl }: { callbackUrl: string }) => {
             inputMode="numeric"
             maxLength={6}
             placeholder={t('betterAuth.phone.codePlaceholder')}
+            prefix={<Icon icon={MessageSquare} size={16} style={{ marginInline: 6 }} />}
             size="large"
+            style={{ padding: 6 }}
           />
         </Form.Item>
       )}
-      {error && <Text type="danger">{error}</Text>}
       <AuthAgreement checked={agreementChecked} onChange={setAgreementChecked} />
       <Flexbox gap={8}>
         {!codeSent ? (

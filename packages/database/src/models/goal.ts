@@ -8,7 +8,9 @@ import { goalNodeDecisions, goalNodes } from '../schemas/goalGraph';
 import { tasks, taskTopics } from '../schemas/task';
 import { topics } from '../schemas/topic';
 import type { LobeChatDatabase } from '../type';
+import { groupWorkVisibility } from '../utils/groupWork';
 import { buildWorkspacePayload, buildWorkspaceWhere } from '../utils/workspace';
+import { ChatGroupModel } from './chatGroup';
 
 /** States after which a goal's loop no longer advances. */
 const TERMINAL_GOAL_STATUSES = new Set<GoalStatus>(['achieved', 'failed', 'canceled']);
@@ -45,7 +47,10 @@ export class GoalModel {
   )`;
 
   private ownership = () =>
-    buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, goals);
+    and(
+      buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, goals),
+      groupWorkVisibility(sql`${goals.config}`, this.userId, this.workspaceId),
+    )!;
 
   /** Visibility-aware task scope for recursive raw-SQL carrier aggregation. */
   private taskOwnershipSql = (alias?: string) => {
@@ -192,13 +197,20 @@ export class GoalModel {
   list = async (
     options: {
       agentId?: string;
+      groupId?: string;
       limit?: number;
       offset?: number;
       projectId?: string;
       statuses?: GoalStatus[];
     } = {},
   ): Promise<{ goals: GoalListItem[]; total: number }> => {
-    const { agentId, limit = 50, offset = 0, projectId, statuses } = options;
+    const { agentId, groupId, limit = 50, offset = 0, projectId, statuses } = options;
+    if (
+      groupId &&
+      !(await new ChatGroupModel(this.db, this.userId, this.workspaceId).findById(groupId))
+    ) {
+      return { goals: [], total: 0 };
+    }
 
     // Only goals that actually have a graph. Rows created by the earlier
     // task-carried flow have no `goal_nodes`, so they would render as a
@@ -206,6 +218,7 @@ export class GoalModel {
     // until something backfills them into graphs.
     const conditions = [this.ownership(), GoalModel.hasGraphSql];
     if (agentId) conditions.push(eq(goals.agentId, agentId));
+    if (groupId) conditions.push(sql`${goals.config}->>'groupId' = ${groupId}`);
     if (projectId) conditions.push(eq(goals.projectId, projectId));
     if (statuses && statuses.length > 0) conditions.push(inArray(goals.status, statuses));
 

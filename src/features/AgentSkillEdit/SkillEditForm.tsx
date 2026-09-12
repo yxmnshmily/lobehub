@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 200px;
     padding-block: 8px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 8px;
   `,
   wrapper: css`

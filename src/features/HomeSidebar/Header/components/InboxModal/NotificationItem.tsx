@@ -5,7 +5,17 @@ import type { NotificationMetadata } from '@lobechat/types';
 import { Block, Flexbox, Icon } from '@lobehub/ui';
 import { Avatar, Button, ContextMenuTrigger, Text, useModalContext } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ArchiveIcon, BellIcon, ImageIcon, MegaphoneIcon, VideoIcon } from 'lucide-react';
+import {
+  ArchiveIcon,
+  BellIcon,
+  Bot,
+  CalendarClock,
+  CircleAlert,
+  Coins,
+  ImageIcon,
+  MegaphoneIcon,
+  VideoIcon,
+} from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +43,28 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const TYPE_ICON_MAP: Record<string, typeof BellIcon> = {
+  agent_run_completed: Bot,
+  agent_cron_job_completed: CalendarClock,
+  agent_cron_job_failed: CircleAlert,
+  credits_low: CircleAlert,
+  credits_adjusted: Coins,
+  credits_returned: Coins,
+  credits_exhausted: CircleAlert,
+  image_generation_failed: CircleAlert,
+  video_generation_failed: CircleAlert,
+  agent_run_failed: CircleAlert,
+  agent_intervention_required: CircleAlert,
+  task_assigned: CalendarClock,
+  task_commented: BellIcon,
+  topic_commented: BellIcon,
+  topic_mentioned: BellIcon,
+  comment_removed: CircleAlert,
+  comment_restored: BellIcon,
+  task_mentioned: BellIcon,
+  resource_transfer_requested: BellIcon,
+  resource_transfer_accepted: BellIcon,
+  resource_transfer_declined: CircleAlert,
+  credits_top_up_completed: Coins,
   image_generation_completed: ImageIcon,
   system_announcement: MegaphoneIcon,
   video_generation_completed: VideoIcon,

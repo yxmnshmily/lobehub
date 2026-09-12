@@ -13,6 +13,14 @@ import type { GoalNodeView } from './goalGraphViewModel';
 
 export type CoordinatorGateKind = 'goalAcceptance' | 'recoverTask';
 
+/** Only the two known coordinator gates use the fixed translated option vocabulary. */
+export const coordinatorOptionLabelKey = (optionId: string, kind?: CoordinatorGateKind) => {
+  if (!kind) return undefined;
+  if (optionId === 'retry' || optionId === 'retire' || optionId === 'fail')
+    return `goalProcess.gate.option.${optionId}` as const;
+  return undefined;
+};
+
 export interface LocalizedCopyRef {
   key: string;
   params?: Record<string, string>;

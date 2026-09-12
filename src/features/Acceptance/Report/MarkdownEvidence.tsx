@@ -97,7 +97,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: min(100%, 520px);
     padding-block: 7px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     text-align: start;

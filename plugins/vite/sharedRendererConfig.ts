@@ -451,8 +451,8 @@ export const sharedOptimizeDeps = {
   ],
 };
 
-// Workspace packages can resolve @lobehub/editor through different peer-dependency
-// snapshots. They must still share one LexicalComposerContext at runtime.
-export const sharedRendererDedupe = ['@lobehub/editor', 'react', 'react-dom'];
+// Peer-dependency snapshots must share both LexicalComposerContext and the UI
+// providers; otherwise editor actions cannot read the app's MotionComponent.
+export const sharedRendererDedupe = ['@lobehub/editor', '@lobehub/ui', 'react', 'react-dom'];
 
 export const __testing = { isUiCoreModule, sharedChunkFileNames, sharedManualChunks };

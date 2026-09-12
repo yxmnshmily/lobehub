@@ -25,6 +25,8 @@ const GroupMemberItem = memo<GroupMemberItemProps>(
     return (
       <NavItem
         actions={actions}
+        aria-label={title}
+        style={{ width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
         icon={
           <Avatar
             emojiScaleWithBackground
@@ -35,8 +37,15 @@ const GroupMemberItem = memo<GroupMemberItemProps>(
           />
         }
         title={
-          <Flexbox horizontal align="center" gap={4}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Flexbox horizontal align="center" gap={4} style={{ minWidth: 0, maxWidth: '100%' }}>
+            <span
+              style={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {title}
             </span>
             {isExternal && (

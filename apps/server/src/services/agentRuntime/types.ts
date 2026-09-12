@@ -270,6 +270,8 @@ export interface GroupActionMemberBridgeParams {
   operationId: string;
   parentOperationId: string;
   reason: string;
+  /** Same-group, same-topic assistant message this in-group member directly replies to. */
+  replyToMessageId?: string;
   /** Isolation thread id (isolated mode only). */
   threadId?: string;
 }
@@ -322,6 +324,8 @@ export interface ExecGroupMemberParams {
   platformManagedExecutionAuthorized?: true;
   /** Trusted generation limit inherited from the supervisor operation. */
   platformManagedMaxCredits?: number;
+  /** Same-group, same-topic assistant message this in-group member directly replies to. */
+  replyToMessageId?: string;
   /**
    * Supervisor ASSISTANT message id that owns the group-management tool call.
    * In-group council members parent their response to THIS message — so the

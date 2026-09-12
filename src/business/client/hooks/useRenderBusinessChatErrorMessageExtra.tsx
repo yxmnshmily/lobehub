@@ -1,4 +1,6 @@
-import { type ChatMessageError } from '@lobechat/types';
+import { ChatErrorType, type ChatMessageError } from '@lobechat/types';
+
+import InsufficientCreditsCard from '../features/InsufficientCreditsCard';
 
 interface BusinessChatErrorMessageExtraOptions {
   /**
@@ -11,9 +13,28 @@ interface BusinessChatErrorMessageExtraOptions {
 }
 
 export default function useRenderBusinessChatErrorMessageExtra(
-  _error: ChatMessageError | null | undefined,
+  error: ChatMessageError | null | undefined,
   _messageId: string,
-  _options?: BusinessChatErrorMessageExtraOptions,
+  options?: BusinessChatErrorMessageExtraOptions,
 ) {
-  return null;
+  if (!error) return null;
+  const body = error.body;
+  const messages = [error.message, body?.message, body?.error?.message].filter(
+    (value): value is string => typeof value === 'string',
+  );
+  const groupOwner =
+    String(error.type) === 'GROUP_OWNER_CREDITS_EMPTY' ||
+    messages.some((value) => value.includes('[GROUP_OWNER_CREDITS_EMPTY]'));
+  const localBalance =
+    ['BALANCE_EMPTY', 'PLATFORM_CREDITS_EMPTY'].includes(String(error.type)) ||
+    messages.some((value) => /\[(?:BALANCE_EMPTY|PLATFORM_CREDITS_EMPTY)\]/.test(value));
+  const planLimit = new Set<string>([
+    ChatErrorType.InsufficientBudgetForModel,
+    ChatErrorType.FreePlanLimit,
+    ChatErrorType.SubscriptionPlanLimit,
+  ]).has(String(error.type));
+  if (!groupOwner && !localBalance && !planLimit) return null;
+  return (
+    <InsufficientCreditsCard errorBody={body} groupOwner={groupOwner} onRetry={options?.onRetry} />
+  );
 }

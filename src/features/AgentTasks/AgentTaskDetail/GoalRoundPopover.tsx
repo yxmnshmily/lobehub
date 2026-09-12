@@ -1,10 +1,13 @@
 'use client';
 
+import { formatLocalizedTokens } from '@lobechat/utils/format';
 import { Flexbox, Popover } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 
 const styles = createStaticStyles(({ css }) => ({
   label: css`
@@ -20,8 +23,7 @@ const styles = createStaticStyles(({ css }) => ({
 export const formatRoundCost = (cost: number): string =>
   cost > 0 && cost < 0.01 ? `<$0.01` : `$${cost.toFixed(cost < 1 ? 3 : 2)}`;
 
-export const formatTokens = (tokens: number): string =>
-  tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens);
+export const formatTokens = formatLocalizedTokens;
 
 interface GoalRoundPopoverProps {
   children: ReactNode;
@@ -43,6 +45,7 @@ interface GoalRoundPopoverProps {
 const GoalRoundPopover = memo<GoalRoundPopoverProps>(
   ({ children, duration, index, status, usage, verdict }) => {
     const { t } = useTranslation('chat');
+    const { format } = useMonthlyExchangeRate();
 
     const verdictLabel = (() => {
       if (verdict === 'passed' || status === 'passed') return t('taskDetail.runVerify.passed');
@@ -67,7 +70,7 @@ const GoalRoundPopover = memo<GoalRoundPopoverProps>(
         ? [
             {
               label: t('taskDetail.goalTimeline.hover.cost'),
-              value: formatRoundCost(usage.cost),
+              value: format(usage.cost, 6),
             },
           ]
         : []),

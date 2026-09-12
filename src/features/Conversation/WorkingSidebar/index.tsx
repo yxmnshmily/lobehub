@@ -1,7 +1,7 @@
 import type { SFSymbol } from '@lobechat/electron-client-ipc';
 import { nanoid } from '@lobechat/utils';
 import { Flexbox, Icon, type IconProps } from '@lobehub/ui';
-import { ActionIcon, type DropdownItem, DropdownMenu, Skeleton } from '@lobehub/ui/base-ui';
+import { ActionIcon, type DropdownItem, DropdownMenu } from '@lobehub/ui/base-ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
 import { createStaticStyles, cssVar } from 'antd-style';
 import {
@@ -36,6 +36,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useBusinessWorkingSidebarTabs } from '@/business/client/features/WorkingSidebarTabs';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
@@ -126,7 +127,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: min(340px, calc(100% - 32px));
     max-height: calc(100% - 32px);
     margin: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 20px;
 
     background: ${cssVar.colorBgContainer};
@@ -1005,7 +1006,7 @@ const AgentWorkingSidebar = memo<AgentWorkingSidebarProps>(({ availableWidth }) 
                 {paramsAvailable && activeTab === 'params' && (
                   <Flexbox className={styles.pane}>
                     <Suspense
-                      fallback={<Skeleton.Text className={styles.paramsLoading} rows={6} />}
+                      fallback={<SkeletonText className={styles.paramsLoading} rows={6} />}
                     >
                       <ParamsSection />
                     </Suspense>

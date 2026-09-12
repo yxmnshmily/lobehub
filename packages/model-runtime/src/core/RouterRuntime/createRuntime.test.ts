@@ -1876,7 +1876,7 @@ describe('createRouterRuntime', () => {
       const preparedChannels: string[] = [];
 
       class MockRuntime implements LobeRuntimeAI {
-        async prepareGenerateObjectBounded() {
+        async prepareGenerateObjectBounded(): Promise<never> {
           preparedChannels.push(getRuntimeSignatureScopeSource(this)?.channelId ?? 'missing');
           throw new Error('must not prepare');
         }

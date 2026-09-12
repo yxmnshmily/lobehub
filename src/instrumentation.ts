@@ -1,4 +1,22 @@
 export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs' && !process.env.VERCEL_ENV) {
+    const { startMonthlyExchangeRateUpdates } =
+      await import('@/server/services/monthlyExchangeRate');
+    startMonthlyExchangeRateUpdates();
+  }
+
+  // Recovery sweeps (stranded verify runs, stalled goals, heartbeat-timeout
+  // tasks) are QStash cron routes. Signature verification is skipped when
+  // QSTASH_CURRENT_SIGNING_KEY is unset but nothing schedules them either, so an
+  // installation without that key never reclaims a run whose host was recycled.
+  if (
+    process.env.NEXT_RUNTIME === 'nodejs' &&
+    process.env.DATABASE_URL &&
+    !process.env.QSTASH_CURRENT_SIGNING_KEY
+  ) {
+    const { startRecoverySweeps } = await import('@/server/services/recoverySweeps');
+    startRecoverySweeps();
+  }
   // In local development, write debug logs to logs/server.log
   if (process.env.NODE_ENV !== 'production' && process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./libs/debug-file-logger');
@@ -52,7 +70,10 @@ export async function register() {
     return;
   }
 
-  const shouldEnable = process.env.ENABLE_TELEMETRY && process.env.NEXT_RUNTIME === 'nodejs';
+  const shouldEnable =
+    process.env.TELEMETRY_DISABLED === '0' &&
+    process.env.ENABLE_TELEMETRY === '1' &&
+    process.env.NEXT_RUNTIME === 'nodejs';
   if (!shouldEnable) {
     return;
   }

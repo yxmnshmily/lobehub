@@ -48,11 +48,7 @@ describe('auth abuse control', () => {
 
   it('accepts only trusted proxy headers and canonicalizes IPv4 and IPv6', () => {
     expect(
-      resolveTrustedClientIp(
-        new Headers({ 'x-real-ip': '192.0.2.10' }),
-        'production',
-        'x-real-ip',
-      ),
+      resolveTrustedClientIp(new Headers({ 'x-real-ip': '192.0.2.10' }), 'production', 'x-real-ip'),
     ).toBe('192.0.2.10');
     expect(
       resolveTrustedClientIp(
@@ -154,9 +150,9 @@ describe('auth abuse control', () => {
     await expect(checkAuthAbuseLimit(request)).resolves.toMatchObject({ limited: false });
     expect(evalCommand).toHaveBeenCalledTimes(1);
     expect(evalCommand.mock.calls[0][1]).toBe(2);
-    expect(evalCommand.mock.calls[0].slice(2, 4).every((key) => !key.includes('redis-fixture'))).toBe(
-      true,
-    );
+    expect(
+      evalCommand.mock.calls[0].slice(2, 4).every((key) => !key.includes('redis-fixture')),
+    ).toBe(true);
   });
 
   it.each([
@@ -196,10 +192,9 @@ describe('auth abuse control', () => {
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('5m')
       .sign(new TextEncoder().encode(mocks.authEnv.AUTH_SECRET));
-    const request = new Request(
-      `https://example.test/api/auth/verify-email?token=${token}`,
-      { headers: { 'x-real-ip': '192.0.2.70' } },
-    );
+    const request = new Request(`https://example.test/api/auth/verify-email?token=${token}`, {
+      headers: { 'x-real-ip': '192.0.2.70' },
+    });
 
     await expect(checkAuthAbuseLimit(request)).resolves.toMatchObject({ limited: false });
     expect(evalCommand).toHaveBeenCalledTimes(1);
@@ -211,7 +206,9 @@ describe('auth abuse control', () => {
     mocks.isRedisEnabled.mockReturnValue(true);
     mocks.getRedisConfig.mockReturnValue({ enabled: true });
     mocks.initializeRedis.mockResolvedValue({ eval: evalCommand });
-    const payload = Buffer.from(JSON.stringify({ updateTo: 'target-fixture' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ updateTo: 'target-fixture' })).toString(
+      'base64url',
+    );
     const request = new Request(
       `https://example.test/api/auth/verify-email?token=fixture.${payload}.invalid`,
       { headers: { 'x-real-ip': '192.0.2.71' } },
@@ -235,9 +232,8 @@ describe('auth abuse control', () => {
   });
 
   it('fails safely in production when no trusted proxy address is available', async () => {
-    const originalEnvironment = process.env.NODE_ENV;
     try {
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
       const request = new Request('https://example.test/api/auth/sign-in/email', {
         body: 'email=form-fixture',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -246,15 +242,14 @@ describe('auth abuse control', () => {
 
       await expect(checkAuthAbuseLimit(request)).resolves.toMatchObject({ unavailable: true });
     } finally {
-      process.env.NODE_ENV = originalEnvironment;
+      vi.unstubAllEnvs();
     }
   });
 
   it('fails closed in production when Redis is not configured', async () => {
-    const originalEnvironment = process.env.NODE_ENV;
     const originalTrustedHeader = process.env.AUTH_TRUSTED_IP_HEADER;
     try {
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
       process.env.AUTH_TRUSTED_IP_HEADER = 'x-real-ip';
       const request = new Request('https://example.test/api/auth/sign-in/email', {
         body: JSON.stringify({ email: 'production-fixture' }),
@@ -264,7 +259,7 @@ describe('auth abuse control', () => {
 
       await expect(checkAuthAbuseLimit(request)).resolves.toMatchObject({ unavailable: true });
     } finally {
-      process.env.NODE_ENV = originalEnvironment;
+      vi.unstubAllEnvs();
       if (originalTrustedHeader === undefined) delete process.env.AUTH_TRUSTED_IP_HEADER;
       else process.env.AUTH_TRUSTED_IP_HEADER = originalTrustedHeader;
     }

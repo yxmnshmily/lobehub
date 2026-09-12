@@ -2,14 +2,16 @@
 
 import { agentDisplayName } from '@lobechat/types';
 import { Flexbox, SearchBar } from '@lobehub/ui';
-import { Skeleton, Text } from '@lobehub/ui/base-ui';
-import { createStaticStyles } from 'antd-style';
+import { Text } from '@lobehub/ui/base-ui';
+import { createStaticStyles, cssVar } from 'antd-style';
 import isEqual from 'fast-deep-equal';
+import { Search } from 'lucide-react';
 import { type ChangeEvent } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Virtuoso } from 'react-virtuoso';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AgentSelectionEmpty from '@/features/AgentSelectionEmpty';
 import { useHomeStore } from '@/store/home';
 import { homeAgentListSelectors } from '@/store/home/selectors';
@@ -105,6 +107,8 @@ const AvailableAgentList = memo<AvailableAgentListProps>(({ agents, isLoading })
       <SearchBar
         allowClear
         placeholder={t('memberSelection.searchAgents')}
+        prefix={null}
+        suffix={<Search aria-hidden size={16} style={{ color: cssVar.colorTextTertiary }} />}
         value={searchTerm}
         variant="filled"
         onChange={handleSearchChange}
@@ -113,9 +117,9 @@ const AvailableAgentList = memo<AvailableAgentListProps>(({ agents, isLoading })
       <Flexbox flex={1} style={{ minHeight: 0 }}>
         {isLoading ? (
           <Flexbox gap={8} padding={8}>
-            <Skeleton.Text rows={1} />
-            <Skeleton.Text rows={1} />
-            <Skeleton.Text rows={1} />
+            <SkeletonText rows={1} />
+            <SkeletonText rows={1} />
+            <SkeletonText rows={1} />
           </Flexbox>
         ) : filteredAgents.length === 0 ? (
           <AgentSelectionEmpty

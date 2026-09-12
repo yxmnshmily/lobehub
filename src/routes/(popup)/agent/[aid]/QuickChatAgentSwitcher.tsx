@@ -18,6 +18,7 @@ import { useAgentStore } from '@/store/agent';
 import { agentSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
 import { useHomeStore } from '@/store/home';
 import { homeAgentListSelectors } from '@/store/home/selectors';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 const VISIBLE_LIMIT = 5;
 const AVATAR_SIZE = 30;
@@ -156,6 +157,7 @@ const useSwitchItems = (): SwitchItem[] => {
 };
 
 const QuickChatAgentSwitcher = memo(() => {
+  const translateTravel = useTravelTranslation();
   // Popup window has its own SPA boot — main sidebar's fetch never fires here,
   // so we trigger the agent list fetch ourselves.
   useFetchAgentList();
@@ -228,7 +230,7 @@ const QuickChatAgentSwitcher = memo(() => {
               />
               <div className={styles.popoverList} style={{ marginTop: 8 }}>
                 {filteredRemaining.length === 0 ? (
-                  <div className={styles.popoverEmpty}>No agents found</div>
+                  <div className={styles.popoverEmpty}>{translateTravel('未找到智能体')}</div>
                 ) : (
                   filteredRemaining.map((item) => (
                     <div

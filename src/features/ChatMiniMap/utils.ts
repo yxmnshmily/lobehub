@@ -1,7 +1,7 @@
 import { markdownToTxt } from '@/utils/markdownToTxt';
 
-const MIN_WIDTH = 5;
-const MAX_WIDTH = 16;
+const MIN_WIDTH = 8;
+const MAX_WIDTH = 24;
 const MAX_LENGTH = 80;
 
 export const getIndicatorWidth = (content: string | undefined): number => {

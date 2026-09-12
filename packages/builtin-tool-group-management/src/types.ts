@@ -41,6 +41,11 @@ export interface SpeakParams {
   agentId: string;
   instruction?: string;
   /**
+   * Existing assistant message this member is directly replying to. Omit for
+   * self-talk, progress updates, new contributions, and continuing own work.
+   */
+  replyToMessageId?: string;
+  /**
    * If true, the orchestration will end after this agent responds,
    * without calling the supervisor again.
    * Use this when the user explicitly requests a specific agent

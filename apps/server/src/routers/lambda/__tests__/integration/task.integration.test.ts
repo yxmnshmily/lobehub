@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AcceptanceModel } from '@/database/models/acceptance';
 import { TaskModel } from '@/database/models/task';
+import { chatGroups, chatGroupsAgents } from '@/database/schemas';
+import {
+  getPlatformManagedExecutionContext,
+  grantPlatformManagedExecution,
+} from '@/server/services/aiAgent/platformManagedExecution';
+import { carryTaskExecutionContext } from '@/server/services/taskRunner/hostedExecution';
 
 import { taskRouter } from '../../task';
 import {
@@ -1014,6 +1020,71 @@ describe('Task Router Integration', () => {
       const detail2 = await caller.detail({ id: task.data.identifier });
       expect(detail2.data.workspace).toBeUndefined();
     });
+  });
+
+  it('preserves the private group budget through actual router middleware and runner', async () => {
+    const groupId = `cg_budget_${userId}`;
+    await serverDB.insert(chatGroups).values({ id: groupId, userId });
+    await serverDB.insert(chatGroupsAgents).values({
+      chatGroupId: groupId,
+      agentId: testAgentId,
+      userId,
+      role: 'supervisor',
+    });
+    const task = await caller.create({
+      assigneeAgentId: testAgentId,
+      instruction: 'Inherit group execution',
+      config: { groupId },
+    });
+    const sharedBudget = {} as any;
+    const source = grantPlatformManagedExecution(
+      { groupId },
+      {
+        actorUserId: userId,
+        resourceOwnerUserId: userId,
+        sharedBudget,
+      },
+    );
+    const toolCaller = taskRouter.createCaller(
+      carryTaskExecutionContext(createTestContext(userId), source),
+    );
+    await toolCaller.run({ id: task.data.id });
+    expect(getPlatformManagedExecutionContext(mockExecAgent.mock.calls[0][0])?.sharedBudget).toBe(
+      sharedBudget,
+    );
+  });
+
+  it.each([undefined, 'schedule', 'heartbeat'] as const)(
+    'surfaces a rejected kickoff instead of recording a running task (%s)',
+    async (automationMode) => {
+      const task = await caller.create({
+        assigneeAgentId: testAgentId,
+        automationMode,
+        ...(automationMode === 'schedule' ? { schedulePattern: '0 9 * * *' } : {}),
+        instruction: 'Rejected kickoff',
+      });
+      mockExecAgent.mockResolvedValueOnce({
+        success: false,
+        error: 'Execution could not attach',
+        operationId: 'op_failed',
+        topicId: testTopicId,
+      });
+      await expect(caller.run({ id: task.data.id })).rejects.toThrow('Execution could not attach');
+      const stored = await new TaskModel(serverDB, userId).findById(task.data.id);
+      expect(stored?.status).toBe(automationMode ? 'scheduled' : 'paused');
+      expect(stored?.totalTopics).toBe(0);
+    },
+  );
+
+  it('passes the explicit task budget ceiling through the router and runner', async () => {
+    const task = await caller.create({
+      assigneeAgentId: testAgentId,
+      instruction: 'Bounded group acceptance',
+    });
+    await caller.run({ id: task.data.id, maxCredits: 650_000 });
+    expect(mockExecAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ platformManagedMaxCredits: 650_000, taskId: task.data.id }),
+    );
   });
 
   describe('updateStatus cascade cancels running topics', () => {

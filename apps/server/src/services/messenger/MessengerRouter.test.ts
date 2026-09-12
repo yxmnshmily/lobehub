@@ -4,6 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessengerRouter } from './MessengerRouter';
 
 const mockGetBotFeatureAccessState = vi.hoisted(() => vi.fn());
+const groupRoutingMocks = vi.hoisted(() => ({ findById: vi.fn(), getSupervisorAgentId: vi.fn() }));
+vi.mock('@/database/models/chatGroup', () => ({
+  ChatGroupModel: class {
+    findById = groupRoutingMocks.findById;
+    getSupervisorAgentId = groupRoutingMocks.getSupervisorAgentId;
+  },
+}));
 
 vi.mock('@/database/core/db-adaptor', () => ({
   getServerDB: vi.fn().mockResolvedValue({}),
@@ -791,7 +798,7 @@ describe('MessengerRouter channel @mention', () => {
 
     expect(mockSlackBinder.replyEphemeral).toHaveBeenCalledWith({
       channelId: 'C_GENERAL',
-      text: expect.stringContaining('No active agent'),
+      text: expect.stringContaining('No workgroup selected'),
       threadTs: '1715000000.000100',
       userId: 'U_ALICE',
     });
@@ -903,6 +910,27 @@ describe('MessengerRouter DM dispatch (regression)', () => {
     expect(mockHandleMention).toHaveBeenCalledTimes(1);
     expect(mockHandleSubscribed).not.toHaveBeenCalled();
     expect(mockSlackBinder.handleUnlinkedMessage).not.toHaveBeenCalled();
+  });
+
+  it('routes a workgroup binding to its current supervisor with group context', async () => {
+    await loadSlackBot();
+    mockFindLink.mockResolvedValue({
+      activeAgentId: null,
+      activeGroupId: 'group-1',
+      id: 'link_1',
+      platformUserId: 'U_ALICE',
+      tenantId: 'T_ACME',
+      userId: 'user_alice',
+    });
+    groupRoutingMocks.findById.mockResolvedValue({ id: 'group-1' });
+    groupRoutingMocks.getSupervisorAgentId.mockResolvedValue('supervisor-current');
+    const handler = mockChatBot.onNewMention.mock.calls[0][0];
+    await handler(fakeDmThread(), fakeMessage({ isMention: true, text: '做文案' }));
+    expect(mockHandleMention).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ agentId: 'supervisor-current', groupId: 'group-1' }),
+    );
   });
 
   it('continues an existing topic when a subscribed DM follow-up arrives', async () => {

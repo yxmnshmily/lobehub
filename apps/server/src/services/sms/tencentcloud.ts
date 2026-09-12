@@ -29,8 +29,13 @@ export const normalizeChinesePhoneNumber = (input: string): string => {
 
 export const isCanonicalChinesePhoneNumber = (input: string) => /^\+861[3-9]\d{9}$/.test(input);
 
-export const buildTencentCloudSmsRequest = ({ code, config, phoneNumber, timestamp }: {
-  code: string;
+export const buildTencentCloudSmsTemplateRequest = ({
+  templateParams,
+  config,
+  phoneNumber,
+  timestamp,
+}: {
+  templateParams: string[];
   config: TencentCloudSmsConfig;
   phoneNumber: string;
   timestamp: number;
@@ -40,7 +45,7 @@ export const buildTencentCloudSmsRequest = ({ code, config, phoneNumber, timesta
     SignName: config.signName,
     SmsSdkAppId: config.sdkAppId,
     TemplateId: config.templateId,
-    TemplateParamSet: [code, '5'],
+    TemplateParamSet: templateParams,
   });
   const canonicalHeaders =
     'content-type:application/json; charset=utf-8\nhost:sms.tencentcloudapi.com\nx-tc-action:sendsms\n';
@@ -57,9 +62,9 @@ export const buildTencentCloudSmsRequest = ({ code, config, phoneNumber, timesta
   return {
     body,
     headers: {
-      Authorization: `TC3-HMAC-SHA256 Credential=${config.secretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+      'Authorization': `TC3-HMAC-SHA256 Credential=${config.secretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
       'Content-Type': 'application/json; charset=utf-8',
-      Host: HOST,
+      'Host': HOST,
       'X-TC-Action': 'SendSms',
       'X-TC-Region': config.region,
       'X-TC-Timestamp': String(timestamp),
@@ -68,3 +73,10 @@ export const buildTencentCloudSmsRequest = ({ code, config, phoneNumber, timesta
     url: `https://${HOST}`,
   };
 };
+
+export const buildTencentCloudSmsRequest = (input: {
+  code: string;
+  config: TencentCloudSmsConfig;
+  phoneNumber: string;
+  timestamp: number;
+}) => buildTencentCloudSmsTemplateRequest({ ...input, templateParams: [input.code, '5'] });

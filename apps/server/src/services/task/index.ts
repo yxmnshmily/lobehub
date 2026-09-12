@@ -33,6 +33,7 @@ import { resolveAttachmentMetadata } from '../file/resolveAttachments';
 import { type SubtaskGraphPlan, TaskGraphService } from '../taskGraph';
 import { type ReviewResult, TaskReviewService } from '../taskReview';
 import { TaskRunnerService } from '../taskRunner';
+import { resolveGroupExecution } from '../taskRunner/groupExecution';
 import { createTaskSchedulerModule } from '../taskScheduler';
 import { resolveTaskAcceptance } from '../verify/taskAcceptance';
 
@@ -125,6 +126,15 @@ export class TaskService {
    * default model don't silently affect this task.
    */
   async createTask(input: CreateTaskInput): Promise<TaskItem> {
+    const groupExecution = await resolveGroupExecution(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      input.config,
+      input.assigneeAgentId,
+    );
+    if (groupExecution && !input.assigneeAgentId && !input.assigneeUserId)
+      input = { ...input, assigneeAgentId: groupExecution.agentId };
     await this.assertAssigneeAgentBelongsToUser(input.assigneeAgentId);
 
     const taskInput = input;
@@ -137,6 +147,25 @@ export class TaskService {
       const parent = await this.resolveOrThrow(createData.parentTaskId);
       createData.parentTaskId = parent.id;
       parentVisibility = parent.visibility;
+      const parentGroupId = (parent.config as { groupId?: string } | null)?.groupId;
+      if (parentGroupId) {
+        if (createData.config?.groupId && createData.config.groupId !== parentGroupId) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Subtask must belong to the same group as its parent',
+          });
+        }
+        createData.config = { ...createData.config, groupId: parentGroupId };
+        const inherited = await resolveGroupExecution(
+          this.db,
+          this.userId,
+          this.workspaceId,
+          createData.config,
+          createData.assigneeAgentId,
+        );
+        if (inherited && !createData.assigneeAgentId && !createData.assigneeUserId)
+          createData.assigneeAgentId = inherited.agentId;
+      }
       if (createData.projectId && createData.projectId !== parent.projectId) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -156,8 +185,10 @@ export class TaskService {
     // SQL — both are needed for the same `tasks.create` row, and a second
     // round-trip would just retrace the same primary-key path.
     let agentVisibility: 'private' | 'public' | null = null;
-    if (input.assigneeAgentId) {
-      const agentInfo = await this.agentModel.getAgentSnapshotForTaskCreate(input.assigneeAgentId);
+    if (createData.assigneeAgentId) {
+      const agentInfo = await this.agentModel.getAgentSnapshotForTaskCreate(
+        createData.assigneeAgentId,
+      );
       if (agentInfo) {
         if (agentInfo.snapshot) createData.config = { ...agentInfo.snapshot, ...createData.config };
         agentVisibility = agentInfo.visibility;

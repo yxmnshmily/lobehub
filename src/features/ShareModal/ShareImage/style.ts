@@ -16,25 +16,25 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   container_withBackground_true: css`
     overflow: hidden;
-    border: 2px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   footer: css`
     padding: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorder};
+    border-block-start: 0.5px solid ${cssVar.colorBorder};
   `,
   header: css`
     margin-block-end: -24px;
     padding-block: 16px;
     padding-inline: 24px;
-    border-block-end: 1px solid ${cssVar.colorBorder};
+    border-block-end: 0.5px solid ${cssVar.colorBorder};
 
     background: ${cssVar.colorBgContainer};
   `,
   role: css`
     margin-block-start: 12px;
     padding-block-start: 12px;
-    border-block-start: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px dashed ${cssVar.colorBorderSecondary};
     opacity: 0.75;
 
     * {

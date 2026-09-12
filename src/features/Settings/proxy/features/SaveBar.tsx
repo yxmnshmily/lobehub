@@ -25,7 +25,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 6px;
     padding-inline: 16px 6px;
-    border: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 60%, transparent);
+    border: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 60%, transparent);
     border-radius: 999px;
 
     font-size: 13px;

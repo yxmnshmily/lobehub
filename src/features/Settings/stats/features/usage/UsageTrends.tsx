@@ -1,10 +1,10 @@
 import { type BarChartProps } from '@lobehub/charts';
-import { Skeleton, Tabs } from '@lobehub/ui/base-ui';
+import { Tabs } from '@lobehub/ui/base-ui';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { type UsageLog, type UsageRecordItem } from '@/types/usage/usageRecord';
-import { formatNumber } from '@/utils/format';
 
 import { type UsageChartProps, type UserDisplayResolver } from '../../types';
 import { GroupBy } from '../../types';
@@ -52,13 +52,7 @@ const groupByType = (
     for (const item of log.records) {
       const value = type === 'spend' ? item.spend || 0 : item.totalTokens || 0;
       const key = categoryLabel(recordKey(item, groupBy), groupBy, resolveUser);
-      let displayValue = (todayCate.get(key) || 0) + value;
-      if (type === 'spend') {
-        const formattedNum = formatNumber((todayCate.get(key) || 0) + value, 2);
-        if (typeof formattedNum !== 'string') {
-          displayValue = formattedNum;
-        }
-      }
+      const displayValue = (todayCate.get(key) || 0) + value;
       todayCate.set(key, displayValue);
     }
     return {
@@ -129,7 +123,7 @@ const UsageTrends = memo<UsageChartProps>(({ isLoading, data, groupBy, resolveUs
         />
       }
     >
-      {isLoading ? <Skeleton height={280} /> : charts}
+      {isLoading ? <SkeletonBar height={280} /> : charts}
     </StatsFormGroup>
   );
 });

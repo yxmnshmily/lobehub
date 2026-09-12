@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-inline: calc(var(--switcher-inset) * -1);
     padding-block: 2px 8px;
     padding-inline: 14px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     .ant-input-affix-wrapper,
     .ant-input {

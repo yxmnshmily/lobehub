@@ -81,7 +81,7 @@ export interface ResourceQueryParams {
   parentId?: string | null;
   q?: string;
   showFilesInKnowledgeBase?: boolean;
-  sorter?: 'name' | 'createdAt' | 'size';
+  sorter?: 'name' | 'createdAt' | 'updatedAt' | 'size';
   sortType?: SortType;
   /**
    * Origin narrowing driven by the explorer's source filter chips

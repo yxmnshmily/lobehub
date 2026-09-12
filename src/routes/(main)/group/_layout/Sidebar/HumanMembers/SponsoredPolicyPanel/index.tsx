@@ -34,16 +34,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   member: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   panel: css`
     padding-block-start: 8px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   template: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
 }));
@@ -73,16 +73,11 @@ const MemberLimitRow = ({
   runAction,
 }: MemberLimitRowProps) => {
   const [currentMember, setCurrentMember] = useState(member);
-  const [requestLimit, setRequestLimit] = useState(
-    member.maxCreditsPerRequest?.toString() ?? '',
-  );
-  const [periodLimit, setPeriodLimit] = useState(
-    member.maxCreditsPerPeriod?.toString() ?? '',
-  );
+  const [requestLimit, setRequestLimit] = useState(member.maxCreditsPerRequest?.toString() ?? '');
+  const [periodLimit, setPeriodLimit] = useState(member.maxCreditsPerPeriod?.toString() ?? '');
   const displayName = member.displayName || '未命名成员';
   const setMemberLimits = lambdaQuery.groupSponsoredCredit.setMemberLimits.useMutation();
-  const revokeMemberPaidAi =
-    lambdaQuery.groupSponsoredCredit.revokeMemberPaidAi.useMutation();
+  const revokeMemberPaidAi = lambdaQuery.groupSponsoredCredit.revokeMemberPaidAi.useMutation();
 
   const parsedRequestLimit = parsePositiveInteger(requestLimit);
   const parsedPeriodLimit = parsePositiveInteger(periodLimit);
@@ -126,7 +121,7 @@ const MemberLimitRow = ({
   const handleRevoke = () => {
     if (busyAction) return;
     confirmModal({
-      content: '撤销后，该成员不再能使用群主的 Credits。',
+      content: '撤销后，该成员不再能使用群主的积分。',
       okButtonProps: { danger: true },
       okText: '撤销代付额度',
       onOk: async () => {
@@ -155,14 +150,14 @@ const MemberLimitRow = ({
         {currentMember.canUsePaidAi &&
         currentMember.maxCreditsPerRequest &&
         currentMember.maxCreditsPerPeriod
-          ? `已配置额度：单次 ${currentMember.maxCreditsPerRequest} / 周期 ${currentMember.maxCreditsPerPeriod} Credits`
+          ? `已配置额度：单次 ${currentMember.maxCreditsPerRequest} / 周期 ${currentMember.maxCreditsPerPeriod} 积分`
           : '未授权代付'}
       </Text>
       <form onSubmit={handleGrant}>
         <Flexbox gap={8}>
           <div className={styles.fields}>
             <Input
-              aria-label={`${displayName}单次 Credits 上限`}
+              aria-label={`${displayName}单次积分上限`}
               className={styles.field}
               disabled={Boolean(busyAction)}
               inputMode="numeric"
@@ -174,7 +169,7 @@ const MemberLimitRow = ({
               onChange={(event) => setRequestLimit(event.target.value)}
             />
             <Input
-              aria-label={`${displayName}周期 Credits 上限`}
+              aria-label={`${displayName}周期积分上限`}
               className={styles.field}
               disabled={Boolean(busyAction)}
               inputMode="numeric"
@@ -230,8 +225,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
       { enabled: Boolean(groupId), retry: false },
     );
     const enablePolicy = lambdaQuery.groupSponsoredCredit.enablePolicy.useMutation();
-    const updatePolicyLimit =
-      lambdaQuery.groupSponsoredCredit.updatePolicyLimit.useMutation();
+    const updatePolicyLimit = lambdaQuery.groupSponsoredCredit.updatePolicyLimit.useMutation();
     const disablePolicy = lambdaQuery.groupSponsoredCredit.disablePolicy.useMutation();
     const updateDefaultMemberTemplate =
       lambdaQuery.groupSponsoredCredit.updateDefaultMemberTemplate.useMutation();
@@ -258,12 +252,8 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
 
     useEffect(() => {
       setDefaultTemplateEnabled(Boolean(policy?.defaultMemberTemplate?.enabled));
-      setDefaultRequestLimit(
-        policy?.defaultMemberTemplate?.maxCreditsPerRequest?.toString() ?? '',
-      );
-      setDefaultPeriodLimit(
-        policy?.defaultMemberTemplate?.maxCreditsPerPeriod?.toString() ?? '',
-      );
+      setDefaultRequestLimit(policy?.defaultMemberTemplate?.maxCreditsPerRequest?.toString() ?? '');
+      setDefaultPeriodLimit(policy?.defaultMemberTemplate?.maxCreditsPerPeriod?.toString() ?? '');
     }, [
       groupId,
       policy?.defaultMemberTemplate?.enabled,
@@ -297,7 +287,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
       if (!policy) return;
       const parsedGroupLimit = parsePositiveInteger(groupLimit);
       if (!parsedGroupLimit) {
-        showFeedback('请输入正整数的群周期 Credits 上限', true);
+        showFeedback('请输入正整数的群周期积分上限', true);
         return;
       }
 
@@ -336,7 +326,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
     const handleDisable = () => {
       if (!policy?.enabled || actionInFlight.current) return;
       confirmModal({
-        content: '停用后，所有成员将无法继续使用群主的 Credits。',
+        content: '停用后，所有成员将无法继续使用群主的积分。',
         okButtonProps: { danger: true },
         okText: '停用群代付',
         onOk: async () => {
@@ -389,9 +379,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
         await policyQuery.refetch();
       });
       if (!changed) return;
-      showFeedback(
-        defaultTemplateEnabled ? '新成员代付设置已保存' : '新成员自动代付已关闭',
-      );
+      showFeedback(defaultTemplateEnabled ? '新成员代付设置已保存' : '新成员自动代付已关闭');
     };
 
     if (policyQuery.isLoading) return <Skeleton active paragraph={{ rows: 2 }} title={false} />;
@@ -406,10 +394,10 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
     const parsedDefaultPeriodLimit = parsePositiveInteger(defaultPeriodLimit);
     const canSaveDefaultTemplate = Boolean(
       policy.enabled &&
-        (!defaultTemplateEnabled ||
-          (parsedDefaultRequestLimit &&
-            parsedDefaultPeriodLimit &&
-            parsedDefaultRequestLimit <= parsedDefaultPeriodLimit)),
+      (!defaultTemplateEnabled ||
+        (parsedDefaultRequestLimit &&
+          parsedDefaultPeriodLimit &&
+          parsedDefaultRequestLimit <= parsedDefaultPeriodLimit)),
     );
 
     return (
@@ -419,7 +407,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
             群代付设置
           </Text>
           <Text fontSize={12} type="secondary">
-            获准调用产生的 Credits 由群主承担。这里只设置额度，不代表 AI 能力已开放。
+            获准调用产生的积分由群主承担。这里只设置额度，不代表 AI 能力已开放。
           </Text>
         </Flexbox>
 
@@ -427,7 +415,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
           <Flexbox gap={8}>
             <div className={styles.fields}>
               <Input
-                aria-label="群周期 Credits 上限"
+                aria-label="群周期积分上限"
                 className={styles.field}
                 disabled={Boolean(busyAction)}
                 inputMode="numeric"
@@ -498,7 +486,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
             </Text>
             <div className={styles.fields}>
               <Input
-                aria-label="新成员单次 Credits 上限"
+                aria-label="新成员单次积分上限"
                 className={styles.field}
                 inputMode="numeric"
                 min={1}
@@ -506,13 +494,11 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
                 step={1}
                 type="number"
                 value={defaultRequestLimit}
-                disabled={
-                  !policy.enabled || !defaultTemplateEnabled || Boolean(busyAction)
-                }
+                disabled={!policy.enabled || !defaultTemplateEnabled || Boolean(busyAction)}
                 onChange={(event) => setDefaultRequestLimit(event.target.value)}
               />
               <Input
-                aria-label="新成员周期 Credits 上限"
+                aria-label="新成员周期积分上限"
                 className={styles.field}
                 inputMode="numeric"
                 min={1}
@@ -520,9 +506,7 @@ const SponsoredPolicyPanel = memo<SponsoredPolicyPanelProps>(
                 step={1}
                 type="number"
                 value={defaultPeriodLimit}
-                disabled={
-                  !policy.enabled || !defaultTemplateEnabled || Boolean(busyAction)
-                }
+                disabled={!policy.enabled || !defaultTemplateEnabled || Boolean(busyAction)}
                 onChange={(event) => setDefaultPeriodLimit(event.target.value)}
               />
             </div>

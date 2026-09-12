@@ -5,10 +5,20 @@ import {
   type TravelGenerationRecord,
 } from './index';
 
+interface PublicTravelGenerationArtifact {
+  content?: string;
+  documentId?: string;
+  id?: string;
+  mimeType?: string;
+  name?: string;
+  type: 'text' | 'document' | 'image';
+  url?: string;
+}
+
 const projectArtifact = (
   task: TravelGenerationRecord,
   artifact: TravelGenerationArtifact,
-): Record<string, unknown>[] => {
+): PublicTravelGenerationArtifact[] => {
   if (task.type === 'copy') {
     return artifact.type === 'text' && typeof artifact.content === 'string'
       ? [{ content: artifact.content, type: 'text' }]

@@ -20,7 +20,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     gap: 10px;
 
     padding: 16px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};
@@ -170,7 +170,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     height: min(640px, 72vh);
     min-height: 480px;
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};
@@ -186,7 +186,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-inline: -12px;
     padding-block-end: 8px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   skeletonAvatar: css`
     flex: none;
@@ -205,7 +205,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     gap: 10px;
 
     padding: 16px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};

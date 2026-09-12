@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   findBySlug: vi.fn(),
   getAccessLevel: vi.fn(),
   getResourceMeta: vi.fn(),
+  getDocumentById: vi.fn(),
+  resolvePublishedResource: vi.fn(),
   publishToWorkspace: vi.fn(),
   setAccessLevel: vi.fn(),
   subtreeHasForeignRows: vi.fn(),
@@ -54,10 +56,16 @@ vi.mock('@/database/models/resourcePermission', () => ({
 vi.mock('@/server/services/document', () => ({
   DocumentService: vi.fn(() => ({
     createDocument: mocks.createDocument,
+    getDocumentById: mocks.getDocumentById,
     deleteDocument: mocks.deleteDocument,
     deleteDocuments: mocks.deleteDocuments,
     publishToWorkspace: mocks.publishToWorkspace,
     updateDocument: mocks.updateDocument,
+  })),
+}));
+vi.mock('@/server/services/groupConversationAccess/conversationRepository', () => ({
+  GroupConversationAccessRepository: vi.fn(() => ({
+    resolvePublishedResource: mocks.resolvePublishedResource,
   })),
 }));
 vi.mock('@/server/services/resourcePermission', () => ({
@@ -76,6 +84,36 @@ vi.mock('@/server/routers/lambda/_helpers/knowledgeBaseAccess', () => ({
 
 const { DOCUMENT_TRANSFER_FOREIGN_ROWS } = await import('@/database/models/document');
 const { documentRouter } = await import('../document');
+
+describe('published group document reads', () => {
+  it.each([true, false])(
+    'reads only a published revision (unpublished edit: %s)',
+    async (edited) => {
+      const publishedAt = new Date(1000);
+      const shared = {
+        id: 'shared-doc',
+        userId: 'owner',
+        updatedAt: new Date(edited ? 2000 : 500),
+      };
+      mocks.getDocumentById
+        .mockReset()
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(shared);
+      mocks.resolvePublishedResource.mockResolvedValue({ ownerId: 'owner', publishedAt });
+      const caller = documentRouter.createCaller({ serverDB: {}, userId: 'member' } as any);
+      expect(await caller.getDocumentById({ id: 'shared-doc' })).toEqual(
+        edited ? undefined : shared,
+      );
+    },
+  );
+  it('does not read an owner resource without publication access', async () => {
+    mocks.getDocumentById.mockReset().mockResolvedValue(undefined);
+    mocks.resolvePublishedResource.mockResolvedValue(undefined);
+    const caller = documentRouter.createCaller({ serverDB: {}, userId: 'outsider' } as any);
+    expect(await caller.getDocumentById({ id: 'shared-doc' })).toBeUndefined();
+    expect(mocks.getDocumentById).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('documentRouter transferDocument', () => {
   beforeEach(() => {

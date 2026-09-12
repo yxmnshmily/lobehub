@@ -1,4 +1,4 @@
-import  { type AgentEvalDataset } from '@lobechat/types';
+import { type AgentEvalDataset } from '@lobechat/types';
 import { produce } from 'immer';
 
 type SetDatasetDetailAction = {
@@ -19,9 +19,7 @@ type DeleteDatasetDetailAction = {
 };
 
 export type DatasetDetailDispatch =
-  | SetDatasetDetailAction
-  | UpdateDatasetDetailAction
-  | DeleteDatasetDetailAction;
+  SetDatasetDetailAction | UpdateDatasetDetailAction | DeleteDatasetDetailAction;
 
 export const datasetDetailReducer = (
   state: Record<string, AgentEvalDataset> = {},

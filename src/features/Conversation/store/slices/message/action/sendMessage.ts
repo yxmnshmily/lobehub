@@ -60,6 +60,17 @@ export const sendMessage = (
       throwIfAborted(sendParams.signal);
     }
 
+    if (hooks.onSendMessage) {
+      // Authorized transports are bound to this provider, not the global active group.
+      if (messageMapKey(targetContext) !== messageMapKey(context)) return false;
+      const accepted = await hooks.onSendMessage(sendParams);
+      if (accepted) {
+        sendParams.onMessageAccepted?.();
+        await hooks.onAfterSendMessage?.();
+      }
+      return accepted;
+    }
+
     // Keep ConversationStore in sync with the editor, which is cleared immediately on send.
     // Do this before awaiting the full streaming lifecycle so drafts typed during generation
     // are not overwritten when the request completes.

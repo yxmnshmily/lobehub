@@ -50,7 +50,7 @@ describe('buildTencentCloudSmsRequest', () => {
     expect(request.url).toBe('https://sms.tencentcloudapi.com');
     expect(request.headers).toMatchObject({
       'Content-Type': 'application/json; charset=utf-8',
-      Host: 'sms.tencentcloudapi.com',
+      'Host': 'sms.tencentcloudapi.com',
       'X-TC-Action': 'SendSms',
       'X-TC-Region': 'ap-guangzhou',
       'X-TC-Timestamp': '1700000000',

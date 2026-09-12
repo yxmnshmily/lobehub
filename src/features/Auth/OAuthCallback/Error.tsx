@@ -19,7 +19,7 @@ const FailedPage = () => {
       icon={<FluentEmoji emoji={'🥵'} size={96} type={'anim'} />}
       status="error"
       extra={
-        <Button block href="/index.html" size={'large'} style={{ minWidth: 240 }}>
+        <Button block href="/lobehub/group/default" size={'large'} style={{ minWidth: 240 }}>
           {t('error.backToHome')}
         </Button>
       }

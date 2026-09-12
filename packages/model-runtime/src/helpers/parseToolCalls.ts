@@ -10,9 +10,24 @@ import { MessageToolCallSchema } from '../types';
 // MessageToolCallSchema throws ZodError mid-stream and kills the entire
 // operation. Coerce to '' so parsing succeeds; the merge logic below patches
 // the name in once a later delta supplies it. See .
+//
+// The same applies to `function.arguments`: some providers open a tool_call
+// delta with only the id/name/type and stream `arguments` in a following
+// delta (or omit it for zero-arg calls). A missing `arguments` also fails the
+// strict schema and aborts the run before the first real argument delta can
+// merge in. Coerce to '' as well; the merge logic concatenates once it arrives,
+// and the downstream tool executor treats '' as empty args.
 const normalizeChunkForParse = <T extends Omit<MessageToolCallChunk, 'index'>>(chunk: T): T => {
-  if (chunk.function && chunk.function.name == null) {
-    return { ...chunk, function: { ...chunk.function, name: '' } };
+  if (chunk.function) {
+    const { name, arguments: args, ...rest } = chunk.function;
+    const normalized = { ...rest };
+    // Always carry name/arguments forward when present; only missing (null /
+    // undefined) values are coerced to '' as start-of-tool markers.
+    if (name == null) normalized.name = '';
+    else normalized.name = name;
+    if (args == null) normalized.arguments = '';
+    else normalized.arguments = args;
+    return { ...chunk, function: normalized as T['function'] };
   }
   return chunk;
 };

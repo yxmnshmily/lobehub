@@ -12,7 +12,7 @@ const validatePasswordChange = ({
   confirmPassword,
   currentPassword,
   newPassword,
-}: ChangePasswordValues): string | undefined => {
+}: ChangePasswordValues) => {
   if (!currentPassword) return 'profile.currentPasswordRequired';
   if (!newPassword) return 'betterAuth.errors.passwordRequired';
   if (newPassword.length < 8) return 'betterAuth.errors.passwordMinLength';

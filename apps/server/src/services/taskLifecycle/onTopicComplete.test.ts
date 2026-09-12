@@ -31,6 +31,8 @@ vi.mock('@/database/models/verifyRun', () => ({
 // Goal-loop rounds suppress the per-topic brief; onTopicComplete asks the
 // goals table whether this task carries a goal. Default = plain task.
 const goalFindByGraphTask = vi.fn().mockResolvedValue(undefined);
+const scheduleGoalAdvance = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock('@/server/services/goal/scheduler', () => ({ scheduleGoalAdvance }));
 vi.mock('@/database/models/goal', () => ({
   GoalModel: vi.fn(() => ({ findByGraphTask: goalFindByGraphTask })),
 }));
@@ -49,6 +51,8 @@ vi.mock('@/libs/i18n/serverTranslation', () => ({
 // Scheduled-task result notifications go through the `@/business` slot
 // (default impl is a no-op). Mock both hooks so the tests can assert exactly
 // when the lifecycle recalls the user.
+const notifyUser = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock('@/server/services/notification', () => ({ notifyUser }));
 const notifyCompleted = vi.fn().mockResolvedValue(undefined);
 const notifyFailed = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/business/server/task/notifyScheduledTaskResult', () => ({
@@ -83,7 +87,55 @@ describe('TaskLifecycleService.onTopicComplete', () => {
   let createBrief: ReturnType<typeof vi.fn>;
   let getReviewConfig: ReturnType<typeof vi.fn>;
 
+  it.each(['done', 'error'] as const)(
+    'notifies manual root run %s without claiming the whole task is complete',
+    async (reason) => {
+      findById.mockResolvedValue(baseTask({ automationMode: null }));
+      await service.onTopicComplete({
+        operationId: 'op-manual',
+        reason,
+        runTrigger: 'manual',
+        taskId: 'task-1',
+        taskIdentifier: 'TASK-1',
+        topicId: 'topic-1',
+      });
+      expect(notifyUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          type: reason === 'done' ? 'task_run_completed' : 'task_run_failed',
+          eventId: 'op-manual',
+          actionUrl: '/task/task-1',
+        }),
+      );
+      expect(notifyCompleted).not.toHaveBeenCalled();
+      expect(notifyFailed).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps internal goal rounds and child task runs silent', async () => {
+    findById.mockResolvedValue(baseTask({ automationMode: null }));
+    await service.onTopicComplete({
+      operationId: 'op-goal',
+      reason: 'done',
+      runTrigger: 'goal',
+      taskId: 'task-1',
+      taskIdentifier: 'TASK-1',
+    });
+    findById.mockResolvedValue(baseTask({ automationMode: null, parentTaskId: 'parent' }));
+    await service.onTopicComplete({
+      operationId: 'op-child',
+      reason: 'done',
+      runTrigger: 'manual',
+      taskId: 'task-1',
+      taskIdentifier: 'TASK-1',
+    });
+    expect(notifyUser).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
+    scheduleGoalAdvance.mockClear();
+    goalFindByGraphTask.mockReset().mockResolvedValue(undefined);
+    notifyUser.mockClear();
     fakeScheduler.scheduleNextTopic.mockClear().mockResolvedValue('msg-new');
     notifyCompleted.mockReset().mockResolvedValue(undefined);
     notifyFailed.mockReset().mockResolvedValue(undefined);
@@ -122,6 +174,30 @@ describe('TaskLifecycleService.onTopicComplete', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('notifies the goal coordinator after an errored run has paused its task', async () => {
+    findById.mockResolvedValue(baseTask({ automationMode: null }));
+    goalFindByGraphTask.mockResolvedValue({ id: 'goal-1' });
+    await service.onTopicComplete({
+      errorMessage: 'Platform budget context unavailable',
+      operationId: 'op-failed-goal',
+      reason: 'error',
+      runTrigger: 'goal',
+      taskId: 'task-1',
+      taskIdentifier: 'TASK-1',
+      topicId: 'topic-1',
+    });
+    expect(updateStatus).toHaveBeenCalledWith('task-1', 'paused', expect.anything());
+    expect(scheduleGoalAdvance).toHaveBeenCalledWith({
+      goalId: 'goal-1',
+      trigger: 'settle',
+      userId: 'user-1',
+      workspaceId: undefined,
+    });
+    expect(updateStatus.mock.invocationCallOrder[0]).toBeLessThan(
+      scheduleGoalAdvance.mock.invocationCallOrder[0],
+    );
   });
 
   describe('reason=done', () => {

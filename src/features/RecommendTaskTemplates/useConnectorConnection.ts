@@ -37,7 +37,7 @@ export class ConnectorConnectionPopupBlockedError extends Error {
 /** Thrown when connecting a LobeHub connector first needs Market auth. */
 export class ConnectorConnectionMarketAuthRequiredError extends Error {
   constructor() {
-    super('Market auth required before connecting LobeHub connector');
+    super('Market auth required before connecting 旅游群 connector');
     this.name = 'ConnectorConnectionMarketAuthRequiredError';
   }
 }

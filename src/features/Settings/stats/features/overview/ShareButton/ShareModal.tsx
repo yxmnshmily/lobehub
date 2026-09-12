@@ -2,16 +2,17 @@
 
 import { type FormItemProps, type FormModalProps } from '@lobehub/ui';
 import { FormModal } from '@lobehub/ui';
-import { Skeleton, Tabs } from '@lobehub/ui/base-ui';
+import { Tabs } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { ImageType, imageTypeOptions, useScreenshot } from '@/hooks/useScreenshot';
 import dynamic from '@/libs/next/dynamic';
 
 const Preview = dynamic(() => import('./Preview'), {
-  loading: () => <Skeleton height={400} width={'100%'} />,
+  loading: () => <SkeletonBar height={400} width={'100%'} />,
 });
 
 const prefixCls = 'ant';

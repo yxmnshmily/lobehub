@@ -3,9 +3,14 @@
  */
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import MobileChatInput from './index';
+
+const layout = vi.hoisted(() => ({ expand: false }));
+beforeEach(() => {
+  layout.expand = false;
+});
 
 vi.mock('@lobehub/editor/react', () => ({
   ChatInput: ({
@@ -38,10 +43,10 @@ vi.mock('@lobehub/editor/react', () => ({
     </section>
   ),
   ChatInputActionBar: ({ left, right }: { left?: ReactNode; right?: ReactNode }) => (
-    <>
+    <div role="toolbar">
       {left}
       {right}
-    </>
+    </div>
   ),
 }));
 vi.mock('@lobehub/ui', () => ({
@@ -65,7 +70,7 @@ vi.mock('@/libs/next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/features/ChatInput/store', () => ({
   useChatInputStore: (
     selector: (state: { expand: boolean; leftActions: string[]; slashMenuRef: null }) => unknown,
-  ) => selector({ expand: false, leftActions: [], slashMenuRef: null }),
+  ) => selector({ expand: layout.expand, leftActions: [], slashMenuRef: null }),
 }));
 vi.mock('../ActionBar', () => ({
   default: ({ disableCollapse }: { disableCollapse?: boolean }) => (
@@ -73,10 +78,23 @@ vi.mock('../ActionBar', () => ({
   ),
 }));
 vi.mock('../InputEditor', () => ({ default: () => <div data-testid="mobile-input-editor" /> }));
-vi.mock('../SendArea', () => ({ default: () => null }));
+vi.mock('../SendArea', () => ({ default: () => <button>发送</button> }));
 vi.mock('../ChatInputNotice', () => ({ default: () => null }));
 
 describe('MobileChatInput', () => {
+  it('does not constrain the fullscreen editor with the attached banner wrapper', () => {
+    layout.expand = true;
+    render(<MobileChatInput inputBanner={<button>提示词</button>} />);
+    expect(screen.getByTestId('mobile-chat-input').parentElement).toHaveStyle({
+      display: 'contents',
+    });
+    expect(screen.queryByRole('button', { name: '提示词' })).not.toBeInTheDocument();
+  });
+  it('keeps the billing prefix outside the send controls row without losing either control', () => {
+    render(<MobileChatInput sendAreaPrefix={<input aria-label="积分" />} />);
+    expect(screen.getByRole('textbox', { name: '积分' }).closest('[role="toolbar"]')).toBeNull();
+    expect(screen.getByRole('button', { name: '发送' }).closest('[role="toolbar"]')).not.toBeNull();
+  });
   it('wraps the contenteditable host in a non-flex element', () => {
     render(<MobileChatInput />);
 

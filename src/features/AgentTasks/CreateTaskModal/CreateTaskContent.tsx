@@ -34,6 +34,7 @@ import { useUserDisplayMeta } from '../shared/useUserDisplayMeta';
 
 export interface CreateTaskContentProps {
   agentId?: string;
+  groupId?: string;
   /**
    * Locks the assignee to `agentId` and hides the agent picker. Used on the
    * agent-scoped task list where every task belongs to that agent.
@@ -49,7 +50,7 @@ export interface CreateTaskContentProps {
 }
 
 const CreateTaskContent = memo<CreateTaskContentProps>(
-  ({ agentId, lockAssignee, onCreated, projectId, showInlineToggle = true }) => {
+  ({ agentId, groupId, lockAssignee, onCreated, projectId, showInlineToggle = true }) => {
     const { t } = useTranslation('chat');
     const { close } = useModalContext();
     const { allowed: canCreateTask, reason } = usePermission('create_content');
@@ -127,6 +128,7 @@ const CreateTaskContent = memo<CreateTaskContentProps>(
       // failed create isn't silent and the modal stays open with its content.
       try {
         const result = await createTask({
+          ...(groupId ? { config: { groupId } } : {}),
           assigneeAgentId,
           assigneeUserId,
           editorData: editorJson,
@@ -159,6 +161,7 @@ const CreateTaskContent = memo<CreateTaskContentProps>(
       onCreated,
       priority,
       projectId,
+      groupId,
       t,
       title,
       visibility,
@@ -225,7 +228,7 @@ const CreateTaskContent = memo<CreateTaskContentProps>(
           horizontal
           align={'center'}
           justify={'space-between'}
-          style={{ borderTop: `1px solid ${cssVar.colorBorderSecondary}`, padding: '8px 16px' }}
+          style={{ borderTop: `0.5px solid ${cssVar.colorBorderSecondary}`, padding: '8px 16px' }}
         >
           <Flexbox horizontal gap={2} wrap={'wrap'}>
             <TaskPriorityTag priority={priority} onChange={setPriority}>

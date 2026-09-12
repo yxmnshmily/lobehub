@@ -68,10 +68,12 @@ export interface PlatformUserOperationsItem {
   createdAt: Date;
   email: string | null;
   emailVerified: boolean;
+  phone: string | null;
   fullName: string | null;
   id: string;
   lastActiveAt: Date;
   latestSessionAt: Date | null;
+  latestLoginAt: Date | null;
   latestSessionIp: string | null;
   totalConsumptionFen: number;
   username: string | null;
@@ -263,9 +265,15 @@ export class PlatformUserOperationsModel {
           createdAt: users.createdAt,
           email: users.email,
           emailVerified: users.emailVerified,
+          phone: users.phone,
           fullName: users.fullName,
           id: users.id,
           lastActiveAt: users.lastActiveAt,
+          latestLoginAt: sql<Date | null>`(
+              select max(${authSessions.createdAt})
+              from ${authSessions}
+              where ${authSessions.userId} = ${users.id}
+            )`.mapWith(authSessions.createdAt),
           latestSessionAt: sql<Date | null>`(
               select ${authSessions.updatedAt}
               from ${authSessions}

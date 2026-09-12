@@ -10,13 +10,13 @@ import WideScreenContainer from '@/features/WideScreenContainer';
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
 const TasksSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => (
-  <Flexbox aria-busy flex={1} height={'100%'}>
+  <Flexbox aria-busy flex={1} height={'100%'} style={{ minHeight: 0, minWidth: 0 }}>
     {chrome !== 'body' && <NavHeader />}
     <WideScreenContainer
       fullWidth
       gap={16}
       paddingBlock={16}
-      paddingInline={16}
+      paddingInline={chrome === 'body' ? 0 : 16}
       wrapperStyle={{ flex: 1, overflowY: 'auto' }}
     >
       <Block gap={2} padding={2} variant={'borderless'}>

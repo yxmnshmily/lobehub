@@ -44,7 +44,7 @@ const styles = createStaticStyles(({ css }) => ({
   round: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     transition:

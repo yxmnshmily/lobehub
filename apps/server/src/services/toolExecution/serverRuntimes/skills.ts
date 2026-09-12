@@ -97,7 +97,7 @@ const LEGACY_DEVICE_CLIENT = Symbol('legacy-device-client');
  * run on the user's device.
  */
 const LEGACY_FALLBACK_NOTE =
-  "Note: the user's device client is outdated and does not support on-device skill execution, so this command ran in the cloud sandbox instead. Tell the user to update their LobeHub app to run skills on their device.";
+  "Note: the user's device client is outdated and does not support on-device skill execution, so this command ran in the cloud sandbox instead. Tell the user to update their 旅游群 app to run skills on their device.";
 
 class SkillServerRuntimeService implements SkillRuntimeService {
   private agentId?: string;
@@ -404,7 +404,7 @@ class SkillServerRuntimeService implements SkillRuntimeService {
 
           return fail(
             `Failed to prepare skill "${archive.name}" on the user's device: ${prepared.error ?? 'unknown error'}. ` +
-              'Do not retry elsewhere — report this to the user (their LobeHub app may need an update).',
+              'Do not retry elsewhere — report this to the user (their 旅游群 app may need an update).',
           );
         }
         runDir = prepared.extractedDir;

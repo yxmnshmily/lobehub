@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import type * as BaseUI from '@lobehub/ui/base-ui';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,9 +15,27 @@ const mocks = vi.hoisted(() => ({
     allowed: true,
     reason: 'requires member',
   },
+  messages: [
+    {
+      id: 'old-message',
+      topicId: 'old-topic',
+      groupId: 'group-1',
+      role: 'user',
+      content: '昨天的行程',
+    },
+    {
+      id: 'new-message',
+      topicId: 'topic-1',
+      groupId: 'group-1',
+      role: 'user',
+      content: '今天的行程',
+    },
+  ],
 }));
 
 const actionIconPropsSpy = vi.hoisted(() => vi.fn());
+const sharePropsSpy = vi.hoisted(() => vi.fn());
+const exportSpy = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
 vi.mock('@lobehub/ui/base-ui', async (importOriginal) => {
   const actual = await importOriginal<typeof BaseUI>();
@@ -32,15 +50,41 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => {
 
 vi.mock('@/libs/next/dynamic', () => ({
   default: () =>
-    function DynamicComponent({ children }: { children?: ReactNode }) {
-      return <div data-testid="share-popover">{children}</div>;
+    function DynamicComponent({
+      children,
+      ...props
+    }: {
+      children?: ReactNode;
+      topicId?: string;
+      onOpenChange?: (open: boolean) => void;
+      open?: boolean;
+    }) {
+      sharePropsSpy(props);
+      return (
+        <div data-testid="share-popover" onClick={() => props.onOpenChange?.(!props.open)}>
+          {children}
+        </div>
+      );
     },
 }));
 
 vi.mock('@/features/ShareModal', () => ({
+  openShareModal: exportSpy,
   useShareModal: () => ({
     openShareModal: vi.fn(),
   }),
+}));
+
+vi.mock('../../useGroupConversationMessages', () => ({
+  useGroupConversationMessages: () => mocks.messages,
+}));
+vi.mock('@/store/chat', () => ({ useChatStore: { getState: () => ({}) } }));
+vi.mock('@/store/chat/selectors', () => ({
+  topicSelectors: {
+    getTopicById: (id: string) => () => ({
+      title: id === 'old-topic' ? '昨天的话题' : '今天的话题',
+    }),
+  },
 }));
 
 vi.mock('@/hooks/usePermission', () => ({
@@ -48,7 +92,11 @@ vi.mock('@/hooks/usePermission', () => ({
 }));
 
 vi.mock('../../useGroupContext', () => ({
-  useGroupContext: () => ({ agentId: 'supervisor-1', topicId: mocks.activeTopicId }),
+  useGroupContext: () => ({
+    agentId: 'supervisor-1',
+    groupId: 'group-1',
+    topicId: mocks.activeTopicId,
+  }),
 }));
 
 vi.mock('@/store/serverConfig', () => ({
@@ -65,11 +113,78 @@ vi.mock('@/store/serverConfig/selectors', () => ({
 }));
 
 describe('Group Conversation ShareButton', () => {
+  it('keeps group link sharing available before any topic is created', () => {
+    mocks.activeTopicId = undefined;
+    render(<ShareButton />);
+    expect(screen.getByRole('button', { name: 'groupInvitation.share' })).toBeInTheDocument();
+  });
   beforeEach(() => {
     mocks.activeTopicId = 'topic-1';
     mocks.enableBusinessFeatures = true;
     mocks.permission.allowed = true;
     actionIconPropsSpy.mockClear();
+    sharePropsSpy.mockClear();
+  });
+
+  it.each([false, true])('offers a topic link on self-hosted groups (mobile=%s)', (mobile) => {
+    mocks.enableBusinessFeatures = false;
+    render(<ShareButton mobile={mobile} />);
+    expect(screen.getByRole('button', { name: '分享聊天记录' })).toBeEnabled();
+  });
+
+  it('shares the visible historical topic, freezes it while open, then resolves again on reopen', async () => {
+    const { container, rerender } = render(
+      <div data-conversation-frame>
+        <ShareButton />
+        <div data-conversation-viewport>
+          <div data-share-topic-id="old-topic" />
+          <div data-share-topic-id="topic-1" />
+        </div>
+      </div>,
+    );
+    const viewport = container.querySelector('[data-conversation-viewport]')!;
+    const rows = container.querySelectorAll('[data-share-topic-id]');
+    vi.spyOn(viewport, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      bottom: 500,
+      height: 400,
+      width: 600,
+    } as DOMRect);
+    const oldRect = vi
+      .spyOn(rows[0], 'getBoundingClientRect')
+      .mockReturnValue({ top: 80, bottom: 350, height: 270, width: 600 } as DOMRect);
+    const newRect = vi
+      .spyOn(rows[1], 'getBoundingClientRect')
+      .mockReturnValue({ top: 350, bottom: 650, height: 300, width: 600 } as DOMRect);
+    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
+    expect(sharePropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ topicId: 'old-topic', topicTitle: '昨天的话题' }),
+    );
+    await sharePropsSpy.mock.lastCall![0].onOpenModal();
+    expect(exportSpy).toHaveBeenCalledWith({
+      snapshot: expect.objectContaining({
+        context: expect.objectContaining({ topicId: 'old-topic' }),
+        messages: [expect.objectContaining({ id: 'old-message' })],
+        title: '昨天的话题',
+      }),
+    });
+    oldRect.mockReturnValue({ top: -400, bottom: 0, height: 400, width: 600 } as DOMRect);
+    newRect.mockReturnValue({ top: 100, bottom: 600, height: 500, width: 600 } as DOMRect);
+    rerender(
+      <div data-conversation-frame>
+        <ShareButton />
+        <div data-conversation-viewport>
+          <div data-share-topic-id="old-topic" />
+          <div data-share-topic-id="topic-1" />
+        </div>
+      </div>,
+    );
+    expect(sharePropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ topicId: 'old-topic' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
+    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
+    expect(sharePropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({ topicId: 'topic-1' }));
   });
 
   it('does not open share popover for workspace viewers', () => {
@@ -80,7 +195,6 @@ describe('Group Conversation ShareButton', () => {
     expect(actionIconPropsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         disabled: true,
-        onClick: undefined,
         title: 'requires member',
       }),
     );

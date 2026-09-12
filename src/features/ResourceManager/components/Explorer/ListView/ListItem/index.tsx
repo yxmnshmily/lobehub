@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css }) => {
     `,
 
     dragOver: css`
-      outline: 1px dashed ${cssVar.colorPrimaryBorder};
+      outline: 0.5px dashed ${cssVar.colorPrimaryBorder};
       outline-offset: -2px;
 
       &,
@@ -286,7 +286,7 @@ const FileListItem = ({
           isOver && styles.dragOver,
         )}
         style={{
-          borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`,
           minWidth: getListViewMinWidth(showUploader),
           userSelect: 'none',
         }}

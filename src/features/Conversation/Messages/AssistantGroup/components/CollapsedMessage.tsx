@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import MarkdownMessage from '@/features/Conversation/Markdown';
+import { GroupAgentQuote, useGroupMessageContent } from '@/features/SuperGroup/GroupAgentQuote';
 
 import { useConversationStore } from '../../../store';
 
@@ -13,14 +14,16 @@ interface CollapsedMessageProps {
 }
 
 export const CollapsedMessage = memo<CollapsedMessageProps>(({ id, content }) => {
+  const reply = useGroupMessageContent(content);
   const { t } = useTranslation('chat');
   const toggleMessageCollapsed = useConversationStore((s) => s.toggleMessageCollapsed);
 
   return (
     <Flexbox>
       <MaskShadow>
-        <MarkdownMessage variant={'chat'}>{content?.slice(0, 300)}</MarkdownMessage>
+        <MarkdownMessage variant={'chat'}>{reply.content.slice(0, 300)}</MarkdownMessage>
       </MaskShadow>
+      <GroupAgentQuote id={id} referenceId={reply.referenceId} />
       <Flexbox padding={4}>
         <Button
           block

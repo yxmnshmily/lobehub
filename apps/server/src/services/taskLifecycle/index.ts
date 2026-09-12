@@ -43,6 +43,8 @@ import { VerifyRunModel } from '@/database/models/verifyRun';
 import type { LobeChatDatabase } from '@/database/type';
 import { translation } from '@/libs/i18n/serverTranslation';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { scheduleGoalAdvance } from '@/server/services/goal/scheduler';
+import { notifyUser } from '@/server/services/notification';
 import { SystemAgentService } from '@/server/services/systemAgent';
 import { TaskResultBridgeService } from '@/server/services/taskResultBridge';
 import { createTaskSchedulerModule } from '@/server/services/taskScheduler';
@@ -511,6 +513,43 @@ export class TaskLifecycleService {
           ),
         );
       }
+    }
+
+    // Failed executions never enter verify settlement, so that callback cannot
+    // wake their goal. Notify after the task state is persisted, before bridges.
+    if (currentTask && reason === 'error') {
+      const goal = await new GoalModel(this.db, this.userId, this.workspaceId).findByGraphTask(
+        taskId,
+      );
+      if (goal) {
+        await scheduleGoalAdvance({
+          goalId: goal.id,
+          trigger: 'settle',
+          userId: this.userId,
+          workspaceId: this.workspaceId,
+        });
+      }
+    }
+
+    // Manual runs are user-requested work too. Report this round's outcome,
+    // not whole-task completion: it may still be paused or awaiting review.
+    if (
+      currentTask &&
+      !currentTask.parentTaskId &&
+      (params.runTrigger ?? 'manual') === 'manual' &&
+      (reason === 'done' || reason === 'error')
+    ) {
+      await notifyUser({
+        userId: this.userId,
+        workspaceId: this.workspaceId,
+        type: reason === 'done' ? 'task_run_completed' : 'task_run_failed',
+        eventId: params.operationId,
+        content:
+          reason === 'done'
+            ? '任务本轮运行已结束，请查看结果和任务当前状态。'
+            : '任务本轮运行失败，请打开任务查看详情后重试。',
+        actionUrl: '/task/' + encodeURIComponent(taskId),
+      });
     }
 
     // Bridge the finished task's handoff back to the creator conversation

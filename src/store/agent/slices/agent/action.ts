@@ -706,7 +706,11 @@ export class AgentSliceActionImpl {
         // data loss (the next refetch reverts the optimistic value) — tell the
         // user right away.
         if (options?.showErrorMessage !== false) {
-          toast.error(t('saveAgentConfigFail', { ns: 'common' }));
+          toast.error(
+            error?.message?.startsWith('模板自动同步失败：')
+              ? error.message
+              : t('saveAgentConfigFail', { ns: 'common' }),
+          );
         }
         // Roll back only agencyConfig patches: those are discrete picks the
         // server actively validates (e.g. a workspace agent binding a
@@ -714,9 +718,10 @@ export class AgentSliceActionImpl {
         // just shows a selection that never persisted. Other config fields keep
         // the optimistic value on purpose — refetching would clobber in-flight
         // form edits on a transient failure (see #16337).
-        if (data.agencyConfig) await this.#get().internal_refreshAgentConfig(id);
+        if (data.agencyConfig || error?.message?.startsWith('模板自动同步失败：'))
+          await this.#get().internal_refreshAgentConfig(id);
       }
-      if (options?.rethrow) throw error;
+      if (options?.rethrow || error?.message?.startsWith('模板自动同步失败：')) throw error;
     }
   };
 
@@ -738,6 +743,13 @@ export class AgentSliceActionImpl {
       // 3. Use returned data directly (no refetch needed!)
       if (result?.success && result.agent) {
         internal_dispatchAgentMap(id, result.agent);
+        // Profile remounts replay SWR data into agentMap. Update that cache too,
+        // including workspace-scoped entries, so old metadata cannot undo a save.
+        await mutate(
+          (key) => Array.isArray(key) && key[0] === agentConfigKeys.config.root && key[1] === id,
+          (current: LobeAgentConfig | undefined) => ({ ...current, ...result.agent }),
+          { revalidate: false },
+        );
         this.#get().invalidateAvailableAgents();
       }
       updateSaveStatus('saved');
@@ -747,6 +759,11 @@ export class AgentSliceActionImpl {
       } else {
         console.error('[AgentStore] Failed to save meta:', error);
         updateSaveStatus('idle');
+        if (error?.message?.startsWith('模板自动同步失败：')) {
+          toast.error(error.message);
+          await this.#get().internal_refreshAgentConfig(id);
+          throw error;
+        }
       }
     }
   };

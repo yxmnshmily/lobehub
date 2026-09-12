@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     max-height: 180px;
     padding-block: 8px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     background: ${cssVar.colorFillQuaternary};
@@ -42,7 +42,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: center;
 
     padding-block: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     font-size: 13px;

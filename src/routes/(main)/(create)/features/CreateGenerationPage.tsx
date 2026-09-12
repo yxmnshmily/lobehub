@@ -67,7 +67,7 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
                   <Flexbox
                     align={'center'}
                     justify={'center'}
-                    style={{ minHeight: 'calc(100vh - 180px)' }}
+                    style={{ minHeight: 'calc(100dvh - 180px)' }}
                     width={'100%'}
                   >
                     <PromptInput disableAnimation showTitle />
@@ -96,7 +96,12 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
               key="bottom-input"
               transition={{ delay: 0.04, duration: 0.2, ease: 'easeOut' }}
             >
-              <WideScreenContainer style={{ marginTop: -8, paddingBlockEnd: 12 }}>
+              <WideScreenContainer
+                style={{
+                  marginTop: -8,
+                  paddingBlockEnd: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+                }}
+              >
                 <PromptInput disableAnimation showTitle={false} />
               </WideScreenContainer>
             </motion.div>

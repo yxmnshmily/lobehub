@@ -14,7 +14,7 @@ import {
 
 const revokeSessionInput = z.object({ sessionId: z.string().regex(/^[\w-]{43}$/) }).strict();
 
-const throwSafeSessionError = (error: unknown): never => {
+const throwSafeSessionError: (error: unknown) => never = (error) => {
   if (!(error instanceof UserSessionManagementError)) {
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',

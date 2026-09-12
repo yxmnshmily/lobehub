@@ -46,3 +46,25 @@ createSPARoot(document.getElementById('root')!).render(
     </NextThemeProvider>
   </BootErrorBoundary>,
 );
+
+// In-page CSS modifier widget: a floating button that expands/collapses a
+// live style editor. The widget script lives in the official website assets
+// and is served same-origin (/assets/* -> website), so a classic script tag
+// needs no CORS handling and works under every route.
+/* CSS 修改器“保存”写出的真实样式文件（lobehub/src/styles/css-modifier-overrides.css），平台直接加载 */
+if (!document.getElementById('css-modifier-overrides-link')) {
+  const overridesLink = document.createElement('link');
+  overridesLink.id = 'css-modifier-overrides-link';
+  overridesLink.rel = 'stylesheet';
+  overridesLink.href = '/assets/css/css-modifier-overrides.css?v=20260913c';
+  document.head.appendChild(overridesLink);
+}
+
+if (!document.getElementById('css-modifier-widget-script')) {
+  const cssModifierTag = document.createElement('script');
+  cssModifierTag.id = 'css-modifier-widget-script';
+  /* 版本号防缓存：挂件更新后必须能立即生效 */
+  cssModifierTag.src = '/assets/js/css-modifier-widget.js?v=20260913c';
+  cssModifierTag.async = true;
+  document.head.appendChild(cssModifierTag);
+}

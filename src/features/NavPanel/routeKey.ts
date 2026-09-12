@@ -8,11 +8,24 @@ export const resolveNavPanelKey = (
   const routeSegments = isWorkspaceRoute ? segments.slice(1) : segments;
   const [rootSegment, childSegment, grandchildSegment] = routeSegments;
 
+  if (!isWorkspaceRoute && rootSegment === 'settings' && childSegment === 'stats') {
+    return 'data-center';
+  }
+
   if (rootSegment === 'settings') {
     return isWorkspaceRoute ? 'workspace-settings' : 'settings';
   }
 
   switch (rootSegment) {
+    case 'apps': {
+      return 'apps';
+    }
+
+    case 'task':
+    case 'tasks': {
+      return isWorkspaceRoute ? 'home' : 'tasks';
+    }
+
     case 'agent': {
       return grandchildSegment === 'docs' ? 'agent-docs' : 'agent';
     }
@@ -38,7 +51,7 @@ export const resolveNavPanelKey = (
     }
 
     case 'page': {
-      return 'page';
+      return 'image';
     }
 
     case 'project': {

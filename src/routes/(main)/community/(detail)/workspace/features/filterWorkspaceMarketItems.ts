@@ -1,8 +1,5 @@
 export type WorkspaceMarketStatusFilterValue =
-  | 'published'
-  | 'unpublished'
-  | 'deprecated'
-  | 'archived';
+  'published' | 'unpublished' | 'deprecated' | 'archived';
 
 interface WorkspaceMarketStatusItem {
   status?: WorkspaceMarketStatusFilterValue;

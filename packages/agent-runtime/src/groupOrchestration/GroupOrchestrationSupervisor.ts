@@ -70,6 +70,7 @@ export class GroupOrchestrationSupervisor implements IGroupOrchestrationSupervis
               payload: {
                 agentId: params.agentId as string,
                 instruction: params.instruction as string | undefined,
+                replyToMessageId: params.replyToMessageId as string | undefined,
               },
               type: 'call_agent',
             } as SupervisorInstructionCallAgent;

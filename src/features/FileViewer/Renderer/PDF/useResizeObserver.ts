@@ -12,9 +12,9 @@ import { useEffect } from 'react';
  */
 export default function useResizeObserver(
   element: Element | null,
-   
+
   observerCallback: ResizeObserverCallback,
-   
+
   options?: ResizeObserverOptions,
 ): void {
   useEffect(() => {

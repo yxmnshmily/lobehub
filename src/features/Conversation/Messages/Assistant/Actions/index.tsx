@@ -9,37 +9,10 @@ import {
   type MessageActionContext,
   type MessageActionSlot,
 } from '../../components/MessageActionBar';
+import { ASSISTANT_MENU } from '../../components/MessageActionBar/assistantMenu';
 
-const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['delAndRegenerate', 'copy'];
-const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy'];
-// The developer-facing actions live one level down, under Advanced: each is
-// gated (dev mode, Labs) and rare, so flat they were noise in the menu that
-// every user opens. It sits with the other utilities rather than after Delete —
-// trailing the destructive group made a debugging aid read as a last resort.
-// The submenu drops itself when none of its children apply.
-const ADVANCED_GROUP: MessageActionSlot = {
-  children: ['copyMessageId', 'copyOperationId', 'saveAsEvalCase'],
-  key: 'advanced',
-};
-const DEFAULT_MENU: MessageActionSlot[] = [
-  'edit',
-  'copy',
-  'comments',
-  'branching',
-  'collapse',
-  'divider',
-  'tts',
-  'translate',
-  'divider',
-  'share',
-  'select',
-  'divider',
-  ADVANCED_GROUP,
-  'divider',
-  'regenerate',
-  'delAndRegenerate',
-  'del',
-];
+const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['delAndRegenerate', 'copy', 'download'];
+const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy', 'download'];
 const ERROR_BAR: MessageActionSlot[] = ['regenerate', 'del'];
 const EMPTY_ERROR_MENU: MessageActionSlot[] = ['copyOperationId'];
 const ERROR_MENU: MessageActionSlot[] = [
@@ -85,7 +58,7 @@ export const AssistantActionsBar = memo<AssistantActionsBarProps>(({ actionsConf
       bar={actionsConfig?.bar ?? defaultBar}
       ctx={ctx}
       leading={<ReactionPicker messageId={id} />}
-      menu={actionsConfig?.menu ?? DEFAULT_MENU}
+      menu={actionsConfig?.menu ?? ASSISTANT_MENU}
     />
   );
 });

@@ -14,7 +14,7 @@ import { dataSelectors, useConversationStore } from '../../store';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
     background: ${cssVar.colorBgElevated};
   `,

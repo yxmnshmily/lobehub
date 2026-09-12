@@ -8,11 +8,27 @@ import googleChatModels from 'model-bank/google';
 import minimaxChatModels from 'model-bank/minimax';
 import openaiChatModels from 'model-bank/openai';
 import vertexAiModels from 'model-bank/vertexai';
+import volcengineChatModels from 'model-bank/volcengine';
 import { describe, expect, it } from 'vitest';
 
 import { computeChatCost } from './computeChatCost';
 
 describe('computeChatPricing', () => {
+  it('rounds fractional input and output credits once after aggregation', () => {
+    const result = computeChatCost(
+      {
+        currency: 'USD',
+        units: [
+          { name: 'textInput', rate: 0.2, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 0.3, strategy: 'fixed', unit: 'millionTokens' },
+        ],
+      },
+      { totalInputTokens: 1, totalOutputTokens: 1 },
+    );
+    expect(result?.totalCredits).toBe(1);
+    expect(result?.breakdown.map((item) => item.credits)).toEqual([0.2, 0.3]);
+  });
+
   describe('OpenAI', () => {
     it('handles simple request without cache for gpt-4.1', () => {
       const pricing = openaiChatModels.find(
@@ -254,9 +270,9 @@ describe('computeChatPricing', () => {
       expect(pricing).toEqual({
         currency: 'CNY',
         units: [
-          { name: 'textInput_cacheRead', rate: 0.05, strategy: 'fixed', unit: 'millionTokens' },
-          { name: 'textInput', rate: 1.5, strategy: 'fixed', unit: 'millionTokens' },
-          { name: 'textOutput', rate: 4.5, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textInput_cacheRead', rate: 0.02, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 4, strategy: 'fixed', unit: 'millionTokens' },
         ],
       });
     });
@@ -292,13 +308,13 @@ describe('computeChatPricing', () => {
       // Verify cached tokens
       const cached = breakdown.find((item) => item.unit.name === 'textInput_cacheRead');
       expect(cached?.quantity).toBe(253_891);
-      expect(cached?.credits).toBe(158_682); // ceil(253891 * 0.625) = 158682
+      expect(cached?.credits).toBe(158_681.875);
       expect(cached?.segments).toEqual([{ quantity: 253_891, rate: 0.625, credits: 158_681.875 }]);
 
       // Verify input cache miss tokens
       const input = breakdown.find((item) => item.unit.name === 'textInput');
       expect(input?.quantity).toBe(4_275);
-      expect(input?.credits).toBe(10_688); // ceil(4275 * 2.5) = 10688
+      expect(input?.credits).toBe(10_687.5);
       expect(input?.segments).toEqual([{ quantity: 4_275, rate: 2.5, credits: 10_687.5 }]);
 
       // Verify output tokens include reasoning tokens
@@ -363,10 +379,10 @@ describe('computeChatPricing', () => {
       const { breakdown } = result!;
       expect(breakdown).toHaveLength(5);
 
-      expect(breakdown.find((item) => item.unit.name === 'textInput')?.credits).toBe(31);
+      expect(breakdown.find((item) => item.unit.name === 'textInput')?.credits).toBe(30.75);
       expect(breakdown.find((item) => item.unit.name === 'imageInput')?.credits).toBe(276);
       expect(breakdown.find((item) => item.unit.name === 'videoInput')?.credits).toBe(297);
-      expect(breakdown.find((item) => item.unit.name === 'audioInput')?.credits).toBe(222);
+      expect(breakdown.find((item) => item.unit.name === 'audioInput')?.credits).toBe(221.5);
       expect(breakdown.find((item) => item.unit.name === 'textOutput')?.credits).toBe(519);
     });
 
@@ -403,7 +419,7 @@ describe('computeChatPricing', () => {
 
         const { breakdown } = result!;
         expect(breakdown.find((item) => item.unit.name === 'textInput_cacheRead')?.credits).toBe(
-          23,
+          22.5,
         );
         expect(breakdown.find((item) => item.unit.name === 'audioInput_cacheRead')?.credits).toBe(
           20,
@@ -864,13 +880,13 @@ describe('computeChatPricing', () => {
       // Verify cached tokens
       const cached = breakdown.find((item) => item.unit.name === 'textInput_cacheRead');
       expect(cached?.quantity).toBe(257_955);
-      expect(cached?.credits).toBe(161_222); // ceil(257955 * 0.625) = 161222
+      expect(cached?.credits).toBe(161_221.875);
       expect(cached?.segments).toEqual([{ quantity: 257_955, rate: 0.625, credits: 161_221.875 }]);
 
       // Verify input cache miss tokens
       const input = breakdown.find((item) => item.unit.name === 'textInput');
       expect(input?.quantity).toBe(5_005);
-      expect(input?.credits).toBe(12_513); // ceil(5005 * 2.5) = 12513
+      expect(input?.credits).toBe(12_512.5);
       expect(input?.segments).toEqual([{ quantity: 5_005, rate: 2.5, credits: 12_512.5 }]);
 
       // Verify output tokens
@@ -1179,17 +1195,17 @@ describe('computeChatPricing', () => {
 
       const input1 = result1?.breakdown.find((item) => item.unit.name === 'textInput');
       expect(input1?.quantity).toBe(100_000);
-      expect(input1?.credits).toBe(29_495); // Math.ceil((100,000 * 2.1) / 7.12)
+      expect(input1?.credits).toBeCloseTo(29_494.38202247, 6);
       expect(input1?.segments).toEqual([{ quantity: 100_000, rate: 2.1, credits: 210_000 }]);
 
       const cached1 = result1?.breakdown.find((item) => item.unit.name === 'textInput_cacheRead');
       expect(cached1?.quantity).toBe(20_000);
-      expect(cached1?.credits).toBe(1_180); // Math.ceil((20,000 * 0.42) / 7.12)
+      expect(cached1?.credits).toBeCloseTo(1_179.7752809, 6);
       expect(cached1?.segments).toEqual([{ quantity: 20_000, rate: 0.42, credits: 8_400 }]);
 
       const output1 = result1?.breakdown.find((item) => item.unit.name === 'textOutput');
       expect(output1?.quantity).toBe(10_000);
-      expect(output1?.credits).toBe(11_798); // Math.ceil((10,000 * 8.4) / 7.12)
+      expect(output1?.credits).toBeCloseTo(11_797.75280899, 6);
       expect(output1?.segments).toEqual([{ quantity: 10_000, rate: 8.4, credits: 84_000 }]);
 
       // Higher tier test (> 512,000 tokens)
@@ -1209,17 +1225,17 @@ describe('computeChatPricing', () => {
 
       const input2 = result2?.breakdown.find((item) => item.unit.name === 'textInput');
       expect(input2?.quantity).toBe(500_000);
-      expect(input2?.credits).toBe(294_944); // Math.ceil((500,000 * 4.2) / 7.12)
+      expect(input2?.credits).toBeCloseTo(294_943.82022472, 6);
       expect(input2?.segments).toEqual([{ quantity: 500_000, rate: 4.2, credits: 2_100_000 }]);
 
       const cached2 = result2?.breakdown.find((item) => item.unit.name === 'textInput_cacheRead');
       expect(cached2?.quantity).toBe(100_000);
-      expect(cached2?.credits).toBe(11_798); // Math.ceil((100,000 * 0.84) / 7.12)
+      expect(cached2?.credits).toBeCloseTo(11_797.75280899, 6);
       expect(cached2?.segments).toEqual([{ quantity: 100_000, rate: 0.84, credits: 84_000 }]);
 
       const output2 = result2?.breakdown.find((item) => item.unit.name === 'textOutput');
       expect(output2?.quantity).toBe(50_000);
-      expect(output2?.credits).toBe(117_978); // Math.ceil((50,000 * 16.8) / 7.12)
+      expect(output2?.credits).toBeCloseTo(117_977.52808989, 6);
       expect(output2?.segments).toEqual([{ quantity: 50_000, rate: 16.8, credits: 840_000 }]);
     });
   });
@@ -1570,24 +1586,23 @@ describe('computeChatPricing', () => {
 
         // Verify cached tokens
         // 2752 tokens * 0.2 CNY/M = 550.4 raw CNY-credits
-        // 550.4 / 5 = 110.08 -> ceil(110.08) = 111 USD-credits
+        // 550.4 / 5 = 110.08 raw USD-credits
         const cached = breakdown.find((item) => item.unit.name === 'textInput_cacheRead');
         expect(cached?.quantity).toBe(2752);
-        expect(cached?.credits).toBe(111); // USD credits
+        expect(cached?.credits).toBe(110.08);
 
         // Verify output tokens
         // 77 tokens * 3 CNY/M = 231 raw CNY-credits
-        // 231 / 5 = 46.2 -> ceil(46.2) = 47 USD-credits
+        // 231 / 5 = 46.2 raw USD-credits
         const output = breakdown.find((item) => item.unit.name === 'textOutput');
         expect(output?.quantity).toBe(77);
-        expect(output?.credits).toBe(47); // USD credits
+        expect(output?.credits).toBe(46.2);
 
         // Verify totals with CNY to USD conversion
-        // Total USD credits = 314 + 111 + 47 = 472
-        expect(totalCredits).toBe(472);
+        // ceil(314 + 110.08 + 46.2) = 471, round only the total.
+        expect(totalCredits).toBe(471);
 
-        // totalCost = 472 / 1_000_000 = 0.000472 USD
-        expect(totalCost).toBe(0.000472);
+        expect(totalCost).toBe(0.000471);
       });
 
       it('converts CNY to USD for large token usage', () => {
@@ -1672,5 +1687,83 @@ describe('computeChatPricing', () => {
         expect(totalCost).toBeCloseTo(0.006, 6);
       });
     });
+  });
+
+  describe('range-keyed lookup cards', () => {
+    const doubaoPro = volcengineChatModels.find(
+      (model) => model.id === 'doubao-seed-2.0-pro',
+    )!.pricing!;
+
+    const usageAt = (promptTokens: number): ModelTokensUsage => ({
+      inputCacheMissTokens: promptTokens,
+      inputTextTokens: promptTokens,
+      outputTextTokens: 1_000,
+      totalInputTokens: promptTokens,
+      totalOutputTokens: 1_000,
+      totalTokens: promptTokens + 1_000,
+    });
+
+    it('derives the prompt-size tier instead of pricing at zero', () => {
+      // Ark's Doubao 2.0 cards key textInput/textOutput by prompt size. Nothing
+      // outside the catalog supplied `textInputRange`, so these cards used to
+      // resolve no key at all — zero credits plus a "Missing lookup params" issue.
+      const result = computeChatCost(doubaoPro, usageAt(20_000));
+
+      expect(result?.issues).toHaveLength(0);
+      expect(result?.breakdown.find((item) => item.unit.name === 'textInput')?.lookupKey).toBe(
+        '[0, 0.032]',
+      );
+      expect(result!.totalCredits).toBeGreaterThan(0);
+    });
+
+    it.each([
+      [20_000, '[0, 0.032]', 3.2],
+      [60_000, '[0.032, 0.128]', 4.8],
+      [200_000, '[0.128, 0.256]', 9.6],
+    ])('bills %d prompt tokens against the %s tier', (promptTokens, key, rate) => {
+      const result = computeChatCost(doubaoPro, usageAt(promptTokens));
+      const input = result?.breakdown.find((item) => item.unit.name === 'textInput');
+
+      expect(input?.lookupKey).toBe(key);
+      // Card rates are CNY per million tokens; the breakdown reports USD credits.
+      expect(input?.credits).toBeCloseTo((promptTokens * rate) / 7.12, 6);
+    });
+
+    it('lets an explicit caller range win over the derived one', () => {
+      const result = computeChatCost(doubaoPro, usageAt(20_000), {
+        lookupParams: { textInputRange: '[0.128, 0.256]' },
+      });
+
+      expect(result?.breakdown.find((item) => item.unit.name === 'textInput')?.lookupKey).toBe(
+        '[0.128, 0.256]',
+      );
+    });
+
+    it.each([
+      // Doubao 1.8 bands input *and* output in one composite key; the whole key has
+      // to be matched together, since the card leaves some output columns open.
+      [20_000, 100, '[0, 0.032]_[0, 0.0002]', 2],
+      [20_000, 1_000, '[0, 0.032]_[0.0002, infinity]', 8],
+      [60_000, 1_000, '[0.032, 0.128]_[0, infinity]', 16],
+    ])(
+      'resolves the composite key for %d prompt / %d output tokens',
+      (promptTokens, outputTokens, key, rate) => {
+        const pricing = volcengineChatModels.find(
+          (model) => model.id === 'doubao-seed-1.8',
+        )!.pricing!;
+        const result = computeChatCost(pricing, {
+          inputCacheMissTokens: promptTokens,
+          inputTextTokens: promptTokens,
+          outputTextTokens: outputTokens,
+          totalInputTokens: promptTokens,
+          totalOutputTokens: outputTokens,
+        });
+
+        expect(result?.issues).toHaveLength(0);
+        const output = result?.breakdown.find((item) => item.unit.name === 'textOutput');
+        expect(output?.lookupKey).toBe(key);
+        expect(output?.credits).toBeCloseTo((outputTokens * rate) / 7.12, 6);
+      },
+    );
   });
 });

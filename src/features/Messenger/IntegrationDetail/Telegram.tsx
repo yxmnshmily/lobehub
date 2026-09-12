@@ -91,7 +91,7 @@ const TelegramDetail = memo<TelegramDetailProps>(({ appId, botUsername, name, on
       {link ? (
         <UserAgentConnection
           link={link}
-          onSetActive={(agentId) => handleSetActive('', agentId)}
+          onSetActive={(groupId, workspaceId) => handleSetActive('', groupId, workspaceId)}
           onUnlink={() => handleUnlink('')}
         />
       ) : (

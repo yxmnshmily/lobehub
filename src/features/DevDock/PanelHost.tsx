@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     height: 30px;
     padding-inline: 10px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 11px;
     font-weight: 500;
@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 100%;
     margin-block-end: ${BAR_OVERLAP}px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,

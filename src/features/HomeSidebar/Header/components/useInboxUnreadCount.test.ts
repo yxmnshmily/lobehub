@@ -66,21 +66,25 @@ describe('useInboxUnreadCount', () => {
     });
   });
 
-  it('requests unread count when business features are enabled and user is logged in', () => {
-    mocks.state.isSignedIn = true;
+  it.each([true, false])(
+    'enables the signed-in inbox regardless of business features (%s)',
+    (business) => {
+      mocks.state.enableBusinessFeatures = business;
+      mocks.state.isSignedIn = true;
 
-    const { result } = renderHook(() => useInboxUnreadCount());
+      const { result } = renderHook(() => useInboxUnreadCount());
 
-    expect(result.current.enabled).toBe(true);
-    expect(mocks.useClientPollingSWR).toHaveBeenCalledWith(
-      inboxKeys.unreadCount(null),
-      expect.any(Function),
-      {
-        dedupingInterval: INBOX_UNREAD_COUNT_DEDUPING_INTERVAL,
-        refreshInterval: INBOX_UNREAD_COUNT_REFRESH_INTERVAL,
-      },
-    );
-  });
+      expect(result.current.enabled).toBe(true);
+      expect(mocks.useClientPollingSWR).toHaveBeenCalledWith(
+        inboxKeys.unreadCount(null),
+        expect.any(Function),
+        {
+          dedupingInterval: INBOX_UNREAD_COUNT_DEDUPING_INTERVAL,
+          refreshInterval: INBOX_UNREAD_COUNT_REFRESH_INTERVAL,
+        },
+      );
+    },
+  );
 
   it('polls unread count once per minute while deduping repeated requests', () => {
     expect(INBOX_UNREAD_COUNT_REFRESH_INTERVAL).toBe(60_000);

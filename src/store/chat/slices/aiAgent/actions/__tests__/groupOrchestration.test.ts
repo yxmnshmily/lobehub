@@ -180,6 +180,7 @@ describe('groupOrchestration actions', () => {
           supervisorAgentId: TEST_IDS.SUPERVISOR_AGENT_ID,
           agentId: 'target-agent-id',
           instruction: 'Test instruction',
+          replyToMessageId: 'msg_source_1',
           skipCallSupervisor: true,
         });
       });
@@ -195,6 +196,7 @@ describe('groupOrchestration actions', () => {
               params: expect.objectContaining({
                 agentId: 'target-agent-id',
                 instruction: 'Test instruction',
+                replyToMessageId: 'msg_source_1',
               }),
               skipCallSupervisor: true,
             }),

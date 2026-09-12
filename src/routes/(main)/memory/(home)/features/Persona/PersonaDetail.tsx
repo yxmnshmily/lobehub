@@ -2,6 +2,8 @@ import { Markdown } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 
+import { displayBranding } from '@/utils/displayBranding';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   markdown: css`
     h2 {
@@ -50,7 +52,7 @@ interface PersonaDetailProps {
 const PersonaDetail = memo<PersonaDetailProps>(({ children }) => {
   return (
     <Markdown className={styles.markdown} enableImageGallery={false} enableLatex={false}>
-      {children}
+      {typeof children === 'string' ? displayBranding(children) : children}
     </Markdown>
   );
 });

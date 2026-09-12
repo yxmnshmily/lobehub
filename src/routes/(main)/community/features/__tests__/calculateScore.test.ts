@@ -1,8 +1,4 @@
-import {
-  calculateScore,
-  createScoreItems,
-  DEFAULT_WEIGHTS,
-} from '@/features/MCP/calculateScore';
+import { calculateScore, createScoreItems, DEFAULT_WEIGHTS } from '@/features/MCP/calculateScore';
 
 describe('calculateScore', () => {
   describe('Grade A scenarios', () => {

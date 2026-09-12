@@ -1,3 +1,4 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
@@ -44,15 +45,15 @@ export const Placeholder = memo(() => {
       <Flexbox horizontal className={styles.leftContent}>
         <Skeleton.Avatar shape="square" size={32} style={{ flex: 'none' }} />
         <Flexbox className={styles.textContent}>
-          <Skeleton height={18} width={160} />
+          <SkeletonBar height={18} width={160} />
           <Flexbox horizontal gap={4}>
-            <Skeleton height={16} width={60} />
-            <Skeleton height={16} width={40} />
+            <SkeletonBar height={16} width={60} />
+            <SkeletonBar height={16} width={40} />
           </Flexbox>
         </Flexbox>
       </Flexbox>
       <Flexbox horizontal className={styles.rightContent}>
-        <Skeleton
+        <SkeletonBar
           style={{
             borderRadius: 12,
             height: 22,

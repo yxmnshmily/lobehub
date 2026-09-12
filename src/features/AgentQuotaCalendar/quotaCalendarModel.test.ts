@@ -189,13 +189,13 @@ describe('formatTokens', () => {
     expect(formatTokens(340_000)).toBe('340K');
     expect(formatTokens(1_200_000)).toBe('1.2M');
     expect(formatTokens(585_000_000)).toBe('585M');
-    expect(formatTokens(999_400_000)).toBe('999M');
+    expect(formatTokens(999_400_000)).toBe('999.4M');
   });
 
   it('steps up to B past a billion instead of printing four-digit M', () => {
-    expect(formatTokens(1_000_000_000)).toBe('1.0B');
+    expect(formatTokens(1_000_000_000)).toBe('1B');
     expect(formatTokens(1_319_000_000)).toBe('1.3B');
     expect(formatTokens(3_136_000_000)).toBe('3.1B');
-    expect(formatTokens(12_500_000_000)).toBe('13B');
+    expect(formatTokens(12_500_000_000)).toBe('12.5B');
   });
 });

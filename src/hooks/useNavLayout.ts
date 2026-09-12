@@ -2,7 +2,6 @@ import { HomeIcon, SearchIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { getRouteById } from '@/config/routes';
 import { useGlobalStore } from '@/store/global';
 import { SidebarTabKey } from '@/store/global/initialState';
@@ -36,8 +35,7 @@ export interface NavLayout {
 export const useNavLayout = (): NavLayout => {
   const { t } = useTranslation('common');
   const toggleCommandMenu = useGlobalStore((s) => s.toggleCommandMenu);
-  const { showMarket, hideGitHub } = useServerConfigStore(featureFlagsSelectors);
-  const activeWorkspaceSlug = useActiveWorkspaceSlug();
+  const { hideGitHub } = useServerConfigStore(featureFlagsSelectors);
 
   const topNavItems = useMemo(
     () =>
@@ -80,27 +78,28 @@ export const useNavLayout = (): NavLayout => {
           url: '/image',
         },
         {
-          hidden: !showMarket,
+          hidden: true,
           icon: getRouteById('community')!.icon,
           key: SidebarTabKey.Community,
           title: t('tab.community'),
           url: '/community',
         },
         {
+          hidden: true,
           icon: getRouteById('page')!.icon,
           key: SidebarTabKey.Pages,
           title: t('tab.pages'),
           url: '/page',
         },
         {
-          hidden: !!activeWorkspaceSlug,
+          hidden: true,
           icon: getRouteById('memory')!.icon,
           key: SidebarTabKey.Memory,
           title: t('tab.memory'),
           url: '/memory',
         },
       ] as NavItem[],
-    [t, showMarket, activeWorkspaceSlug],
+    [t],
   );
 
   const footer = useMemo(
@@ -116,8 +115,7 @@ export const useNavLayout = (): NavLayout => {
   const userPanel = useMemo(
     () => ({
       showDataImporter: false,
-      // Memory now appears in the sidebar by default; drop the duplicate entry
-      // from the user dropdown to keep that menu focused on account / settings.
+      // Memory is accessed through administrator settings.
       showMemory: false,
     }),
     [],

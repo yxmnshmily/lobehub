@@ -11,9 +11,9 @@ const defaultLoaders = import.meta.glob([
   '../../../../packages/locales/src/default/pageShare.ts',
 ]) as NamespaceLoaderMap;
 const localeLoaders = import.meta.glob([
-  '../../../../locales/*/chat.json',
-  '../../../../locales/*/error.json',
-  '../../../../locales/*/pageShare.json',
+  '../../../../locales/{en-US,zh-CN}/chat.json',
+  '../../../../locales/{en-US,zh-CN}/error.json',
+  '../../../../locales/{en-US,zh-CN}/pageShare.json',
 ]) as NamespaceLoaderMap;
 
 export interface LoadI18nNamespaceModuleParams {

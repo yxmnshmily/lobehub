@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as toolEngineering from '@/helpers/toolEngineering';
 import { chatService } from '@/services/chat';
 import * as agentConfigResolver from '@/services/chat/mecha/agentConfigResolver';
+import { messageService } from '@/services/message';
 import { useAgentStore } from '@/store/agent';
 import { useAiInfraStore } from '@/store/aiInfra';
 import { pageAgentRuntime } from '@/store/tool/slices/builtin/executors/pageAgentRuntime';
@@ -210,6 +211,85 @@ afterEach(() => {
 
 describe('StreamingExecutor actions', () => {
   describe('executeClientAgent', () => {
+    it('ends a group run when config initialization fails before the runtime starts', async () => {
+      setupMockSelectors({ agentConfig: { model: undefined } });
+      const context = {
+        agentId: 'profile-only-supervisor',
+        groupId: 'group-config-failure',
+        scope: 'group' as const,
+        topicId: 'topic-config-failure',
+      };
+      const updateTopicStatus = vi.fn().mockResolvedValue(undefined);
+      useChatStore.setState({ updateTopicStatus });
+      vi.mocked(messageService.updateMessage).mockResolvedValue({ success: true } as any);
+      seedDbMessages(context, [
+        { id: 'pending-assistant', role: 'assistant', content: '', ...context } as UIChatMessage,
+      ]);
+
+      await expect(
+        realExecAgentRuntime({
+          context,
+          messages: [],
+          parentMessageId: 'pending-assistant',
+          parentMessageType: 'assistant',
+          skipCreateFirstMessage: true,
+        }),
+      ).rejects.toThrow('Agent config not found or incomplete');
+
+      const operation = Object.values(useChatStore.getState().operations).find(
+        (item) => item.context.groupId === context.groupId,
+      );
+      expect(operation?.status).toBe('failed');
+      expect(operation?.metadata.error?.message).toContain('Agent config not found or incomplete');
+      expect(
+        useChatStore.getState().dbMessagesMap[messageMapKey(context)][0].error?.message,
+      ).toContain('Agent config not found or incomplete');
+      expect(messageService.updateMessage).toHaveBeenCalledWith(
+        'pending-assistant',
+        {
+          error: expect.objectContaining({
+            message: expect.stringContaining('Agent config not found'),
+          }),
+        },
+        expect.objectContaining(context),
+      );
+      expect(updateTopicStatus).not.toHaveBeenCalled();
+      expect(agentSignalBridgeMock.emitClientAgentSignalSourceEvent).not.toHaveBeenCalled();
+    });
+
+    it('preserves cancellation when provider initialization rejects', async () => {
+      const context = { agentId: 'cancelled-agent', topicId: 'cancelled-topic' };
+      const { operationId } = useChatStore.getState().startOperation({
+        context,
+        type: 'execAgentRuntime',
+      });
+      vi.spyOn(useAiInfraStore.getState(), 'ensureAiProviderRuntimeStateReady').mockImplementation(
+        async () => {
+          useChatStore.getState().operations[operationId].abortController.abort();
+          useChatStore.setState((state) => ({
+            operations: {
+              ...state.operations,
+              [operationId]: { ...state.operations[operationId], status: 'cancelled' },
+            },
+          }));
+          throw new Error('Provider hydration interrupted');
+        },
+      );
+
+      await expect(
+        realExecAgentRuntime({
+          context,
+          messages: [],
+          operationId,
+          parentMessageId: 'user-message',
+          parentMessageType: 'user',
+        }),
+      ).resolves.toBeUndefined();
+      expect(useChatStore.getState().operations[operationId].status).toBe('cancelled');
+      expect(messageService.updateMessage).not.toHaveBeenCalled();
+      expect(agentSignalBridgeMock.emitClientAgentSignalSourceEvent).not.toHaveBeenCalled();
+    });
+
     it('should handle the core AI message processing', async () => {
       act(() => {
         useChatStore.setState({ executeClientAgent: realExecAgentRuntime });

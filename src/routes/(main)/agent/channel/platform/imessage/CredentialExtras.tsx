@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     margin-block: 8px;
     padding: 20px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 44px;
     height: 44px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     img {

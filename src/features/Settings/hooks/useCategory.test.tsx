@@ -75,6 +75,19 @@ afterEach(() => {
 });
 
 describe('settings useCategory', () => {
+  it('keeps technical entries together without losing or duplicating navigation targets', () => {
+    platformAccess.isPlatformAdmin = true;
+    const { result } = renderHook(useCategory, { wrapper: createWrapper(true) });
+    const advanced = result.current.find((group) => group.key === SettingsGroupKey.Developer)!;
+    const technical = [SettingsTabs.Creds, SettingsTabs.Storage, SettingsTabs.Labs];
+    expect(advanced.items.map((item) => item.key)).toEqual(expect.arrayContaining(technical));
+    const everyday = result.current
+      .filter((group) => group !== advanced)
+      .flatMap((group) => group.items.map((item) => item.key));
+    for (const key of technical) expect(everyday).not.toContain(key);
+    const allKeys = result.current.flatMap((group) => group.items.map((item) => item.key));
+    expect(new Set(allKeys).size).toBe(allKeys.length);
+  });
   it('limits the customer center to account, security, service ledger, records, and works', () => {
     useUserStore.setState({
       isSignedIn: true,
@@ -87,38 +100,35 @@ describe('settings useCategory', () => {
     const itemKeys = result.current.flatMap((group) => group.items.map((item) => item.key));
 
     expect(itemKeys).toEqual([
-      SettingsTabs.Profile,
+      SettingsTabs.Notification,
       SettingsTabs.Security,
-      SettingsTabs.Credits,
-      SettingsTabs.Billing,
+      SettingsTabs.Plans,
       SettingsTabs.Usage,
+      SettingsTabs.Credits,
       SettingsTabs.Works,
     ]);
     expect(result.current.flatMap((group) => group.items.map((item) => item.href))).toEqual(
-      expect.arrayContaining([
-        '/settings/credits?section=balance-usage',
-        '/settings/credits?section=my-creations',
-      ]),
+      expect.arrayContaining(['/settings/usage', '/settings/credits?section=my-creations']),
     );
     expect(result.current.flatMap((group) => group.items.map((item) => item.href))).not.toContain(
       '/settings/credits?section=private-group',
     );
-    expect(result.current[0].items[0].label).toBe('桂林旅行者');
+    expect(itemKeys).not.toContain(SettingsTabs.Profile);
+    expect(itemKeys).not.toContain(SettingsTabs.Stats);
     expect(result.current[1].items.map((item) => item.label)).toEqual([
-      'Credits 余额',
-      'Credits 明细与服务订单',
-      'Token 用量',
+      '套餐',
+      '用量',
+      '积分',
       '本人生成记录',
     ]);
   });
 
-  it('does not expose provider, plans, referrals, or developer settings', () => {
+  it('does not expose provider, referrals, or developer settings', () => {
     expect(getItemKeys()).not.toEqual(
       expect.arrayContaining([
         SettingsTabs.Provider,
         SettingsTabs.ServiceModel,
         SettingsTabs.Skill,
-        SettingsTabs.Plans,
         SettingsTabs.Referral,
         SettingsTabs.APIKey,
         SettingsTabs.OAuthApps,
@@ -139,11 +149,11 @@ describe('settings useCategory', () => {
       SettingsGroupKey.General,
       SettingsGroupKey.Subscription,
       SettingsGroupKey.Agent,
-      SettingsGroupKey.System,
       SettingsGroupKey.Developer,
       SettingsGroupKey.Operations,
     ]);
 
+    expect(itemKeys).not.toContain(SettingsTabs.About);
     expect(itemKeys).toEqual(
       expect.arrayContaining([
         SettingsTabs.Appearance,
@@ -157,9 +167,11 @@ describe('settings useCategory', () => {
         SettingsTabs.ServiceOperations,
       ]),
     );
+    expect(items.find((item) => item.href === '/community')).toBeDefined();
+    expect(items.find((item) => item.key === SettingsTabs.Memory)).toBeUndefined();
     expect(items.find((item) => item.key === SettingsTabs.ServiceOperations)).toMatchObject({
       href: '/settings/service-operations',
-      label: '服务运营 / 客户账户',
+      label: '账户管理',
     });
   });
 

@@ -1,10 +1,19 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUserStore } from '@/store/user';
 
 import PanelContent from '../UserPanel/PanelContent';
+
+const creditQuery = vi.hoisted(() => ({
+  data: { remainingCredits: 2_500_000, totalCredits: 5_000_000 } as
+    { remainingCredits: number; totalCredits: number } | undefined,
+  isError: false,
+}));
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: { platformCredit: { getOwnRegistrationCredits: { useQuery: () => creditQuery } } },
+}));
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -73,6 +82,10 @@ vi.mock('@/store/serverConfig', () => ({
 }));
 
 describe('PanelContent', () => {
+  beforeEach(() => {
+    creditQuery.data = { remainingCredits: 2_500_000, totalCredits: 5_000_000 };
+    creditQuery.isError = false;
+  });
   const closePopover = vi.fn();
 
   // Helper function to render component with Router provider
@@ -81,6 +94,36 @@ describe('PanelContent', () => {
   };
 
   describe('enable auth', () => {
+    it('does not show a full gift for loading, failed requests, or accounts without a grant', () => {
+      act(() => {
+        useUserStore.setState({ isSignedIn: true });
+      });
+      creditQuery.data = undefined;
+      const view = renderWithRouter(<PanelContent closePopover={closePopover} />);
+      expect(screen.getByText('— / —')).toBeInTheDocument();
+      for (const bar of screen.getAllByRole('progressbar')) {
+        expect(bar).not.toHaveAttribute('aria-valuenow');
+      }
+      creditQuery.data = { remainingCredits: 5_000_000, totalCredits: 5_000_000 };
+      creditQuery.isError = true;
+      view.rerender(
+        <MemoryRouter>
+          <PanelContent closePopover={closePopover} />
+        </MemoryRouter>,
+      );
+      expect(screen.getByText('— / —')).toBeInTheDocument();
+      creditQuery.isError = false;
+      creditQuery.data = { remainingCredits: 0, totalCredits: 0 };
+      view.rerender(
+        <MemoryRouter>
+          <PanelContent closePopover={closePopover} />
+        </MemoryRouter>,
+      );
+      expect(screen.getByText('0 / 0')).toBeInTheDocument();
+      for (const bar of screen.getAllByRole('progressbar')) {
+        expect(bar).toHaveAttribute('aria-valuenow', '0');
+      }
+    });
     it('should render UserInfo when user is signed in', () => {
       act(() => {
         useUserStore.setState({ isSignedIn: true });
@@ -90,7 +133,31 @@ describe('PanelContent', () => {
 
       expect(screen.getByText('Mocked UserInfo')).toBeInTheDocument();
       expect(screen.getByText('Mocked DataStatistics')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /免费积分/ })).toHaveAttribute(
+        'href',
+        '/settings/credits',
+      );
+      expect(screen.getByText('250万 / 500万')).toBeInTheDocument();
+      for (const bar of screen.getAllByRole('progressbar')) {
+        expect(bar).toHaveAttribute('aria-valuenow', '50');
+      }
       expect(screen.queryByText('Mocked SignInBlock')).not.toBeInTheDocument();
+    });
+
+    it('keeps a long free-credit balance inside the narrow account panel', () => {
+      act(() => {
+        useUserStore.setState({ isSignedIn: true });
+      });
+      creditQuery.data = { remainingCredits: 4_786_000, totalCredits: 5_000_000 };
+
+      renderWithRouter(<PanelContent closePopover={closePopover} />);
+
+      const balance = screen.getByText('478.6万 / 500万');
+      const valueGroup = balance.parentElement;
+      const creditRow = valueGroup?.parentElement;
+
+      expect(creditRow).toHaveStyle({ flexWrap: 'wrap' });
+      expect(valueGroup).toHaveStyle({ marginInlineStart: 'auto' });
     });
 
     it('should render SignInBlock when user is not signed in and enable auth', () => {

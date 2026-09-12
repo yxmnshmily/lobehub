@@ -4,6 +4,8 @@ import { Flexbox } from '@lobehub/ui';
 import { Skeleton } from '@lobehub/ui/base-ui';
 import { type CSSProperties, memo } from 'react';
 
+import SkeletonText from './Text';
+
 interface ArticleSkeletonProps {
   avatar?: boolean | number;
   className?: string;
@@ -16,8 +18,8 @@ const ArticleSkeleton = memo<ArticleSkeletonProps>(
   ({ avatar = false, className, rows = 3, style, title = true }) => {
     const body = (
       <Flexbox gap={16} width={'100%'}>
-        {title !== false && <Skeleton.Text width={title === true ? '60%' : title} />}
-        {rows > 0 && <Skeleton.Text rows={rows} />}
+        {title !== false && <SkeletonText width={title === true ? '60%' : title} />}
+        {rows > 0 && <SkeletonText rows={rows} />}
       </Flexbox>
     );
 

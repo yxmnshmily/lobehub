@@ -1,5 +1,5 @@
-import CustomerCenterPage from './CustomerCenterPage';
+import SubscriptionWorkspace from '@/features/CustomerCenter/SubscriptionWorkspace';
 
-const Usage = () => <CustomerCenterPage defaultSection={'balance-usage'} />;
+const Usage = () => <SubscriptionWorkspace section="usage" />;
 
 export default Usage;

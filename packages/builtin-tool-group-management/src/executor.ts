@@ -37,6 +37,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
         ctx.groupOrchestration!.triggerSpeak({
           agentId: params.agentId,
           instruction: params.instruction,
+          replyToMessageId: params.replyToMessageId,
           skipCallSupervisor: params.skipCallSupervisor,
           supervisorAgentId: ctx.agentId!,
         }),
@@ -49,6 +50,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
       state: {
         agentId: params.agentId,
         instruction: params.instruction,
+        replyToMessageId: params.replyToMessageId,
         skipCallSupervisor: params.skipCallSupervisor,
         type: 'speak',
       },
@@ -236,9 +238,11 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
     const preserveInfo = params.preserveRecent
       ? ` (preserving ${params.preserveRecent} recent messages)`
       : '';
+    const content = `Summarization not yet implemented${focusInfo}${preserveInfo}`;
     return {
-      content: `Summarization not yet implemented${focusInfo}${preserveInfo}`,
-      success: true,
+      content,
+      error: { message: content, type: 'MethodNotImplemented' },
+      success: false,
     };
   };
 
@@ -249,18 +253,22 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
     _ctx: BuiltinToolContext,
   ): Promise<BuiltinToolResult> => {
     // TODO: Implement workflow creation
+    const content = `Workflow creation not yet implemented for "${params.name}" with ${params.steps.length} steps`;
     return {
-      content: `Workflow creation not yet implemented for "${params.name}" with ${params.steps.length} steps`,
-      success: true,
+      content,
+      error: { message: content, type: 'MethodNotImplemented' },
+      success: false,
     };
   };
 
   vote = async (params: VoteParams, _ctx: BuiltinToolContext): Promise<BuiltinToolResult> => {
     // TODO: Implement voting mechanism
     const optionLabels = params.options.map((o) => o.label).join(', ');
+    const content = `Voting not yet implemented for question: "${params.question}" with options: ${optionLabels}`;
     return {
-      content: `Voting not yet implemented for question: "${params.question}" with options: ${optionLabels}`,
-      success: true,
+      content,
+      error: { message: content, type: 'MethodNotImplemented' },
+      success: false,
     };
   };
 }

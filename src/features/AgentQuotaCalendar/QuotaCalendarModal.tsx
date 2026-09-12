@@ -3,14 +3,7 @@
 import type { QuotaLimitReading } from '@lobechat/heterogeneous-agents/quota';
 import { projectWindows } from '@lobechat/heterogeneous-agents/quota';
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
-import {
-  ActionIcon,
-  createModal,
-  type ModalInstance,
-  Segmented,
-  Skeleton,
-  Text,
-} from '@lobehub/ui/base-ui';
+import { ActionIcon, createModal, type ModalInstance, Segmented, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import dayjs from 'dayjs';
 import type { TFunction } from 'i18next';
@@ -19,6 +12,8 @@ import { BanIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, RotateCcwIcon } f
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { agentQuotaService } from '@/services/agentQuota';
 
 import {
@@ -32,7 +27,6 @@ import {
   currentWindow,
   dayKeyOf,
   type DaySpend,
-  formatCost,
   formatTokens,
   isCalendarMonthAvailable,
   projectBurnout,
@@ -317,7 +311,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-inline: 2px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   sectionPanel: css`
@@ -378,6 +372,7 @@ const formatTrackedCost = (
    * amount starting on the `$`.
    */
   compact = false,
+  formatCost: (cost: number) => string,
 ) => {
   const trackedCost = trackedCostOf(spend);
   if (trackedCost.kind === 'unknown') return t('heteroAgent.claudeQuota.calendar.unpricedCost');
@@ -404,6 +399,7 @@ const BurnChart = memo<{
   window: QuotaWindowSpan;
 }>(({ now, readings, series, turns, window }) => {
   const { t } = useTranslation('chat');
+  const { format: formatCost } = useMonthlyExchangeRate();
 
   const points = useMemo(
     () => buildBurnSeries(readings, series, window),
@@ -455,7 +451,7 @@ const BurnChart = memo<{
                 ? t('heteroAgent.claudeQuota.calendar.windowSpend', {
                     // One convention for every amount on this surface; the
                     // spelled-out bound lives in the tooltips.
-                    cost: formatTrackedCost(spend, t, true),
+                    cost: formatTrackedCost(spend, t, true, formatCost),
                     tokens: formatTokens(spend.tokens),
                   })
                 : t('heteroAgent.claudeQuota.calendar.noLedgerSpend')}
@@ -611,7 +607,11 @@ const CapacityMeter = memo<{ utilization: number }>(({ utilization }) => (
 
 CapacityMeter.displayName = 'CapacityMeter';
 
-const windowTooltip = (stat: WindowStat, t: TFunction<'chat'>) =>
+const windowTooltip = (
+  stat: WindowStat,
+  t: TFunction<'chat'>,
+  formatCost: (cost: number) => string,
+) =>
   [
     `${dayjs(stat.windowStartAt).format('M/D HH:mm')} – ${dayjs(stat.resetsAt).format('M/D HH:mm')}`,
     t('heteroAgent.claudeQuota.calendar.windowUtilization', {
@@ -619,7 +619,7 @@ const windowTooltip = (stat: WindowStat, t: TFunction<'chat'>) =>
     }),
     stat.tokens > 0
       ? t('heteroAgent.claudeQuota.calendar.windowSpend', {
-          cost: formatTrackedCost(stat, t),
+          cost: formatTrackedCost(stat, t, false, formatCost),
           tokens: formatTokens(stat.tokens),
         })
       : t('heteroAgent.claudeQuota.calendar.noLedgerSpendShort'),
@@ -631,6 +631,7 @@ const WindowHistory = memo<{
   stats: WindowStat[];
 }>(({ series, stats }) => {
   const { t } = useTranslation('chat');
+  const { format: formatCost } = useMonthlyExchangeRate();
 
   if (stats.length === 0) return null;
 
@@ -680,7 +681,7 @@ const WindowHistory = memo<{
               return (
                 <Tooltip
                   key={`${column.key}-${stat.resetsAt}`}
-                  title={windowTooltip(stat, t).join(' · ')}
+                  title={windowTooltip(stat, t, formatCost).join(' · ')}
                 >
                   {cell}
                 </Tooltip>
@@ -727,9 +728,9 @@ const WindowHistory = memo<{
             {stat.tokens > 0 ? (
               /* The `+` is the compact bound; hovering spells it out, the way
                  the session grid already explains its own cells. */
-              <Tooltip title={windowTooltip(stat, t).join(' · ')}>
+              <Tooltip title={windowTooltip(stat, t, formatCost).join(' · ')}>
                 <Text style={{ fontSize: 11, textAlign: 'right' }} type={'secondary'}>
-                  {formatTokens(stat.tokens)} · {formatTrackedCost(stat, t, true)}
+                  {formatTokens(stat.tokens)} · {formatTrackedCost(stat, t, true, formatCost)}
                 </Text>
               </Tooltip>
             ) : (
@@ -757,6 +758,7 @@ interface QuotaCalendarProps {
 
 const QuotaCalendar = memo<QuotaCalendarProps>(({ externalAccountId }) => {
   const { t } = useTranslation('chat');
+  const { format: formatCost } = useMonthlyExchangeRate();
   const [accountUnavailable, setAccountUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [readings, setReadings] = useState<QuotaLimitReading[]>([]);
@@ -889,8 +891,8 @@ const QuotaCalendar = memo<QuotaCalendarProps>(({ externalAccountId }) => {
   if (loading)
     return (
       <Flexbox gap={12}>
-        <Skeleton height={170} />
-        <Skeleton height={320} />
+        <SkeletonBar height={170} />
+        <SkeletonBar height={320} />
       </Flexbox>
     );
 
@@ -911,7 +913,9 @@ const QuotaCalendar = memo<QuotaCalendarProps>(({ externalAccountId }) => {
    */
   const dayLabels = (spend: DaySpend | undefined, burn: number) => {
     const cost =
-      spend && (spend.cost > 0 || spend.hasUnpricedTurn) ? formatTrackedCost(spend, t, true) : '';
+      spend && (spend.cost > 0 || spend.hasUnpricedTurn)
+        ? formatTrackedCost(spend, t, true, formatCost)
+        : '';
     const tokens = spend && spend.tokens > 0 ? formatTokens(spend.tokens) : '';
     // No ledger row (usage burned outside LobeHub) but the meter still moved.
     const share = !tokens && burn > 0 ? `${Math.round(burn)}%` : '';
@@ -994,7 +998,7 @@ const QuotaCalendar = memo<QuotaCalendarProps>(({ externalAccountId }) => {
                 spend &&
                   spend.tokens > 0 &&
                   t('heteroAgent.claudeQuota.calendar.dayTokens', {
-                    cost: formatTrackedCost(spend, t),
+                    cost: formatTrackedCost(spend, t, false, formatCost),
                     tokens: formatTokens(spend.tokens),
                   }),
                 burn > 0 &&

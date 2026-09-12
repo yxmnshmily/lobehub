@@ -1,8 +1,6 @@
 const FONT_EN = [
-  'Geist',
   '-apple-system',
   'BlinkMacSystemFont',
-  'Segoe UI Variable Display',
   'Segoe UI',
   'Roboto',
   'Helvetica Neue',
@@ -10,13 +8,13 @@ const FONT_EN = [
 ];
 
 const FONT_SC = [
-  'HarmonyOS Sans SC',
   'PingFang SC',
-  'Hiragino Sans GB',
   'Microsoft YaHei UI',
   'Microsoft YaHei',
-  'Source Han Sans SC',
+  'Hiragino Sans GB',
+  'HarmonyOS Sans SC',
   'Noto Sans CJK SC',
+  'Source Han Sans SC',
 ];
 
 const FONT_TC = [
@@ -41,7 +39,6 @@ const FONT_JP = [
 const FONT_KR = ['Apple SD Gothic Neo', 'Malgun Gothic', 'Source Han Sans KR', 'Noto Sans CJK KR'];
 
 const FONT_CODE = [
-  'Geist Mono',
   'ui-monospace',
   'SFMono-Regular',
   'SF Mono',
@@ -82,10 +79,12 @@ export const genFontFamily = ({
 }: GenFontFamilyParams = {}) =>
   [
     userFontFamily?.trim(),
-    customFontFamily?.trim(),
     ...FONT_EN,
     ...(locale ? (LOCALE_CJK_FONTS[locale] ?? []) : []),
     ...FONT_SC,
+    // Environment-provided web fonts are fallback-only: system fonts stay on the
+    // critical rendering path, while an explicit user selection still wins above.
+    customFontFamily?.trim(),
     ...FALLBACK,
     ...FONT_EMOJI,
   ]

@@ -6,7 +6,12 @@ import { goalKeys, taskKeys } from '@/libs/swr/keys';
 import { goalService } from '@/services/goal';
 import type { StoreSetter } from '@/store/types';
 
-import { type GoalListFilter, type GoalState, type GoalViewMode, initialState } from './initialState';
+import {
+  type GoalListFilter,
+  type GoalState,
+  type GoalViewMode,
+  initialState,
+} from './initialState';
 
 const GOAL_STATUSES: GoalStatus[] = [...goalStatuses];
 
@@ -190,14 +195,15 @@ export class GoalActionImpl {
     this.#set({ goalViewMode: mode }, false, 'setGoalViewMode');
   };
 
-  useFetchGoals = (agentId?: string, projectId?: string) => {
-    const scopeId = projectId ? `project:${projectId}` : agentId;
+  useFetchGoals = (agentId?: string, projectId?: string, groupId?: string) => {
+    const scopeId = groupId ? `group:${groupId}` : projectId ? `project:${projectId}` : agentId;
 
     return useClientDataSWR(
       scopeId ? taskKeys.sidebarGroups(`${scopeId}:goals-page`) : null,
       () =>
         goalService.list({
-          agentId,
+          agentId: groupId ? undefined : agentId,
+          groupId,
           limit: 100,
           projectId,
           statuses: GOAL_STATUSES,

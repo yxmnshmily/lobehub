@@ -10,12 +10,13 @@ const account = {
   password: 'Test-only-mail-123!',
 };
 
-const createRequest = (instance: Awaited<ReturnType<typeof getTestInstance>>) =>
+const createRequest =
+  (instance: { auth: { handler: (request: Request) => Promise<Response> } }) =>
   (pathname: string, body: unknown) =>
     instance.auth.handler(
       new Request(`${baseURL}/api/auth${pathname}`, {
         body: JSON.stringify(body),
-        headers: { 'content-type': 'application/json', origin: baseURL },
+        headers: { 'content-type': 'application/json', 'origin': baseURL },
         method: 'POST',
       }),
     );
@@ -146,7 +147,9 @@ describe('enabled Better Auth email channel boundaries', () => {
 
     expect(known.status).toBe(200);
     expect(unknown.status).toBe(200);
-    expect(Object.keys(await known.json()).sort()).toEqual(Object.keys(await unknown.json()).sort());
+    expect(Object.keys(await known.json()).sort()).toEqual(
+      Object.keys(await unknown.json()).sort(),
+    );
     expect(sendMagicLink).toHaveBeenCalledTimes(2);
   });
 });

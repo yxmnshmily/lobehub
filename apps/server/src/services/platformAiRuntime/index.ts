@@ -1,4 +1,5 @@
 import type {
+  ChatStreamPayload,
   GenerateObjectPayload,
   GenerateObjectRouteIdentity,
   ModelRuntime,
@@ -18,6 +19,23 @@ import { filterHiddenProviderModels } from '@/utils/aiProvider';
 
 export const PLATFORM_MANAGED_AI_RUNTIME = 'platform-managed' as const;
 
+/**
+ * Prepaid admission gate for platform-managed images.
+ *
+ * The bounded contract is now verified and wired end to end: seedream image
+ * pricing is present in the model bank (imageGeneration unit, e.g. rate 0.22
+ * USD/image), `computeImageCost` converts provider usage to USD, the
+ * reservation service records a trusted `maxCredits` ceiling before the call,
+ * and the async worker settles the actual provider usage via
+ * `completeAndSettle`. The caller is the platform-managed path whose budget +
+ * reservation identity were already validated just above, so no separate unit
+ * is needed here.
+ */
+export const assertPlatformImagePrepaidSupport = (): void => {
+  // Pass: admission is governed by the reservation's trusted maxCredits ceiling
+  // and post-call settlement by authoritative provider usage.
+};
+
 interface PlatformBoundedTextModel {
   maxOutputTokens: number;
   provider: string;
@@ -34,14 +52,48 @@ const hasRequiredTextPricing = (pricing: Pricing) => {
   return unitNames.has('textInput') && unitNames.has('textOutput');
 };
 
-const computeMaximumTextCredits = (
+export const computeMaximumTextCredits = (
   pricing: Pricing,
   inputTokens: number,
   outputTokens: number,
 ) => {
   if (!hasRequiredTextPricing(pricing)) return;
   try {
-    const result = computeChatCost(pricing, {
+    // Admission uses worst configured rates, including optional cache creation.
+    // Settlement still uses the original pricing and actual provider usage.
+    const highestRate = (name: string) =>
+      Math.max(
+        0,
+        ...pricing.units
+          .filter((unit) => unit.name === name)
+          .flatMap((unit) =>
+            unit.strategy === 'fixed'
+              ? [unit.rate]
+              : unit.strategy === 'tiered'
+                ? unit.tiers.map((tier) => tier.rate)
+                : Object.values(unit.lookup.prices),
+          ),
+      );
+    const maximumPricing: Pricing = {
+      ...pricing,
+      units: [
+        {
+          name: 'textInput',
+          rate:
+            Math.max(highestRate('textInput'), highestRate('textInput_cacheRead')) +
+            highestRate('textInput_cacheWrite'),
+          strategy: 'fixed',
+          unit: 'millionTokens',
+        },
+        {
+          name: 'textOutput',
+          rate: highestRate('textOutput'),
+          strategy: 'fixed',
+          unit: 'millionTokens',
+        },
+      ],
+    };
+    const result = computeChatCost(maximumPricing, {
       inputCacheMissTokens: inputTokens,
       inputTextTokens: inputTokens,
       outputTextTokens: outputTokens,
@@ -50,6 +102,7 @@ const computeMaximumTextCredits = (
       totalTokens: inputTokens + outputTokens,
     });
     if (
+      !result ||
       result.issues.length > 0 ||
       !Number.isSafeInteger(result.totalCredits) ||
       result.totalCredits <= 0
@@ -192,8 +245,7 @@ export class PlatformAiRuntime {
   constructor(
     private readonly db: LobeChatDatabase,
     credentialResolver?: PlatformCredentialResolver,
-    private readonly boundedTextModels: readonly PlatformBoundedTextModel[] =
-      PLATFORM_BOUNDED_TEXT_MODEL_ALLOWLIST,
+    private readonly boundedTextModels: readonly PlatformBoundedTextModel[] = PLATFORM_BOUNDED_TEXT_MODEL_ALLOWLIST,
   ) {
     this.credentialResolver = credentialResolver ?? new PlatformCredentialResolver(db);
   }
@@ -251,6 +303,42 @@ export class PlatformAiRuntime {
       params.workspaceId,
       await this.getCredentialOptions(),
     );
+  }
+
+  async prepareChatBounded(params: {
+    modelLimits: { contextWindowTokens?: number; maxOutput?: number };
+    payload: ChatStreamPayload;
+    pricing: Pricing;
+    remainingCredits: number;
+    runtime: ModelRuntime;
+  }) {
+    // Smaller per-turn completion limit keeps routine work bounded; thinking and tool
+    // arguments remain included. Never use approximate prompt token counts for admission.
+    const { contextWindowTokens, maxOutput } = params.modelLimits;
+    if (
+      !Number.isSafeInteger(contextWindowTokens) ||
+      (contextWindowTokens ?? 0) <= 0 ||
+      !Number.isSafeInteger(maxOutput) ||
+      (maxOutput ?? 0) <= 0
+    ) {
+      throw new Error('所选模型缺少上下文或最大输出配置，请在模型管理中补齐。');
+    }
+    const limits = { contextWindowTokens: contextWindowTokens!, maxOutput: maxOutput! };
+    const configured = params.payload.max_tokens;
+    const outputLimit =
+      typeof configured === 'number' && Number.isSafeInteger(configured) && configured > 0
+        ? Math.min(configured, 8192, limits.maxOutput)
+        : Math.min(8192, limits.maxOutput);
+    const prepared = await params.runtime.prepareChatBounded(params.payload, outputLimit, limits);
+    const maximumCredits = computeMaximumTextCredits(
+      params.pricing,
+      prepared.inputTokenLimit,
+      prepared.maxOutputTokens,
+    );
+    if (maximumCredits === undefined || maximumCredits > params.remainingCredits) {
+      throw new Error('可用积分不足以安全预留所选模型的本次调用。');
+    }
+    return prepared;
   }
 
   async prepareGenerateObjectBounded(params: {

@@ -7,6 +7,7 @@ import ErrorMessageExtra, { useErrorContent } from '@/features/Conversation/Erro
 
 import ErrorContent from '../../../ChatItem/components/ErrorContent';
 import { dataSelectors, messageStateSelectors, useConversationStore } from '../../../store';
+import { AssistantMessageExtra } from '../../Assistant/Extra';
 import ImageFileListViewer from '../../components/ImageFileListViewer';
 import Reasoning, { hasRenderableReasoning } from '../../components/Reasoning';
 import { Tools } from '../Tools';
@@ -33,6 +34,7 @@ const ContentBlock = memo<ContentBlockProps>(
     hasToolsOverride,
   }) => {
     const errorContent = useErrorContent(error);
+    const extra = useConversationStore((s) => dataSelectors.getDbMessageById(id)(s)?.extra);
     const showImageItems = !!imageList && imageList.length > 0;
     const [isReasoning, retryFailedAssistantStep] = useConversationStore((s) => [
       messageStateSelectors.isMessageInReasoning(id)(s),
@@ -112,6 +114,12 @@ const ContentBlock = memo<ContentBlockProps>(
         {showImageItems && (
           <SafeBoundary>
             <ImageFileListViewer items={imageList} />
+          </SafeBoundary>
+        )}
+
+        {hasContent && (extra?.tts || extra?.translate) && (
+          <SafeBoundary>
+            <AssistantMessageExtra content={content} extra={extra} id={id} />
           </SafeBoundary>
         )}
 

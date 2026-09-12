@@ -1,5 +1,8 @@
 // @vitest-environment node
+import { randomUUID } from 'node:crypto';
+
 import { GOAL_COORDINATOR_ACTOR_ID } from '@lobechat/const/goal';
+import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +17,8 @@ import {
   acceptances,
   agentOperations,
   agents,
+  chatGroups,
+  chatGroupsAgents,
   goalEdges,
   goalEvents,
   goalNodeDecisions,
@@ -27,6 +32,7 @@ import {
 import type { LobeChatDatabase } from '@/database/type';
 import { AgentRuntimeCoordinator } from '@/server/modules/AgentRuntime/AgentRuntimeCoordinator';
 
+import { PlatformUsageSharedBudgetError } from '../platformUsageBilling/sharedBudget';
 import { TaskService } from '../task';
 import { TaskRunnerService } from '../taskRunner';
 import { VerifyPlanGeneratorService } from '../verify/planGenerator';
@@ -57,11 +63,119 @@ afterEach(async () => {
   await serverDB.delete(taskTopics);
   await serverDB.delete(topics);
   await serverDB.delete(tasks);
+  await serverDB.delete(chatGroupsAgents);
+  await serverDB.delete(chatGroups);
   await serverDB.delete(agents);
   await serverDB.delete(users);
 });
 
 describe('GoalService', () => {
+  it('dispatches planned group tasks to their selected members and keeps group list isolation', async () => {
+    await serverDB.insert(agents).values([
+      { id: 'agt_lead', userId },
+      { id: 'agt_copy', userId },
+    ]);
+    await serverDB.insert(chatGroups).values({ id: 'cg_team', userId });
+    await serverDB.insert(chatGroupsAgents).values([
+      { chatGroupId: 'cg_team', agentId: 'agt_lead', userId, role: 'supervisor' },
+      { chatGroupId: 'cg_team', agentId: 'agt_copy', userId, role: 'participant' },
+    ]);
+    vi.spyOn(GoalCriteriaGeneratorService.prototype, 'decompose').mockResolvedValue({
+      problemStatement: 'Travel campaign',
+      tasks: [
+        {
+          assigneeAgentId: 'agt_copy',
+          title: 'Write captions',
+          instruction: 'Ten original captions',
+        },
+      ],
+    });
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ config: { groupId: 'cg_team' }, title: 'Team campaign' });
+    await service.tick(graph.goal.id);
+    const dispatched = await service.tick(graph.goal.id);
+    const task = await new TaskModel(serverDB, userId).findById(dispatched.taskId!);
+    expect(task).toMatchObject({ assigneeAgentId: 'agt_copy', config: { groupId: 'cg_team' } });
+    expect((await service.graph(graph.goal.id)).goal.agentId).toBe('agt_lead');
+    await service.create({ title: 'Personal campaign', tasks: ['Personal'] });
+    expect((await new GoalModel(serverDB, userId).list({ groupId: 'cg_team' })).total).toBe(1);
+    expect((await new TaskModel(serverDB, userId).list({ groupId: 'cg_other' })).total).toBe(0);
+  });
+  it.each(['model-error', 'empty-plan', 'invalid-member'])(
+    'parks failed group planning without silently assigning the entire goal to its supervisor: %s',
+    async (failure) => {
+      await serverDB.insert(agents).values([
+        { id: 'agt_lead', userId },
+        { id: 'agt_copy', userId },
+      ]);
+      await serverDB.insert(chatGroups).values({ id: 'cg_team', userId });
+      await serverDB.insert(chatGroupsAgents).values([
+        { chatGroupId: 'cg_team', agentId: 'agt_lead', userId, role: 'supervisor' },
+        { chatGroupId: 'cg_team', agentId: 'agt_copy', userId, role: 'participant' },
+      ]);
+      const planner = vi.spyOn(GoalCriteriaGeneratorService.prototype, 'decompose');
+      if (failure === 'model-error') planner.mockRejectedValueOnce(new Error('model unavailable'));
+      else
+        planner.mockResolvedValueOnce(
+          failure === 'empty-plan'
+            ? undefined
+            : {
+                problemStatement: 'Campaign',
+                tasks: [
+                  { assigneeAgentId: 'outsider', title: 'All work', instruction: 'Everything' },
+                ],
+              },
+        );
+      const service = new GoalService(serverDB, userId);
+      const graph = await service.create({
+        config: { groupId: 'cg_team' },
+        title: 'Team campaign',
+      });
+      const result = await service.tick(graph.goal.id);
+      const stopped = await service.graph(graph.goal.id);
+      expect(result.outcome).toBe('waiting_human');
+      expect(stopped.goal.status).toBe('review');
+      expect(stopped.nodes.filter((node) => node.kind === 'task')).toHaveLength(0);
+      expect((await new TaskModel(serverDB, userId).list({ groupId: 'cg_team' })).total).toBe(0);
+      const decision = stopped.decisions.find((item) => item.status === 'pending')!;
+      expect(decision.question).toContain('群协作规划失败');
+      expect(decision.options).toContainEqual({ id: 'retry', label: '重新规划成员分工' });
+      expect((await service.tick(graph.goal.id)).outcome).toBe('waiting_human');
+      expect(planner).toHaveBeenCalledTimes(1);
+      await service.decide(graph.goal.id, decision.id, 'retry');
+      planner.mockResolvedValueOnce({
+        problemStatement: 'Campaign',
+        tasks: [{ assigneeAgentId: 'agt_copy', title: 'Write', instruction: 'Write captions' }],
+      });
+      await service.tick(graph.goal.id);
+      const dispatched = await service.tick(graph.goal.id);
+      expect(await new TaskModel(serverDB, userId).findById(dispatched.taskId!)).toMatchObject({
+        assigneeAgentId: 'agt_copy',
+      });
+    },
+  );
+  it.each([
+    new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Set a prepaid budget first' }),
+    new PlatformUsageSharedBudgetError('RESERVATION_FAILED', 'Set a prepaid budget first'),
+  ])('surfaces failed prepaid admission (%s) without leaving the goal running', async (error) => {
+    const run = vi.spyOn(TaskRunnerService.prototype, 'runTask').mockRejectedValue(error);
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({
+      tasks: ['Write ten captions'],
+      title: 'Budget admission',
+    });
+    const created = await service.tick(graph.goal.id);
+    const result = await service.tick(graph.goal.id);
+    expect(result.outcome).toBe('waiting_human');
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('review');
+    expect(await new TaskModel(serverDB, userId).findById(created.taskId!)).toMatchObject({
+      status: 'paused',
+      error: 'Set a prepaid budget first',
+    });
+    await service.tick(graph.goal.id);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
   it('persists structured criteria on create and records their ids on the goal config', async () => {
     const service = new GoalService(serverDB, userId);
     const graph = await service.create({
@@ -879,6 +993,48 @@ describe('GoalService', () => {
     await service.decide(graph.goal.id, decision.id, 'retire', 'This branch is not useful');
     const achieved = await service.tick(graph.goal.id);
     expect(achieved.outcome).toBe('achieved');
+  });
+
+  it('opens a decision when a given-up prerequisite blocks every remaining task', async () => {
+    // Only `resolved` satisfies a dependency, so retiring a step used to wedge
+    // everything behind it: the goal simply stopped, with no question for the
+    // user and no way forward from the UI.
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({
+      tasks: ['Given-up step', 'Blocked step'],
+      title: 'Retired prerequisite recovery',
+    });
+    await service.tick(graph.goal.id);
+
+    const seeded = await service.graph(graph.goal.id);
+    const givenUp = seeded.nodes.find((node) => node.title === 'Given-up step')!;
+    const blocked = seeded.nodes.find((node) => node.title === 'Blocked step')!;
+    await new GoalGraphModel(serverDB, userId).updateNodeStatus(
+      graph.goal.id,
+      givenUp.id,
+      'retired',
+      'user gave it up',
+    );
+    await serverDB.insert(goalEdges).values({
+      goalId: graph.goal.id,
+      id: randomUUID(),
+      kind: 'depends_on',
+      sourceNodeId: blocked.id,
+      targetNodeId: givenUp.id,
+    });
+
+    const waiting = await service.tick(graph.goal.id);
+    expect(waiting.outcome).toBe('waiting_human');
+
+    const gated = await service.graph(graph.goal.id);
+    const decision = gated.decisions[0];
+    expect(decision).toMatchObject({ recommendedOptionId: 'retry', status: 'pending' });
+    expect(decision.options?.map((option) => option.id)).toEqual(['retry', 'drop_dependents']);
+    expect(gated.goal.status).toBe('review');
+
+    await service.decide(graph.goal.id, decision.id, 'drop_dependents', 'Give up the blocked work');
+    const after = await service.graph(graph.goal.id);
+    expect(after.nodes.find((node) => node.id === blocked.id)?.status).toBe('retired');
   });
 
   it('reports the effects a tick actually produced, not just its outcome', async () => {

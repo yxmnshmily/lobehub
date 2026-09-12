@@ -15,12 +15,12 @@ const defaultLoaders = import.meta.glob([
   '../../../../packages/locales/src/default/verify.ts',
 ]) as NamespaceLoaderMap;
 const localeLoaders = import.meta.glob([
-  '../../../../locales/*/chat.json',
-  '../../../../locales/*/common.json',
-  '../../../../locales/*/error.json',
-  '../../../../locales/*/plugin.json',
-  '../../../../locales/*/tool.json',
-  '../../../../locales/*/verify.json',
+  '../../../../locales/{en-US,zh-CN}/chat.json',
+  '../../../../locales/{en-US,zh-CN}/common.json',
+  '../../../../locales/{en-US,zh-CN}/error.json',
+  '../../../../locales/{en-US,zh-CN}/plugin.json',
+  '../../../../locales/{en-US,zh-CN}/tool.json',
+  '../../../../locales/{en-US,zh-CN}/verify.json',
 ]) as NamespaceLoaderMap;
 
 export interface LoadI18nNamespaceModuleParams {

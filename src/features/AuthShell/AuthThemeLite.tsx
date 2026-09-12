@@ -15,6 +15,8 @@ import { useIsDark } from '@/hooks/useIsDark';
 import Image from '@/libs/next/Image';
 import Link from '@/libs/next/Link';
 
+import { styles } from './style';
+
 interface AuthThemeLiteProps extends PropsWithChildren {
   globalCDN?: boolean;
 }
@@ -31,6 +33,7 @@ const AuthThemeLite = memo<AuthThemeLiteProps>(({ children, globalCDN }) => {
       defaultThemeMode={currentAppearance}
       style={{ height: '100%' }}
       theme={{
+        components: { Input: { inputFontSizeLG: 14 } },
         cssVar: { key: 'lobe-vars' },
       }}
     >
@@ -46,7 +49,7 @@ const AuthThemeLite = memo<AuthThemeLiteProps>(({ children, globalCDN }) => {
           }}
         >
           <LazyMotion features={domMax}>{children}</LazyMotion>
-          <ToastHost />
+          <ToastHost className={styles.toastViewport} position="top" />
         </ConfigProvider>
       </App>
     </ThemeProvider>

@@ -370,7 +370,7 @@ describe('ConversationStore', () => {
           store.getState().updateInputMessage('first message');
         });
 
-        let sendPromise: Promise<void>;
+        let sendPromise: ReturnType<ReturnType<typeof store.getState>['sendMessage']>;
         act(() => {
           sendPromise = store.getState().sendMessage({ message: 'first message' } as any);
         });

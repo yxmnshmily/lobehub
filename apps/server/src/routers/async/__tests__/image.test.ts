@@ -11,12 +11,17 @@ import { GenerationModel } from '@/database/models/generation';
 import { GenerationBatchModel } from '@/database/models/generationBatch';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { GenerationService } from '@/server/services/generation';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
+import type * as PlatformAiRuntimeModule from '@/server/services/platformAiRuntime';
 import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import { PlatformUsageReservationService } from '@/server/services/platformUsageBilling/reservation';
 
 import { imageRouter } from '../image';
 
 // Constructor-based deps the route instantiates directly.
+vi.mock('@/server/services/notification/generation', () => ({
+  notifyGenerationFailed: vi.fn(async () => {}),
+}));
 vi.mock('@/database/models/asyncTask', () => ({ AsyncTaskModel: vi.fn() }));
 vi.mock('@/database/models/file', () => ({ FileModel: vi.fn() }));
 vi.mock('@/database/models/generation', () => ({ GenerationModel: vi.fn() }));
@@ -29,6 +34,7 @@ const {
   debugLog,
   getReservedUsage,
   platformRuntimeInit,
+  platformPrepaidGuard,
   releaseUnclaimedUsage,
 } = vi.hoisted(() => ({
   claimReservedUsage: vi.fn(),
@@ -36,10 +42,13 @@ const {
   debugLog: vi.fn(),
   getReservedUsage: vi.fn(),
   platformRuntimeInit: vi.fn(),
+  platformPrepaidGuard: vi.fn(),
   releaseUnclaimedUsage: vi.fn(),
 }));
 vi.mock('debug', () => ({ default: vi.fn(() => debugLog) }));
 vi.mock('@/server/services/platformAiRuntime', () => ({
+  // Isolate the policy for downstream legacy settlement tests; the admission regression uses the real guard.
+  assertPlatformImagePrepaidSupport: platformPrepaidGuard,
   PlatformAiRuntime: vi.fn().mockImplementation(() => ({ init: platformRuntimeInit })),
 }));
 vi.mock('@/server/services/platformUsageBilling/reservation', () => ({
@@ -382,6 +391,40 @@ describe('imageRouter.createImage — model mapping failure reconciles billing',
         prechargeResult: undefined,
       }),
     );
+  });
+
+  it('passes the prepaid guard and proceeds with platform generation for an owner self-paid run', async () => {
+    // The prepaid guard no longer blocks owner self-paid images: pricing and
+    // settlement are wired end to end (model-bank imageGeneration units,
+    // computeImageCost, worker completeAndSettle / settleImage). The guard is
+    // now a pass-through, so the remaining failure must come from the
+    // provider/runtime, not from the admission gate.
+    const { assertPlatformImagePrepaidSupport } = await vi.importActual<
+      typeof PlatformAiRuntimeModule
+    >('@/server/services/platformAiRuntime');
+    platformPrepaidGuard.mockImplementationOnce(assertPlatformImagePrepaidSupport);
+    mockCtx.modelRuntimeMode = 'platform-managed';
+    asyncTaskModelMock.findById.mockResolvedValue({ metadata: platformTaskMetadata() });
+    vi.mocked(resolveBusinessModelMapping).mockResolvedValue({
+      requestedModelId: 'some-model',
+      resolvedModelId: 'mapped-model',
+    } as any);
+    const createImage = vi
+      .fn()
+      .mockResolvedValue({ imageUrl: 'data:image/png;base64,test', modelUsage: { cost: 0.1 } });
+    platformRuntimeInit.mockResolvedValue({ createImage });
+    generationServiceMock.transformImageForGeneration.mockResolvedValue({
+      image: { extension: 'png', hash: 'h', height: 128, mime: 'image/png', size: 42, width: 72 },
+      thumbnailImage: {},
+    });
+    generationServiceMock.uploadImageForGeneration.mockResolvedValue({
+      imageUrl: 'https://files.test/customer-image.png',
+      thumbnailImageUrl: 'https://files.test/customer-image-thumbnail.png',
+    });
+    const result = await imageRouter.createCaller(mockCtx).createImage(createInput());
+    expect(result).toMatchObject({ success: true });
+    expect(platformRuntimeInit).toHaveBeenCalled();
+    expect(createImage).toHaveBeenCalled();
   });
 
   it('uses platform credentials while keeping image assets owned by the customer', async () => {
@@ -742,9 +785,12 @@ describe('imageRouter.createImage — model mapping failure reconciles billing',
       resolvedModelId: 'mapped-model',
     } as any);
     const createImage = vi.fn();
+    getReservedUsage.mockResolvedValue(platformReservation({ workspaceId: 'workspace-1' }));
     platformRuntimeInit.mockRejectedValue(new Error('runtime initialization failed'));
 
-    const result = await imageRouter.createCaller(mockCtx).createImage(createInput());
+    const result = await imageRouter
+      .createCaller(mockCtx)
+      .createImage({ ...createInput(), workspaceId: 'workspace-1' });
 
     expect(result).toMatchObject({ success: false });
     expect(createImage).not.toHaveBeenCalled();
@@ -759,6 +805,17 @@ describe('imageRouter.createImage — model mapping failure reconciles billing',
     expect(asyncTaskModelMock.update).toHaveBeenCalledWith(
       'task-1',
       expect.objectContaining({ status: AsyncTaskStatus.Error }),
+    );
+    expect(notifyGenerationFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'image',
+        asyncTaskId: 'task-1',
+        userId: mockCtx.userId,
+        workspaceId: 'workspace-1',
+      }),
+    );
+    expect(asyncTaskModelMock.update.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(notifyGenerationFailed).mock.invocationCallOrder[0],
     );
     expect(chargeAfterGenerate).not.toHaveBeenCalled();
   });

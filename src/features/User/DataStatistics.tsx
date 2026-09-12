@@ -23,6 +23,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-block: 6px;
     padding-inline: 8px;
     border-radius: ${cssVar.borderRadius};
+
+    text-align: center;
+
     background: ${cssVar.colorFillTertiary};
 
     &:hover {
@@ -33,11 +36,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 16px;
     font-weight: bold;
     line-height: 1.2;
+    white-space: nowrap;
   `,
   title: css`
     font-size: 12px;
     line-height: 1.2;
     color: ${cssVar.colorTextDescription};
+    white-space: nowrap;
   `,
   today: css`
     font-size: 12px;
@@ -107,11 +112,11 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
               align={'center'}
               className={styles.card}
               flex={showBadge && !mobile ? 2 : 1}
-              gap={4}
-              justify={'space-between'}
+              gap={8}
+              justify={'center'}
               key={item.key}
             >
-              <Flexbox gap={2}>
+              <Flexbox align={'center'} flex={'none'} gap={2}>
                 <div className={styles.count}>{formatShortenNumber(item.count)}</div>
                 <div className={styles.title}>{item.title}</div>
               </Flexbox>
@@ -132,7 +137,7 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
         }
 
         return (
-          <Flexbox className={styles.card} flex={1} gap={2} key={item.key}>
+          <Flexbox align={'center'} className={styles.card} flex={1} gap={2} key={item.key}>
             <Flexbox horizontal>
               <div className={styles.count}>{formatShortenNumber(item.count)}</div>
             </Flexbox>

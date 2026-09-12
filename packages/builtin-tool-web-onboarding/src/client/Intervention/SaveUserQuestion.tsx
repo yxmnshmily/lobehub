@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 const detailCardStyle = {
   background: 'var(--lobe-fill-tertiary)',
-  border: '1px solid var(--lobe-colorBorderSecondary)',
+  border: '0.5px solid var(--lobe-colorBorderSecondary)',
   borderRadius: 12,
   padding: 16,
 } as const;

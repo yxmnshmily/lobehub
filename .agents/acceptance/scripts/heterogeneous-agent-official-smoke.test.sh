@@ -15,7 +15,7 @@ fail() {
   exit 1
 }
 
-cat > "$TEST_TMP/fake-agent-browser.mjs" <<'JS'
+cat > "$TEST_TMP/fake-agent-browser.mjs" << 'JS'
 #!/usr/bin/env node
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -235,10 +235,10 @@ run_code=$?
 set -e
 
 [[ "$run_code" -eq 1 ]] || fail "expected run exit 1 for a failed cell, got $run_code: $run_output"
-[[ "$run_output" == *"1 passed, 1 failed, 1 blocked"* ]] ||
-  fail "unexpected run summary: $run_output"
+[[ "$run_output" == *"1 passed, 1 failed, 1 blocked"* ]] \
+  || fail "unexpected run summary: $run_output"
 
-node - "$TEST_TMP/report" <<'JS'
+node - "$TEST_TMP/report" << 'JS'
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -288,7 +288,7 @@ if (!passedEvidence.relayVerified || passedEvidence.relayInvocation?.provider !=
 }
 JS
 
-node - "$HETERO_SMOKE_STUB_LOG" <<'JS'
+node - "$HETERO_SMOKE_STUB_LOG" << 'JS'
 const fs = require('node:fs');
 const lines = fs.readFileSync(process.argv[2], 'utf8').trim().split('\n');
 if (lines[0] !== 'preflight') throw new Error(`expected preflight first: ${JSON.stringify(lines)}`);
@@ -328,10 +328,10 @@ set -e
 unset HETERO_SMOKE_STUB_MODE
 
 [[ "$abort_code" -eq 1 ]] || fail "ownership loss exited $abort_code instead of 1: $abort_output"
-[[ "$abort_output" == *"ABORTED matrix: renderer lost the in-page cell state before completion"* ]] ||
-  fail "ownership loss did not abort the matrix: $abort_output"
+[[ "$abort_output" == *"ABORTED matrix: renderer lost the in-page cell state before completion"* ]] \
+  || fail "ownership loss did not abort the matrix: $abort_output"
 
-node - "$TEST_TMP/abort-report" "$HETERO_SMOKE_STUB_LOG" <<'JS'
+node - "$TEST_TMP/abort-report" "$HETERO_SMOKE_STUB_LOG" << 'JS'
 const fs = require('node:fs');
 const path = require('node:path');
 

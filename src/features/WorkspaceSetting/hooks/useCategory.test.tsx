@@ -110,7 +110,7 @@ describe('workspace settings useCategory', () => {
 
   // Viewers hold no `API_KEY_*` grant, so the tab would open onto a list
   // request that immediately 403s.
-  it('hides API Key from viewers, and drops the empty Developer group', () => {
+  it('hides API Key from viewers while keeping their existing credentials accessible in Advanced', () => {
     mocks.canCreateContent = false;
     mocks.canManageWorkspace = false;
 
@@ -120,7 +120,7 @@ describe('workspace settings useCategory', () => {
       WorkspaceSettingsTabs.APIKey,
     );
     expect(result.current.some((group) => group.key === WorkspaceSettingsGroupKey.Developer)).toBe(
-      false,
+      true,
     );
   });
 
@@ -140,13 +140,14 @@ describe('workspace settings useCategory', () => {
     );
 
     expect(developerGroup?.items.map((item) => item.key)).toEqual([
+      WorkspaceSettingsTabs.Creds,
       WorkspaceSettingsTabs.OAuthApps,
     ]);
   });
 
   // Admin-or-higher reads the billing numbers; the pages keep the
   // money-moving controls behind the narrower manage_subscription gate.
-  it('shows Credits and Billing to roles that may view billing', () => {
+  it('shows 积分 and Billing to roles that may view billing', () => {
     const itemKeys = getItemKeys();
 
     expect(itemKeys).toContain(WorkspaceSettingsTabs.Credits);

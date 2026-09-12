@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox, Icon } from '@lobehub/ui';
-import { HomeIcon } from 'lucide-react';
+import { HomeIcon, SettingsIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -21,7 +21,12 @@ const Header = memo(() => {
       breadcrumb={[
         {
           href: `/${slug}/settings`,
-          title: t('workspaceSetting.breadcrumb.settings'),
+          title: (
+            <Flexbox horizontal align="center" gap={4}>
+              <Icon icon={SettingsIcon} size={14} />
+              <span data-nav-label="">{t('workspaceSetting.breadcrumb.settings')}</span>
+            </Flexbox>
+          ),
         },
       ]}
       homeItem={{
@@ -29,7 +34,9 @@ const Header = memo(() => {
         title: (
           <Flexbox horizontal align={'center'} gap={4}>
             <Icon icon={HomeIcon} size={14} />
-            <span>{name}</span>
+            <span data-nav-label="" title={name}>
+              {t('backToHome', { ns: 'common' })}
+            </span>
           </Flexbox>
         ),
       }}

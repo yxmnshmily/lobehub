@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css }) => ({
     position: relative;
 
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css }) => ({
     gap: 8px;
   `,
   presetIcon: css`
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgElevated};
   `,

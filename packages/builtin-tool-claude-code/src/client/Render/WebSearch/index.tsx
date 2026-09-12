@@ -39,7 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     padding-block: 5px;
     padding-inline: 4px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     &:last-child {
       border-block-end: 0;

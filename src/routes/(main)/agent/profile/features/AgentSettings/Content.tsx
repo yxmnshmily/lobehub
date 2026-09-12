@@ -1,5 +1,6 @@
 'use client';
 
+import { agentDisplayName } from '@lobechat/types';
 import isEqual from 'fast-deep-equal';
 import { ActivityIcon, GitBranchIcon, MessageSquareHeartIcon } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
@@ -81,7 +82,10 @@ const Content = memo(() => {
     [availableTabs, t],
   );
 
-  const displayTitle = isInbox ? '旅游群主AI' : meta.title || t('defaultSession', { ns: 'common' });
+  const displayTitle = agentDisplayName(
+    meta,
+    isInbox ? '旅游群主AI' : t('defaultSession', { ns: 'common' }),
+  );
 
   return (
     <SettingsModalLayout

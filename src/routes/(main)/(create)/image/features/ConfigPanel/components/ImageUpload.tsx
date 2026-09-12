@@ -55,7 +55,7 @@ const styles = createStaticStyles(({ css }) => {
 
       padding-block: 8px;
       padding-inline: 16px;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadius};
 
       font-size: 12px;
@@ -121,7 +121,7 @@ const styles = createStaticStyles(({ css }) => {
 
       width: 100%;
       height: 160px;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorFillTertiary};
@@ -184,7 +184,7 @@ const styles = createStaticStyles(({ css }) => {
 
       width: 100%;
       height: 160px;
-      border: 2px solid ${cssVar.colorPrimary};
+      border: 0.5px solid ${cssVar.colorPrimary};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorFillSecondary};

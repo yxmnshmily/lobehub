@@ -11,8 +11,8 @@ export const resolveLang = (locale: LocaleMode) =>
 export const switchLang = (locale: LocaleMode) => {
   const lang = resolveLang(locale);
 
-  changeLanguage(lang);
   document.documentElement.lang = lang;
+  changeLanguage(lang);
 
   setCookie(LOBE_LOCALE_COOKIE, locale === 'auto' ? undefined : locale, 365);
 };

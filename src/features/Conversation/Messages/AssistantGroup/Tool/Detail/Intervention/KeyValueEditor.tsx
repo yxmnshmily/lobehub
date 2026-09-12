@@ -7,12 +7,14 @@ import { LucidePlus, LucideTrash } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   form: css`
     position: relative;
 
     width: 100%;
-    min-width: 600px;
+    min-width: 0;
     padding: 8px;
     border-radius: ${cssVar.borderRadiusLG};
   `,
@@ -25,10 +27,23 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   row: css`
     position: relative;
+
+    @media (width <= 600px) {
+      flex-direction: column;
+      align-items: stretch;
+
+      .ant-form-item {
+        width: 100%;
+      }
+    }
   `,
   title: css`
     margin-block-end: 4px;
     color: ${cssVar.colorTextTertiary};
+
+    @media (width <= 600px) {
+      display: none;
+    }
   `,
 }));
 
@@ -68,6 +83,7 @@ const formListToRecord = (list: KeyValueItem[]): Record<string, any> => {
 };
 
 const KeyValueEditor = memo<KeyValueEditorProps>(({ initialValue = {}, onFinish, onCancel }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation(['tool', 'common']);
   const [form] = Form.useForm();
 
@@ -117,8 +133,8 @@ const KeyValueEditor = memo<KeyValueEditorProps>(({ initialValue = {}, onFinish,
       ref={formRef}
     >
       <Flexbox horizontal className={styles.title} gap={8}>
-        <Flexbox flex={1}>key</Flexbox>
-        <Flexbox flex={4}>value</Flexbox>
+        <Flexbox flex={1}>{translateTravel('键名')}</Flexbox>
+        <Flexbox flex={4}>{translateTravel('值')}</Flexbox>
       </Flexbox>
       <Form.List name="items">
         {(fields, { add, remove }) => (

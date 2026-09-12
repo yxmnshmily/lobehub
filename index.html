@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/png" href="/lobehub/app-icons/travel-cloud-mascot.png" />
     <link rel="shortcut icon" type="image/png" href="/lobehub/app-icons/travel-cloud-mascot.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -28,6 +28,68 @@
       html[data-theme='dark'] #loading-screen {
         background: #000;
       }
+      /*
+       * First-paint placeholder for the nav column. The shell mounts after the
+       * boot bundle runs, so without this the left 280px sits empty for a beat
+       * and the content pane looks like it starts too far right. It is hidden
+       * the moment React renders anything into #root.
+       */
+      #boot-nav {
+        position: fixed;
+        z-index: 0;
+        inset-block: 0;
+        inset-inline-start: 0;
+
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        box-sizing: border-box;
+        width: 280px;
+        padding: 8px 10px;
+
+        background: #f8f8f8;
+      }
+      html[data-theme='dark'] #boot-nav {
+        background: #000;
+      }
+      /*
+       * First-paint placeholder for the site header. The header is injected by
+       * site-shell.js after boot, so without this the content occupies the top
+       * of the viewport for a beat and is pushed down once the header lands.
+       */
+      #boot-header {
+        position: fixed;
+        z-index: 2;
+        inset-block-start: 0;
+        inset-inline: 0;
+
+        box-sizing: border-box;
+        height: 72px;
+
+        background: #fff;
+        border-block-end: 0.5px solid rgba(15, 17, 21, 0.06);
+      }
+      html[data-theme='dark'] #boot-header {
+        background: #141414;
+        border-block-end-color: rgba(255, 255, 255, 0.08);
+      }
+      #boot-nav .boot-nav-account {
+        flex: none;
+        height: 64px;
+      }
+      #boot-nav .boot-nav-surface {
+        flex: 1;
+        min-height: 0;
+        border-radius: 16px;
+        background: #fff;
+      }
+      html[data-theme='dark'] #boot-nav .boot-nav-surface {
+        background: #141414;
+      }
+      /* Hidden by the boot script below as soon as the real nav column (or its
+         skeleton) exists; the inline script also has a timeout fallback so a
+         route without a sidebar can never leave the placeholder behind. */
       @keyframes loading-draw {
         0% {
           stroke-dashoffset: 1000;
@@ -164,7 +226,54 @@
         </svg>
       </div>
     </div>
+    <div aria-hidden="true" id="boot-header"></div>
+    <div aria-hidden="true" id="boot-nav">
+      <div class="boot-nav-account"></div>
+      <div class="boot-nav-surface"></div>
+    </div>
     <div id="root" style="height: 100%"></div>
+    <script>
+      /* Keep the first-paint nav placeholder until the shell's nav column (or
+         its loading skeleton) really exists, then drop it. The 8s guard covers
+         routes that intentionally ship no sidebar at all. */
+      (function () {
+        var placeholder = document.getElementById('boot-nav');
+        if (!placeholder) return;
+        var start = Date.now();
+        var ready = function () {
+          return document.querySelector('[data-nav-layout],[data-testid="nav-sidebar-skeleton"]');
+        };
+        var drop = function (hard) {
+          if (hard) placeholder.remove();
+          else placeholder.style.display = 'none';
+        };
+        var tick = function () {
+          if (ready()) return drop(false);
+          if (Date.now() - start > 8000) return drop(true);
+          setTimeout(tick, 150);
+        };
+        tick();
+
+        /* Same idea for the site header placeholder. */
+        var headerPlaceholder = document.getElementById('boot-header');
+        var headerReady = function () {
+          /* Only the site shell's header counts — the app also renders empty
+             <header> elements that would hide this placeholder too early. */
+          return document.querySelector('.site-header, [data-site-header]');
+        };
+        var headerDrop = function (hard) {
+          if (!headerPlaceholder) return;
+          if (hard) headerPlaceholder.remove();
+          else headerPlaceholder.style.display = 'none';
+        };
+        var tickHeader = function () {
+          if (headerReady()) return headerDrop(false);
+          if (Date.now() - start > 8000) return headerDrop(true);
+          setTimeout(tickHeader, 150);
+        };
+        tickHeader();
+      })();
+    </script>
 
     <!--ANALYTICS_SCRIPTS-->
     <script type="module" src="/src/spa/entry.web.tsx"></script>

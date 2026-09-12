@@ -14,7 +14,7 @@ import TotalTokens from '../TotalTokens';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   avatar: css`
     box-sizing: content-box;
-    border: 4px solid ${cssVar.colorBgLayout};
+    border: 0.5px solid ${cssVar.colorBgLayout};
     background: ${cssVar.colorText};
   `,
   background: css`
@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
 
     width: 100%;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: calc(${cssVar.borderRadiusLG} * 2);
 
     background: ${cssVar.colorBgLayout};
@@ -64,7 +64,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
       width: 100%;
       max-height: 70dvh;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgLayout};

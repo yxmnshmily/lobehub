@@ -1,6 +1,13 @@
 export default {
-  'messenger.activeAgent': 'Active agent',
-  'messenger.activeAgentPlaceholder': 'Select an agent',
+  'messenger.unnamedGroup': 'Unnamed workgroup',
+  'messenger.groupLoadRetry': 'Could not load workgroups. Retry',
+  'messenger.groupsEmpty': 'No workgroups available. Create a workgroup first.',
+  'messenger.error.groupNotFound': 'Workgroup not found or access unavailable.',
+  'messenger.error.groupSupervisorMissing':
+    'Configure a supervisor in the workgroup before connecting.',
+  'messenger.detail.commands.groups': 'List workgroups; send /groups <number> to switch',
+  'messenger.activeAgent': 'Receiving workgroup',
+  'messenger.activeAgentPlaceholder': 'Select a workgroup',
   'messenger.scope': 'Workspace',
   'messenger.scopePersonal': 'Personal',
   'messenger.scopePersonalTag': 'personal',
@@ -30,7 +37,7 @@ export default {
   'messenger.error.disconnectNotAllowed': 'You can only disconnect installations you started.',
   'messenger.error.installationNotFound': 'Installation not found.',
   'messenger.error.linkRequired': 'Open the bot and send /start before changing this connection.',
-  'messenger.error.pickDefaultAgent': 'Select a default agent before confirming.',
+  'messenger.error.pickDefaultAgent': 'Select a workgroup before confirming.',
   'messenger.error.platformNotConfigured':
     "This messenger platform isn't available right now. Please try again later.",
   'messenger.linkCta': 'Connect',
@@ -116,13 +123,13 @@ export default {
     'Open the bot on Discord and send any message to finish linking your account.',
   'messenger.discord.userPending.name': 'Not linked yet',
   'messenger.list.discord.description':
-    'Chat with your LobeHub agents on Discord by DMing the LobeHub bot from any server.',
+    'Collaborate with your workgroup through Discord DMs or bot mentions.',
   'messenger.list.slack.description':
-    'Chat with your LobeHub agents on Slack by DMing or mentioning @LobeHub in any workspace.',
+    'Send requests to your workgroup through Slack DMs or bot mentions.',
   'messenger.list.telegram.description':
-    'Chat with your LobeHub agents on Telegram, and choose which agent replies.',
+    'Message your workgroup on Telegram and let the supervisor coordinate members.',
   'messenger.list.wechat.description':
-    'Scan with WeChat to chat privately with your LobeHub agents and switch agents with /agents.',
+    'Connect by scanning a WeChat QR code and send messages to your workgroup.',
   'messenger.paidBadge': 'Pro',
   'messenger.push.alwaysAvailable': 'Ready to send',
   'messenger.push.alwaysAvailableHint':
@@ -170,9 +177,9 @@ export default {
     '{{platform}} only lets the bot message you inside a send window — reply anything to reset it to {{max}} sends / 24 hours.',
   'messenger.push.windowOpen': 'Send window open',
   'messenger.setActiveFailed': 'Failed to set as active.',
-  'messenger.setActiveSuccess': 'Active agent updated.',
+  'messenger.setActiveSuccess': 'Receiving workgroup updated.',
   'messenger.subtitle':
-    'Connect your account to the official LobeHub bot once. Pick which agent receives messages, switch any time from here or from the bot.',
+    'Connect a chat platform to a workgroup. Incoming messages go to the selected group, where the supervisor coordinates members and sends replies back.',
   'messenger.title': 'Messenger',
   'messenger.unlinkConfirm':
     'Disconnect your {{platform}} account from LobeHub? Inbound messages will stop until you /start again.',
@@ -186,9 +193,9 @@ export default {
   'messenger.wechat.cancelRescan': 'Cancel rescan',
   'messenger.wechat.connectCta': 'Generate QR code',
   'messenger.wechat.connected': 'WeChat connected.',
-  'messenger.wechat.defaultAgent': 'Default agent',
+  'messenger.wechat.defaultAgent': 'Receiving workgroup',
   'messenger.wechat.defaultAgentHint':
-    'New WeChat messages will be routed to this agent. You can switch later with /agents.',
+    'New WeChat messages go to this workgroup. Use /groups to switch workgroups.',
   'messenger.wechat.error.alreadyLinkedToOther':
     'This WeChat account is already connected to another LobeHub account.',
   'messenger.wechat.error.connectionFailed':
@@ -237,7 +244,7 @@ export default {
     'WeChat ended this login session. Rescan to reconnect without changing the active agent.',
   'messenger.wechat.runtime.sessionExpiredTitle': 'WeChat session expired',
   'messenger.wechat.selectAgentHint':
-    'WeChat is connected. Select an Agent to receive new messages.',
+    'WeChat is connected. Select a workgroup to receive messages.',
   'messenger.wechat.setupTitle': 'Connect WeChat',
   'messenger.wechat.upgradeCta': 'View plans',
   'verify.confirm.conflict.description':
@@ -245,10 +252,10 @@ export default {
   'verify.confirm.conflict.switchAccount': 'Sign in with another account',
   'verify.confirm.conflict.title': 'This account is already linked',
   'verify.confirm.cta': 'Confirm linking',
-  'verify.confirm.defaultAgent': 'Default agent',
+  'verify.confirm.defaultAgent': 'Receiving workgroup',
   'verify.confirm.defaultAgentHint':
-    'Your messages will be routed here first. You can switch any time via /agents in the bot or from Settings → Messenger.',
-  'verify.confirm.defaultAgentPlaceholder': 'Select an agent',
+    'Messages go to the selected workgroup for the supervisor to coordinate. Switch here or with /groups.',
+  'verify.confirm.defaultAgentPlaceholder': 'Select a workgroup',
   'verify.confirm.fields.lobeHubAccount': 'LobeHub account',
   'verify.confirm.fields.platformAccount': '{{platform}} account',
   'verify.confirm.fields.workspace': 'Workspace',

@@ -8,7 +8,20 @@ import { ProfileTabs, SettingsTabs, SidebarTabKey } from '@/store/global/initial
  */
 export const useActiveTabKey = () => {
   const { pathname } = useActiveLocation();
-  return (pathname.split('/').find(Boolean)! as SidebarTabKey) || SidebarTabKey.Home;
+  return resolveActiveTabKey(pathname);
+};
+
+const sidebarTabKeys = new Set<string>(Object.values(SidebarTabKey));
+
+export const resolveActiveTabKey = (pathname: string) => {
+  const segments = pathname.split('/').filter(Boolean);
+  const firstKnownTab = segments.slice(0, 2).find((segment) => sidebarTabKeys.has(segment));
+
+  return (
+    (firstKnownTab as SidebarTabKey | undefined) ??
+    (segments[0] as SidebarTabKey | undefined) ??
+    SidebarTabKey.Home
+  );
 };
 
 /**

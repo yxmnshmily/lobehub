@@ -1,5 +1,8 @@
+import { messages } from '@lobechat/database/schemas';
 import debug from 'debug';
+import { and, desc, eq } from 'drizzle-orm';
 
+import { AgentOperationModel } from '@/database/models/agentOperation';
 import { TaskModel } from '@/database/models/task';
 import { VerifyRunModel } from '@/database/models/verifyRun';
 import type { LobeChatDatabase } from '@/database/type';
@@ -10,6 +13,15 @@ import { VerifyPlanGeneratorService } from './planGenerator';
 import { resolveTaskAcceptance } from './taskAcceptance';
 
 const log = debug('lobe-server:verify-plan-instantiation');
+
+/** Operation statuses that mean the run will never complete again. */
+const TERMINAL_OPERATION_STATUSES = new Set([
+  'done',
+  'error',
+  'interrupted',
+  'aborted',
+  'canceled',
+]);
 
 export interface InstantiateVerifyPlanParams {
   operationId: string;
@@ -121,6 +133,46 @@ export const instantiateVerifyPlanOnStart = async (
         run.plan.length,
         acceptance.id,
       );
+
+      // Race guard for task-driven runs. This instantiation is fire-and-forget
+      // and (on the holistic path) spends an AI call, while a task operation can
+      // terminate before it lands — the in-memory hand-off in CompletionLifecycle
+      // only covers operations that registered a promise there (top-level task
+      // ops), and a task's member operation may not. The completion-time gate
+      // resolves its run by operation id and silently returns when the run does
+      // not exist yet, which would leave this run planned forever with nobody
+      // left to re-fire it. Now that a confirmed plan exists, re-run the
+      // completion gate when the operation has already terminated;
+      // `claimEvidenceCollection` and `claimVerifying` are status-guarded, so a
+      // duplicate late call is a no-op.
+      try {
+        const op = await new AgentOperationModel(db, userId, workspaceId).findById(
+          params.operationId,
+        );
+        if (op && TERMINAL_OPERATION_STATUSES.has(op.status)) {
+          const [latestAssistant] = op.topicId
+            ? await db
+                .select({ content: messages.content })
+                .from(messages)
+                .where(and(eq(messages.topicId, op.topicId), eq(messages.role, 'assistant')))
+                .orderBy(desc(messages.createdAt))
+                .limit(1)
+            : [];
+          const deliverable =
+            typeof latestAssistant?.content === 'string' ? latestAssistant.content : '';
+
+          const { runVerifyOnCompletion } = await import('./lifecycle');
+          await runVerifyOnCompletion(
+            db,
+            userId,
+            { deliverable, goal: run.goal ?? '', operationId: params.operationId },
+            workspaceId,
+          );
+          log('re-fired completion gate for already-terminated op %s', params.operationId);
+        }
+      } catch (error) {
+        log('completion-gate race guard failed (non-fatal): %O', error);
+      }
     }
   } catch (error) {
     log('instantiateVerifyPlanOnStart failed for op %s (non-fatal): %O', params.operationId, error);

@@ -13,6 +13,7 @@ import {
   RESOURCE_HOME_SECTIONS,
   ResourceSectionSkeleton,
 } from '@/components/Skeleton/ResourceHome';
+import ResourceQuickActions from '@/features/ResourceManager/components/Explorer/ItemDropdown/QuickActions';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
 import { getResourceQueryVisibility } from '@/features/ResourceManager/store/selectors';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -26,13 +27,14 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     cursor: pointer;
 
+    overflow: hidden;
     display: flex;
     gap: 12px;
     align-items: center;
 
     padding-block: 12px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     text-align: start;
@@ -54,6 +56,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 12px;
+    align-items: start;
   `,
   meta: css`
     font-size: 12px;
@@ -84,7 +87,7 @@ const RecentPages = memo(() => {
 
   const { data, error, isLoading, mutate } = useClientDataSWR(
     resourceKeys.recentPages(workspaceId ?? null, visibility),
-    () => fileService.getRecentPages(6, visibility),
+    () => fileService.getRecentPages(8, visibility),
   );
 
   if (!isLoading && !error && !data?.length) return null;
@@ -101,22 +104,29 @@ const RecentPages = memo(() => {
           {data?.map((item) => {
             const emoji = (item.metadata as { emoji?: string } | null)?.emoji;
             return (
-              <button
+              <div
                 className={styles.card}
                 key={item.id}
-                type={'button'}
-                onClick={() => navigate(`/resource?file=${item.id}`)}
+                style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 0 }}
               >
-                {emoji ? (
-                  <span className={styles.emoji}>{emoji}</span>
-                ) : (
-                  <Icon icon={FileTextIcon} size={20} />
-                )}
-                <Flexbox gap={2} style={{ minWidth: 0 }}>
-                  <span className={styles.title}>{item.name}</span>
-                  <span className={styles.meta}>{formatTime(item.updatedAt)}</span>
-                </Flexbox>
-              </button>
+                <button
+                  className={styles.card}
+                  style={{ border: 0, borderRadius: 0, boxShadow: 'none', width: '100%' }}
+                  type={'button'}
+                  onClick={() => navigate(`/resource?file=${item.id}`)}
+                >
+                  {emoji ? (
+                    <span className={styles.emoji}>{emoji}</span>
+                  ) : (
+                    <Icon icon={FileTextIcon} size={20} />
+                  )}
+                  <Flexbox gap={2} style={{ minWidth: 0 }}>
+                    <span className={styles.title}>{item.name}</span>
+                    <span className={styles.meta}>{formatTime(item.updatedAt)}</span>
+                  </Flexbox>
+                </button>
+                <ResourceQuickActions {...item} filename={item.name} url={item.url || ''} />
+              </div>
             );
           })}
         </div>

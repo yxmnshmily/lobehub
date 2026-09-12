@@ -66,6 +66,7 @@ interface BuildServerCallLlmContextInput {
 }
 
 export interface ServerCallLlmContextBuildResult {
+  messageSourceIds?: (string | undefined)[];
   preserveThinkingForPayload?: boolean;
   processedMessages: ChatStreamPayload['messages'];
   resolvedExtendParams?: ServerCallLlmContextHints['resolvedExtendParams'];
@@ -83,6 +84,7 @@ export const buildServerCallLlmContext = async ({
   const agentConfig = ctx.agentConfig;
   if (!agentConfig) {
     return {
+      messageSourceIds: llmPayload.messages.map((message) => message.id),
       processedMessages: llmPayload.messages as ChatStreamPayload['messages'],
       shouldReplayAssistantReasoning: false,
     };
@@ -517,7 +519,7 @@ export const buildServerCallLlmContext = async ({
             );
             for (const tool of COMPOSIO_APP_TYPES) {
               officialTools.push({
-                description: `LobeHub Mcp Server: ${tool.label}`,
+                description: `旅游群 Mcp Server: ${tool.label}`,
                 enabled: enabledPlugins.includes(tool.identifier),
                 identifier: tool.identifier,
                 installed: connectedComposioIds.has(tool.identifier),
@@ -619,7 +621,7 @@ export const buildServerCallLlmContext = async ({
             );
             for (const tool of COMPOSIO_APP_TYPES) {
               groupOfficialTools.push({
-                description: `LobeHub Mcp Server: ${tool.label}`,
+                description: `旅游群 Mcp Server: ${tool.label}`,
                 enabled: enabledPlugins.includes(tool.identifier),
                 identifier: tool.identifier,
                 installed: connectedComposioIds.has(tool.identifier),
@@ -729,6 +731,7 @@ export const buildServerCallLlmContext = async ({
     ...(onboardingContext && { onboardingContext }),
   };
 
+  let messageSourceIds: (string | undefined)[] = [];
   const processedMessages = await agentRuntimeTracer.startActiveSpan(
     CONTEXT_ENGINEERING_SPAN_NAME,
     {
@@ -761,7 +764,12 @@ export const buildServerCallLlmContext = async ({
     },
     async (ceSpan) => {
       try {
-        const result = await serverMessagesEngine(contextEngineInput);
+        const result = await serverMessagesEngine({
+          ...contextEngineInput,
+          onMessageSources: (ids) => {
+            messageSourceIds = ids;
+          },
+        });
         ceSpan.setAttribute('lobehub.context.message_count', result.length);
         return result;
       } catch (error) {
@@ -788,6 +796,7 @@ export const buildServerCallLlmContext = async ({
   );
 
   return {
+    messageSourceIds,
     preserveThinkingForPayload,
     processedMessages,
     resolvedExtendParams,

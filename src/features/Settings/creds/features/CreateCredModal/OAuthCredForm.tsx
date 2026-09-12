@@ -8,6 +8,8 @@ import { createStaticStyles } from 'antd-style';
 import { type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 import { type CredsApi } from '../useCredsApi';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
@@ -45,6 +47,7 @@ interface FormValues {
 }
 
 const OAuthCredForm: FC<OAuthCredFormProps> = ({ credsApi, disabled, onBack, onSuccess }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('setting');
   const [form] = Form.useForm<FormValues>();
 
@@ -133,7 +136,7 @@ const OAuthCredForm: FC<OAuthCredFormProps> = ({ credsApi, disabled, onBack, onS
           { pattern: /^[\w-]+$/, message: t('creds.form.keyPattern') },
         ]}
       >
-        <Input disabled={disabled} placeholder="e.g., github-oauth" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：github-oauth')} />
       </Form.Item>
 
       <Form.Item
@@ -141,7 +144,7 @@ const OAuthCredForm: FC<OAuthCredFormProps> = ({ credsApi, disabled, onBack, onS
         name="name"
         rules={[{ required: true, message: t('creds.form.nameRequired') }]}
       >
-        <Input disabled={disabled} placeholder="e.g., GitHub Connection" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：GitHub 连接')} />
       </Form.Item>
 
       <Form.Item label={t('creds.form.description')} name="description">

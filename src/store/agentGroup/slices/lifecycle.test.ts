@@ -52,6 +52,19 @@ describe('ChatGroupLifecycleSlice', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps topic navigation and new-chat requests in the same default group', () => {
+    const push = vi.fn();
+    useAgentGroupStore.setState({
+      activeGroupId: 'group-1',
+      groupMap: { 'group-1': { id: 'group-1', clientId: 'default-travel-service-group' } as any },
+      router: { push } as any,
+    });
+    useAgentGroupStore.getState().switchTopic('old-topic');
+    expect(push).toHaveBeenLastCalledWith('/group/group-1#topic%3Aold-topic', { replace: true });
+    useAgentGroupStore.getState().switchToNewTopic();
+    expect(push).toHaveBeenLastCalledWith('/group/group-1', { replace: true });
+  });
+
   describe('createGroup', () => {
     it('should create a new group and switch to it', async () => {
       const mockGroup = {

@@ -40,8 +40,7 @@ describe('SocialActionImpl', () => {
         ([key]) => Array.isArray(key) && key[0] === discoverKeys.followCounts.root && key[1] === 42,
       );
       const updateCounts = countsCall?.[1] as
-        | ((current?: FollowCounts) => FollowCounts)
-        | undefined;
+        ((current?: FollowCounts) => FollowCounts) | undefined;
 
       expect(updateCounts?.({ followersCount: 2, followingCount: 7 })).toEqual({
         followersCount: 3,
@@ -69,8 +68,7 @@ describe('SocialActionImpl', () => {
         ([key]) => Array.isArray(key) && key[0] === discoverKeys.followCounts.root && key[1] === 42,
       );
       const updateCounts = countsCall?.[1] as
-        | ((current?: FollowCounts) => FollowCounts)
-        | undefined;
+        ((current?: FollowCounts) => FollowCounts) | undefined;
 
       expect(updateCounts?.({ followersCount: 2, followingCount: 7 })).toEqual({
         followersCount: 1,

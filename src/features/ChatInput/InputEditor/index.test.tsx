@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ChatInputAutoFocusContext } from '../components/AutoFocusContext';
 import InputEditor from './index';
 
 const permission = vi.hoisted(() => ({
@@ -12,7 +13,13 @@ const platform = vi.hoisted(() => ({
 }));
 
 const mocks = vi.hoisted(() => {
+  const editor = {
+    dispatchCommand: vi.fn(),
+    getLexicalEditor: vi.fn(() => ({})),
+    isEmpty: true,
+  };
   const chatInputState = {
+    editor,
     clearInputCompletionError: vi.fn(() => {
       chatInputState.inputCompletionError = undefined;
       chatInputState.inputCompletionErrorDismissed = false;
@@ -32,7 +39,9 @@ const mocks = vi.hoisted(() => {
   return {
     chainInputCompletion: vi.fn(),
     chatInputState,
-    dispatchEditorCommand: vi.fn(),
+    dispatchEditorCommand: editor.dispatchCommand,
+    editor,
+    updateMarkdownContent: vi.fn(),
     generateJSON: vi.fn(),
     inputCompletionConfig: {
       enabled: false,
@@ -204,18 +213,15 @@ vi.mock('@/store/user/selectors', () => ({
 
 vi.mock('../hooks/useAgentId', () => ({ useAgentId: () => 'agent-id' }));
 vi.mock('../store', () => {
-  const editor = {
-    dispatchCommand: mocks.dispatchEditorCommand,
-  };
   const state = {
     disableMention: true,
     disableSlash: true,
-    editor,
+    editor: mocks.editor,
     expand: false,
     handleSendButton: vi.fn(),
     slashMenuRef: { current: null },
     slashPlacement: 'top',
-    updateMarkdownContent: vi.fn(),
+    updateMarkdownContent: mocks.updateMarkdownContent,
   };
 
   return {
@@ -251,8 +257,26 @@ vi.mock('./useLocalFileTag', () => ({
 vi.mock('./useMentionCategories', () => ({ useMentionCategories: () => [] }));
 
 describe('ChatInput InputEditor', () => {
+  it('does not autofocus when embedded in a content page', async () => {
+    render(
+      <ChatInputAutoFocusContext value={false}>
+        <InputEditor />
+      </ChatInputAutoFocusContext>,
+    );
+    const { Editor } = await import('@lobehub/editor/react');
+    expect(vi.mocked(Editor).mock.lastCall?.[0]).toMatchObject({ autoFocus: false });
+  });
+
+  it('preserves autofocus for normal conversations', async () => {
+    render(<InputEditor />);
+    const { Editor } = await import('@lobehub/editor/react');
+    expect(vi.mocked(Editor).mock.lastCall?.[0]).toMatchObject({ autoFocus: true });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.editor.getLexicalEditor.mockReturnValue({});
+    mocks.editor.isEmpty = true;
     permission.allowed = false;
     platform.isMobile = false;
     mocks.inputCompletionConfig.enabled = false;
@@ -273,6 +297,40 @@ describe('ChatInput InputEditor', () => {
     render(<InputEditor />);
 
     expect(screen.getByTestId('mock-editor')).toHaveAttribute('data-editable', 'false');
+  });
+
+  it('ignores a queued change after the input unmounts', async () => {
+    const { unmount } = render(<InputEditor />);
+    const { Editor } = await import('@lobehub/editor/react');
+    const onChange = vi.mocked(Editor).mock.lastCall?.[0].onChange;
+    unmount();
+    onChange?.({} as never);
+    expect(mocks.updateMarkdownContent).not.toHaveBeenCalled();
+  });
+
+  it('ignores a queued change after the editor is destroyed', async () => {
+    render(<InputEditor />);
+    const { Editor } = await import('@lobehub/editor/react');
+    mocks.editor.getLexicalEditor.mockReturnValue(null as never);
+    vi.mocked(Editor).mock.lastCall?.[0].onChange?.({} as never);
+    expect(mocks.updateMarkdownContent).not.toHaveBeenCalled();
+  });
+
+  it('continues updating the live editor', async () => {
+    render(<InputEditor />);
+    const { Editor } = await import('@lobehub/editor/react');
+    vi.mocked(Editor).mock.lastCall?.[0].onChange?.({} as never);
+    expect(mocks.updateMarkdownContent).toHaveBeenCalledOnce();
+  });
+
+  it('checks the current draft at unload without subscribing to toolbar state', async () => {
+    render(<InputEditor />);
+    const { useEditorState } = await import('@lobehub/editor/react');
+    expect(useEditorState).not.toHaveBeenCalled();
+    mocks.editor.isEmpty = false;
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it('initializes the editor with content captured by a fallback input', () => {
@@ -312,7 +370,7 @@ describe('ChatInput InputEditor', () => {
 
     expect(props?.onKeyDown?.({ event })).toBe(true);
     expect(event.defaultPrevented).toBe(true);
-    expect(mocks.dispatchEditorCommand).toHaveBeenCalledWith('insert-line-break', undefined);
+    expect(mocks.dispatchEditorCommand).toHaveBeenCalledWith('insert-line-break', false);
   });
 
   it('pauses autocomplete after a non-abort generation error', async () => {

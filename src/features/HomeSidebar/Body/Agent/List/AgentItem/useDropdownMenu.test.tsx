@@ -338,6 +338,33 @@ describe('useAgentDropdownMenu', () => {
     expect(canGoNative(result.current() ?? [])).toBe(true);
   });
 
+  it.each([null, 'workspace-1'])(
+    'opens the existing agent profile from Manage in scope %s',
+    (workspaceId) => {
+      mocks.activeWorkspaceId = workspaceId;
+      mocks.canEditResource = true;
+      const { result } = renderHook(() =>
+        useAgentDropdownMenu({
+          anchor: null,
+          group: undefined,
+          id: 'agent-1',
+          openCreateGroupModal: vi.fn(),
+          pinned: false,
+          title: 'Agent',
+        }),
+      );
+      const item = result
+        .current()
+        ?.find((entry) => entry && 'key' in entry && entry.key === 'manage');
+      expect(item).toBeTruthy();
+      if (!item || !('onClick' in item) || !item.onClick) throw new Error('Missing Manage action');
+      const stopPropagation = vi.fn();
+      item.onClick({ domEvent: { stopPropagation } } as never);
+      expect(stopPropagation).toHaveBeenCalledOnce();
+      expect(mocks.navigate).toHaveBeenCalledWith('/agent/agent-1/profile');
+    },
+  );
+
   it('groups display, organization, access, and destructive actions by intent', () => {
     mocks.canEditResource = true;
     mocks.canManage = true;
@@ -362,6 +389,7 @@ describe('useAgentDropdownMenu', () => {
       'hideFromSidebar',
       'openInNewWindow',
       'divider',
+      'manage',
       'rename',
       'duplicate',
       'moveGroup',

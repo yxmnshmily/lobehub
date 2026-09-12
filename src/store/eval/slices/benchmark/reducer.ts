@@ -1,4 +1,4 @@
-import  { type AgentEvalBenchmark } from '@lobechat/types';
+import { type AgentEvalBenchmark } from '@lobechat/types';
 import { produce } from 'immer';
 
 type SetBenchmarkDetailAction = {
@@ -19,9 +19,7 @@ type DeleteBenchmarkDetailAction = {
 };
 
 export type BenchmarkDetailDispatch =
-  | SetBenchmarkDetailAction
-  | UpdateBenchmarkDetailAction
-  | DeleteBenchmarkDetailAction;
+  SetBenchmarkDetailAction | UpdateBenchmarkDetailAction | DeleteBenchmarkDetailAction;
 
 export const benchmarkDetailReducer = (
   state: Record<string, AgentEvalBenchmark> = {},

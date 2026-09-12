@@ -98,7 +98,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 6px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   truncatedNote: css`
     padding-block: 8px;
@@ -127,7 +127,7 @@ const styles = createStaticStyles(({ css }) => ({
       max-width: 320px;
       padding-block: 4px;
       padding-inline: 8px;
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
 
       text-overflow: ellipsis;
       white-space: nowrap;

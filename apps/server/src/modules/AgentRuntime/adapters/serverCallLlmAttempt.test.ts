@@ -58,6 +58,7 @@ const createAttempt = (
   attemptOverrides?: {
     clientIp?: string;
     agentShareVisitorIds?: { agentId: string; shareId: string; visitorUserId: string };
+    onProviderRequestId?: (providerRequestId: string) => Promise<void>;
     userAgent?: string;
   },
 ) => {
@@ -111,6 +112,41 @@ const createAttempt = (
 describe('ServerCallLlmAttempt', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('reports provider request identity as soon as response metadata is available', async () => {
+    const onProviderRequestId = vi.fn().mockResolvedValue(undefined);
+    const { attempt } = createAttempt(
+      async ({ callback, diagnostics }) => {
+        Object.assign(diagnostics!, {
+          providerResponse: {
+            droppedEventCount: 0,
+            eventCount: 0,
+            eventCounts: {},
+            events: [],
+            hasNonWhitespaceText: true,
+            hasNonWhitespaceThinking: false,
+            rawEvents: [],
+            requestId: 'provider-request-runtime-1',
+            signatureChars: 0,
+            terminalEventReceived: true,
+            textChars: 6,
+            thinkingChars: 0,
+            toolInputChars: 0,
+            toolUseCount: 0,
+          },
+        });
+        await callback?.onText?.('answer');
+        await callback?.onCompletion?.({ finishReason: 'stop', text: 'answer' });
+      },
+      undefined,
+      { onProviderRequestId },
+    );
+
+    await attempt.execute();
+
+    expect(onProviderRequestId).toHaveBeenCalledOnce();
+    expect(onProviderRequestId).toHaveBeenCalledWith('provider-request-runtime-1');
   });
 
   it('collects callback output and exposes a completed attempt snapshot', async () => {

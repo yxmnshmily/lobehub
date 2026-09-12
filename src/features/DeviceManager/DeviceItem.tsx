@@ -63,7 +63,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   metaDivider: css`
     flex: none;
-    width: 1px;
+    width: 0.5px;
     height: 10px;
     background: ${cssVar.colorBorderSecondary};
   `,
@@ -99,7 +99,7 @@ const styles = createStaticStyles(({ css }) => ({
   statusOffline: css`
     width: 8px;
     height: 8px;
-    border: 1.5px solid ${cssVar.colorTextQuaternary};
+    border: 0.5px solid ${cssVar.colorTextQuaternary};
     border-radius: 50%;
   `,
   statusOnline: css`

@@ -9,6 +9,7 @@ import NavItem from '@/features/NavPanel/components/NavItem';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { usePermission } from '@/hooks/usePermission';
+import { useGlobalStore } from '@/store/global';
 import { useKnowledgeBaseStore } from '@/store/library';
 
 import Actions from './Actions';
@@ -52,6 +53,8 @@ const KnowledgeBaseItem = memo<KnowledgeBaseItemProps>(
 
     const toggleEditing = useCallback(
       (visible?: boolean) => {
+        // Inline editing needs the label area, which is hidden in the icon rail.
+        if (visible) useGlobalStore.getState().toggleLeftPanel(true);
         useKnowledgeBaseStore.setState(
           { knowledgeBaseRenamingId: visible ? id : null },
           false,

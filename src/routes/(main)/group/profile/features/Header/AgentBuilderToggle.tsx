@@ -12,10 +12,10 @@ const AgentBuilderToggle = memo(() => {
   return (
     <ActionIcon
       active={chatPanelExpanded}
-      aria-label="Agent Builder"
+      aria-label="智能体构建助手"
       icon={BotMessageSquareIcon}
       size={DESKTOP_HEADER_ICON_SIZE}
-      title="Agent Builder"
+      title="智能体构建助手"
       onClick={() => setChatPanelExpanded((prev) => !prev)}
     />
   );

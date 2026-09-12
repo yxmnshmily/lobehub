@@ -1,14 +1,15 @@
 import { CategoryBar, useThemeColorRange } from '@lobehub/charts';
 import { ModelIcon, ProviderIcon } from '@lobehub/icons';
 import { Collapse, Flexbox } from '@lobehub/ui';
-import { Avatar, Skeleton, Tag } from '@lobehub/ui/base-ui';
+import { Avatar, Tag } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import InlineTable from '@/components/InlineTable';
 import { type UsageLog, type UsageRecordItem } from '@/types/usage/usageRecord';
-import { formatPrice } from '@/utils/format';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 
 import { type UsageChartProps } from '../../../../types';
 import { GroupBy } from '../../../../types';
@@ -84,6 +85,7 @@ const formatData = (
 };
 
 const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveUser }) => {
+  const { format } = useMonthlyExchangeRate();
   const { t } = useTranslation('auth');
   const themeColorRange = useThemeColorRange();
 
@@ -140,7 +142,7 @@ const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveUse
   };
 
   return isLoading ? (
-    <Skeleton.Text rows={8} />
+    <SkeletonText rows={8} />
   ) : (
     <Collapse
       defaultActiveKey={formattedData.map((item) => item.id)}
@@ -181,7 +183,7 @@ const ModelTable = memo<UsageChartProps>(({ data, isLoading, groupBy, resolveUse
                     dataIndex: 'spend',
                     key: 'spend',
                     render: (value) => {
-                      return `$${formatPrice(value)}`;
+                      return format(value);
                     },
                     title: t('usage.activeModels.table.spend'),
                   },

@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import { DEFAULT_LANG } from '@/const/locale';
 import { normalizeLocale } from '@/locales/resources';
+import { displayBrandingPostProcessor } from '@/utils/displayBranding';
 
 import type { AuthResourceBundle } from './i18nScript';
 import { AUTH_NAMESPACES } from './i18nScript';
@@ -22,6 +23,7 @@ export const createAuthI18n = ({ locale, resources }: CreateAuthI18nOptions) => 
   const instance = i18next
     .createInstance()
     .use(initReactI18next)
+    .use(displayBrandingPostProcessor)
     .use(resourcesToBackend(loadAuthNamespace));
 
   // With `ns: []` and the served language bundled, i18next treats every
@@ -42,6 +44,7 @@ export const createAuthI18n = ({ locale, resources }: CreateAuthI18nOptions) => 
         lng,
         ns: [],
         partialBundledLanguages: true,
+        postProcess: ['displayBranding'],
         react: {
           bindI18nStore: 'added',
           useSuspense: false,

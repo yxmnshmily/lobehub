@@ -2,6 +2,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 
+import { startMonthlyExchangeRateUpdates } from '../services/monthlyExchangeRate';
 import honoApp from './index';
 
 type HonoStandaloneGlobal = typeof globalThis & {
@@ -101,6 +102,7 @@ const startServer = async () => {
 
   process.title = `lobe-dev-hono-${port}`;
   server.listen(port, host, () => {
+    startMonthlyExchangeRateUpdates();
     console.info(`Hono runtime ready at http://${host}:${port}`);
   });
 };

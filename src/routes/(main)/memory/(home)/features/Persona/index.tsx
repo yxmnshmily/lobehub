@@ -4,6 +4,7 @@ import { memo } from 'react';
 
 import { openEditorModal } from '@/features/EditorModal';
 import { useUserMemoryStore } from '@/store/userMemory';
+import { displayBranding } from '@/utils/displayBranding';
 
 import PersonaDetail from './PersonaDetail';
 import PersonaSummary from './PersonaSummary';
@@ -18,7 +19,7 @@ export const usePersonaEditor = () => {
 
   const openEditor = () => {
     if (!persona) return;
-    openEditorModal({ value: persona.content });
+    openEditorModal({ value: displayBranding(persona.content) });
   };
 
   return { openEditor };

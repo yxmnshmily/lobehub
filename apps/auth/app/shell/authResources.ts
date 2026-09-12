@@ -12,7 +12,7 @@ import type { AuthNamespace, AuthResourceBundle } from './i18nScript';
 // twin, so no dictionary enters the browser bundle — each document carries just
 // its own locale, inlined by `root.tsx`.
 const translated = import.meta.glob<{ default: Record<string, string> }>(
-  '../../../../locales/*/{auth,authError,common,error,marketAuth,oauth}.json',
+  '../../../../locales/{en-US,zh-CN}/{auth,authError,common,error,marketAuth,oauth}.json',
   { eager: true },
 );
 

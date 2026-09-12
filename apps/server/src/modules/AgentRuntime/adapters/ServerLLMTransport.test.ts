@@ -16,9 +16,11 @@ const mocks = vi.hoisted(() => ({
   debugLog: vi.fn(),
   endSpan: vi.fn(),
   getSharedBudget: vi.fn(),
+  getSharedBudgetLimit: vi.fn(),
   hashProviderInput: vi.fn(() => 'provider-input-digest'),
   initActorRuntime: vi.fn(async () => ({ chat: vi.fn() })),
   initPlatformRuntime: vi.fn(),
+  prepareChatBounded: vi.fn(),
   recordException: vi.fn(),
   runtimeChat: vi.fn(),
   setSpanAttributes: vi.fn(),
@@ -52,10 +54,14 @@ vi.mock('@/server/modules/ModelRuntime', () => ({
   initModelRuntimeFromDB: mocks.initActorRuntime,
 }));
 vi.mock('@/server/services/platformAiRuntime', () => ({
-  PlatformAiRuntime: vi.fn().mockImplementation(() => ({ init: mocks.initPlatformRuntime })),
+  PlatformAiRuntime: vi.fn().mockImplementation(() => ({
+    init: mocks.initPlatformRuntime,
+    prepareChatBounded: mocks.prepareChatBounded,
+  })),
 }));
 vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
   getPlatformUsageSharedBudgetForOperation: mocks.getSharedBudget,
+  getPlatformUsageSharedBudgetLimit: mocks.getSharedBudgetLimit,
   hashPlatformUsageProviderInput: mocks.hashProviderInput,
   PlatformUsageSharedBudgetError: class extends Error {
     constructor(
@@ -88,6 +94,7 @@ describe('ServerLLMTransport retry budget', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSharedBudget.mockReturnValue(undefined);
+    mocks.getSharedBudgetLimit.mockReturnValue(1000);
     mocks.attemptExecute.mockResolvedValue(undefined);
     mocks.attemptSnapshot.mockReturnValue({
       content: 'settled answer',
@@ -106,8 +113,14 @@ describe('ServerLLMTransport retry budget', () => {
       return {};
     });
     mocks.initPlatformRuntime.mockResolvedValue({ chat: mocks.runtimeChat });
+    mocks.prepareChatBounded.mockResolvedValue({ chat: mocks.runtimeChat });
     mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
-      const completion = await input.providerCall();
+      if (input.providerCall) return (await input.providerCall()).output;
+      const call = await input.prepareProviderCall({
+        pricing: { pricing: {} },
+        remainingCredits: 1000,
+      });
+      const completion = await call();
       return completion.output;
     });
     mocks.startSpan.mockReturnValue({
@@ -343,13 +356,72 @@ describe('ServerLLMTransport retry budget', () => {
         operationId: 'operation-1',
         provider: 'deepseek',
         stepIndex: 3,
-        providerCall: expect.any(Function),
+        prepareProviderCall: expect.any(Function),
         workspaceId: 'workspace-1',
       },
     );
     expect(mocks.runSharedBudgetStep.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.attemptExecute.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it('does not create a per-call reservation when the shared execution has no explicit ceiling', async () => {
+    mocks.getSharedBudget.mockReturnValue({});
+    mocks.getSharedBudgetLimit.mockReturnValue(undefined);
+    const transport = new ServerLLMTransport({
+      agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+      operationId: 'operation-direct-settlement',
+      serverDB: {},
+      stepIndex: 5,
+      userId: 'customer',
+      workspaceId: 'workspace-1',
+    } as any);
+
+    await expect(transport.runAttempt(attemptInput)).resolves.toMatchObject({ ok: true });
+
+    expect(mocks.runSharedBudgetStep).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        kind: 'call_llm',
+        operationId: 'operation-direct-settlement',
+        providerCall: expect.any(Function),
+      }),
+    );
+    expect(mocks.runSharedBudgetStep.mock.calls[0]?.[1]).not.toHaveProperty('prepareProviderCall');
+    expect(mocks.prepareChatBounded).not.toHaveBeenCalled();
+  });
+
+  it('forwards runtime provider request identity to the claimed billing reservation', async () => {
+    const recordProviderRequestId = vi.fn().mockResolvedValue(undefined);
+    mocks.getSharedBudget.mockReturnValue({});
+    mocks.createServerCallLlmAttempt.mockImplementation((input) => ({
+      clearBuffers: mocks.attemptClearBuffers,
+      execute: async () => {
+        await input.onProviderRequestId?.('provider-request-transport-1');
+      },
+      snapshot: mocks.attemptSnapshot,
+    }));
+    mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
+      const call = await input.prepareProviderCall({
+        pricing: { pricing: {} },
+        remainingCredits: 1000,
+      });
+      const completion = await call({ recordProviderRequestId });
+      return completion.output;
+    });
+    const transport = new ServerLLMTransport({
+      agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+      operationId: 'operation-1',
+      serverDB: {},
+      stepIndex: 3,
+      userId: 'customer',
+      workspaceId: 'workspace-1',
+    } as any);
+
+    await expect(transport.runAttempt(attemptInput)).resolves.toMatchObject({ ok: true });
+
+    expect(recordProviderRequestId).toHaveBeenCalledOnce();
+    expect(recordProviderRequestId).toHaveBeenCalledWith('provider-request-transport-1');
   });
 
   it('does not call the provider when the Credits preflight fails', async () => {
@@ -372,11 +444,32 @@ describe('ServerLLMTransport retry budget', () => {
     expect(mocks.runSharedBudgetStep).toHaveBeenCalledOnce();
   });
 
+  it('stops rather than retrying an unsupported bounded preparation', async () => {
+    mocks.getSharedBudget.mockReturnValue({});
+    mocks.prepareChatBounded.mockRejectedValueOnce(new Error('unsupported route'));
+    const transport = new ServerLLMTransport({
+      agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+      operationId: 'operation-1',
+      serverDB: {},
+      stepIndex: 1,
+      userId: 'customer',
+    } as any);
+    const result = await transport.runAttempt(attemptInput);
+    expect(result).toMatchObject({ ok: false, error: { code: 'PROVIDER_LIMIT_UNPROVEN' } });
+    if (!result.ok)
+      expect(transport.retryPolicy.classifyError(result.error)).toMatchObject({ kind: 'stop' });
+    expect(mocks.attemptExecute).not.toHaveBeenCalled();
+  });
+
   it('fails the completed attempt closed when post-call settlement fails', async () => {
     const settlementError = new Error('Platform-managed billing settlement failed');
     mocks.getSharedBudget.mockReturnValue({});
     mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
-      await input.providerCall();
+      const call = await input.prepareProviderCall({
+        pricing: { pricing: {} },
+        remainingCredits: 1000,
+      });
+      await call();
       throw settlementError;
     });
     const transport = new ServerLLMTransport({
@@ -440,13 +533,55 @@ describe('ServerLLMTransport retry budget', () => {
         operationId: 'operation-1',
         provider: 'deepseek',
         stepIndex: 4,
-        providerCall: expect.any(Function),
+        prepareProviderCall: expect.any(Function),
         workspaceId: 'workspace-1',
       },
     );
     expect(mocks.runSharedBudgetStep.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.runtimeChat.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it('persists compression provider request identity before consuming the stream', async () => {
+    const recordProviderRequestId = vi.fn().mockResolvedValue(undefined);
+    mocks.getSharedBudget.mockReturnValue({});
+    mocks.runtimeChat.mockImplementationOnce(async (_payload, options) => {
+      Object.assign(options.diagnostics, {
+        providerResponse: { requestId: 'provider-request-compression-1' },
+      });
+      await options.callback.onText('compressed answer');
+      await options.callback.onCompletion({
+        usage: { cost: 0.0002, totalInputTokens: 20, totalOutputTokens: 5, totalTokens: 25 },
+      });
+      return {};
+    });
+    mocks.runSharedBudgetStep.mockImplementationOnce(async (_budget, input) => {
+      const call = await input.prepareProviderCall({
+        pricing: { pricing: {} },
+        remainingCredits: 1000,
+      });
+      const completion = await call({ recordProviderRequestId });
+      return completion.output;
+    });
+    const transport = new ServerLLMTransport({
+      agentConfig: { agencyConfig: { modelRuntimeMode: 'platform-managed' } },
+      operationId: 'operation-1',
+      serverDB: {},
+      stepIndex: 4,
+      userId: 'customer',
+      workspaceId: 'workspace-1',
+    } as any);
+
+    await expect(
+      transport.stream({
+        messages: [{ content: 'compress me', role: 'user' }],
+        model: 'deepseek-chat',
+        provider: 'deepseek',
+      }),
+    ).resolves.toMatchObject({ content: 'compressed answer' });
+
+    expect(recordProviderRequestId).toHaveBeenCalledOnce();
+    expect(recordProviderRequestId).toHaveBeenCalledWith('provider-request-compression-1');
   });
 
   it('does not call the compression provider when the Credits preflight fails', async () => {

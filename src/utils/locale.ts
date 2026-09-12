@@ -11,9 +11,7 @@ const normalizeAcceptLanguageHeader = (acceptLanguage: string) =>
     .replaceAll(/zh-Hans(?:-[a-z]{2})?/gi, 'zh-CN')
     .replaceAll(/zh-Hant(?:-[a-z]{2})?/gi, 'zh-TW');
 
-const supportedAcceptLanguageLocales = locales.map((locale) =>
-  locale === 'ar' ? 'ar-EG' : locale,
-);
+const supportedAcceptLanguageLocales = locales;
 
 export const getAntdLocale = async (lang?: string) => {
   let normalLang: any = normalizeLocale(lang);

@@ -1,7 +1,7 @@
 'use client';
 
 import type { EvalThreadResult } from '@lobechat/types';
-import { formatCost, formatShortenNumber } from '@lobechat/utils';
+import { formatLocalizedTokens as formatShortenNumber } from '@lobechat/utils';
 import { Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, Select, Tag } from '@lobehub/ui/base-ui';
 import { Badge, Input, Table, Tooltip } from 'antd';
@@ -11,8 +11,10 @@ import { Footprints, Play, RotateCcw } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import SegmentBar from '@/routes/(main)/eval/features/SegmentBar';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { getResumeTarget } from '../resumeTarget';
 
@@ -39,7 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 4px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 999px;
 
     font-size: ${cssVar.fontSizeSM};
@@ -82,12 +84,12 @@ const styles = createStaticStyles(({ css }) => ({
   filterBar: css`
     padding-block: 12px;
     padding-inline: 20px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   summaryBar: css`
     padding-block: 16px;
     padding-inline: 20px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   summaryLabel: css`
     font-size: ${cssVar.fontSizeSM};
@@ -128,9 +130,9 @@ const badgeTextStyle = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-const BadgeText = memo<{ children: string }>(({ children }) => (
-  <span className={badgeTextStyle.text}>{children}</span>
-));
+const BadgeText = memo<{ children: string }>(({ children }) => {
+  return <span className={badgeTextStyle.text}>{children}</span>;
+});
 
 const StatusBadge = memo<{ record: any }>(({ record }) => {
   const { t } = useTranslation('eval');
@@ -174,53 +176,55 @@ const StatusBadge = memo<{ record: any }>(({ record }) => {
 /**
  * K dots for thread pass/fail: green=passed, red=failed, orange=error, gray=pending
  */
-const ThreadDots = memo<{ threads: EvalThreadResult[] }>(({ threads }) => (
-  <Flexbox horizontal align="center" gap={4}>
-    {threads.map((thread) => {
-      let color: string = cssVar.colorTextTertiary;
+const ThreadDots = memo<{ threads: EvalThreadResult[] }>(({ threads }) => {
+  return (
+    <Flexbox horizontal align="center" gap={4}>
+      {threads.map((thread) => {
+        let color: string = cssVar.colorTextTertiary;
 
-      if (thread.status === 'running') {
-        color = cssVar.colorPrimary;
-      } else if (thread.status === 'error') {
-        color = cssVar.colorError;
-      } else if (thread.passed === true) {
-        color = cssVar.colorSuccess;
-      } else if (thread.passed === false) {
-        color = cssVar.colorError;
-      }
+        if (thread.status === 'running') {
+          color = cssVar.colorPrimary;
+        } else if (thread.status === 'error') {
+          color = cssVar.colorError;
+        } else if (thread.passed === true) {
+          color = cssVar.colorSuccess;
+        } else if (thread.passed === false) {
+          color = cssVar.colorError;
+        }
 
-      if (thread.status === 'external') {
-        color = cssVar.colorWarning;
-      }
+        if (thread.status === 'external') {
+          color = cssVar.colorWarning;
+        }
 
-      if (thread.status === 'completed') {
-        color = cssVar.colorPrimary;
-      }
+        if (thread.status === 'completed') {
+          color = cssVar.colorPrimary;
+        }
 
-      const label = thread.error
-        ? 'error'
-        : thread.status === 'error'
+        const label = thread.error
           ? 'error'
-          : thread.status === 'running'
-            ? 'running'
-            : thread.passed === true
-              ? 'passed'
-              : thread.passed === false && thread.status !== 'completed'
-                ? 'failed'
-                : thread.status === 'external'
-                  ? 'Awaiting for external evaluation'
-                  : thread.status === 'completed'
-                    ? 'completed'
-                    : 'pending';
+          : thread.status === 'error'
+            ? 'error'
+            : thread.status === 'running'
+              ? 'running'
+              : thread.passed === true
+                ? 'passed'
+                : thread.passed === false && thread.status !== 'completed'
+                  ? 'failed'
+                  : thread.status === 'external'
+                    ? 'Awaiting for external evaluation'
+                    : thread.status === 'completed'
+                      ? 'completed'
+                      : 'pending';
 
-      return (
-        <Tooltip key={thread.threadId} title={label}>
-          <span className={styles.threadDot} style={{ backgroundColor: color }} />
-        </Tooltip>
-      );
-    })}
-  </Flexbox>
-));
+        return (
+          <Tooltip key={thread.threadId} title={label}>
+            <span className={styles.threadDot} style={{ backgroundColor: color }} />
+          </Tooltip>
+        );
+      })}
+    </Flexbox>
+  );
+});
 
 const DurationCell = memo<{ ms: number }>(({ ms }) => {
   const sec = ms / 1000;
@@ -256,7 +260,9 @@ const RETRYABLE_STATUSES = new Set(['error', 'failed', 'timeout']);
 const FINISHED_RUN_STATUSES = new Set(['completed', 'failed', 'aborted']);
 const CaseResultsTable = memo<CaseResultsTableProps>(
   ({ results, benchmarkId, runId, k = 1, onRetryCase, onResumeCase, runStatus }) => {
+    const translateTravel = useTravelTranslation();
     const { t } = useTranslation('eval');
+    const { formatOptional: formatCost } = useMonthlyExchangeRate();
     const [searchText, setSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [pageSize, setPageSize] = useState(20);
@@ -447,7 +453,8 @@ const CaseResultsTable = memo<CaseResultsTableProps>(
                 </Flexbox>
                 {hasDetail && (
                   <span className={styles.durationSub}>
-                    {llmCalls ?? 0} llm / {toolCalls ?? 0} tool
+                    {llmCalls ?? 0} {translateTravel('模型 /')}
+                    {toolCalls ?? 0} {translateTravel('工具')}
                   </span>
                 )}
               </Flexbox>
@@ -468,9 +475,11 @@ const CaseResultsTable = memo<CaseResultsTableProps>(
             if (!hasCost && !hasTokens) return '-';
             return (
               <Flexbox gap={2}>
-                {hasCost && <span className={styles.monoCell}>${formatCost(cost)}</span>}
+                {hasCost && <span className={styles.monoCell}>{formatCost(cost)}</span>}
                 {hasTokens && (
-                  <span className={styles.durationSub}>{formatShortenNumber(tokens)} tokens</span>
+                  <span className={styles.durationSub}>
+                    {formatShortenNumber(tokens)} {translateTravel('词元')}
+                  </span>
                 )}
               </Flexbox>
             );
@@ -494,9 +503,11 @@ const CaseResultsTable = memo<CaseResultsTableProps>(
             if (!hasCost && !hasTokens) return '-';
             return (
               <Flexbox gap={2}>
-                {hasCost && <span className={styles.monoCell}>${formatCost(cost)}</span>}
+                {hasCost && <span className={styles.monoCell}>{formatCost(cost)}</span>}
                 {hasTokens && (
-                  <span className={styles.durationSub}>{formatShortenNumber(tokens)} tokens</span>
+                  <span className={styles.durationSub}>
+                    {formatShortenNumber(tokens)} {translateTravel('词元')}
+                  </span>
                 )}
               </Flexbox>
             );
@@ -565,9 +576,11 @@ const CaseResultsTable = memo<CaseResultsTableProps>(
 
       return cols;
     }, [
+      translateTravel,
       benchmarkId,
       runId,
       t,
+      formatCost,
       isMultiK,
       k,
       canRetryCase,

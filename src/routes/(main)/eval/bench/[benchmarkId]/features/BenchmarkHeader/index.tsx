@@ -1,7 +1,6 @@
 'use client';
 
 import type { AgentEvalRunListItem } from '@lobechat/types';
-import { formatCost } from '@lobechat/utils';
 import { type DropdownItem, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { Button, confirmModal, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
@@ -20,8 +19,10 @@ import { type LucideIcon } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useEvalStore } from '@/store/eval';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { createBenchmarkEditModal } from '../../../../features/BenchmarkEditModal';
 import Sparkline from '../../../../features/Sparkline';
@@ -63,7 +64,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     min-width: 0;
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   statIcon: css`
@@ -108,7 +109,9 @@ const BenchmarkHeader = memo<BenchmarkHeaderProps>(
     systemIcon = Server,
     totalCases,
   }) => {
+    const translateTravel = useTravelTranslation();
     const { t } = useTranslation('eval');
+    const { formatOptional: formatCost } = useMonthlyExchangeRate();
     const navigate = useWorkspaceAwareNavigate();
     const deleteBenchmark = useEvalStore((s) => s.deleteBenchmark);
     const refreshBenchmarkDetail = useEvalStore((s) => s.refreshBenchmarkDetail);
@@ -404,7 +407,7 @@ const BenchmarkHeader = memo<BenchmarkHeaderProps>(
                   </span>
                   {totalCases > 0 && (
                     <span style={{ color: cssVar.colorTextTertiary, fontSize: cssVar.fontSize }}>
-                      Cases
+                      {translateTravel('测试用例')}
                     </span>
                   )}
                 </Flexbox>
@@ -414,7 +417,7 @@ const BenchmarkHeader = memo<BenchmarkHeaderProps>(
                   </span>
                 ) : (
                   <span style={{ color: cssVar.colorTextQuaternary, fontSize: cssVar.fontSizeSM }}>
-                    {datasets.length} Datasets
+                    {datasets.length} {translateTravel('数据集')}
                   </span>
                 )}
               </Flexbox>
@@ -455,7 +458,7 @@ const BenchmarkHeader = memo<BenchmarkHeaderProps>(
                       {formatDurationMinutes(avgDuration)}
                     </span>
                     <span style={{ color: cssVar.colorTextTertiary, fontSize: cssVar.fontSize }}>
-                      min
+                      {translateTravel('分钟')}
                     </span>
                   </Flexbox>
                   {p99Duration != null && (
@@ -501,7 +504,7 @@ const BenchmarkHeader = memo<BenchmarkHeaderProps>(
                         fontWeight: 600,
                       }}
                     >
-                      ${formatCost(avgCost)}
+                      {formatCost(avgCost)}
                     </span>
                     <span style={{ color: cssVar.colorTextTertiary, fontSize: cssVar.fontSize }}>
                       {t('benchmark.detail.stats.perRun')}

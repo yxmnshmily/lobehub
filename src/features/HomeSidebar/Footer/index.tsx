@@ -8,21 +8,25 @@ import { ActionIcon } from '@lobehub/ui/base-ui';
 import { DiscordIcon, GithubIcon } from '@lobehub/ui/icons';
 import {
   Book,
+  ChartColumnBigIcon,
   CircleHelp,
   Download,
   Feather,
   FileClockIcon,
   FlaskConical,
+  Info,
   Send,
   Settings2,
   SettingsIcon,
+  UserRound,
 } from 'lucide-react';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, type MouseEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useHasActiveWorkspace } from '@/business/client/hooks/useHasActiveWorkspace';
 import { openChangelogModal } from '@/components/ChangelogModal';
 import { openFeedbackModal } from '@/components/FeedbackModal';
+import { getRouteById } from '@/config/routes';
 import { DOCUMENTS_REFER_URL, GITHUB } from '@/const/url';
 import Billboard from '@/features/Billboard';
 import { useBillboardMenuItems } from '@/features/Billboard/MenuItems';
@@ -30,9 +34,16 @@ import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
 import ThemeButton from '@/features/User/UserPanel/ThemeButton';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useNavLayout } from '@/hooks/useNavLayout';
-import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
+import { lambdaQuery } from '@/libs/trpc/client';
+import {
+  featureFlagsSelectors,
+  serverConfigSelectors,
+  useServerConfigStore,
+} from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
+import { authSelectors } from '@/store/user/slices/auth/selectors';
 import { userGeneralSettingsSelectors } from '@/store/user/slices/settings/selectors/general';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 type FooterMenuItems = NonNullable<MenuProps['items']>;
 
@@ -74,10 +85,24 @@ const collectMenuKeys = (items: FooterMenuItems): string[] =>
     .map(String);
 
 const Footer = memo(() => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('common');
+  const { t: tAuth } = useTranslation('auth');
+  const { t: tSetting } = useTranslation('setting');
+  const { hideDocs } = useServerConfigStore(featureFlagsSelectors);
   const { analytics } = useAnalytics();
   const { footer } = useNavLayout();
+  const isLogin = useUserStore(authSelectors.isLogin);
+  const { data: isPlatformAdmin } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery(undefined, {
+    enabled: !!isLogin,
+    retry: false,
+  });
   const hasActiveWorkspace = useHasActiveWorkspace();
+  const settingsHref = hasActiveWorkspace
+    ? '/settings/general'
+    : isPlatformAdmin
+      ? '/settings/appearance'
+      : '/settings/profile';
   const settingLabelKey = hasActiveWorkspace ? 'userPanel.workspaceSetting' : 'userPanel.setting';
   const activeNavKey = useActiveNavKey();
   const isHomeSidebar = activeNavKey === 'home';
@@ -107,17 +132,43 @@ const Footer = memo(() => {
     openFeedbackModal();
   }, []);
 
+  /**
+   * Open an external link from a nested menu anchor. Base UI's menu item wraps
+   * the anchor in a non-link menuitem and its own click/mouse-up handling can
+   * drop the anchor's default navigation on the first press (rare but
+   * observed). Opening synchronously from the anchor's own click event keeps
+   * the link semantics (href, copy, middle-click) while making the navigation
+   * deterministic from the user gesture.
+   */
+  const handleOpenExternal = useCallback((event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    event.preventDefault();
+    window.open(href, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const { helpMenuItems, trackedMenuKeys } = useMemo<{
     helpMenuItems: MenuProps['items'];
     trackedMenuKeys: string[];
   }>(() => {
     const ownItems: FooterMenuItems = [
+      ...(isPlatformAdmin && !hideDocs
+        ? [
+            {
+              icon: <Icon icon={Info} />,
+              key: 'about',
+              label: (
+                <WorkspaceLink escape to="/settings/about">
+                  {tSetting('tab.about')}
+                </WorkspaceLink>
+              ),
+            },
+          ]
+        : []),
       ...(footer.showSettingsEntry && !isDevMode
         ? [
             {
               icon: <Icon icon={Settings2} />,
               key: 'setting',
-              label: <WorkspaceLink to="/settings">{t(settingLabelKey)}</WorkspaceLink>,
+              label: <WorkspaceLink to={settingsHref}>{t(settingLabelKey)}</WorkspaceLink>,
             },
             {
               type: 'divider' as const,
@@ -139,7 +190,12 @@ const Footer = memo(() => {
         icon: <Icon icon={Book} />,
         key: 'docs',
         label: (
-          <a href={DOCUMENTS_REFER_URL} rel="noopener noreferrer" target="_blank">
+          <a
+            href={DOCUMENTS_REFER_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+            onClick={(event) => handleOpenExternal(event, DOCUMENTS_REFER_URL)}
+          >
             {t('userPanel.docs')}
           </a>
         ),
@@ -154,7 +210,12 @@ const Footer = memo(() => {
         icon: <Icon icon={DiscordIcon} />,
         key: 'discord',
         label: (
-          <a href={SOCIAL_URL.discord} rel="noopener noreferrer" target="_blank">
+          <a
+            href={SOCIAL_URL.discord}
+            rel="noopener noreferrer"
+            target="_blank"
+            onClick={(event) => handleOpenExternal(event, SOCIAL_URL.discord)}
+          >
             {t('userPanel.discord')}
           </a>
         ),
@@ -187,7 +248,12 @@ const Footer = memo(() => {
               icon: <Icon icon={GithubIcon} />,
               key: 'github',
               label: (
-                <a href={GITHUB} rel="noopener noreferrer" target="_blank">
+                <a
+                  href={GITHUB}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  onClick={(event) => handleOpenExternal(event, GITHUB)}
+                >
                   GitHub
                 </a>
               ),
@@ -199,7 +265,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={FlaskConical} />,
               key: 'eval',
-              label: <WorkspaceLink to="/eval">Evaluation Lab</WorkspaceLink>,
+              label: <WorkspaceLink to="/eval">{translateTravel('评测实验室')}</WorkspaceLink>,
             },
           ]
         : []),
@@ -215,6 +281,10 @@ const Footer = memo(() => {
       trackedMenuKeys: collectMenuKeys(ownItems),
     };
   }, [
+    translateTravel,
+    isPlatformAdmin,
+    hideDocs,
+    tSetting,
     trackMenuClick,
     footer.showSettingsEntry,
     footer.layout,
@@ -222,10 +292,12 @@ const Footer = memo(() => {
     footer.showEvalEntry,
     enableBusinessFeatures,
     handleOpenChangelogModal,
+    handleOpenExternal,
     handleOpenFeedbackModal,
     isDevMode,
     t,
     settingLabelKey,
+    settingsHref,
     billboardMenuItems,
     isHomeSidebar,
   ]);
@@ -247,8 +319,48 @@ const Footer = memo(() => {
 
   return (
     <>
+      {isLogin &&
+        !['settings', 'workspace-settings', 'memory', 'discover'].includes(activeNavKey ?? '') && (
+          <Flexbox gap={4} paddingInline={12} style={{ paddingTop: 8 }}>
+            {[
+              { label: t('tab.generation'), icon: getRouteById('image')!.icon, to: '/image' },
+              { label: t('tab.resource'), icon: getRouteById('resource')!.icon, to: '/resource' },
+              { label: translateTravel('个人中心'), icon: UserRound, to: '/settings/profile' },
+              {
+                label: tAuth('tab.stats'),
+                icon: ChartColumnBigIcon,
+                to:
+                  isPlatformAdmin === true
+                    ? '/settings/stats'
+                    : '/settings/credits?section=balance-usage',
+              },
+            ].map(({ label, icon, to }) => (
+              <WorkspaceLink
+                escape
+                aria-label={label}
+                data-nav-footer-link=""
+                key={label}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+                title={label}
+                to={to}
+              >
+                <Flexbox horizontal align="center" gap={12} paddingBlock={8} paddingInline={4}>
+                  <Icon icon={icon} size={20} />
+                  <span data-nav-label="">{label}</span>
+                </Flexbox>
+              </WorkspaceLink>
+            ))}
+          </Flexbox>
+        )}
       {footer.layout === 'expanded' ? (
-        <Flexbox horizontal align={'center'} gap={2} justify={'space-between'} padding={8}>
+        <Flexbox
+          horizontal
+          align={'center'}
+          data-nav-footer-actions=""
+          gap={2}
+          justify={'space-between'}
+          padding={8}
+        >
           <Flexbox horizontal align={'center'} flex={1} gap={2}>
             <DropdownMenu
               items={helpMenuItems}
@@ -268,13 +380,13 @@ const Footer = memo(() => {
               </a>
             )}
             <WorkspaceLink to="/eval">
-              <ActionIcon icon={FlaskConical} size={16} title="Evaluation Lab" />
+              <ActionIcon icon={FlaskConical} size={16} title={translateTravel('评测实验室')} />
             </WorkspaceLink>
           </Flexbox>
           <ThemeButton placement={'topCenter'} size={16} />
         </Flexbox>
       ) : (
-        <Flexbox horizontal align={'center'} gap={2} padding={8}>
+        <Flexbox horizontal align={'center'} data-nav-footer-actions="" gap={2} padding={8}>
           <DropdownMenu
             items={helpMenuItems}
             placement="topLeft"
@@ -283,7 +395,7 @@ const Footer = memo(() => {
             <ActionIcon aria-label={t('userPanel.help')} icon={CircleHelp} size={16} />
           </DropdownMenu>
           {isDevMode && (
-            <WorkspaceLink to="/settings">
+            <WorkspaceLink to={settingsHref}>
               <ActionIcon
                 aria-label={t(settingLabelKey)}
                 icon={SettingsIcon}

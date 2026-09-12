@@ -5,13 +5,22 @@ import type { GroupedTopic } from '@lobechat/types';
 import { DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, Checkbox, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { FolderIcon, MoreHorizontal, Star } from 'lucide-react';
-import { Fragment, memo, type MouseEvent, useCallback } from 'react';
+import {
+  CircleDot,
+  Clock3,
+  FolderIcon,
+  MessageSquare,
+  MoreHorizontal,
+  Star,
+  Type,
+} from 'lucide-react';
+import { Fragment, type KeyboardEvent, memo, type MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useTopicItemDropdownMenu } from '@/features/AgentSidebar/Topic/List/Item/useDropdownMenu';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActivityTime } from '@/hooks/useActivityTime';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { getPlatformIcon } from '@/routes/(main)/agent/channel/const';
 import type { ChatTopic } from '@/types/topic';
 
@@ -37,7 +46,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     font-size: 12px;
     font-weight: 500;
@@ -62,7 +71,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 10px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     font-size: 12px;
     font-weight: 500;
@@ -70,19 +79,52 @@ const styles = createStaticStyles(({ css }) => ({
 
     /* opaque so scrolled rows don't bleed through */
     background: ${cssVar.colorBgElevated};
+
+    @media (width <= 479.98px) {
+      grid-template-columns: 24px minmax(0, 1fr) max-content 32px;
+      gap: 8px;
+      padding-inline: 12px;
+    }
+  `,
+  headerCell: css`
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
   `,
   headerCellEnd: css`
-    text-align: end;
+    justify-content: flex-end;
   `,
   list: css`
     position: relative;
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
     background: ${cssVar.colorBgContainer};
+  `,
+  mobileNoActions: css`
+    @media (width <= 479.98px) {
+      && {
+        grid-template-columns: 24px minmax(0, 1fr) max-content;
+      }
+    }
+  `,
+  mobileReadOnly: css`
+    @media (width <= 479.98px) {
+      && {
+        grid-template-columns: minmax(0, 1fr) max-content 32px;
+      }
+    }
+  `,
+  mobileReadOnlyNoActions: css`
+    @media (width <= 479.98px) {
+      && {
+        grid-template-columns: minmax(0, 1fr) max-content;
+      }
+    }
   `,
   row: css`
     cursor: pointer;
@@ -94,7 +136,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 10px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     transition: background 0.12s;
 
@@ -102,8 +144,19 @@ const styles = createStaticStyles(({ css }) => ({
       background: ${cssVar.colorFillTertiary};
     }
 
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: -2px;
+    }
+
     &:last-child {
       border-block-end: none;
+    }
+
+    @media (width <= 479.98px) {
+      grid-template-columns: 24px minmax(0, 1fr) max-content 32px;
+      gap: 8px;
+      padding-inline: 12px;
     }
   `,
   rowSelected: css`
@@ -130,15 +183,20 @@ interface TopicListViewProps {
   agentId: string;
   groupBy: GroupBy;
   groups: GroupedTopic[];
+  onOpen?: (topicId: string) => void;
+  readOnly?: boolean;
   showGroupTitles: boolean;
 }
 
 interface RowProps {
   agentId: string;
+  mobile?: boolean;
+  onOpen?: (topicId: string) => void;
+  readOnly?: boolean;
   topic: ChatTopic;
 }
 
-const Row = memo<RowProps>(({ topic, agentId }) => {
+const Row = memo<RowProps>(({ topic, agentId, mobile, onOpen, readOnly = !!onOpen }) => {
   const { t } = useTranslation('topic');
   const navigate = useWorkspaceAwareNavigate();
 
@@ -156,20 +214,42 @@ const Row = memo<RowProps>(({ topic, agentId }) => {
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
-      if (selectMode || e.metaKey || e.ctrlKey) {
+      if (!readOnly && (selectMode || e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         toggleSelected(topic.id);
         return;
       }
+      if (onOpen) {
+        onOpen(topic.id);
+        return;
+      }
       navigate(AGENT_CHAT_TOPIC_URL(agentId, topic.id));
     },
-    [selectMode, topic.id, agentId, toggleSelected, navigate],
+    [selectMode, topic.id, agentId, toggleSelected, navigate, onOpen, readOnly],
   );
 
   const handleCheckboxChange = useCallback(() => {
     if (!selectMode) toggleSelectMode();
     toggleSelected(topic.id);
   }, [selectMode, topic.id, toggleSelected, toggleSelectMode]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget || e.key !== 'Enter') return;
+
+      e.preventDefault();
+      if (!readOnly && selectMode) {
+        toggleSelected(topic.id);
+        return;
+      }
+      if (onOpen) {
+        onOpen(topic.id);
+        return;
+      }
+      navigate(AGENT_CHAT_TOPIC_URL(agentId, topic.id));
+    },
+    [agentId, navigate, onOpen, readOnly, selectMode, toggleSelected, topic.id],
+  );
 
   const status = topic.status ?? 'active';
   const projectLabel = getProjectLabel(topic);
@@ -185,17 +265,34 @@ const Row = memo<RowProps>(({ topic, agentId }) => {
 
   return (
     <div
-      className={[styles.row, selected && styles.rowSelected].filter(Boolean).join(' ')}
+      aria-label={topic.title || t('defaultTitle')}
+      role="link"
+      tabIndex={0}
+      className={[
+        styles.row,
+        selected && styles.rowSelected,
+        mobile && onOpen && !readOnly && styles.mobileNoActions,
+        mobile && !onOpen && readOnly && styles.mobileReadOnly,
+        mobile && onOpen && readOnly && styles.mobileReadOnlyNoActions,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={selected}
-          classNames={{ checkbox: styles.checkboxBox }}
-          size={18}
-          onChange={handleCheckboxChange}
-        />
-      </div>
+      {(!mobile || !readOnly) && (
+        <div onClick={(e) => e.stopPropagation()}>
+          {!readOnly && (
+            <Checkbox
+              aria-label={topic.title || t('defaultTitle')}
+              checked={selected}
+              classNames={{ checkbox: styles.checkboxBox }}
+              size={18}
+              onChange={handleCheckboxChange}
+            />
+          )}
+        </div>
+      )}
       <div className={styles.cell}>
         <Flexbox horizontal align={'center'} gap={6}>
           {topic.favorite && (
@@ -218,101 +315,156 @@ const Row = memo<RowProps>(({ topic, agentId }) => {
           </Text>
         )}
       </div>
-      <div className={styles.cell}>
-        {projectLabel ? (
-          <Tag icon={<Icon icon={FolderIcon} size={11} />} size={'small'}>
-            {projectLabel}
-          </Tag>
-        ) : (
-          <Text fontSize={12} type={'secondary'}>
-            —
-          </Text>
-        )}
-      </div>
+      {!mobile && (
+        <div className={styles.cell}>
+          {projectLabel ? (
+            <Tag icon={<Icon icon={FolderIcon} size={11} />} size={'small'}>
+              {projectLabel}
+            </Tag>
+          ) : (
+            <Text fontSize={12} type={'secondary'}>
+              —
+            </Text>
+          )}
+        </div>
+      )}
       <StatusDot status={status} />
-      <Text fontSize={12} type={'secondary'}>
-        {triggerLabel}
-      </Text>
-      <Text
-        fontSize={12}
-        style={{ color: cssVar.colorTextQuaternary, textAlign: 'end' }}
-        title={updatedAt.title}
-      >
-        {updatedAt.text}
-      </Text>
-      <DropdownMenu items={dropdownMenu}>
-        <ActionIcon icon={MoreHorizontal} size={'small'} onClick={(e) => e.stopPropagation()} />
-      </DropdownMenu>
+      {!mobile && (
+        <>
+          <Text fontSize={12} type={'secondary'}>
+            {triggerLabel}
+          </Text>
+          <Text
+            fontSize={12}
+            style={{ color: cssVar.colorTextQuaternary, textAlign: 'end' }}
+            title={updatedAt.title}
+          >
+            {updatedAt.text}
+          </Text>
+        </>
+      )}
+      {!onOpen && (
+        <DropdownMenu items={dropdownMenu}>
+          <ActionIcon icon={MoreHorizontal} size={'small'} onClick={(e) => e.stopPropagation()} />
+        </DropdownMenu>
+      )}
     </div>
   );
 });
 
 Row.displayName = 'AgentTopicManagerRow';
 
-const TopicListView = memo<TopicListViewProps>(({ groups, agentId, showGroupTitles, groupBy }) => {
-  const { t } = useTranslation('topic');
+const TopicListView = memo<TopicListViewProps>(
+  ({ groups, agentId, showGroupTitles, groupBy, onOpen, readOnly = !!onOpen }) => {
+    const { t } = useTranslation('topic');
+    const mobile = useIsMobile();
 
-  const selectedIds = useTopicsViewStore((s) => s.selectedIds);
-  const selectMode = useTopicsViewStore((s) => s.selectMode);
-  const selectAll = useTopicsViewStore((s) => s.selectAll);
-  const clearSelected = useTopicsViewStore((s) => s.clearSelected);
-  const toggleSelectMode = useTopicsViewStore((s) => s.toggleSelectMode);
+    const selectedIds = useTopicsViewStore((s) => s.selectedIds);
+    const selectMode = useTopicsViewStore((s) => s.selectMode);
+    const selectAll = useTopicsViewStore((s) => s.selectAll);
+    const clearSelected = useTopicsViewStore((s) => s.clearSelected);
+    const toggleSelectMode = useTopicsViewStore((s) => s.toggleSelectMode);
 
-  const allIds = groups.flatMap((g) => g.children.map((c) => c.id));
-  const selectedSet = new Set(selectedIds);
-  const selectedInListCount = allIds.reduce((acc, id) => acc + (selectedSet.has(id) ? 1 : 0), 0);
-  const allSelected = allIds.length > 0 && selectedInListCount === allIds.length;
-  const someSelected = selectedInListCount > 0 && !allSelected;
+    const allIds = groups.flatMap((g) => g.children.map((c) => c.id));
+    const selectedSet = new Set(selectedIds);
+    const selectedInListCount = allIds.reduce((acc, id) => acc + (selectedSet.has(id) ? 1 : 0), 0);
+    const allSelected = allIds.length > 0 && selectedInListCount === allIds.length;
+    const someSelected = selectedInListCount > 0 && !allSelected;
 
-  const handleSelectAll = () => {
-    if (allSelected) {
-      clearSelected();
-    } else {
-      if (!selectMode) toggleSelectMode();
-      selectAll(allIds);
-    }
-  };
+    const handleSelectAll = () => {
+      if (allSelected) {
+        clearSelected();
+      } else {
+        if (!selectMode) toggleSelectMode();
+        selectAll(allIds);
+      }
+    };
 
-  return (
-    <div className={styles.list}>
-      <div className={styles.header}>
-        <Checkbox
-          checked={allSelected}
-          classNames={{ checkbox: styles.checkboxBox }}
-          indeterminate={someSelected}
-          size={18}
-          onChange={handleSelectAll}
-        />
-        <span>{t('management.columns.title')}</span>
-        <span>{t('management.columns.project')}</span>
-        <span>{t('management.columns.status')}</span>
-        <span>{t('management.columns.trigger')}</span>
-        <span className={styles.headerCellEnd}>{t('management.columns.updated')}</span>
-        <span />
+    return (
+      <div className={styles.list}>
+        <div
+          className={[
+            styles.header,
+            mobile && onOpen && !readOnly && styles.mobileNoActions,
+            mobile && !onOpen && readOnly && styles.mobileReadOnly,
+            mobile && onOpen && readOnly && styles.mobileReadOnlyNoActions,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {(!mobile || !readOnly) && (
+            <span>
+              {!readOnly && (
+                <Checkbox
+                  aria-label={t('management.bulk.selectAll', { defaultValue: '全选话题' })}
+                  checked={allSelected}
+                  classNames={{ checkbox: styles.checkboxBox }}
+                  indeterminate={someSelected}
+                  size={18}
+                  onChange={handleSelectAll}
+                />
+              )}
+            </span>
+          )}
+          <span className={styles.headerCell}>
+            <Icon aria-hidden icon={Type} size={14} />
+            {t('management.columns.title')}
+          </span>
+          {!mobile && (
+            <span className={styles.headerCell}>
+              <Icon aria-hidden icon={FolderIcon} size={14} />
+              {t('management.columns.project')}
+            </span>
+          )}
+          <span className={styles.headerCell}>
+            <Icon aria-hidden icon={CircleDot} size={14} />
+            {t('management.columns.status')}
+          </span>
+          {!mobile && (
+            <>
+              <span className={styles.headerCell}>
+                <Icon aria-hidden icon={MessageSquare} size={14} />
+                {t('management.columns.trigger')}
+              </span>
+              <span className={`${styles.headerCell} ${styles.headerCellEnd}`}>
+                <Icon aria-hidden icon={Clock3} size={14} />
+                {t('management.columns.updated')}
+              </span>
+            </>
+          )}
+          {!onOpen && <span />}
+        </div>
+        {groups.map((group) => {
+          if (group.children.length === 0) return null;
+          const title =
+            groupBy === 'byProject'
+              ? getProjectGroupTitle(group.id, group.title, t)
+              : group.title || getTimeGroupTitle(group.id, t);
+          return (
+            <Fragment key={group.id}>
+              {showGroupTitles && (
+                <div className={styles.groupBar}>
+                  <span>{title}</span>
+                  <span className={styles.groupCount}>{group.children.length}</span>
+                </div>
+              )}
+              {group.children.map((topic) => (
+                <Row
+                  agentId={agentId}
+                  key={topic.id}
+                  mobile={mobile}
+                  readOnly={readOnly}
+                  topic={topic}
+                  onOpen={onOpen}
+                />
+              ))}
+            </Fragment>
+          );
+        })}
       </div>
-      {groups.map((group) => {
-        if (group.children.length === 0) return null;
-        const title =
-          groupBy === 'byProject'
-            ? getProjectGroupTitle(group.id, group.title, t)
-            : group.title || getTimeGroupTitle(group.id, t);
-        return (
-          <Fragment key={group.id}>
-            {showGroupTitles && (
-              <div className={styles.groupBar}>
-                <span>{title}</span>
-                <span className={styles.groupCount}>{group.children.length}</span>
-              </div>
-            )}
-            {group.children.map((topic) => (
-              <Row agentId={agentId} key={topic.id} topic={topic} />
-            ))}
-          </Fragment>
-        );
-      })}
-    </div>
-  );
-});
+    );
+  },
+);
 
 TopicListView.displayName = 'AgentTopicManagerListView';
 

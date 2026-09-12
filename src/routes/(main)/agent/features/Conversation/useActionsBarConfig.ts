@@ -19,12 +19,12 @@ import { agentSelectors } from '@/store/agent/selectors';
  * is scoped to the hetero user menu instead of the native-agent default.
  */
 const HETERO_USER: { bar: MessageActionSlot[]; menu: MessageActionSlot[] } = {
-  bar: ['copy'],
+  bar: ['copy', 'download'],
   menu: ['restoreToInput', 'copy', 'divider', 'select', 'divider', 'del'],
 };
 
 const HETERO_ASSISTANT: { bar: MessageActionSlot[]; menu: MessageActionSlot[] } = {
-  bar: ['copy'],
+  bar: ['copy', 'download'],
   menu: ['copy', 'divider', 'select', 'divider', 'del'],
 };
 

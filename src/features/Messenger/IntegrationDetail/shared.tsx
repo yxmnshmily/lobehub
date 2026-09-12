@@ -9,6 +9,8 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
+import SkeletonText from '@/components/Skeleton/Text';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { usePermission } from '@/hooks/usePermission';
 import { messengerKeys } from '@/libs/swr/keys';
 import { messengerService } from '@/services/messenger';
@@ -16,8 +18,8 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
 
-import AgentSelect from '../AgentSelect';
 import { type MessengerPlatform, PlatformAvatar } from '../constants';
+import GroupSelect from '../GroupSelect';
 import { getMessengerErrorMessage, type MessengerTranslationKey } from '../i18n';
 import {
   buildMessengerScopeOptions,
@@ -43,13 +45,13 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   card: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
   `,
   emptyRow: css`
     padding-block: 32px;
     padding-inline: 16px;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     color: ${cssVar.colorTextSecondary};
@@ -126,16 +128,16 @@ const ConnectionsSkeleton = memo<{ withNestedContent?: boolean }>(
             <Flexbox horizontal align="center" gap={12}>
               <Skeleton.Avatar shape={'square'} size={36} />
               <Flexbox flex={1} gap={6}>
-                <Skeleton height={28} width={56} />
-                <Skeleton height={18} width={'40%'} />
+                <SkeletonBar height={28} width={56} />
+                <SkeletonBar height={18} width={'40%'} />
               </Flexbox>
-              <Skeleton height={28} width={72} />
-              <Skeleton height={28} width={84} />
+              <SkeletonBar height={28} width={72} />
+              <SkeletonBar height={28} width={84} />
             </Flexbox>
             {withNestedContent && (
               <Flexbox gap={6} style={{ paddingInlineStart: 48 }}>
-                <Skeleton height={28} width={72} />
-                <Skeleton height={32} width={'100%'} />
+                <SkeletonBar height={28} width={72} />
+                <SkeletonBar height={32} width={'100%'} />
               </Flexbox>
             )}
           </Flexbox>
@@ -150,23 +152,23 @@ export const IntegrationDetailSkeleton = memo<{ withNestedContent?: boolean }>(
   ({ withNestedContent = false }) => (
     <Flexbox gap={20}>
       <Flexbox horizontal align="center" gap={12}>
-        <Skeleton height={28} width={20} />
-        <Skeleton height={28} width={96} />
+        <SkeletonBar height={28} width={20} />
+        <SkeletonBar height={28} width={96} />
       </Flexbox>
 
       <Block className={styles.card}>
         <Flexbox horizontal align="center" gap={16}>
           <Skeleton.Avatar shape={'square'} size={48} />
           <Flexbox flex={1} gap={6}>
-            <Skeleton height={28} width={64} />
-            <Skeleton.Text rows={1} width={'65%'} />
+            <SkeletonBar height={28} width={64} />
+            <SkeletonText rows={1} width={'65%'} />
           </Flexbox>
-          <Skeleton height={40} width={120} />
+          <SkeletonBar height={40} width={120} />
         </Flexbox>
       </Block>
 
       <Flexbox gap={8}>
-        <Skeleton height={28} width={72} />
+        <SkeletonBar height={28} width={72} />
         <ConnectionsSkeleton withNestedContent={withNestedContent} />
       </Flexbox>
     </Flexbox>
@@ -246,6 +248,7 @@ DetailLayout.displayName = 'MessengerDetailLayout';
 
 interface UserLinkLike {
   activeAgentId: string | null;
+  activeGroupId?: string | null;
   platformUserId: string;
   platformUsername: string | null;
   /** Active scope of this link: a workspace id, or null for personal. */
@@ -258,7 +261,7 @@ export const formatUserHandle = (link: UserLinkLike): string =>
 interface UserAgentConnectionProps {
   extraLabel?: string;
   link: UserLinkLike;
-  onSetActive: (agentId: string | null) => Promise<boolean>;
+  onSetActive: (groupId: string | null, workspaceId?: string | null) => Promise<boolean>;
   onUnlink: () => void;
 }
 
@@ -335,16 +338,16 @@ export const UserAgentConnection = memo<UserAgentConnectionProps>(
       if (!pending) return;
       if (
         (link.workspaceId ?? null) === pending.workspaceId &&
-        (link.activeAgentId ?? null) === pending.agentId
+        (link.activeGroupId ?? null) === pending.agentId
       ) {
         setPending(null);
       }
-    }, [link.workspaceId, link.activeAgentId, pending]);
+    }, [link.workspaceId, link.activeGroupId, pending]);
 
     const activeAgentId = pendingForScope
       ? pendingForScope.agentId
       : linkIsActiveScope
-        ? (link.activeAgentId ?? null)
+        ? (link.activeGroupId ?? null)
         : null;
 
     return (
@@ -386,10 +389,7 @@ export const UserAgentConnection = memo<UserAgentConnectionProps>(
             <Text style={{ fontSize: 12 }} type="secondary">
               {t('messenger.activeAgent')}
             </Text>
-            <AgentSelect
-              // Default to the scope's inbox agent whenever the selected scope has
-              // no active Agent. This also repairs historical agent-less links.
-              defaultToInbox={canEdit && !pendingForScope && !activeAgentId}
+            <GroupSelect
               disabled={!canEdit}
               placeholder={t('messenger.activeAgentPlaceholder')}
               value={activeAgentId ?? undefined}
@@ -399,7 +399,7 @@ export const UserAgentConnection = memo<UserAgentConnectionProps>(
                 const next = (agentId ?? null) as string | null;
                 // Reflect the pick immediately, then persist in the background.
                 setPending({ agentId: next, workspaceId: scopeWorkspaceId });
-                const ok = await onSetActive(next);
+                const ok = await onSetActive(next, scopeWorkspaceId);
                 // Roll back to the persisted value if the update failed.
                 if (!ok) setPending(null);
               }}
@@ -461,12 +461,17 @@ export const useLinkActions = ({
 
   // Returns whether the update succeeded so the caller can roll back its
   // optimistic selection on failure.
-  const handleSetActive = async (tenantId: string, agentId: string | null): Promise<boolean> => {
+  const handleSetActive = async (
+    tenantId: string,
+    agentId: string | null,
+    workspaceId?: string | null,
+  ): Promise<boolean> => {
     if (!canEdit) return false;
 
     try {
-      await messengerService.setActiveAgent({
-        agentId,
+      await messengerService.setActiveGroup({
+        groupId: agentId,
+        workspaceId,
         platform,
         tenantId: tenantId || undefined,
       });

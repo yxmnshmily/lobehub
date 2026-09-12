@@ -44,7 +44,12 @@ const AgentBuilderConversation = memo<AgentBuilderConversationProps>(({ agentId 
         <Flexbox flex={1} style={{ overflow: 'hidden' }}>
           <ChatList welcome={<AgentBuilderWelcome disabled={!canCreate} />} />
         </Flexbox>
-        <ChatInput leftActions={actions} rightActions={rightActions} showControlBar={false} />
+        <ChatInput
+          allowExpand={false}
+          leftActions={actions}
+          rightActions={rightActions}
+          showControlBar={false}
+        />
       </Flexbox>
     </DragUploadZone>
   );

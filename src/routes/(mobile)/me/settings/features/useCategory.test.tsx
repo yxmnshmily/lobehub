@@ -29,7 +29,9 @@ vi.mock('@/libs/trpc/client', () => ({
   },
 }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
+  }),
 }));
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -56,6 +58,16 @@ afterEach(() => {
 });
 
 describe('mobile customer center categories', () => {
+  it('moves credentials and storage into advanced without changing their destinations', () => {
+    platformAccess.isPlatformAdmin = true;
+    const { result } = renderHook(useCategory, { wrapper });
+    const advanced = result.current.find((group) => group.key === SettingsGroupKey.Developer)!;
+    expect(advanced.items.map((item) => item.key)).toEqual(
+      expect.arrayContaining([SettingsTabs.Creds, SettingsTabs.Storage]),
+    );
+    advanced.items.find((item) => item.key === SettingsTabs.Creds)?.onClick?.();
+    expect(navigate).toHaveBeenCalledWith('/settings/credential', { escape: true });
+  });
   it('shows only account, service ledger, records, and works', () => {
     act(() =>
       useUserStore.setState({
@@ -70,22 +82,20 @@ describe('mobile customer center categories', () => {
       SettingsTabs.Profile,
       SettingsTabs.Security,
       SettingsTabs.Credits,
-      SettingsTabs.Billing,
       SettingsTabs.Usage,
       SettingsTabs.Works,
     ]);
     expect(items[0].label).toBe('桂林旅行者');
     expect(result.current[1].items.map((item) => item.label)).toEqual([
-      'Credits 余额',
-      'Credits 明细与服务订单',
-      'Token 用量',
+      '积分余额',
+      '账户用量',
       '本人生成记录',
     ]);
 
     items.find((item) => item.key === SettingsTabs.Usage)?.onClick?.();
     items.find((item) => item.key === SettingsTabs.Works)?.onClick?.();
     expect(navigate.mock.calls).toEqual([
-      ['/settings/credits?section=balance-usage', { escape: true }],
+      ['/settings/usage', { escape: true }],
       ['/settings/credits?section=my-creations', { escape: true }],
     ]);
     expect(items.some((item) => item.key === ('private-group' as SettingsTabs))).toBe(false);
@@ -103,6 +113,14 @@ describe('mobile customer center categories', () => {
     );
     const { result } = renderHook(() => useCategory(), { wrapper });
     const items = result.current.flatMap((group) => group.items);
+    const general = result.current.find((group) => group.key === SettingsGroupKey.General)!;
+
+    expect(general.items.map((item) => item.key)).toEqual([
+      SettingsTabs.Appearance,
+      SettingsTabs.Devices,
+      SettingsTabs.Hotkey,
+      SettingsTabs.Notification,
+    ]);
 
     expect(result.current.map((group) => group.key)).toEqual([
       SettingsGroupKey.General,
@@ -116,15 +134,27 @@ describe('mobile customer center categories', () => {
     expect(items.map((item) => item.key)).toEqual(
       expect.arrayContaining([
         SettingsTabs.Appearance,
+        SettingsTabs.Devices,
+        SettingsTabs.Hotkey,
+        SettingsTabs.Notification,
         SettingsTabs.Provider,
         SettingsTabs.ServiceModel,
         SettingsTabs.Skill,
+        SettingsTabs.Community,
+        SettingsTabs.Messenger,
         SettingsTabs.Creds,
         SettingsTabs.Storage,
         SettingsTabs.Advanced,
         SettingsTabs.ServiceOperations,
       ]),
     );
+
+    for (const item of items) item.onClick?.();
+    expect(navigate.mock.calls).toEqual(
+      items.map((item) => [item.href, { escape: true }]),
+    );
+
+    navigate.mockClear();
 
     items.find((item) => item.key === SettingsTabs.Provider)?.onClick?.();
     items.find((item) => item.key === SettingsTabs.ServiceModel)?.onClick?.();

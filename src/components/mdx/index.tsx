@@ -5,6 +5,8 @@ import { type FC } from 'react';
 import Markdown, { type Components, type Options } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import { displayBranding } from '@/utils/displayBranding';
+
 import CodeBlock from './CodeBlock';
 import Image from './Image';
 import Link from './Link';
@@ -52,7 +54,7 @@ export const CustomMDX: FC<CustomMDXProps> = ({
   return (
     <Typography mobile={mobile}>
       <Markdown components={components} remarkPlugins={[remarkGfm, ...(extraRemarkPlugins ?? [])]}>
-        {source}
+        {displayBranding(source)}
       </Markdown>
     </Typography>
   );

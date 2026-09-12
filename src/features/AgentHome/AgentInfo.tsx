@@ -7,6 +7,8 @@ import isEqual from 'fast-deep-equal';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import Avatar from '@/components/Avatar';
 import { DEFAULT_AVATAR, DEFAULT_INBOX_AVATAR } from '@/const/meta';
 import { contextSelectors, useConversationStore } from '@/features/Conversation/store';
@@ -46,9 +48,9 @@ const AgentInfo = memo(() => {
     return (
       <Flexbox gap={12}>
         <Skeleton.Avatar shape={'square'} size={64} />
-        <Skeleton height={32} width={200} />
+        <SkeletonBar height={32} width={200} />
         <Flexbox width={'min(100%, 640px)'}>
-          <Skeleton.Text rows={2} />
+          <SkeletonText rows={2} />
         </Flexbox>
       </Flexbox>
     );

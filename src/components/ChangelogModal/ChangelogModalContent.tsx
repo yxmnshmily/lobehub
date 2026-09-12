@@ -10,7 +10,7 @@ import { lambdaClient } from '@/libs/trpc/client';
 
 import ChangelogContent from './ChangelogContent';
 
-const SCROLL_HEIGHT = 'min(80vh, 760px)';
+const SCROLL_HEIGHT = 'min(60dvh, 560px, calc(100dvh - 176px))';
 
 const ChangelogModalContent = memo(() => {
   const { t } = useTranslation('common');

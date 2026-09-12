@@ -21,6 +21,25 @@ describe('GroupRoleTransformProcessor', () => {
   };
 
   describe('assistant message transformation', () => {
+    it('supplies the real encoded message ID for another agent to quote', async () => {
+      const result = await new GroupRoleTransformProcessor(defaultConfig).process(
+        createContext([
+          { id: 'msg_B', agentId: 'agent-b', content: '好的，文案完毕了请检查', role: 'assistant' },
+        ]),
+      );
+      expect(result.messages[0].content).toContain('<message_reference id="msg%5FB" />');
+      expect(result.messages[0].content).toContain('好的，文案完毕了请检查');
+    });
+
+    it('does not expose a tool-only message as a quotable utterance', async () => {
+      const result = await new GroupRoleTransformProcessor(defaultConfig).process(
+        createContext([
+          { id: 'msg_tool', agentId: 'agent-b', content: '', role: 'assistant', tools: [] },
+        ]),
+      );
+      expect(result.messages[0].content).not.toContain('<message_reference');
+    });
+
     it('should keep current agent messages as assistant', async () => {
       const processor = new GroupRoleTransformProcessor(defaultConfig);
       const context = createContext([
@@ -487,7 +506,8 @@ describe('GroupRoleTransformProcessor', () => {
         // 2. Supervisor -> user with speaker tag
         {
           agentId: 'supervisor',
-          content: '<speaker name="Supervisor" />\n请各位专家从自己的角度给出建议',
+          content:
+            '<speaker name="Supervisor" />\n<message_reference id="msg%5F2" />\n请各位专家从自己的角度给出建议',
           id: 'msg_2',
           role: 'user',
         },
@@ -495,6 +515,7 @@ describe('GroupRoleTransformProcessor', () => {
         {
           agentId: 'agent-b',
           content: `<speaker name="Weather Expert" />
+<message_reference id="msg%5F3" />
 让我查一下杭州明天的天气
 
 <tool_use>
@@ -521,14 +542,16 @@ describe('GroupRoleTransformProcessor', () => {
         // 5. Weather Expert's final response -> user with speaker
         {
           agentId: 'agent-b',
-          content: '<speaker name="Weather Expert" />\n明天杭州天气不错，22度多云，适合出行',
+          content:
+            '<speaker name="Weather Expert" />\n<message_reference id="msg%5F5" />\n明天杭州天气不错，22度多云，适合出行',
           id: 'msg_5',
           role: 'user',
         },
         // 6. Food Critic -> user with speaker
         {
           agentId: 'agent-c',
-          content: '<speaker name="Food Critic" />\n推荐去楼外楼吃正宗的西湖醋鱼',
+          content:
+            '<speaker name="Food Critic" />\n<message_reference id="msg%5F6" />\n推荐去楼外楼吃正宗的西湖醋鱼',
           id: 'msg_6',
           role: 'user',
         },

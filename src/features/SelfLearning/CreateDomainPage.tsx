@@ -50,7 +50,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   content: css`
     width: 100%;
-    max-width: 960px;
+    max-width: 100%;
     padding-block: 16px 96px;
   `,
   footer: css`
@@ -59,7 +59,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-end: 0;
 
     padding-block: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,
@@ -126,7 +126,7 @@ const styles = createStaticStyles(({ css }) => ({
     align-items: start;
 
     padding-block: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: none;

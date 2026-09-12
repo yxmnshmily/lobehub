@@ -34,6 +34,8 @@ import {
   messages,
   messagesFiles,
   topics,
+  works,
+  workVersions,
   users,
 } from '../schemas';
 import type { LobeChatDatabase, Transaction } from '../type';
@@ -181,7 +183,7 @@ export class FileModel {
       // 2. Delete mirror documents whose source is this file. Without this,
       // documents.fileId would be set null by FK and leave orphan rows behind
       // (still indexed by BM25, still occupying KB slots).
-      await tx
+      const deletedDocuments = await tx
         .delete(documents)
         .where(
           and(
@@ -189,7 +191,20 @@ export class FileModel {
             buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, documents),
             eq(documents.sourceType, 'file'),
           ),
+        )
+        .returning({ id: documents.id });
+      if (deletedDocuments.length) {
+        await tx.delete(works).where(
+          and(
+            eq(works.resourceType, 'document'),
+            inArray(
+              works.resourceId,
+              deletedDocuments.map(({ id }) => id),
+            ),
+            buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, works),
+          ),
         );
+      }
 
       // 3. Delete the chunk/embedding asyncTasks tied to this file. files.chunkTaskId
       // and embeddingTaskId are `set null` on the asyncTasks side, so without this
@@ -202,6 +217,21 @@ export class FileModel {
       }
 
       // 4. Delete file record
+      // File works use a sandbox identity, not files.id. Only remove cards
+      // whose current version backs this file; older versions may share a path.
+      await tx.delete(works).where(
+        and(
+          eq(works.resourceType, 'file'),
+          buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, works),
+          inArray(
+            works.currentVersionId,
+            tx
+              .select({ id: workVersions.id })
+              .from(workVersions)
+              .where(sql`${workVersions.metadata}->>'fileId' = ${id}`),
+          ),
+        ),
+      );
       await tx.delete(files).where(and(eq(files.id, id), this.ownership()));
 
       if (!fileHash) return;
@@ -304,7 +334,7 @@ export class FileModel {
 
       // 3. Delete mirror documents (sourceType='file') so they don't linger as
       // orphans with fileId set to null after the file row is removed.
-      await trx
+      const deletedDocuments = await trx
         .delete(documents)
         .where(
           and(
@@ -312,7 +342,20 @@ export class FileModel {
             buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, documents),
             eq(documents.sourceType, 'file'),
           ),
+        )
+        .returning({ id: documents.id });
+      if (deletedDocuments.length) {
+        await trx.delete(works).where(
+          and(
+            eq(works.resourceType, 'document'),
+            inArray(
+              works.resourceId,
+              deletedDocuments.map(({ id }) => id),
+            ),
+            buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, works),
+          ),
         );
+      }
 
       // 4. Delete chunk/embedding asyncTasks attached to these files.
       const taskIds = fileList

@@ -32,7 +32,7 @@ const DevSeedSignIn = memo(() => {
   return (
     <Flexbox align={'center'} gap={8} paddingBlock={12}>
       <Text fontSize={12} type={'secondary'}>
-        Dev quick login
+        开发环境快捷登录
       </Text>
       <Flexbox horizontal gap={8}>
         {(['ultimate', 'free'] as const).map((account) => (

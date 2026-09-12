@@ -14,10 +14,11 @@ interface CreateGroupModalOptions {
    * opened from the sidebar "create group" entry, which only creates the group.
    */
   id?: string;
+  onCreated?: () => Promise<unknown>;
   visibility?: 'private' | 'public';
 }
 
-const CreateGroupContent = memo<CreateGroupModalOptions>(({ id, visibility }) => {
+const CreateGroupContent = memo<CreateGroupModalOptions>(({ id, visibility, onCreated }) => {
   const { t } = useTranslation(['chat', 'common']);
   const { close } = useModalContext();
   const { allowed: canCreate } = usePermission('create_content');
@@ -40,6 +41,7 @@ const CreateGroupContent = memo<CreateGroupModalOptions>(({ id, visibility }) =>
     try {
       const groupId = await addGroup(input, visibility);
       if (id) await updateAgentGroup(id, groupId);
+      await onCreated?.();
       toggleExpandSessionGroup(groupId, true);
       toast.success(t('sessionGroup.createSuccess'));
       close();

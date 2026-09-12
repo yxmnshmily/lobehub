@@ -373,8 +373,8 @@ describe('ErrorMessageExtra', () => {
     await waitFor(() => expect(retry).not.toBeDisabled());
   });
 
-  it('hands the group retry to the business card so a multi-step run can resume', () => {
-    serverConfigMock.enableBusinessFeatures = true;
+  it('renders the local credit card and preserves group retry without the cloud business flag', () => {
+    serverConfigMock.enableBusinessFeatures = false;
     businessSlot.render = true;
     const onRegenerate = vi.fn();
 

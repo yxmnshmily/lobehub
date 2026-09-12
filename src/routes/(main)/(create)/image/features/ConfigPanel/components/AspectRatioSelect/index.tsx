@@ -50,7 +50,7 @@ const AspectRatioSelect = memo<AspectRatioSelectProps>(
                 <div
                   style={{
                     aspectRatio: `${width} / ${height}`,
-                    border: `2px solid ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
+                    border: `0.5px solid ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
                     borderRadius: 3,
                     height: isWidthGreater ? undefined : 16,
                     width: isWidthGreater ? 16 : undefined,
@@ -61,7 +61,7 @@ const AspectRatioSelect = memo<AspectRatioSelectProps>(
               content = (
                 <div
                   style={{
-                    border: `2px dashed ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
+                    border: `0.5px dashed ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
                     borderRadius: 3,
                     height: 16,
                     width: 16,

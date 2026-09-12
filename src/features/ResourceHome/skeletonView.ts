@@ -9,7 +9,7 @@ export const resolveResourceSkeletonView = (
 ): ResourceSkeletonView => {
   const segment = pathname.split('/').findLast(Boolean);
 
-  if (segment === 'works') return 'works';
+  if (segment && ['works', 'other', 'files', 'audios'].includes(segment)) return 'works';
   if (requestedView === 'list' || requestedView === 'masonry') return requestedView;
 
   return getDefaultResourceViewMode(segment as FilesTabs);

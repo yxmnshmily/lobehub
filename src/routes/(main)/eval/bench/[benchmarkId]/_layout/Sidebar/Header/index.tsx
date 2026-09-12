@@ -1,5 +1,7 @@
 'use client';
 
+import { Flexbox, Icon } from '@lobehub/ui';
+import { Gauge } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +20,17 @@ const Header = memo(() => {
       breadcrumb={[
         {
           href: `/eval/bench/${benchmarkId}`,
-          title: t('tab.eval'),
+          title: (
+            <Flexbox
+              horizontal
+              align="center"
+              gap={6}
+              style={{ color: 'inherit', fontSize: 14, whiteSpace: 'nowrap' }}
+            >
+              <Icon icon={Gauge} />
+              <span>{t('tab.eval')}</span>
+            </Flexbox>
+          ),
         },
       ]}
     />

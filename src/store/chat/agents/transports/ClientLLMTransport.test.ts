@@ -144,19 +144,20 @@ describe('ClientLLMTransport.runAttempt · empty-completion grounding guard', ()
       type: 'UnknownChatFetchError',
     };
 
-    const result = await createTransport().runAttempt(input);
+    const { transport } = createTransport();
+    const result = await transport.runAttempt(input);
 
     expect(result.ok).toBe(false);
     if (result.ok === false) {
       expect(result.error).toMatchObject({ message: 'canceled' });
-      expect(createTransport().retryPolicy.classifyError(result.error).kind).toBe('stop');
+      expect(transport.retryPolicy.classifyError(result.error).kind).toBe('stop');
     }
   });
 });
 
 describe('ClientLLMTransport retry budget', () => {
   it('keeps interactive chat failures bounded to one retry', () => {
-    const retryPolicy = createTransport().retryPolicy;
+    const { retryPolicy } = createTransport().transport;
 
     expect(retryPolicy.maxAttempts('qwen')).toBe(2);
     expect(retryPolicy.maxAttempts('chatgpt')).toBe(2);

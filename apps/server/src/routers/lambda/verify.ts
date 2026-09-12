@@ -44,12 +44,16 @@ import { GoalCriteriaGeneratorService } from '@/server/services/goal/criteriaGen
 import {
   AcceptanceService,
   createEvidenceFileResolver,
+  createVerifierAgentRunner,
   finalizeVerifyRun,
+  resolveVerifyModelConfig,
   VerifyExecutorService,
   VerifyFeedbackService,
   VerifyPlanGeneratorService,
   VerifyReporterService,
 } from '@/server/services/verify';
+import { resolveVerificationDeliverable } from '@/server/services/verify/lifecycle';
+import { resolveTaskAcceptance } from '@/server/services/verify/taskAcceptance';
 
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
 
@@ -718,7 +722,73 @@ export const verifyRouter = router({
       const existingRun = await ctx.runModel.findByOperation(input.operationId);
       if (existingRun) assertWorkspaceRowManageable(ctx, existingRun.userId, 'verify run');
 
-      await ctx.executorService.execute(input);
+      const workspaceId = ctx.workspaceId ?? undefined;
+      const operation = await ctx.operationModel.findById(input.operationId);
+      // Nothing to judge without the run behind it. Failing here keeps the caller
+      // from silently walking into "every agent check recorded errored".
+      if (!operation) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: `Agent operation "${input.operationId}" not found; nothing to verify`,
+        });
+      }
+
+      // Agent-type checks are judged by a verifier sub-agent. With no runner the
+      // executor can only record them as `errored` — so a verify driven from here
+      // (CLI / API instead of the completion gate) used to fail a delivery that was
+      // never actually judged. Wire the same runner the completion lifecycle uses.
+      const verifierAgentId = operation.taskId
+        ? ((await resolveTaskAcceptance(ctx.serverDB, ctx.userId, operation.taskId, workspaceId))
+            ?.config.verifierAgentId ?? undefined)
+        : undefined;
+      const resolvedDeliverable = await resolveVerificationDeliverable(
+        ctx.serverDB,
+        ctx.userId,
+        input.deliverable,
+        operation.taskId,
+        workspaceId,
+      );
+      // The runner judges with the verify-safe model, never the CLI's `--model`
+      // (lifecycle resolves it the same way): the CLI value can name a
+      // heterogeneous runtime such as codex that cannot run LobeHub LLM calls, and
+      // the builtin verifier would then fail — turning checks `errored`, which is
+      // the very symptom this fix is about. The LLM judge below keeps the CLI
+      // contract.
+      const verifyModelConfig = await resolveVerifyModelConfig(
+        ctx.serverDB,
+        ctx.userId,
+        {
+          parentModel: operation.model,
+          parentProvider: operation.provider,
+          verifierAgentId,
+        },
+        workspaceId,
+      );
+      const runVerifierAgent = createVerifierAgentRunner({
+        db: ctx.serverDB,
+        deliverable: resolvedDeliverable,
+        model: verifyModelConfig.model,
+        provider: verifyModelConfig.provider,
+        taskId: operation.taskId,
+        topicId: operation.topicId,
+        userId: ctx.userId,
+        verifierAgentId,
+        workspaceId,
+      });
+      if (!runVerifierAgent) {
+        // An `agent`-type check with no runner is recorded `errored`, never
+        // `failed` — without this line that outcome reads as a judged failure.
+        console.warn(
+          '[verify:executeVerify] no verifier sub-agent for op %s (topic missing); agent checks will be recorded errored',
+          input.operationId,
+        );
+      }
+
+      await ctx.executorService.execute({
+        ...input,
+        deliverable: resolvedDeliverable,
+        runVerifierAgent,
+      });
       // Settle the run through the SAME finalizer the completion-time gate uses
       // (runVerifyOnCompletion → finalizeVerifyRun): repair-aware tail (spawn a
       // repair round on auto_repair failures), then report + drive the bound task.
@@ -730,7 +800,7 @@ export const verifyRouter = router({
         input.operationId,
         {
           report: {
-            deliverable: input.deliverable,
+            deliverable: resolvedDeliverable,
             goal: input.goal,
             modelConfig: input.modelConfig,
           },

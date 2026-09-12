@@ -151,7 +151,13 @@ const CreateGoalRender = memo<BuiltinRenderProps<CreateGoalParams, CreateGoalSta
     if (!pluginState?.success || !goalId) return null;
 
     const agentId = snapshot?.goal.agentId;
-    const openGoal = agentId ? () => navigate(`/agent/${agentId}/goal/${goalId}`) : undefined;
+    const groupId = snapshot?.goal.config?.groupId;
+    const goalPath = groupId
+      ? `/group/${encodeURIComponent(groupId)}/goal/${encodeURIComponent(goalId)}`
+      : agentId
+        ? `/agent/${agentId}/goal/${goalId}`
+        : undefined;
+    const openGoal = goalPath ? () => navigate(goalPath) : undefined;
 
     return (
       <TaskResultCard

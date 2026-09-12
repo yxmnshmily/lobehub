@@ -33,7 +33,7 @@ const Forbidden = memo(() => {
       <div style={{ lineHeight: '1.8', marginBottom: '2em', textAlign: 'center' }}>
         {t('forbidden.desc')}
       </div>
-      <Button type={'primary'} onClick={() => (window.location.href = '/')}>
+      <Button type={'primary'} onClick={() => (window.location.href = '/lobehub/group/default')}>
         {t('forbidden.backHome')}
       </Button>
     </Flexbox>

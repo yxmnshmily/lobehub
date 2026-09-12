@@ -1,3 +1,4 @@
+import type * as ConversationFlow from '@lobechat/conversation-flow';
 import type { UIChatMessage } from '@lobechat/types';
 import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -488,13 +489,63 @@ describe('DataSlice', () => {
       expect(dataSelectors.messagesInit(store.getState())).toBe(false);
     });
 
-    describe('getGroupLatestMessageWithoutTools', () => {
+    describe('getGroupLatestTextMessage', () => {
+      it.each([{ isSupervisor: true }, { orchestrationRole: 'supervisor' }])(
+        'resolves the text of a parsed group supervisor reply (%j)',
+        async (metadata) => {
+          const { parse } = await vi.importActual<typeof ConversationFlow>(
+            '@lobechat/conversation-flow',
+          );
+          const store = createTestStore();
+          const messages = [
+            {
+              id: 'supervisor-text',
+              role: 'assistant',
+              content: '群主管的最终回复',
+              metadata,
+              createdAt: 1,
+              updatedAt: 1,
+            } as UIChatMessage,
+          ];
+          store.setState({ dbMessages: messages, displayMessages: parse(messages).flatList });
+
+          expect(store.getState().displayMessages[0].role).toBe('supervisor');
+          expect(
+            dataSelectors.getGroupLatestTextMessage('supervisor-text')(store.getState()),
+          ).toMatchObject({ id: 'supervisor-text', content: '群主管的最终回复' });
+        },
+      );
+
+      it('prefers a task completion and skips trailing tool-only or empty blocks', () => {
+        const store = createTestStore();
+        const group = {
+          children: [
+            { id: 'text', content: 'Answer' },
+            { id: 'tool', content: '', tools: [{ id: 'call' }] },
+            { id: 'empty', content: '   ' },
+          ],
+          content: '',
+          id: 'group-1',
+          role: 'assistantGroup',
+        };
+        store.getState().replaceMessages([group as any]);
+        expect(dataSelectors.getGroupLatestTextMessage('group-1')(store.getState())?.id).toBe(
+          'text',
+        );
+        store.getState().replaceMessages([
+          {
+            ...group,
+            taskCompletions: [{ id: 'completion', content: 'Final result' }],
+          } as any,
+        ]);
+        expect(dataSelectors.getGroupLatestTextMessage('group-1')(store.getState())?.id).toBe(
+          'completion',
+        );
+      });
       it('should return undefined for non-existent message', () => {
         const store = createTestStore();
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('non-existent')(
-          store.getState(),
-        );
+        const result = dataSelectors.getGroupLatestTextMessage('non-existent')(store.getState());
         expect(result).toBeUndefined();
       });
 
@@ -507,7 +558,7 @@ describe('DataSlice', () => {
           value: { content: 'Hello', role: 'user', sessionId: 'session-1' },
         });
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('msg-1')(store.getState());
+        const result = dataSelectors.getGroupLatestTextMessage('msg-1')(store.getState());
         expect(result).toBeUndefined();
       });
 
@@ -529,12 +580,12 @@ describe('DataSlice', () => {
 
         store.getState().replaceMessages([groupMessage as any]);
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('group-1')(store.getState());
+        const result = dataSelectors.getGroupLatestTextMessage('group-1')(store.getState());
         expect(result?.id).toBe('child-2');
         expect(result?.content).toBe('Second response');
       });
 
-      it('should return undefined if last child has tools', () => {
+      it('should keep text actions on a block that also calls tools', () => {
         const store = createTestStore();
 
         const groupMessage = {
@@ -564,11 +615,11 @@ describe('DataSlice', () => {
 
         store.getState().replaceMessages([groupMessage as any]);
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('group-1')(store.getState());
-        expect(result).toBeUndefined();
+        const result = dataSelectors.getGroupLatestTextMessage('group-1')(store.getState());
+        expect(result?.id).toBe('child-2');
       });
 
-      it('should return undefined if last child has no content', () => {
+      it('should skip an empty trailing block', () => {
         const store = createTestStore();
 
         const groupMessage = {
@@ -585,8 +636,8 @@ describe('DataSlice', () => {
 
         store.getState().replaceMessages([groupMessage as any]);
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('group-1')(store.getState());
-        expect(result).toBeUndefined();
+        const result = dataSelectors.getGroupLatestTextMessage('group-1')(store.getState());
+        expect(result?.id).toBe('child-1');
       });
 
       it('should return undefined for group with empty children', () => {
@@ -603,7 +654,7 @@ describe('DataSlice', () => {
 
         store.getState().replaceMessages([groupMessage as any]);
 
-        const result = dataSelectors.getGroupLatestMessageWithoutTools('group-1')(store.getState());
+        const result = dataSelectors.getGroupLatestTextMessage('group-1')(store.getState());
         expect(result).toBeUndefined();
       });
     });
@@ -770,6 +821,24 @@ describe('DataSlice', () => {
         expect.any(Function),
         expect.any(Object),
       );
+    });
+
+    it('loads group history without an active topic', async () => {
+      const context = {
+        agentId: 'supervisor',
+        groupId: 'group-1',
+        scope: 'group' as const,
+        topicId: null,
+        threadId: null,
+      };
+      const store = createStore({ context });
+      store.getState().useFetchMessages(context);
+      await waitFor(() => {
+        expect(messageService.getMessages).toHaveBeenCalledWith(
+          expect.objectContaining({ groupId: 'group-1' }),
+        );
+      });
+      expect(vi.mocked(useClientDataSWRWithSync).mock.calls.at(-1)?.[0]).not.toBeNull();
     });
 
     it('should not fetch when topicId is null (new conversation state)', () => {

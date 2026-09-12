@@ -9,9 +9,6 @@ import { useTranslation } from 'react-i18next';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useAgentStore } from '@/store/agent';
-import { agentSelectors } from '@/store/agent/selectors';
-import { useChatStore } from '@/store/chat';
 
 import { useShareData } from '../ShareDataProvider';
 import { generateMarkdown } from '../ShareText/template';
@@ -70,9 +67,8 @@ const SharePdf = memo((props: { message?: UIChatMessage }) => {
   ];
 
   // Use the same data gathering logic as ShareText
-  const [systemRole] = useAgentStore((s) => [agentSelectors.currentAgentSystemRole(s)]);
-  const activeId = useChatStore((s) => s.activeAgentId);
-  const { context, displayMessages, title } = useShareData();
+  const { context, displayMessages, systemRole, title } = useShareData();
+  const activeId = context.agentId || context.groupId;
 
   const { generatePdf, downloadPdf, pdfData, loading, error } = usePdfGeneration();
 
@@ -82,7 +78,7 @@ const SharePdf = memo((props: { message?: UIChatMessage }) => {
       const currentMarkdownContent = generateMarkdown({
         ...fieldValue,
         messages: outerMessage ? [outerMessage] : displayMessages,
-        systemRole,
+        systemRole: systemRole ?? '',
         title,
       }).replaceAll('\n\n\n', '\n');
 

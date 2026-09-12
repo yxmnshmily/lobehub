@@ -1,7 +1,6 @@
 'use client';
 
-import { Flexbox, Markdown } from '@lobehub/ui';
-import { Text } from '@lobehub/ui/base-ui';
+import { Markdown } from '@lobehub/ui';
 import isEqual from 'fast-deep-equal';
 import React, { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useConversationStore } from '@/features/Conversation';
 import ToolAuthAlert from '@/features/Conversation/AgentWelcome/ToolAuthAlert';
 import { contextSelectors } from '@/features/Conversation/store';
+import GroupWelcome from '@/features/SuperGroup/GroupWelcome';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import SupervisorAvatar from '@/routes/(main)/group/features/GroupAvatar';
 import { useAgentStore } from '@/store/agent';
@@ -61,30 +61,20 @@ const InboxWelcome = memo(() => {
   const displayTitle = groupMeta.title;
 
   return (
-    <>
-      <Flexbox flex={1} />
-      <Flexbox
-        gap={12}
-        width={'100%'}
-        style={{
-          paddingBottom: 'max(10vh, 32px)',
-        }}
-      >
-        <SupervisorAvatar size={78} />
-        <Text fontSize={32} weight={'bold'}>
-          {displayTitle}
-        </Text>
-        <Flexbox width={'min(100%, 640px)'}>
-          <Markdown fontSize={fontSize} variant={'chat'}>
-            {isInbox ? t('guide.defaultMessageWithoutCreate', { appName: '旅游群主AI' }) : message}
-          </Markdown>
-        </Flexbox>
-        {openingQuestions.length > 0 && (
-          <OpeningQuestions mobile={mobile} questions={openingQuestions} />
-        )}
-        <ToolAuthAlert />
-      </Flexbox>
-    </>
+    <GroupWelcome
+      avatar={<SupervisorAvatar size={78} />}
+      title={displayTitle}
+      description={
+        <Markdown fontSize={fontSize} variant={'chat'}>
+          {isInbox ? t('guide.defaultMessageWithoutCreate', { appName: '旅游群主AI' }) : message}
+        </Markdown>
+      }
+    >
+      {openingQuestions.length > 0 && (
+        <OpeningQuestions mobile={mobile} questions={openingQuestions} />
+      )}
+      <ToolAuthAlert />
+    </GroupWelcome>
   );
 });
 

@@ -10,7 +10,7 @@ const styles = createStaticStyles(({ css }) => ({
     overflow: hidden;
 
     height: 106px;
-    border: 1px solid ${cssVar.colorFill};
+    border: 0.5px solid ${cssVar.colorFill};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};

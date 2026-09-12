@@ -82,7 +82,7 @@ export class LobehubSkillStoreActionImpl {
 
         return {
           data: response.data,
-          error: responseError?.message || dataMessage || 'LobeHub Skill call failed',
+          error: responseError?.message || dataMessage || '旅游群 Skill call failed',
           errorCode: responseError?.code,
           success: false,
         };

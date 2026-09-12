@@ -1,8 +1,9 @@
-import { formatUsageValue } from '@lobechat/utils';
+import { formatLocalizedTokens as formatUsageValue } from '@lobechat/utils';
 import { Flexbox } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface TokenProgressItem {
   color: string;
@@ -18,6 +19,7 @@ interface TokenProgressProps {
 }
 
 const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal }) => {
+  const { i18n } = useTranslation();
   const total = data.reduce((acc, item) => acc + item.value, 0);
   return (
     <Flexbox gap={8} style={{ position: 'relative' }} width={'100%'}>
@@ -57,7 +59,7 @@ const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal }) =
               )}
               <div style={{ color: cssVar.colorTextSecondary }}>{item.title}</div>
             </Flexbox>
-            <div style={{ fontWeight: 500 }}>{formatUsageValue(item.value)}</div>
+            <div style={{ fontWeight: 500 }}>{formatUsageValue(item.value, i18n.language)}</div>
           </Flexbox>
         ))}
         {showTotal && (
@@ -65,7 +67,7 @@ const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal }) =
             <Divider style={{ marginBlock: 8 }} />
             <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
               <div style={{ color: cssVar.colorTextSecondary }}>{showTotal}</div>
-              <div style={{ fontWeight: 500 }}>{formatUsageValue(total)}</div>
+              <div style={{ fontWeight: 500 }}>{formatUsageValue(total, i18n.language)}</div>
             </Flexbox>
           </>
         )}

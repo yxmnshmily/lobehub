@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     duplicateAlert: css`
       margin-block-start: ${cssVar.marginMD};
       padding: ${cssVar.paddingMD};
-      border: 1px solid ${cssVar.colorWarningBorder};
+      border: 0.5px solid ${cssVar.colorWarningBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background-color: ${cssVar.colorWarningBg};
@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     `,
     tableContainer: css`
       overflow: hidden;
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
       border-radius: ${cssVar.borderRadiusLG};
     `,
     tableName: css`

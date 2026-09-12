@@ -31,6 +31,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 const NavBar = memo(() => {
   const { t } = useTranslation('common');
   const activeKey = useActiveTabKey();
+  const mobileActiveKey =
+    activeKey === SidebarTabKey.Setting || activeKey === SidebarTabKey.Memory
+      ? SidebarTabKey.Me
+      : activeKey;
   const navigate = useWorkspaceAwareNavigate();
 
   const { showMarket } = useServerConfigStore(featureFlagsSelectors);
@@ -75,7 +79,7 @@ const NavBar = memo(() => {
   return (
     <TabBar
       safeArea
-      activeKey={activeKey}
+      activeKey={mobileActiveKey}
       className={styles.container}
       height={MOBILE_TABBAR_HEIGHT}
       items={items}

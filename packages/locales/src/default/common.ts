@@ -1,4 +1,9 @@
+import travelUi from './travelUi';
+
 export default {
+  ...travelUi,
+  'agent.manage': 'Manage',
+  'backToHome': 'Back to Home',
   'about': 'About',
   'advanceSettings': 'Advanced Settings',
   'alert.cloud.action': 'Try now',
@@ -613,7 +618,7 @@ export default {
   'tab.knowledgeBase': 'Library',
   'tab.marketplace': 'Marketplace',
   'tab.me': 'Me',
-  'tab.memory': 'Memory',
+  'tab.memory': 'My Memory',
   'tab.pages': 'Pages',
   'tab.resource': 'Resources',
   'tab.search': 'Search',
@@ -657,7 +662,7 @@ export default {
   'userPanel.myUsage': 'My Usage',
   'userPanel.plans': 'Subscription Plans',
   'userPanel.profile': 'Account',
-  'userPanel.setting': 'Settings',
+  'userPanel.setting': 'Account Center',
   'userPanel.upgradePlan': 'Upgrade Plan',
   'userPanel.usages': 'Usage',
   'userPanel.workspaceSetting': 'Workspace Settings',

@@ -2,6 +2,43 @@ import type * as ModelBankModule from 'model-bank';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiAgentService } from '../index';
+import { createHistoryMessagesLoader } from '../pipeline/operationPrep';
+
+describe('group history on resumed operations', () => {
+  it.each([{ existingMessageIds: [] }, { existingMessageIds: ['msg-tool-result'] }])(
+    'keeps group-scoped history without enabling the full timeline ($existingMessageIds)',
+    async ({ existingMessageIds }) => {
+      const query = vi
+        .fn()
+        .mockResolvedValue([
+          { content: 'User submitted answers', id: 'msg-tool-result', role: 'tool' },
+        ]);
+      const loadHistory = createHistoryMessagesLoader(
+        {
+          db: {} as any,
+          groupTimeline: false,
+          isShareVisitorRun: false,
+          messageModel: { query } as any,
+          userId: 'owner-1',
+        },
+        {
+          appContext: { groupId: 'group-1', threadId: 'thread-1', topicId: 'topic-1' },
+          effectiveResume: true,
+          existingMessageIds,
+          resumeParentMessage: undefined,
+          selfMessageIds: new Set(),
+        },
+      );
+
+      await loadHistory();
+
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: 'group-1', threadId: 'thread-1', topicId: 'topic-1' }),
+        expect.objectContaining({ allowShareVisitor: false, groupTimeline: false }),
+      );
+    },
+  );
+});
 
 // Use vi.hoisted to ensure mock functions are available before vi.mock runs
 const { mockMessageCreate, mockTopicCreate } = vi.hoisted(() => ({

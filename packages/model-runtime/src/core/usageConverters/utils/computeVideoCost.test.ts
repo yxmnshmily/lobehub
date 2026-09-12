@@ -5,6 +5,53 @@ import type { VideoGenerationParams } from './computeVideoCost';
 import { computeVideoCost } from './computeVideoCost';
 
 describe('computeVideoCost', () => {
+  it.each(['fixed', 'lookup'] as const)(
+    'bills seconds rather than tokens for %s prices',
+    (strategy) => {
+      const pricing: Pricing = {
+        units: [
+          {
+            name: 'videoGeneration',
+            unit: 'second',
+            ...(strategy === 'fixed'
+              ? { strategy, rate: 0.4 }
+              : {
+                  strategy,
+                  lookup: { pricingParams: ['resolution'], prices: { '720p': 0.4 } },
+                }),
+          },
+        ],
+      };
+      expect(computeVideoCost(pricing, 999999, { duration: 8, resolution: '720p' })).toMatchObject({
+        totalCost: 3.2,
+        totalCredits: 3200000,
+      });
+      expect(computeVideoCost(pricing, 999999, { resolution: '720p' })).toBeUndefined();
+      expect(computeVideoCost(pricing, 0, { duration: 6, resolution: '720p' })?.totalCredits).toBe(
+        2400000,
+      );
+    },
+  );
+
+  it.each([NaN, Infinity, -1])(
+    'rejects invalid usage %s instead of generating a charge',
+    (value) => {
+      const pricing: Pricing = {
+        units: [{ name: 'videoGeneration', unit: 'millionTokens', strategy: 'fixed', rate: 1 }],
+      };
+      expect(computeVideoCost(pricing, value, {})).toBeUndefined();
+    },
+  );
+
+  it('does not round an exact decimal 123-credit price up to 124', () => {
+    const pricing: Pricing = {
+      units: [
+        { name: 'videoGeneration', unit: 'millionTokens', strategy: 'fixed', rate: 0.000123 },
+      ],
+    };
+    expect(computeVideoCost(pricing, 1000000, {})).toMatchObject({ totalCredits: 123 });
+  });
+
   describe('fixed pricing strategy', () => {
     it('should compute cost with millionTokens unit', () => {
       const pricing: Pricing = {

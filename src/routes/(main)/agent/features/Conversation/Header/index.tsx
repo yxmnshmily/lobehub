@@ -34,7 +34,7 @@ const headerStyles = createStaticStyles(({ css }) => ({
     container-name: agent-conv-header;
     container-type: inline-size;
 
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
 

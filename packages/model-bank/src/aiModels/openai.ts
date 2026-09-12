@@ -1679,7 +1679,25 @@ export const openaiVideoModels: AIVideoModelCard[] = [
       },
     },
     pricing: {
-      units: [{ name: 'videoGeneration', rate: 0.5, strategy: 'fixed', unit: 'second' }],
+      // Official API resolution-specific rates, checked 2026-09-07.
+      units: [
+        {
+          lookup: {
+            prices: {
+              '720x1280': 0.3,
+              '1280x720': 0.3,
+              '1024x1792': 0.5,
+              '1792x1024': 0.5,
+              '1080x1920': 0.7,
+              '1920x1080': 0.7,
+            },
+            pricingParams: ['size'],
+          },
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'second',
+        },
+      ],
     },
     releasedAt: '2025-10-06',
     type: 'video',

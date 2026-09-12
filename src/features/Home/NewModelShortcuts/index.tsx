@@ -1,11 +1,12 @@
 import { ModelIcon } from '@lobehub/icons';
 import { Flexbox } from '@lobehub/ui';
-import { Avatar, Button, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Avatar, Button, Text } from '@lobehub/ui/base-ui';
 import { App } from 'antd';
 import { createStaticStyles, cx } from 'antd-style';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import type { BusinessModelModeConfig } from '@/business/client/hooks/useBusinessAgentMode';
 import { useBusinessModelModeConfig } from '@/business/client/hooks/useBusinessAgentMode';
 import type { HomeNewModelItem } from '@/business/client/hooks/useHomeNewModels';
@@ -165,7 +166,7 @@ export const NewModelShortcuts = () => {
         <Text className={styles.label}>{t('starter.newLabel')}</Text>
         {isLoading
           ? defaultHomeNewModels.map((item, index) => (
-              <Skeleton
+              <SkeletonBar
                 height={24}
                 key={getShortcutKey(item)}
                 radius={8}

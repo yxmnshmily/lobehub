@@ -24,15 +24,18 @@ const Layout = memo(({ children, mobile }: ProviderMenuProps) => {
 
   const providerSearchKeyword = useAiInfraStore((s) => s.providerSearchKeyword);
 
-  const width = mobile ? undefined : 280;
+  const width = mobile ? '100%' : 280;
   return (
     <Flexbox
       width={width}
       style={{
         background: cssVar.colorBgContainer,
-        borderRight: `1px solid ${cssVar.colorBorderSecondary}`,
-        minWidth: width,
+        borderRight: mobile ? undefined : `0.5px solid ${cssVar.colorBorderSecondary}`,
+        maxWidth: '100%',
+        minWidth: mobile ? 0 : width,
         overflow: mobile ? undefined : 'scroll',
+        /* 24px page gutter on the left of the provider list. */
+        paddingInlineStart: mobile ? 0 : 24,
       }}
     >
       <Flexbox
@@ -44,11 +47,11 @@ const Layout = memo(({ children, mobile }: ProviderMenuProps) => {
         width={'100%'}
         style={{
           background: cssVar.colorBgContainer,
-          borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
           marginBottom: 8,
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
+          position: mobile ? 'relative' : 'sticky',
+          top: mobile ? undefined : 0,
+          zIndex: mobile ? undefined : 50,
         }}
       >
         <SearchBar

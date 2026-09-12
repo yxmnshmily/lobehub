@@ -41,7 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
     }
 
     &:not(:first-child) {
-      border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
     &:focus-visible {
@@ -56,7 +56,7 @@ const styles = createStaticStyles(({ css }) => ({
   filterContainer: css`
     overflow: hidden;
     display: flex;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusSM};
   `,
   filtersRow: css`
@@ -66,7 +66,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   // Summary strip — leads the table with the case total as a mono figure plus a
   // proportional read of the difficulty mix across the loaded cases.
@@ -82,7 +82,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   summaryValue: css`
     font-family: ${cssVar.fontFamilyCode};

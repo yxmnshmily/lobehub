@@ -61,9 +61,9 @@ const AgentBreadcrumb = memo<AgentBreadcrumbProps>(({ agentId, extraItems, title
   );
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const isInbox = !!inboxAgentId && agentId === inboxAgentId;
-  const displayTitle = isInbox
-    ? agentTitle || t('inbox.title', { ns: 'chat' })
-    : agentTitle || t('defaultSession', { ns: 'common' });
+  const displayTitle =
+    agentTitle ||
+    (isInbox ? t('inbox.title', { ns: 'chat' }) : t('defaultSession', { ns: 'common' }));
   const agentRoute = useMemo(() => parseAgentPathname(pathname), [pathname]);
   const agentHomePath = useMemo(() => {
     const targetPath = buildWorkspaceAwarePath(urlJoin('/agent', agentId), activeWorkspaceSlug);

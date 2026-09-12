@@ -1,75 +1,38 @@
 'use client';
 
-import { resolveAgentGroupManagementPolicy } from '@lobechat/types';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
-import { BotPromptIcon } from '@lobehub/ui/icons';
-import { MessageSquarePlusIcon, SearchIcon } from 'lucide-react';
+import { MessageSquarePlusIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import urlJoin from 'url-join';
 
 import NavItem from '@/features/NavPanel/components/NavItem';
-import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
-import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
-import { usePermission } from '@/hooks/usePermission';
-import { useQueryRoute } from '@/hooks/useQueryRoute';
-import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
-import { useChatStore } from '@/store/chat';
-import { useGlobalStore } from '@/store/global';
-import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 const Nav = memo(() => {
-  const { t } = useTranslation('chat');
   const { t: tTopic } = useTranslation('topic');
+  const switchToNewTopic = useAgentGroupStore((s) => s.switchToNewTopic);
   const params = useActiveRouteParams();
   const groupId = params.gid;
-  const { pathname } = useActiveLocation();
-  const isProfileActive = pathname.includes('/profile');
-  const router = useQueryRoute();
-  const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
-  const { allowed: canEditContent } = usePermission('edit_own_content');
-  const { canEditResource, isAccessResolved } = useResourceAccess('agentGroup', groupId);
   const group = useAgentGroupStore(agentGroupSelectors.getGroupById(groupId ?? ''));
-  const { data: isPlatformAdmin } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
-  const canConfigureGroup =
-    !!group &&
-    (resolveAgentGroupManagementPolicy(group.clientId) !== 'platform' || isPlatformAdmin === true);
-  const toggleCommandMenu = useGlobalStore((s) => s.toggleCommandMenu);
-  const switchTopic = useChatStore((s) => s.switchTopic);
-  const switchToNewTopic = useAgentGroupStore((s) => s.switchToNewTopic);
+  const isDefaultSupergroup =
+    group?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID && !group.workspaceId;
+
+  if (isDefaultSupergroup) return null;
 
   return (
-    <Flexbox gap={1} paddingInline={4}>
-      <NavItem
-        icon={MessageSquarePlusIcon}
-        title={tTopic('actions.addNewTopic')}
-        onClick={switchToNewTopic}
-      />
-      {isAgentEditable &&
-        isAccessResolved &&
-        canEditContent &&
-        canEditResource &&
-        canConfigureGroup && (
-        <NavItem
-          active={isProfileActive}
-          icon={BotPromptIcon}
-          title={t('tab.groupProfile')}
-          onClick={() => {
-            switchTopic(null, { skipRefreshMessage: true });
-            router.push(urlJoin('/group', groupId!, 'profile'));
-          }}
-        />
+    <Flexbox data-group-nav-branches="" gap={1} paddingInline={4}>
+      {!isDefaultSupergroup && (
+        <div data-group-nav-branch="">
+          <NavItem
+            icon={MessageSquarePlusIcon}
+            title={tTopic('actions.addNewTopic')}
+            onClick={switchToNewTopic}
+          />
+        </div>
       )}
-      <NavItem
-        icon={SearchIcon}
-        title={t('tab.search')}
-        onClick={() => {
-          toggleCommandMenu(true);
-        }}
-      />
     </Flexbox>
   );
 });

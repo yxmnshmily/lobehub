@@ -4,7 +4,14 @@
 import { BUILTIN_AGENT_SLUGS } from '@lobechat/builtin-agents';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { use } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { GoalChatProvider } from '@/features/AgentGoals/GoalChat/GoalChatProvider';
+import {
+  GroupWorkConversationContext,
+  GroupWorkScopeContext,
+} from '@/features/SuperGroup/GroupWorkScope';
 
 import { TaskAgentProvider, useTaskAgentSelection } from './TaskAgentProvider';
 
@@ -95,8 +102,68 @@ const SelectAgentButton = ({ agentId }: { agentId: string }) => {
   const selectTaskAgent = useTaskAgentSelection();
   return <button onClick={() => selectTaskAgent(agentId)}>select agent</button>;
 };
+const SelectGroupTopicButton = () => {
+  const context = use(GroupWorkConversationContext);
+  return (
+    <button onClick={() => context?.onTopicChange('detail-history')}>select group history</button>
+  );
+};
 
 describe('TaskAgentProvider', () => {
+  it('selects detail history locally without switching the main group topic', () => {
+    mocks.chatState.activeTopicId = 'main-group-topic';
+    render(
+      <GroupWorkScopeContext value={{ groupId: 'travel' }}>
+        <TaskAgentProvider preferredAgentId="coordinator" viewedTaskId="T-1">
+          <SelectGroupTopicButton />
+        </TaskAgentProvider>
+      </GroupWorkScopeContext>,
+    );
+    fireEvent.click(screen.getByText('select group history'));
+    expect(mocks.providerContexts.at(-1)?.topicId).toBe('detail-history');
+    expect(mocks.chatState.activeTopicId).toBe('main-group-topic');
+    expect(mocks.chatState.switchTopic).not.toHaveBeenCalled();
+  });
+  it('isolates group goal detail without changing the mounted main group topic', () => {
+    mocks.chatState.activeTopicId = 'main-group-topic';
+    mocks.chatState.activeAgentId = 'main-group-agent';
+    render(
+      <GroupWorkScopeContext value={{ groupId: 'travel' }}>
+        <GoalChatProvider agentId="coordinator" goalId="goal-one">
+          <span>goal chat</span>
+        </GoalChatProvider>
+      </GroupWorkScopeContext>,
+    );
+    expect(mocks.providerContexts.at(-1)).toMatchObject({
+      groupId: 'travel',
+      scope: 'group',
+      viewedGoal: { goalId: 'goal-one' },
+      topicId: null,
+      isolatedTopic: true,
+    });
+    expect(mocks.chatState.activeTopicId).toBe('main-group-topic');
+    expect(mocks.chatState.activeAgentId).toBe('main-group-agent');
+    expect(mocks.chatState.switchTopic).not.toHaveBeenCalled();
+  });
+  it('uses the work group and its coordinator for a task detail conversation', () => {
+    mocks.chatState.activeTopicId = 'main-group-topic';
+    render(
+      <GroupWorkScopeContext value={{ groupId: 'travel' }}>
+        <TaskAgentProvider preferredAgentId="supervisor" viewedTaskId="T-4">
+          <span>task chat</span>
+        </TaskAgentProvider>
+      </GroupWorkScopeContext>,
+    );
+    expect(mocks.providerContexts.at(-1)).toMatchObject({
+      groupId: 'travel',
+      scope: 'group',
+      defaultTaskAssigneeAgentId: 'supervisor',
+      viewedTask: { taskId: 'T-4', type: 'detail' },
+    });
+    expect(mocks.providerContexts.at(-1)).toMatchObject({ topicId: null, isolatedTopic: true });
+    expect(mocks.chatState.activeTopicId).toBe('main-group-topic');
+    expect(mocks.chatState.switchTopic).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     mocks.agentState.activeAgentId = undefined;
     mocks.agentState.setActiveAgentId.mockClear();

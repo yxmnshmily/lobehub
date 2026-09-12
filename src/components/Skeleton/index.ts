@@ -19,3 +19,4 @@ export { default as SettingsSectionSkeleton } from './Settings/Section';
 export * from './SkeletonInput';
 export * from './SkeletonSwitch';
 export { default as SurfaceSkeleton, type SurfaceSkeletonVariant } from './Surface';
+export { default as SkeletonText, type SkeletonTextProps } from './Text';

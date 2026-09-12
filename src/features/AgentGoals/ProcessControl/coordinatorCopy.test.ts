@@ -3,10 +3,32 @@ import { describe, expect, it } from 'vitest';
 import {
   coordinatorGateKind,
   coordinatorGateReason,
+  coordinatorOptionLabelKey,
   coordinatorReasonCopy,
 } from './coordinatorCopy';
 
 const decision = (ids: string[]) => ({ options: ids.map((id) => ({ id, label: id })) }) as any;
+
+describe('coordinatorOptionLabelKey', () => {
+  it('preserves the backend label for a group replanning gate', () => {
+    const kind = coordinatorGateKind(decision(['retry']));
+    expect(coordinatorOptionLabelKey('retry', kind)).toBeUndefined();
+  });
+
+  it('keeps existing recovery and acceptance gate translations', () => {
+    expect(coordinatorOptionLabelKey('retry', 'recoverTask')).toBe('goalProcess.gate.option.retry');
+    expect(coordinatorOptionLabelKey('retire', 'recoverTask')).toBe(
+      'goalProcess.gate.option.retire',
+    );
+    expect(coordinatorOptionLabelKey('retry', 'goalAcceptance')).toBe(
+      'goalProcess.gate.option.retry',
+    );
+    expect(coordinatorOptionLabelKey('fail', 'goalAcceptance')).toBe(
+      'goalProcess.gate.option.fail',
+    );
+    expect(coordinatorOptionLabelKey('custom', 'recoverTask')).toBeUndefined();
+  });
+});
 
 describe('coordinatorGateKind', () => {
   it('recognizes the two coordinator gate shapes and nothing else', () => {

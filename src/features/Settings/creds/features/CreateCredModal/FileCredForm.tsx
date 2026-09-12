@@ -8,6 +8,8 @@ import { createStaticStyles } from 'antd-style';
 import { type FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 import { type CredsApi } from '../useCredsApi';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -33,6 +35,7 @@ interface FormValues {
 }
 
 const FileCredForm: FC<FileCredFormProps> = ({ credsApi, disabled, onBack, onSuccess }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('setting');
   const [form] = Form.useForm<FormValues>();
   const [fileHashId, setFileHashId] = useState<string | null>(null);
@@ -141,7 +144,7 @@ const FileCredForm: FC<FileCredFormProps> = ({ credsApi, disabled, onBack, onSuc
           { pattern: /^[\w-]+$/, message: t('creds.form.keyPattern') },
         ]}
       >
-        <Input disabled={disabled} placeholder="e.g., gcp-service-account" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：gcp-service-account')} />
       </Form.Item>
 
       <Form.Item
@@ -149,7 +152,7 @@ const FileCredForm: FC<FileCredFormProps> = ({ credsApi, disabled, onBack, onSuc
         name="name"
         rules={[{ required: true, message: t('creds.form.nameRequired') }]}
       >
-        <Input disabled={disabled} placeholder="e.g., GCP Service Account" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：GCP 服务账户')} />
       </Form.Item>
 
       <Form.Item label={t('creds.form.description')} name="description">

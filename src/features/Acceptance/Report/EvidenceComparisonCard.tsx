@@ -65,7 +65,7 @@ const styles = createStaticStyles(({ css }) => ({
     gap: 1px;
 
     width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBorderSecondary};
@@ -96,12 +96,12 @@ const styles = createStaticStyles(({ css }) => ({
     font-size: 12px;
   `,
   labelBefore: css`
-    border-block-end: 1px solid ${cssVar.colorErrorBorder};
+    border-block-end: 0.5px solid ${cssVar.colorErrorBorder};
     color: ${cssVar.colorErrorText};
     background: ${cssVar.colorErrorBg};
   `,
   labelAfter: css`
-    border-block-end: 1px solid ${cssVar.colorSuccessBorder};
+    border-block-end: 0.5px solid ${cssVar.colorSuccessBorder};
     color: ${cssVar.colorSuccessText};
     background: ${cssVar.colorSuccessBg};
   `,

@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     justify-content: center;
     padding: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   container: css`
     padding-block: 4px;
@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   parameters: css`

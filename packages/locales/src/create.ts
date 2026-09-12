@@ -1,4 +1,4 @@
-import i18n from 'i18next';
+import i18n, { type Resource } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import resourcesToBackend from 'i18next-resources-to-backend';
 import { initReactI18next } from 'react-i18next';
@@ -19,6 +19,7 @@ import defaultCommon from '@/locales/default/common';
 import defaultError from '@/locales/default/error';
 import defaultHome from '@/locales/default/home';
 import { normalizeLocale } from '@/locales/resources';
+import { displayBrandingPostProcessor } from '@/utils/displayBranding';
 import { isOnServerSide } from '@/utils/env';
 import { unwrapESMModule } from '@/utils/esm/unwrapESMModule';
 import { loadI18nNamespaceModule } from '@/utils/i18n/loadI18nNamespaceModule';
@@ -47,6 +48,7 @@ const debugMode = (I18N_DEBUG ?? isOnServerSide) ? I18N_DEBUG_SERVER : I18N_DEBU
 export const createI18nNext = (lang?: string) => {
   const instance = i18n
     .use(initReactI18next)
+    .use(displayBrandingPostProcessor)
     .use(LanguageDetector)
     .use(
       resourcesToBackend(async (lng: string, ns: string) => {
@@ -71,7 +73,7 @@ export const createI18nNext = (lang?: string) => {
     init: (params: { initAsync?: boolean } = {}) => {
       const { initAsync = true } = params;
       const initialLang = normalizeLocale(lang);
-      const bundledLanguageResources =
+      const bundledLanguageResources: Resource =
         initialLang === DEFAULT_LANG
           ? {
               [DEFAULT_LANG]: defaultResources,
@@ -96,6 +98,7 @@ export const createI18nNext = (lang?: string) => {
         },
         // Keep backend loading enabled for namespaces that are not preloaded above.
         partialBundledLanguages: true,
+        postProcess: ['displayBranding'],
 
         interpolation: {
           escapeValue: false,

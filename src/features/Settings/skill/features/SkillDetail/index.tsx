@@ -3,7 +3,7 @@
 import { getLobehubSkillProviderById } from '@lobechat/const';
 import { agentDisplayName } from '@lobechat/types';
 import { Markdown, Tooltip } from '@lobehub/ui';
-import { Avatar, Button, confirmModal, Skeleton, toast } from '@lobehub/ui/base-ui';
+import { Avatar, Button, confirmModal, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Plus, SquareArrowOutUpRight, Trash2, Unplug, Wrench } from 'lucide-react';
@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { ConnectorDetail, CustomConnectorModal } from '@/features/Connectors';
 import { useSkillConnect } from '@/features/SkillStore/SkillList/LobeHub/useSkillConnect';
 import { usePermission } from '@/hooks/usePermission';
@@ -51,7 +52,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 20px 16px;
     padding-inline: 24px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   name: css`
     font-size: 16px;
@@ -366,7 +367,7 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
         <div
           style={{
             alignItems: 'center',
-            borderBlockEnd: '1px solid var(--ant-color-border-secondary)',
+            borderBlockEnd: '0.5px solid var(--ant-color-border-secondary)',
             display: 'flex',
             flexShrink: 0,
             justifyContent: 'flex-end',
@@ -389,7 +390,7 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
           <Suspense
             fallback={
               <div style={{ padding: 24 }}>
-                <Skeleton.Text rows={6} />
+                <SkeletonText rows={6} />
               </div>
             }
           >
@@ -483,7 +484,7 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
   if (syncing) {
     return (
       <div style={{ padding: 24 }}>
-        <Skeleton.Text rows={6} />
+        <SkeletonText rows={6} />
       </div>
     );
   }

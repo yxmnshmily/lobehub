@@ -9,6 +9,8 @@ import { Minus, Plus } from 'lucide-react';
 import { type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 import { type CredsApi } from '../useCredsApi';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -41,6 +43,7 @@ interface FormValues {
 }
 
 const KVCredForm: FC<KVCredFormProps> = ({ credsApi, type, disabled, onBack, onSuccess }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('setting');
   const [form] = Form.useForm<FormValues>();
 
@@ -93,7 +96,7 @@ const KVCredForm: FC<KVCredFormProps> = ({ credsApi, type, disabled, onBack, onS
           { pattern: /^[\w-]+$/, message: t('creds.form.keyPattern') },
         ]}
       >
-        <Input disabled={disabled} placeholder="e.g., openai" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：openai')} />
       </Form.Item>
 
       <Form.Item
@@ -101,7 +104,7 @@ const KVCredForm: FC<KVCredFormProps> = ({ credsApi, type, disabled, onBack, onS
         name="name"
         rules={[{ required: true, message: t('creds.form.nameRequired') }]}
       >
-        <Input disabled={disabled} placeholder="e.g., OpenAI API Key" />
+        <Input disabled={disabled} placeholder={translateTravel('例如：OpenAI API 密钥')} />
       </Form.Item>
 
       <Form.Item label={t('creds.form.values')}>

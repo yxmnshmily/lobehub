@@ -4,6 +4,7 @@ import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath
 interface TaskDetailPageUrlOptions {
   agentId?: string;
   appOrigin?: string;
+  groupId?: string;
   taskId?: string;
   workspaceSlug?: string | null;
 }
@@ -11,11 +12,15 @@ interface TaskDetailPageUrlOptions {
 export const getTaskDetailPageUrl = ({
   agentId,
   appOrigin,
+  groupId,
   taskId,
   workspaceSlug,
 }: TaskDetailPageUrlOptions): string | undefined => {
   if (!appOrigin || !taskId) return;
 
-  const path = buildWorkspaceAwarePath(taskDetailPath(taskId, agentId), workspaceSlug);
+  const target = groupId
+    ? `/group/${encodeURIComponent(groupId)}/task/${encodeURIComponent(taskId)}`
+    : taskDetailPath(taskId, agentId);
+  const path = buildWorkspaceAwarePath(target, workspaceSlug);
   return `${appOrigin}${path}`;
 };

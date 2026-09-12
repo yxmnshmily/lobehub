@@ -47,7 +47,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   frontmatter: css`
     margin-block: 16px 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
     background: ${cssVar.colorBgContainer};
   `,
@@ -62,7 +62,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-inline: 12px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   metadataValue: css`
@@ -72,7 +72,7 @@ const styles = createStaticStyles(({ css }) => ({
   sectionHeader: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   textArea: css`
     font-family: ${cssVar.fontFamilyCode};

@@ -1,7 +1,8 @@
-import { Button, Skeleton } from '@lobehub/ui/base-ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import NotFound from '@/components/404';
 import SettingHeader from '@/features/Settings/features/SettingHeader';
@@ -41,7 +42,7 @@ const CreateAppButton = () => {
   );
 };
 
-const Page = () => {
+const Page = ({ showSettingHeader = true }: { showSettingHeader?: boolean }) => {
   const { t } = useTranslation('auth');
   const { allowed: hasEditPermission } = usePermission('create_content');
   const activeWorkspaceId = useActiveWorkspaceId();
@@ -54,15 +55,24 @@ const Page = () => {
     labPreferSelectors.enableOAuthApps(s),
   ]);
 
-  if (!isPreferenceInit) return <Skeleton.Text rows={5} />;
+  if (!isPreferenceInit) return <SkeletonText rows={5} />;
   if (!enableOAuthApps) return <NotFound />;
 
   return (
     <>
-      <SettingHeader
-        extra={!params.sub && canEdit && <CreateAppButton />}
-        title={t('tab.oauthApps')}
-      />
+      {showSettingHeader ? (
+        <SettingHeader
+          extra={!params.sub && canEdit && <CreateAppButton />}
+          title={t('tab.oauthApps')}
+        />
+      ) : (
+        !params.sub &&
+        canEdit && (
+          <div style={{ textAlign: 'end' }}>
+            <CreateAppButton />
+          </div>
+        )
+      )}
       <OAuthApps canEdit={canEdit} />
     </>
   );

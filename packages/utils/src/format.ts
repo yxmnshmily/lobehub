@@ -44,9 +44,17 @@ export const formatTime = (timeInSeconds: number): string => {
   }
 };
 
-export const formatShortenNumber = (num: any) => {
+export const formatShortenNumber = (num: any, locale?: string) => {
   if (!num && num !== 0) return '--';
   if (!isNumber(num)) return num;
+
+  const language = locale || (typeof document !== 'undefined' ? document.documentElement.lang : '');
+  if (language.toLowerCase().startsWith('zh')) {
+    return new Intl.NumberFormat(language, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(num);
+  }
 
   // Use Intl.NumberFormat to add thousand separators
   const formattedWithComma = new Intl.NumberFormat('en-US').format(num);
@@ -65,6 +73,17 @@ export const formatShortenNumber = (num: any) => {
   } else {
     return formattedWithComma;
   }
+};
+
+/** Compact token counts follow the UI language; costs and file sizes stay separate. */
+export const formatLocalizedTokens = (value: number, locale?: string): string => {
+  if (!Number.isFinite(value)) return '--';
+  const language =
+    locale || (typeof document !== 'undefined' ? document.documentElement.lang : '') || 'en-US';
+  return new Intl.NumberFormat(language, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
 };
 
 export const formatNumber = (num: any, fractionDigits?: number) => {

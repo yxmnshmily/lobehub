@@ -28,6 +28,40 @@ afterEach(async () => {
 });
 
 describe('buildTaskPrompt Goal loop context', () => {
+  it('includes resolved prerequisite findings but not unrelated sibling findings', async () => {
+    const taskModel = new TaskModel(db, userId);
+    const task = await taskModel.create({ instruction: 'Analyze collected data' });
+    const goal = await new GoalModel(db, userId).create({ title: 'Research' });
+    const graph = new GoalGraphModel(db, userId);
+    const source = await graph.createNode(goal.id, {
+      kind: 'task',
+      title: 'Collect',
+      status: 'resolved',
+    });
+    const target = await graph.createNode(goal.id, { kind: 'task', title: 'Analyze' });
+    const finding = await graph.createNode(goal.id, {
+      kind: 'finding',
+      title: 'Collected evidence',
+      description: 'Source sample: 17 real comments; 4 ask for routes.',
+    });
+    await graph.createNode(goal.id, {
+      kind: 'finding',
+      title: 'Unrelated finding',
+      description: 'UNRELATED_SECRET',
+    });
+    await graph.bindTask(goal.id, target!.id, task.id);
+    await graph.createEdge(goal.id, target!.id, source!.id, 'depends_on');
+    await graph.createEdge(goal.id, source!.id, finding!.id, 'produces');
+    const result = await buildTaskPrompt(task, {
+      briefModel: new BriefModel(db, userId),
+      db,
+      taskModel,
+      taskTopicModel: new TaskTopicModel(db, userId),
+      userId,
+    });
+    expect(result.prompt).toContain('17 real comments');
+    expect(result.prompt).not.toContain('UNRELATED_SECRET');
+  });
   it('uses the per-Task attempt budget for a Goal Graph Task', async () => {
     const taskModel = new TaskModel(db, userId);
     const task = await taskModel.create({

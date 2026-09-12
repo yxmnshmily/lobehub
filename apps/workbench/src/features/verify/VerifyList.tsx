@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
   header: css`
     flex: none;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   list: css`
     display: flex;
@@ -50,7 +50,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 6px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     color: ${cssVar.colorTextSecondary};
@@ -64,7 +64,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     height: 36px;
     padding-inline: 11px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};

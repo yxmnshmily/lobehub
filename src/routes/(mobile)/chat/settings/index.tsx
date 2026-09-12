@@ -1,7 +1,7 @@
 'use client';
 
 import { Tabs } from '@lobehub/ui/base-ui';
-import { cssVar } from 'antd-style';
+import { createStaticStyles, cssVar } from 'antd-style';
 import { memo, useState } from 'react';
 
 import MobileContentLayout from '@/components/server/MobileNavLayout';
@@ -14,6 +14,40 @@ import { useAgentStore } from '@/store/agent';
 import { agentSelectors } from '@/store/agent/selectors';
 import { ChatSettingsTabs } from '@/store/global/initialState';
 import { useSessionStore } from '@/store/session';
+
+const styles = createStaticStyles(({ css }) => ({
+  body: css`
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 16px;
+    padding-inline: 0;
+  `,
+  tabs: css`
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+
+    [role='tablist'] {
+      scrollbar-width: none;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    [role='tablist']::-webkit-scrollbar {
+      display: none;
+    }
+
+    [role='tab'] {
+      flex: none;
+      min-height: 44px;
+      white-space: nowrap;
+    }
+  `,
+}));
 
 export default memo(() => {
   const [tab, setTab] = useState(ChatSettingsTabs.Prompt);
@@ -34,23 +68,26 @@ export default memo(() => {
     <MobileContentLayout header={<MobileHeader />}>
       <Tabs
         activeKey={tab}
+        className={styles.tabs}
         items={cateItems as any}
         style={{
-          borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
         }}
         onChange={(value) => setTab(value as ChatSettingsTabs)}
       />
-      <AgentSettings
-        config={config}
-        disabled={!canEdit}
-        id={id}
-        loading={isLoading}
-        meta={meta}
-        tab={tab}
-        onConfigChange={updateAgentConfig}
-        onMetaChange={updateAgentMeta}
-      />
-      <Footer />
+      <div className={styles.body}>
+        <AgentSettings
+          config={config}
+          disabled={!canEdit}
+          id={id}
+          loading={isLoading}
+          meta={meta}
+          tab={tab}
+          onConfigChange={updateAgentConfig}
+          onMetaChange={updateAgentMeta}
+        />
+        <Footer />
+      </div>
     </MobileContentLayout>
   );
 });

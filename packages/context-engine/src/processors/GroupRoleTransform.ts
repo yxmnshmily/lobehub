@@ -156,6 +156,12 @@ export class GroupRoleTransformProcessor extends BaseProcessor {
     // Add original content
     const originalContent = this.getStringContent(msg.content);
     if (originalContent) {
+      // A source address, not an instruction. Participants can reply to the real
+      // persisted utterance without inventing a speaker or copying its excerpt.
+      if (msg.id && /^[\w-]+$/.test(msg.id)) {
+        const referenceId = encodeURIComponent(msg.id).replaceAll('_', '%5F');
+        content += `<message_reference id="${referenceId}" />\n`;
+      }
       content += originalContent;
     }
 

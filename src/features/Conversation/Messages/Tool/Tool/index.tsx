@@ -1,9 +1,9 @@
 import { getBuiltinRender } from '@lobechat/builtin-tools/renders';
 import { Accordion, AccordionItem, Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
 import { type CSSProperties } from 'react';
 import { memo, useState } from 'react';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import Actions from '@/features/Conversation/Messages/AssistantGroup/Tool/Actions';
 import dynamic from '@/libs/next/dynamic';
 
@@ -11,12 +11,12 @@ import { dataSelectors, messageStateSelectors, useConversationStore } from '../.
 import Inspectors from '../../AssistantGroup/Tool/Inspector';
 
 const Debug = dynamic(() => import('../../AssistantGroup/Tool/Debug'), {
-  loading: () => <Skeleton height={300} width={'100%'} />,
+  loading: () => <SkeletonBar height={300} width={'100%'} />,
   ssr: false,
 });
 
 const Detail = dynamic(() => import('../../AssistantGroup/Tool/Detail'), {
-  loading: () => <Skeleton height={120} width={'100%'} />,
+  loading: () => <SkeletonBar height={120} width={'100%'} />,
   ssr: false,
 });
 

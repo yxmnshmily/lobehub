@@ -19,7 +19,7 @@ describe('resolveRequestLocale', () => {
     expect(
       resolveRequestLocale(
         request({
-          cookie: 'LOBE_LOCALE=ja-JP',
+          cookie: 'LOBE_LOCALE=zh-CN',
           language: 'ko-KR',
           url: 'https://lobehub.com/share/t/abc?hl=zh-CN',
         }),
@@ -28,8 +28,8 @@ describe('resolveRequestLocale', () => {
   });
 
   it('prefers the cookie over the browser', () => {
-    expect(resolveRequestLocale(request({ cookie: 'LOBE_LOCALE=ja-JP', language: 'ko-KR' }))).toBe(
-      'ja-JP',
+    expect(resolveRequestLocale(request({ cookie: 'LOBE_LOCALE=zh-CN', language: 'ko-KR' }))).toBe(
+      'zh-CN',
     );
   });
 
@@ -50,17 +50,17 @@ describe('resolveRequestLocale', () => {
   });
 
   it('keeps header order when no weights are given', () => {
-    expect(resolveRequestLocale(request({ language: 'ja-JP,en-US' }))).toBe('ja-JP');
+    expect(resolveRequestLocale(request({ language: 'zh-CN,en-US' }))).toBe('zh-CN');
   });
 
   it('skips wildcards and unsupported tags to reach a supported one', () => {
-    expect(resolveRequestLocale(request({ language: '*,xx-YY;q=0.9,ja-JP;q=0.8' }))).toBe('ja-JP');
+    expect(resolveRequestLocale(request({ language: '*,xx-YY;q=0.9,zh-CN;q=0.8' }))).toBe('zh-CN');
   });
 
   it('matches Accept-Language case-insensitively', () => {
     expect(resolveRequestLocale(request({ language: 'zh-cn' }))).toBe('zh-CN');
     expect(resolveRequestLocale(request({ language: 'zh-Hans-CN' }))).toBe('zh-CN');
-    expect(resolveRequestLocale(request({ language: 'zh-Hant-TW' }))).toBe('zh-TW');
+    expect(resolveRequestLocale(request({ language: 'zh-Hant-TW' }))).toBe('zh-CN');
   });
 
   it('falls back to the default for an explicit locale that is not supported', () => {
@@ -75,14 +75,14 @@ describe('resolveRequestLocale', () => {
   });
 
   it('defers to the browser when the explicit locale is auto', () => {
-    expect(resolveRequestLocale(request({ cookie: 'LOBE_LOCALE=auto', language: 'ja-JP' }))).toBe(
-      'ja-JP',
+    expect(resolveRequestLocale(request({ cookie: 'LOBE_LOCALE=auto', language: 'zh-CN' }))).toBe(
+      'zh-CN',
     );
     expect(
       resolveRequestLocale(
-        request({ language: 'ja-JP', url: 'https://lobehub.com/share/t/abc?hl=auto' }),
+        request({ language: 'zh-CN', url: 'https://lobehub.com/share/t/abc?hl=auto' }),
       ),
-    ).toBe('ja-JP');
+    ).toBe('zh-CN');
   });
 
   it('falls back to the default with no locale signal at all', () => {

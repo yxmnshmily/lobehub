@@ -2,12 +2,13 @@
 
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Form, Icon, Tooltip } from '@lobehub/ui';
-import { Select, Skeleton } from '@lobehub/ui/base-ui';
+import { Select } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { Loader2Icon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { serviceModelFormStyles } from '@/features/ServiceModel/styles';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -25,7 +26,7 @@ const OpenAI = memo(() => {
   const [setSettings, isUserStateInit] = useUserStore((s) => [s.setSettings, s.isUserStateInit]);
   const [loading, setLoading] = useState(false);
 
-  if (!isUserStateInit) return <Skeleton.Text rows={5} />;
+  if (!isUserStateInit) return <SkeletonText rows={5} />;
 
   const ttsModelSelect = (
     <Select

@@ -35,11 +35,24 @@ const Body = memo(() => {
     <Flexbox paddingInline={4}>
       <Accordion
         gap={8}
+        key={String(
+          groups.some(
+            (group) =>
+              group.key === WorkspaceSettingsGroupKey.Developer &&
+              group.items.some((item) => item.key === activeTab),
+          ),
+        )}
         defaultExpandedKeys={[
           WorkspaceSettingsGroupKey.General,
           WorkspaceSettingsGroupKey.Subscription,
           WorkspaceSettingsGroupKey.Agent,
-          WorkspaceSettingsGroupKey.Developer,
+          ...groups
+            .filter(
+              (group) =>
+                group.key === WorkspaceSettingsGroupKey.Developer &&
+                group.items.some((item) => item.key === activeTab),
+            )
+            .map((group) => group.key),
           WorkspaceSettingsGroupKey.Admin,
         ]}
       >

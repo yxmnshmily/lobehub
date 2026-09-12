@@ -58,7 +58,7 @@ const styles = createStaticStyles(({ css }) => ({
       position: absolute;
       inset: ${BORDER_INSET}px;
 
-      border: 1px dashed ${cssVar.colorTextTertiary};
+      border: 0.5px dashed ${cssVar.colorTextTertiary};
       border-radius: 12px;
     }
   `,

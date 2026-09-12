@@ -28,7 +28,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 100%;
     padding-block: 10px;
     padding-inline: 4px 12px;
-    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
 
     &:hover {
       .drag-handle,

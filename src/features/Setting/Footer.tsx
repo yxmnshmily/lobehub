@@ -15,9 +15,21 @@ import { useServerConfigStore } from '@/store/serverConfig';
 import { isOnServerSide } from '@/utils/env';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
+  body: css`
+    max-width: 100%;
+    line-height: 1.7;
+    text-align: center;
+    overflow-wrap: anywhere;
+  `,
   footer: css`
+    width: 100%;
+    min-width: 0;
     font-size: 12px;
     color: ${cssVar.colorTextSecondary};
+
+    @media (width <= 575px) {
+      padding-inline: 0 !important;
+    }
   `,
   link: css`
     display: inline-flex;
@@ -80,10 +92,10 @@ const Footer = memo<PropsWithChildren>(() => {
         as={'footer'}
         className={styles.footer}
         flex={'none'}
-        padding={16}
+        padding={8}
         width={'100%'}
       >
-        <div style={{ textAlign: 'center' }}>
+        <div className={styles.body}>
           <Icon icon={MessageSquareHeart} /> {`${t('footer.title')} `}
           <a
             aria-label={'star'}

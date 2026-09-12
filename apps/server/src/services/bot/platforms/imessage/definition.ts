@@ -9,7 +9,7 @@ export const imessage: PlatformDefinition = {
   id: 'imessage',
   name: 'iMessage',
   connectionMode: 'webhook',
-  description: 'Connect iMessage through the local LobeHub Desktop BlueBubbles bridge.',
+  description: 'Connect iMessage through the local 旅游群 Desktop BlueBubbles bridge.',
   documentation: {
     portalUrl: 'https://bluebubbles.app/',
     setupGuideUrl: channelDocUrl('imessage'),

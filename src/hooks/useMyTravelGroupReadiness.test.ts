@@ -105,6 +105,15 @@ describe('useMyTravelGroupReadiness', () => {
     expect(mocks.refreshAgentList).toHaveBeenCalledTimes(1);
   });
 
+  it('can prepare an embedded group without refreshing the unrelated agent list', async () => {
+    mocks.swr.data = { groupId: 'group-a', status: 'ready' };
+
+    const { result } = renderHook(() => useMyTravelGroupReadiness({ refreshAgentList: false }));
+
+    await waitFor(() => expect(result.current.groupId).toBe('group-a'));
+    expect(mocks.refreshAgentList).not.toHaveBeenCalled();
+  });
+
   it('turns a list/query failure into a retryable state instead of endless preparation', () => {
     mocks.swr.error = new Error('network down');
     const { result } = renderHook(() => useMyTravelGroupReadiness());

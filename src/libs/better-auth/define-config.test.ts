@@ -159,6 +159,30 @@ const createResponseWithCookie = (cookie: string) => {
 };
 
 describe('defineConfig', () => {
+  it('assigns a local random avatar at registration and preserves provider avatars', async () => {
+    const { defineConfig } = await import('./define-config');
+    mocks.appEnv.APP_URL = 'https://example.com/lobehub';
+    try {
+      defineConfig({ plugins: [] });
+      const [options] = mocks.betterAuth.mock.lastCall!;
+      const before = options.databaseHooks.user.create.before;
+      expect(before).toBeTypeOf('function');
+      for (const image of [null, undefined, '']) {
+        const result = await before({ id: 'new-user', image });
+        expect(result.data.image).toMatch(
+          /^https:\/\/example.com\/lobehub\/avatars\/landscape-([1-9]|[12]\d|30)\.svg$/,
+        );
+        expect(result.data.id).toBe('new-user');
+      }
+      const result = await before({
+        id: 'social-user',
+        image: 'https://provider.example/avatar.png',
+      });
+      expect(result.data.image).toBe('https://provider.example/avatar.png');
+    } finally {
+      mocks.appEnv.APP_URL = 'https://example.com';
+    }
+  });
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -232,6 +256,13 @@ describe('defineConfig', () => {
         }),
       }),
     );
+  });
+
+  it('defaults a phone registration nickname to the national account number', async () => {
+    const { defineConfig } = await import('./define-config');
+    defineConfig({ plugins: [] });
+    const [options] = mocks.phoneNumber.mock.lastCall!;
+    expect(options.signUpOnVerification.getTempName('+8613800138000')).toBe('13800138000');
   });
 
   it('does not log the submitted email when password reset targets an unknown account', async () => {
@@ -472,6 +503,20 @@ describe('defineConfig', () => {
     );
 
     expect(mocks.sendMail).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects verification OTP delivery when the auth context is unavailable', async () => {
+    const { defineConfig } = await import('./define-config');
+
+    defineConfig({ plugins: [] });
+    const otpOptions = mocks.emailOTP.mock.lastCall![0];
+    await expect(
+      otpOptions.sendVerificationOTP(
+        { email: 'unverified@example.test', otp: 'otp-fixture', type: 'email-verification' },
+        undefined,
+      ),
+    ).rejects.toThrow('Email verification context is unavailable');
+    expect(mocks.sendMail).not.toHaveBeenCalled();
   });
 
   it('stores verification OTPs as hashes and keeps link verification as the default', async () => {

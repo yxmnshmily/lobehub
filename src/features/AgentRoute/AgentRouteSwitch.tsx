@@ -1,9 +1,11 @@
 'use client';
 
 import { memo, type ReactElement, type ReactNode } from 'react';
-import { Navigate, useParams } from 'react-router';
+import { Navigate, useLocation, useParams } from 'react-router';
 
+import { resolvePersonalInboxRedirect } from './personalInbox';
 import { resolveAgentRouteBranch, useAgentRouteResolution } from './useAgentRouteResolution';
+import { usePersonalInbox } from './usePersonalInbox';
 
 interface AgentRouteSwitchProps {
   /** Shown while a slug is still being resolved, to avoid a not-found flash. */
@@ -38,8 +40,17 @@ const AgentRouteSwitch = memo<AgentRouteSwitchProps>(
     const { aid } = useParams<{ aid?: string }>();
     const { error, isLoading, kind, resolvedAgentId } = useAgentRouteResolution(aid);
     const branch = resolveAgentRouteBranch({ error, isLoading, kind });
+    const location = useLocation();
+    const personalInbox = usePersonalInbox(resolvedAgentId || aid);
+    const inboxRedirect = resolvePersonalInboxRedirect({
+      agentId: aid,
+      personalInbox,
+      pathname: location.pathname,
+      search: location.search,
+    });
 
     if (branch === 'loading') return <>{fallback ?? null}</>;
+    if (branch === 'own' && inboxRedirect) return <Navigate replace to={inboxRedirect} />;
 
     // The creator is never a visitor of their own share: `/agent/<share-slug>`
     // is what they copied from the share settings, so send them back there.

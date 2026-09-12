@@ -15,7 +15,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import Title from '@/routes/(main)/community/features/Title';
-import { formatTokenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@/utils/format';
 
 import { useDetailContext } from '../../DetailProvider';
 import ParameterItem from './ParameterItem';

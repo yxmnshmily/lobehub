@@ -59,7 +59,6 @@ const resolvePositiveInteger = (value?: number) => {
 const normalizeProvider = (provider: string) => provider.toLowerCase();
 
 export class UserPersonaService {
-  private readonly preferredLanguage?: string;
   private readonly db: LobeChatDatabase;
   private readonly agentConfig: MemoryAgentConfig;
 
@@ -67,7 +66,6 @@ export class UserPersonaService {
     const { agentPersonaWriter } = parseMemoryExtractionConfig();
 
     this.db = db;
-    this.preferredLanguage = agentPersonaWriter.language;
     this.agentConfig = agentPersonaWriter;
   }
 
@@ -89,7 +87,7 @@ export class UserPersonaService {
       contextLimit:
         resolvePositiveInteger(userMemoryPersonaWriter?.contextLimit) ??
         this.agentConfig.contextLimit,
-      language: this.agentConfig.language,
+      language: settings?.general?.responseLanguage || this.agentConfig.language || 'zh-CN',
       model: userMemoryPersonaWriter?.model || this.agentConfig.model,
       provider,
     };
@@ -148,7 +146,7 @@ export class UserPersonaService {
 
     const agentResult = await extractor.toolCall({
       existingPersona: existingPersonaBaseline || undefined,
-      language: payload.language || this.preferredLanguage,
+      language: payload.language || agentConfig.language,
       personaNotes: payload.personaNotes,
       recentEvents: payload.recentEvents,
       retrievedMemories: payload.retrievedMemories,

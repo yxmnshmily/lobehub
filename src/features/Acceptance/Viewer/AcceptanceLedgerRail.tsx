@@ -24,7 +24,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-start: 16px;
     inset-inline-end: 16px;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
 

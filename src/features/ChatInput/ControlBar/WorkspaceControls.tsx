@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useChatInputResourceAccess } from '@/features/ChatInput/hooks/useChatInputResourceAccess';
 
 import CloudRepoSwitcher from './CloudRepoSwitcher';
-import HeteroDeviceSwitcher from './HeteroDeviceSwitcher';
 import { useWorkspaceSurface } from './useWorkspaceSurface';
 import WorkingDirectorySection from './WorkingDirectorySection';
 
@@ -60,7 +59,6 @@ const WorkspaceControls = memo<WorkspaceControlsProps>(
 
     return (
       <>
-        <HeteroDeviceSwitcher agentId={agentId} />
         {workspace &&
           (canConfigureResource ? (
             workspace

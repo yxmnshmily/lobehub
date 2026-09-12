@@ -1,5 +1,7 @@
+import { GROUP_RECENT_MESSAGE_LIMIT } from '@lobechat/const';
 import {
   CreateNewMessageParamsSchema,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
   type UIChatMessage,
   UpdateMessageParamsSchema,
   UpdateMessagePluginSchema,
@@ -14,6 +16,7 @@ import {
   cloudWorkspaceAuth,
   wsCompatProcedure,
 } from '@/business/server/trpc-middlewares/workspaceAuth';
+import { ChatGroupModel } from '@/database/models/chatGroup';
 import { MessageModel } from '@/database/models/message';
 import { TopicShareModel } from '@/database/models/topicShare';
 import { CompressionRepository } from '@/database/repositories/compression';
@@ -23,6 +26,7 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
 import { createFtsSearchRepo } from '@/server/services/ftsSearch';
 import { GroupConversationAccessRepository as ConversationRepository } from '@/server/services/groupConversationAccess/conversationRepository';
+import { GroupConversationAccessUnavailableError } from '@/server/services/groupConversationAccess/principal';
 import { type MessageBatchOperation, MessageService } from '@/server/services/message';
 
 import {
@@ -411,6 +415,7 @@ export const messageRouter = router({
       z.object({
         agentId: z.string().nullish(),
         current: z.number().optional(),
+        cursor: z.number().int().min(0).max(100000).optional(),
         groupId: z.string().nullish(),
         // Opt-in for `file` work summaries in the payload. Absent → the legacy
         // set, so already-deployed clients (no `file` descriptor) never receive
@@ -424,10 +429,25 @@ export const messageRouter = router({
         threadId: z.string().nullish(),
         topicId: z.string().nullish(),
         topicShareId: z.string().optional(),
+        // Explicit topic history never expands into the live cross-topic window.
+        topicOnly: z.boolean().optional(),
       }),
     )
     .query(async ({ input, ctx }) => {
-      const { topicShareId, ...queryParams } = input;
+      const { topicShareId, topicOnly, cursor, ...params } = input;
+      const queryParams = { ...params, current: cursor ?? params.current };
+      if (topicOnly) {
+        if (!params.groupId || !params.topicId || topicShareId)
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Group topic history requires a group and topic',
+          });
+        queryParams.pageSize = Math.min(
+          GROUP_RECENT_MESSAGE_LIMIT,
+          Math.max(1, Math.floor(params.pageSize ?? GROUP_RECENT_MESSAGE_LIMIT)),
+        );
+        queryParams.current = Math.min(100000, Math.max(0, Math.floor(queryParams.current ?? 0)));
+      }
 
       // Public access via topicShareId
       if (topicShareId) {
@@ -483,16 +503,42 @@ export const messageRouter = router({
       const messageModel = new MessageModel(ctx.serverDB, ctx.userId, wsId);
       const fileService = new FileService(ctx.serverDB, ctx.userId, wsId);
 
-      const ownedMessages = await messageModel.query(queryParams, {
-        postProcessUrl: (path, file) => fileService.getFileAccessUrl({ id: file.id, url: path }),
-      });
-      if (ctx.workspaceId || !queryParams.groupId || !queryParams.topicId) return ownedMessages;
+      const group =
+        !ctx.workspaceId && queryParams.groupId
+          ? await new ChatGroupModel(ctx.serverDB, ctx.userId).findById(queryParams.groupId)
+          : undefined;
+      const groupTimeline =
+        group?.userId === ctx.userId &&
+        group?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID &&
+        !queryParams.threadId &&
+        !topicOnly;
+      const ownedMessages = await messageModel.query(
+        {
+          ...queryParams,
+          ...(groupTimeline ? { current: 0, pageSize: GROUP_RECENT_MESSAGE_LIMIT } : {}),
+        },
+        {
+          groupTimeline,
+          preservePageBoundary: topicOnly,
+          postProcessUrl: (path, file) => fileService.getFileAccessUrl({ id: file.id, url: path }),
+        },
+      );
+      if (ctx.workspaceId || !queryParams.groupId || (!queryParams.topicId && !groupTimeline))
+        return ownedMessages;
 
       const supplementalMessages = await new ConversationRepository(
         ctx.serverDB,
-      ).listOwnerSupplementalTextMessages(ctx.userId, queryParams.groupId, queryParams.topicId);
+      ).listOwnerSupplementalTextMessages(
+        ctx.userId,
+        queryParams.groupId,
+        groupTimeline ? undefined : queryParams.topicId!,
+        {
+          limit: groupTimeline ? GROUP_RECENT_MESSAGE_LIMIT : (queryParams.pageSize ?? 1000),
+          offset: groupTimeline ? 0 : (queryParams.current ?? 0) * (queryParams.pageSize ?? 1000),
+        },
+      );
 
-      return mergeOwnerGroupMessages(
+      const merged = mergeOwnerGroupMessages(
         ownedMessages,
         supplementalMessages.map((message) => ({
           ...message,
@@ -500,6 +546,7 @@ export const messageRouter = router({
           updatedAt: message.updatedAt.getTime(),
         })),
       );
+      return groupTimeline ? merged.slice(-GROUP_RECENT_MESSAGE_LIMIT) : merged;
     }),
 
   rankModels: messageProcedure.query(async ({ ctx }) => {
@@ -620,9 +667,60 @@ export const messageRouter = router({
     }),
 
   searchMessages: messageSearchProcedure
-    .input(z.object({ keywords: z.string() }))
+    .input(
+      z.object({ groupId: z.string().trim().min(1).max(255).optional(), keywords: z.string() }),
+    )
     .query(async ({ input, ctx }) => {
-      return ctx.messageModel.queryByKeyword(input.keywords);
+      if (input.groupId && !ctx.workspaceId) {
+        const ownedGroup = await new ChatGroupModel(ctx.serverDB, ctx.userId).findById(
+          input.groupId,
+        );
+        if (ownedGroup?.userId !== ctx.userId) {
+          const keywords = input.keywords.trim();
+          if (!keywords || keywords.length > 200) return [];
+          try {
+            const repository = new ConversationRepository(ctx.serverDB);
+            const [human, assistant] = await Promise.all([
+              repository.listAccessibleTextMessages(ctx.userId, input.groupId, undefined, {
+                direction: 'latest',
+                keywords,
+                limit: 50,
+              }),
+              repository.listAccessiblePublishedAssistantMessages(
+                ctx.userId,
+                input.groupId,
+                undefined,
+                keywords,
+              ),
+            ]);
+            return [
+              ...human.items.map(({ content, publicMessageId, topicId, visibleAt }) => ({
+                content,
+                id: publicMessageId,
+                topicId,
+                createdAt: visibleAt,
+              })),
+              ...assistant.map(({ content, id, topicId, visibleAt }) => ({
+                content,
+                id,
+                topicId,
+                createdAt: visibleAt,
+              })),
+            ]
+              .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+              .slice(0, 50);
+          } catch (error) {
+            if (error instanceof GroupConversationAccessUnavailableError) {
+              throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'GROUP_CONVERSATION_ACCESS_UNAVAILABLE',
+              });
+            }
+            throw error;
+          }
+        }
+      }
+      return ctx.messageModel.queryByKeyword(input.keywords, input.groupId);
     }),
 
   update: messageProcedure

@@ -57,7 +57,7 @@ export const AcceptanceSkill: BuiltinSkill = {
   avatar: '✅',
   content,
   description:
-    'End-to-end verification and self-evidence for a delivery in any repository, with or without a LobeHub operation or verify plan — discover or author checks, drive CLI, web, desktop, or iOS Simulator on the correct surface, capture visually confirmed evidence, and publish a standalone or subject-linked acceptance round. Reads the repository’s own `.agents/acceptance/` project layer when one exists.',
+    'End-to-end verification and self-evidence for a delivery in any repository, with or without a 旅游群 operation or verify plan — discover or author checks, drive CLI, web, desktop, or iOS Simulator on the correct surface, capture visually confirmed evidence, and publish a standalone or subject-linked acceptance round. Reads the repository’s own `.agents/acceptance/` project layer when one exists.',
   identifier: AcceptanceIdentifier,
   name: 'acceptance',
   resources: toResourceMeta({

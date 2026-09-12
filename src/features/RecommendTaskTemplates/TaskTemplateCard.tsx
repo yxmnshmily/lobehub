@@ -26,11 +26,13 @@ interface TaskTemplateCardProps {
   compact?: boolean;
   onCreated: (templateId: number) => void;
   onDismiss: (templateId: number) => void;
+  /** Task pages show the full template before the user confirms creation. */
+  previewBeforeCreate?: boolean;
   template: TaskTemplate;
 }
 
 export const TaskTemplateCard = memo<TaskTemplateCardProps>(
-  ({ compact, template, onCreated, onDismiss }) => {
+  ({ compact, previewBeforeCreate = false, template, onCreated, onDismiss }) => {
     const { t } = useTranslation('common');
 
     const iconSpec = useMemo(() => resolveTemplateIcon(template, INTEREST_ICON_MAP), [template]);
@@ -66,9 +68,10 @@ export const TaskTemplateCard = memo<TaskTemplateCardProps>(
     const handlePrimaryClick = useCallback(
       (event: MouseEvent) => {
         event.stopPropagation();
-        handleAddTask();
+        if (previewBeforeCreate) handleOpenDetail();
+        else handleAddTask();
       },
-      [handleAddTask],
+      [handleAddTask, handleOpenDetail, previewBeforeCreate],
     );
 
     if (compact)

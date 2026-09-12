@@ -209,7 +209,7 @@ describe('useVerifyEmail', () => {
 
       expect(mocks.sendVerificationEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: `${window.location.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2F&status=success&email=member%40example.test`,
+          callbackURL: `${window.location.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2Fgroup%2Fdefault&status=success&email=member%40example.test`,
           email: 'member@example.test',
           fetchOptions: { signal: expect.any(AbortSignal) },
         }),
@@ -292,7 +292,7 @@ describe('useVerifyEmail', () => {
         otp: '123456',
       }),
     );
-    expect(onVerified).toHaveBeenCalledWith('/lobehub/');
+    expect(onVerified).toHaveBeenCalledWith('/lobehub/group/default');
   });
 
   it('coalesces rapid OTP submissions and recovers after an invalid or expired code', async () => {

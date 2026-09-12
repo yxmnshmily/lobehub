@@ -36,7 +36,9 @@ import { topics } from '../schemas/topic';
 import { acceptances } from '../schemas/verify';
 import { works } from '../schemas/work';
 import type { LobeChatDatabase } from '../type';
+import { groupWorkVisibility } from '../utils/groupWork';
 import { buildWorkspaceWhere } from '../utils/workspace';
+import { ChatGroupModel } from './chatGroup';
 
 export const isTaskIdentifierUniqueViolation = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -111,6 +113,7 @@ interface TaskListFilterOptions {
   automated?: boolean;
   /** Only tasks created by this user. */
   createdByUserId?: string;
+  groupId?: string;
   parentTaskId?: string | null;
   projectId?: string;
   visibility?: 'private' | 'public';
@@ -162,14 +165,17 @@ export class TaskModel {
    * For identifier / seq allocation, use `seqOwnership` instead.
    */
   private ownership = () =>
-    buildWorkspaceWhere(
-      { userId: this.userId, workspaceId: this.workspaceId },
-      {
-        userId: tasks.createdByUserId,
-        visibility: tasks.visibility,
-        workspaceId: tasks.workspaceId,
-      },
-    );
+    and(
+      buildWorkspaceWhere(
+        { userId: this.userId, workspaceId: this.workspaceId },
+        {
+          userId: tasks.createdByUserId,
+          visibility: tasks.visibility,
+          workspaceId: tasks.workspaceId,
+        },
+      ),
+      groupWorkVisibility(sql`${tasks.config}`, this.userId, this.workspaceId),
+    )!;
 
   /**
    * Ownership predicate for task child tables (deps / docs / comments) that
@@ -204,13 +210,22 @@ export class TaskModel {
    */
   private ownershipSql = (alias?: string) => {
     const prefix = alias ? sql.raw(`${alias}.`) : sql.raw('');
-    return this.workspaceId
+    const scope = this.workspaceId
       ? sql`${prefix}workspace_id = ${this.workspaceId}
             AND (${prefix}visibility = 'public' OR ${prefix}created_by_user_id = ${this.userId})`
       : sql`${prefix}created_by_user_id = ${this.userId} AND ${prefix}workspace_id IS NULL`;
+    return and(
+      scope,
+      groupWorkVisibility(
+        sql`${alias ? prefix : sql.raw('tasks.')}config`,
+        this.userId,
+        this.workspaceId,
+      ),
+    )!;
   };
 
   private buildListConditions = ({
+    groupId,
     assigneeAgentId,
     assigneeUserId,
     automated,
@@ -220,6 +235,7 @@ export class TaskModel {
     visibility,
   }: TaskListFilterOptions): SQL[] => {
     const conditions = [this.ownership()];
+    if (groupId) conditions.push(sql`${tasks.config}->>'groupId' = ${groupId}`);
 
     if (assigneeAgentId) conditions.push(eq(tasks.assigneeAgentId, assigneeAgentId));
     if (assigneeUserId) conditions.push(eq(tasks.assigneeUserId, assigneeUserId));
@@ -613,6 +629,11 @@ export class TaskModel {
     }>
   > {
     const { assigneeAgentId, excludeStatuses, groupBy, groups } = options;
+    if (
+      options.groupId &&
+      !(await new ChatGroupModel(this.db, this.userId, this.workspaceId).findById(options.groupId))
+    )
+      return [];
 
     if ((!groups || groups.length === 0) && !groupBy) {
       throw new Error('Task groups or a grouping dimension are required');
@@ -1012,6 +1033,11 @@ export class TaskModel {
   }
 
   async list(options: TaskListOptions = {}): Promise<{ tasks: TaskItem[]; total: number }> {
+    if (
+      options.groupId &&
+      !(await new ChatGroupModel(this.db, this.userId, this.workspaceId).findById(options.groupId))
+    )
+      return { tasks: [], total: 0 };
     const { after, statuses, priorities, limit = 50, offset = 0, orderBy = 'createdAt' } = options;
     const orderColumn = orderBy === 'updatedAt' ? tasks.updatedAt : tasks.createdAt;
 

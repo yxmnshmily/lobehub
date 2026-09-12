@@ -1,8 +1,7 @@
 'use client';
 
-import { Flexbox, Icon, Input } from '@lobehub/ui';
-import { type InputRef } from 'antd';
-import { Loader2Icon } from 'lucide-react';
+import { Flexbox, Input } from '@lobehub/ui';
+import { Button, Text } from '@lobehub/ui/base-ui';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -17,38 +16,108 @@ const FullNameRow = () => {
   const fullName = useUserStore(userProfileSelectors.fullName);
   const updateFullName = useUserStore((s) => s.updateFullName);
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<InputRef>(null);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const locked = useRef(false);
 
   const handleSave = async () => {
-    const value = inputRef.current?.input?.value?.trim();
-    if (!value || value === fullName) return;
+    if (locked.current) return;
+    const name = value.trim();
+    if (!name) {
+      setError(t('profile.fullNameRequired'));
+      return;
+    }
+    if (name.length > 64) {
+      setError(t('profile.fullNameTooLong'));
+      return;
+    }
+    if (name === fullName) {
+      setEditing(false);
+      return;
+    }
 
     try {
+      locked.current = true;
       setSaving(true);
-      await updateFullName(value);
+      await updateFullName(name);
+      setEditing(false);
     } catch (error) {
       console.error('Failed to update fullName:', error);
       saveToast(error, { retry: () => void handleSave(), title: t('profile.saveError') });
     } finally {
+      locked.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <ProfileRow anchor={'profile-full-name'} label={t('profile.fullName')}>
-      <Flexbox horizontal align="center" gap={8}>
-        {saving && <Icon spin icon={Loader2Icon} size={16} style={{ opacity: 0.5 }} />}
-        <Input
-          defaultValue={fullName || ''}
-          disabled={saving}
-          key={fullName}
-          placeholder={t('profile.fullName')}
-          ref={inputRef}
-          variant="filled"
-          onBlur={handleSave}
-          onPressEnter={handleSave}
-        />
-      </Flexbox>
+    <ProfileRow
+      anchor="profile-full-name"
+      label={t('profile.fullName')}
+      action={
+        editing ? (
+          <Flexbox horizontal gap={8}>
+            <Button disabled={saving} size="small" onClick={() => setEditing(false)}>
+              {t('profile.cancel')}
+            </Button>
+            <Button loading={saving} size="small" type="primary" onClick={handleSave}>
+              {t('profile.save')}
+            </Button>
+          </Flexbox>
+        ) : (
+          <Button
+            size="small"
+            type="default"
+            onClick={() => {
+              setValue(fullName);
+              setError('');
+              setEditing(true);
+            }}
+          >
+            {t(fullName ? 'profile.edit' : 'profile.set')}
+          </Button>
+        )
+      }
+      labelSlot={
+        <Text
+          strong
+          style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}
+        >
+          {t('profile.fullName')}
+          <Text aria-hidden type="danger">
+            *
+          </Text>
+        </Text>
+      }
+    >
+      {editing ? (
+        <Flexbox gap={8} style={{ minWidth: 0, flex: 1 }}>
+          <Input
+            autoFocus
+            required
+            aria-label={t('profile.fullName')}
+            disabled={saving}
+            maxLength={64}
+            status={error ? 'error' : undefined}
+            value={value}
+            onPressEnter={handleSave}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError('');
+            }}
+          />
+          {error && (
+            <Text role="alert" type="danger">
+              {error}
+            </Text>
+          )}
+        </Flexbox>
+      ) : (
+        <Text style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+          {fullName || t('profile.fullNameRequired')}
+        </Text>
+      )}
     </ProfileRow>
   );
 };

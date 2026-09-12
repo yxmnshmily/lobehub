@@ -766,6 +766,10 @@ export interface TriggerSpeakParams extends GroupOrchestrationBaseParams {
    */
   instruction?: string;
   /**
+   * Optional existing group message ID that the target agent is directly replying to.
+   */
+  replyToMessageId?: string;
+  /**
    * If true, the orchestration will end after this agent responds,
    * without calling the supervisor again.
    */

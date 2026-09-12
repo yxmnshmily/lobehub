@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +12,25 @@ const mocks = vi.hoisted(() => ({
   clientId: 'default-travel-service-group' as string | null,
   ids: ['request-1', 'request-2'],
   isMobile: false,
+  narrowViewport: false,
+  verified: true,
+}));
+
+vi.mock('@/libs/better-auth/auth-client', () => ({
+  useSession: () => ({
+    data: { user: { phoneNumber: '+8613800138000', phoneNumberVerified: mocks.verified } },
+  }),
+}));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (_key: string, options: { defaultValue: string }) => options.defaultValue,
+  }),
+}));
+
+vi.mock('@lobehub/ui/base-ui', () => ({
+  Button: ({ children, href }: { children: ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 vi.mock('@lobehub/ui', () => ({
@@ -24,10 +43,10 @@ vi.mock('@lobehub/ui', () => ({
     value,
   }: {
     'aria-label': string;
-    disabled?: boolean;
-    min?: number;
-    onChange?: (value: number | null) => void;
-    value?: number | null;
+    'disabled'?: boolean;
+    'min'?: number;
+    'onChange'?: (value: number | null) => void;
+    'value'?: number | null;
   }) => (
     <input
       aria-label={ariaLabel}
@@ -41,6 +60,10 @@ vi.mock('@lobehub/ui', () => ({
     />
   ),
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: { groupConversation: { listTopics: { useQuery: () => ({ data: { items: [] } }) } } },
 }));
 
 vi.mock('@/features/Conversation', () => ({
@@ -61,8 +84,7 @@ vi.mock('@/store/agentGroup', () => ({
 vi.mock('@/store/agentGroup/selectors', () => ({
   agentGroupSelectors: {
     getGroupById:
-      (groupId: string) =>
-      (state: { groupMap: Record<string, { clientId: string | null }> }) =>
+      (groupId: string) => (state: { groupMap: Record<string, { clientId: string | null }> }) =>
         state.groupMap[groupId],
   },
 }));
@@ -77,75 +99,110 @@ vi.mock('@/store/serverConfig', () => ({
 }));
 
 vi.mock('./useSendMenuItems', () => ({ useSendMenuItems: () => [] }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => mocks.narrowViewport }));
 
 describe('MainChatInput hosted travel group billing', () => {
+  it('keeps hosted billing and acceptance when a host supplies the home-style editor', () => {
+    const accepted = vi.fn();
+    render(
+      <MainChatInput onBilledSendAccepted={accepted}>
+        <div>工作群输入框</div>
+      </MainChatInput>,
+    );
+    expect(mocks.chatInputProps?.children).toBeDefined();
+    let billing: unknown;
+    act(() => {
+      billing = mocks.chatInputProps?.createBillingForSend();
+    });
+    expect(billing).toEqual({ idempotencyKey: 'request-1' });
+    expect(mocks.chatInputProps?.createBillingForSend()).toBe(false);
+    act(() => {
+      mocks.chatInputProps?.onBilledSendAccepted();
+    });
+    expect(accepted).toHaveBeenCalledOnce();
+    expect(mocks.chatInputProps?.disableQueue).toBe(true);
+  });
+  it('blocks group input for an unverified phone and offers account binding', () => {
+    mocks.verified = false;
+    render(<MainChatInput runtimeProps={{ disableSend: false }} />);
+    expect(screen.getByText('请先绑定手机号码')).toBeVisible();
+    expect(screen.getByRole('link', { name: '绑定手机号' })).toHaveAttribute(
+      'href',
+      '/settings/profile#profile-phone',
+    );
+    expect(screen.getByRole('button', { name: '群聊AI暂不可用，通信管局政策要求' })).toBeDisabled();
+    expect(mocks.chatInputProps).toBeUndefined();
+  });
+  it('restores group input after phone verification refreshes', () => {
+    mocks.verified = false;
+    const view = render(<MainChatInput />);
+    expect(screen.getByRole('button', { name: '群聊AI暂不可用，通信管局政策要求' })).toBeDisabled();
+    mocks.verified = true;
+    view.rerender(<MainChatInput runtimeProps={{ disableSend: false }} />);
+    expect(screen.queryByText('请先绑定手机号码')).not.toBeInTheDocument();
+    expect(mocks.chatInputProps?.disableSend).toBe(false);
+  });
+  it('uses the same group input and action configuration with an authorized runtime', () => {
+    render(<MainChatInput runtimeProps={{ disableSend: true, sendAreaPrefix: '服务器群模型' }} />);
+    expect(mocks.chatInputProps?.disableSend).toBe(true);
+    expect(mocks.chatInputProps?.leftActions.flat()).toContain('fileUpload');
+    expect(mocks.chatInputProps?.leftActions.flat()).toContain('mention');
+    expect(mocks.chatInputProps?.rightActions).toContain('contextWindow');
+    expect(mocks.chatInputProps?.createBillingForSend).toBeUndefined();
+    expect(screen.getByText('服务器群模型')).toBeInTheDocument();
+  });
   beforeEach(() => {
+    mocks.verified = true;
     mocks.chatInputProps = undefined;
     mocks.clientId = 'default-travel-service-group';
     mocks.ids = ['request-1', 'request-2'];
     mocks.isMobile = false;
+    mocks.narrowViewport = false;
     vi.spyOn(globalThis.crypto, 'randomUUID').mockImplementation(
       () => mocks.ids.shift() as `${string}-${string}-${string}-${string}-${string}`,
     );
   });
 
-  it('uses a compact Credits label on mobile so the send button stays inside the composer', () => {
-    mocks.isMobile = true;
-
+  it.each([false, true])('does not require a 积分 input on mobile=%s', (isMobile) => {
+    mocks.isMobile = isMobile;
     render(<MainChatInput />);
-
-    expect(screen.getByText('最高 Credits')).toBeInTheDocument();
-    expect(screen.queryByText('本次最高消费 Credits')).toBeNull();
+    expect(mocks.chatInputProps?.leftActions.flat()).toContain('mention');
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(mocks.chatInputProps?.sendButtonProps).toBeUndefined();
+    expect(mocks.chatInputProps?.disableQueue).toBe(true);
   });
 
-  it('requires a positive integer Credits ceiling only for the managed travel group', () => {
-    const { unmount } = render(<MainChatInput />);
-
-    const input = screen.getByRole('spinbutton', { name: '本次最高消费 Credits' });
-    expect(input).toHaveAttribute('min', '1');
-    expect(mocks.chatInputProps?.disableQueue).toBe(true);
-    expect(mocks.chatInputProps?.sendButtonProps).toEqual({ disabled: true });
-
-    fireEvent.change(input, { target: { value: '12.5' } });
-    expect(mocks.chatInputProps?.sendButtonProps).toEqual({ disabled: true });
-
-    unmount();
+  it('keeps ordinary groups on their existing send path', () => {
     mocks.clientId = null;
     render(<MainChatInput />);
-
-    expect(screen.queryByRole('spinbutton', { name: '本次最高消费 Credits' })).toBeNull();
-    expect(mocks.chatInputProps?.disableQueue).toBeUndefined();
+    expect(mocks.chatInputProps?.leftActions.flat()).toContain('mention');
     expect(mocks.chatInputProps?.createBillingForSend).toBeUndefined();
   });
 
-  it('mints one key per accepted send, blocks a duplicate start, and retains the ceiling on failure', () => {
+  it('mints one key per accepted send, blocks a duplicate start, and allows retry on failure', () => {
     render(<MainChatInput />);
-    const input = screen.getByRole('spinbutton', { name: '本次最高消费 Credits' });
-    fireEvent.change(input, { target: { value: '24' } });
 
     let firstBilling: unknown;
     act(() => {
       firstBilling = mocks.chatInputProps?.createBillingForSend();
     });
-    expect(firstBilling).toEqual({ idempotencyKey: 'request-1', maxCredits: 24 });
+    expect(firstBilling).toEqual({ idempotencyKey: 'request-1' });
     expect(mocks.chatInputProps?.createBillingForSend()).toBe(false);
 
     act(() => {
       mocks.chatInputProps?.onBilledSendSettled({ accepted: false });
     });
-    expect(input).toHaveValue(24);
+    expect(mocks.chatInputProps?.sendButtonProps).toBeUndefined();
 
     let retryBilling: unknown;
     act(() => {
       retryBilling = mocks.chatInputProps?.createBillingForSend();
     });
-    expect(retryBilling).toEqual({ idempotencyKey: 'request-2', maxCredits: 24 });
+    expect(retryBilling).toEqual({ idempotencyKey: 'request-2' });
   });
 
-  it('releases the start lock on acceptance and clears the ceiling after the accepted send settles', () => {
+  it('allows the next send after acceptance without asking for another ceiling', () => {
     render(<MainChatInput />);
-    const input = screen.getByRole('spinbutton', { name: '本次最高消费 Credits' });
-    fireEvent.change(input, { target: { value: '8' } });
 
     act(() => {
       mocks.chatInputProps?.createBillingForSend();
@@ -156,7 +213,11 @@ describe('MainChatInput hosted travel group billing', () => {
     act(() => {
       mocks.chatInputProps?.onBilledSendSettled({ accepted: true });
     });
-    expect(input).toHaveValue(null);
-    expect(mocks.chatInputProps?.sendButtonProps).toEqual({ disabled: true });
+    expect(mocks.chatInputProps?.sendButtonProps).toBeUndefined();
+    let billing: unknown;
+    act(() => {
+      billing = mocks.chatInputProps?.createBillingForSend();
+    });
+    expect(billing).toEqual({ idempotencyKey: 'request-2' });
   });
 });

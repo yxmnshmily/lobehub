@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import NavBar from './NavBar';
 
 const mocks = vi.hoisted(() => ({
+  activeKey: 'chat',
   navigate: vi.fn(),
   setShowMarket: (_value: boolean) => {},
   showMarket: false,
@@ -18,13 +19,15 @@ vi.mock('@lobehub/ui', () => ({
 
 vi.mock('@lobehub/ui/mobile', () => ({
   TabBar: ({
+    activeKey,
     items,
     safeArea,
   }: {
+    activeKey?: string;
     items?: { key: string; title: string }[];
     safeArea?: boolean;
   }) => (
-    <footer data-safe-area={String(Boolean(safeArea))}>
+    <footer data-active-key={activeKey} data-safe-area={String(Boolean(safeArea))}>
       {items?.map((item) => (
         <span key={item.key}>{item.title}</span>
       ))}
@@ -41,7 +44,7 @@ vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
 }));
 
 vi.mock('@/hooks/useActiveTabKey', () => ({
-  useActiveTabKey: () => 'chat',
+  useActiveTabKey: () => mocks.activeKey,
 }));
 
 vi.mock('@/store/serverConfig', async () => {
@@ -61,7 +64,15 @@ vi.mock('@/store/serverConfig', async () => {
 });
 
 describe('mobile NavBar', () => {
+  it.each(['settings', 'memory'])('keeps 我 active on the personal route key: %s', (activeKey) => {
+    mocks.activeKey = activeKey;
+    const { container } = render(<NavBar />);
+
+    expect(container.querySelector('footer')).toHaveAttribute('data-active-key', 'me');
+  });
+
   it('reserves the device bottom safe area', () => {
+    mocks.activeKey = 'chat';
     expect(renderToStaticMarkup(<NavBar />)).toContain('data-safe-area="true"');
   });
 

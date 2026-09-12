@@ -6,7 +6,7 @@ import React, { memo } from 'react';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
 

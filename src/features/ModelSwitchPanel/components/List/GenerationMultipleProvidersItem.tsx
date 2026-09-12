@@ -18,7 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { ProviderItemRender } from '@/components/ModelSelect';
 import type { PricingMode } from '@/features/ModelSwitchPanel/components/ModelDetailPanel';
 import ModelDetailPanel from '@/features/ModelSwitchPanel/components/ModelDetailPanel';
-import { styles as modelSwitchPanelStyles } from '@/features/ModelSwitchPanel/styles';
+import {
+  providerGridStyle,
+  styles as modelSwitchPanelStyles,
+} from '@/features/ModelSwitchPanel/styles';
 import type { ListItem } from '@/features/ModelSwitchPanel/types';
 import { menuKey } from '@/features/ModelSwitchPanel/utils';
 import type { EnabledProviderWithModels } from '@/types/index';
@@ -75,8 +78,10 @@ const GenerationMultipleProvidersItem = memo<GenerationMultipleProvidersItemProp
                   pricingMode={pricingMode}
                   provider={(activeProvider ?? item.data.providers[0]).id}
                 />
-                <Flexbox gap={4} paddingBlock={8} paddingInline={8}>
-                  <Flexbox style={{ color: cssVar.colorTextSecondary, fontSize: 12 }}>
+                <Flexbox gap={4} paddingBlock={8} paddingInline={8} style={providerGridStyle}>
+                  <Flexbox
+                    style={{ color: cssVar.colorTextSecondary, fontSize: 12, gridColumn: '1 / -1' }}
+                  >
                     {t('ModelSwitchPanel.useModelFrom')}
                   </Flexbox>
                   {item.data.providers.map((p) => {
@@ -87,6 +92,7 @@ const GenerationMultipleProvidersItem = memo<GenerationMultipleProvidersItemProp
                         horizontal
                         className={modelSwitchPanelStyles.menuItem}
                         key={pKey}
+                        style={{ minWidth: 0 }}
                         onClick={() => {
                           onModelChange(item.data.model.id, p.id);
                           onClose();

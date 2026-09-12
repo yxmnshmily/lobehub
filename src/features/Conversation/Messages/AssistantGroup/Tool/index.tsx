@@ -2,11 +2,11 @@ import { getBuiltinRender } from '@lobechat/builtin-tools/renders';
 import { getBuiltinStreaming } from '@lobechat/builtin-tools/streamings';
 import { LOADING_FLAT } from '@lobechat/const';
 import { AccordionItem, Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import isEqual from 'fast-deep-equal';
 import { memo, useEffect, useState } from 'react';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import SafeBoundary from '@/components/ErrorBoundary';
 import dynamic from '@/libs/next/dynamic';
 import { useChatStore } from '@/store/chat';
@@ -19,12 +19,12 @@ import Actions from './Actions';
 import Inspectors from './Inspector';
 
 const Debug = dynamic(() => import('./Debug'), {
-  loading: () => <Skeleton height={300} width={'100%'} />,
+  loading: () => <SkeletonBar height={300} width={'100%'} />,
   ssr: false,
 });
 
 const Detail = dynamic(() => import('./Detail'), {
-  loading: () => <Skeleton height={120} width={'100%'} />,
+  loading: () => <SkeletonBar height={120} width={'100%'} />,
   ssr: false,
 });
 

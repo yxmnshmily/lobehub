@@ -1,9 +1,10 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { cx } from 'antd-style';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useClientDataSWR } from '@/libs/swr';
 import { portalKeys } from '@/libs/swr/keys';
 import { documentService } from '@/services/document';
@@ -37,7 +38,7 @@ const Header = () => {
         width={'100%'}
       >
         <Flexbox flex={1}>
-          <Skeleton height={16} width={180} />
+          <SkeletonBar height={16} width={180} />
         </Flexbox>
       </Flexbox>
     );

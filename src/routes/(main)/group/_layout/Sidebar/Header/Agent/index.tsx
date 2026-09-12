@@ -7,9 +7,9 @@ import { type PropsWithChildren } from 'react';
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ProductLogo } from '@/components/Branding';
 import { SkeletonItem } from '@/features/NavPanel/components/SkeletonList';
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
-import SupervisorAvatar from '@/routes/(main)/group/features/GroupAvatar';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
 
@@ -42,7 +42,7 @@ const Agent = memo<PropsWithChildren>(() => {
           overflow: 'hidden',
         }}
       >
-        <SupervisorAvatar size={28} />
+        <ProductLogo size={28} style={{ flexShrink: 0 }} type="flat" />
         <Text ellipsis weight={500}>
           {displayTitle}
         </Text>

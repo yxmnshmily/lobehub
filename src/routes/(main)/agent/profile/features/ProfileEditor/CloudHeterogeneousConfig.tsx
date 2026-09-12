@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css }) => ({
   card: css`
     padding-block: 16px 12px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -99,7 +99,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   sectionDivider: css`
     margin-block: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   sectionLabel: css`
     font-size: 12px;

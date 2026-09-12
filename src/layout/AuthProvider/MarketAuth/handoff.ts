@@ -11,8 +11,7 @@ interface MarketAuthErrorHandoffPayload {
 }
 
 export type MarketAuthHandoffPayload =
-  | MarketAuthErrorHandoffPayload
-  | MarketAuthSuccessHandoffPayload;
+  MarketAuthErrorHandoffPayload | MarketAuthSuccessHandoffPayload;
 
 const MARKET_AUTH_RESULT_STORAGE_PREFIX = 'market_auth_result:';
 

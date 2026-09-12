@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css }) => {
       overflow: hidden;
 
       width: 360px;
-      border: 1px solid ${cssVar.colorSplit};
+      border: 0.5px solid ${cssVar.colorSplit};
       border-radius: 8px;
 
       box-shadow: ${cssVar.boxShadow};
@@ -134,7 +134,7 @@ const UploadDock = memo(() => {
         justify={'space-between'}
         style={{
           background: cssVar.colorBgContainer,
-          borderBottom: expand ? `1px solid ${cssVar.colorSplit}` : undefined,
+          borderBottom: expand ? `0.5px solid ${cssVar.colorSplit}` : undefined,
           borderBottomLeftRadius: expand ? 0 : 8,
           borderBottomRightRadius: expand ? 0 : 8,
           borderTopLeftRadius: 8,

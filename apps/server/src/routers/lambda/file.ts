@@ -28,12 +28,14 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { DocumentService } from '@/server/services/document';
 import { FileService } from '@/server/services/file';
+import { GroupConversationAccessRepository } from '@/server/services/groupConversationAccess/conversationRepository';
 import { assertCanPerformResourceAction } from '@/server/services/resourcePermission';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 import { createResourceContentPreview } from '@/server/utils/resourceContentPreview';
 import { AsyncTaskStatus, AsyncTaskType, type IAsyncTaskError } from '@/types/asyncTask';
 import type { FileListItem, KnowledgeItemStatus } from '@/types/files';
-import { QueryFileListSchema, toFileSource, UploadFileSchema } from '@/types/files';
+import { toFileSource, UploadFileSchema } from '@/types/files';
+import { QueryFileListSchema } from '@/types/files/list';
 import { TransferErrorCode } from '@/types/transferError';
 
 import {
@@ -53,6 +55,27 @@ const deleteKnowledgeItemsByQuerySchema = QueryFileListSchema.extend({
   excludedIds: z.array(z.string()).optional(),
 });
 const markdownPreviewTypes = new Set<string>(MARKDOWN_MIME_TYPES);
+
+const readFileWithPublishedAccess = async (
+  ctx: {
+    fileModel: Pick<FileModel, 'findById'>;
+    serverDB: ConstructorParameters<typeof FileModel>[0];
+    userId: string;
+    workspaceId?: string | null;
+  },
+  id: string,
+) => {
+  const own = await ctx.fileModel.findById(id);
+  if (own || ctx.workspaceId) return own;
+  const access = await new GroupConversationAccessRepository(ctx.serverDB).resolvePublishedResource(
+    ctx.userId,
+    'file',
+    id,
+  );
+  if (!access) return undefined;
+  const shared = await new FileModel(ctx.serverDB, access.ownerId).findById(id);
+  return shared && shared.updatedAt <= access.publishedAt ? shared : undefined;
+};
 const KNOWLEDGE_ITEM_RESOLUTION_CONCURRENCY = 8;
 
 const isMarkdownFile = (item: { fileType: string; name: string }) =>
@@ -350,7 +373,7 @@ export const fileRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const item = await ctx.fileModel.findById(input.id);
+      const item = await readFileWithPublishedAccess(ctx, input.id);
       if (!item) throw new TRPCError({ code: 'BAD_REQUEST', message: 'File not found' });
 
       await assertFileNotInRestrictedKnowledgeBase(ctx, input.id);
@@ -381,7 +404,7 @@ export const fileRouter = router({
       }),
     )
     .query(async ({ ctx, input }): Promise<FileListItem | undefined> => {
-      const item = await ctx.fileModel.findById(input.id);
+      const item = await readFileWithPublishedAccess(ctx, input.id);
 
       if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'File not found' });
 

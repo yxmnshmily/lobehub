@@ -12,6 +12,7 @@ import ConversationLayoutSkeleton from '@/components/Skeleton/Conversation/Layou
 import ConversationSegmentSkeleton from '@/components/Skeleton/Conversation/Segment';
 import GoalSkeleton from '@/components/Skeleton/Goal';
 import GoalDetailSkeleton from '@/components/Skeleton/GoalDetail';
+import MembersSkeleton from '@/components/Skeleton/Members';
 import MemorySkeleton from '@/components/Skeleton/Memory';
 import ProfileSkeleton, { GroupProfileRouteSkeleton } from '@/components/Skeleton/Profile';
 import ResourceHomeSkeleton from '@/components/Skeleton/ResourceHome';
@@ -36,6 +37,7 @@ import {
   desktopRoutes as electronDesktopRoutes,
 } from './desktopRouter.config.desktop';
 import { createMainAreaRouteFactory, ResourceCategorySkeleton } from './desktopRouter.shared';
+import { sharedMainAreaChildren as mobileMainAreaChildren } from './mobileRouter.config';
 
 type MainAreaFactory = () => RouteObject[];
 
@@ -78,6 +80,65 @@ async function readRouterSources() {
 }
 
 describe('desktop router shared definition', () => {
+  it('keeps goal and task lists/details in the group shell on web, desktop and mobile', () => {
+    const variants = [
+      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
+      [{ path: '/', children: mobileMainAreaChildren }],
+    ];
+    for (const routes of variants) {
+      for (const suffix of ['goals', 'tasks', 'goal/goal-1', 'task/T-4']) {
+        const matched = matchRoutes(routes, `/group/travel/${suffix}`);
+        expect(matched?.at(-1)?.params.gid).toBe('travel');
+        expect(matched?.at(-1)?.params.topicId).toBeUndefined();
+        expect(matched?.some((match) => match.route.path === ':aid')).toBe(false);
+        expect(matched?.at(-1)?.route.handle?.meta.Skeleton).toBeDefined();
+      }
+    }
+  });
+  it('keeps project pages and detail routes within the group on every client', () => {
+    const variants = [
+      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
+      [{ path: '/', children: mobileMainAreaChildren }],
+    ];
+    for (const routes of variants) {
+      for (const suffix of [
+        'conversation',
+        'conversation/topic-1',
+        'tasks',
+        'goals',
+        'acceptance',
+        'task/task-1',
+        'goal/goal-1',
+        'acceptance/report-1',
+        'acceptance/report-1/check/check-1',
+      ]) {
+        const matched = matchRoutes(routes, `/group/group-1/project/project-1/${suffix}`);
+        expect(matched?.at(-1)?.params).toMatchObject({ gid: 'group-1', projectId: 'project-1' });
+        expect(matched?.some((match) => match.route.path === 'project/:projectId')).toBe(true);
+      }
+      expect(matchRoutes(routes, '/group/group-1/projects')?.at(-1)?.route.path).toBe('projects');
+    }
+    const routes = createMainAreaRoutes(createWebMainAreaChildren);
+    const standalone = matchRoutes(routes, '/project/project-1/tasks')?.at(-1)?.route;
+    const embedded = matchRoutes(routes, '/group/group-1/project/project-1/tasks')?.at(-1)?.route;
+    expect(embedded?.element).toBe(standalone?.element);
+  });
+
+  it('matches the default-work-group entry before the dynamic group id on every client', () => {
+    const variants = [
+      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
+      [{ path: '/', children: mobileMainAreaChildren }],
+    ];
+    for (const routes of variants) {
+      const entry = matchRoutes(routes, '/group/default')?.at(-1);
+      expect(entry?.route.path).toBe('default');
+      expect(entry?.params.gid).toBeUndefined();
+      const topic = matchRoutes(routes, '/group/own-group/recent-topic')?.at(-1);
+      expect(topic?.params.gid).toBe('own-group');
+      expect(topic?.params.topicId).toBe('recent-topic');
+    }
+  });
+
   it('guards the desktop main shell, including direct URLs', () => {
     for (const routes of [webDesktopRoutes, electronDesktopRoutes]) {
       const root = routes.find((route) => route.path === '/');
@@ -209,10 +270,10 @@ describe('desktop router shared definition', () => {
         ?.map((route) => route.path)
         .filter((routePath): routePath is string => Boolean(routePath));
 
-      expect(projectPaths).toEqual(['tasks', 'goals', 'acceptance']);
+      expect(projectPaths).toEqual(['conversation', 'tasks', 'goals', 'acceptance']);
       expect(
         (projectIndexRoute?.element as ReactElement<{ to: string }> | undefined)?.props.to,
-      ).toBe('tasks');
+      ).toBe('conversation');
     },
   );
 
@@ -464,6 +525,8 @@ describe('desktop router shared definition', () => {
       ['/agent/agent-1/profile', ProfileSkeleton],
       ['/agent/agent-1/topic-1', ConversationLayoutSkeleton],
       ['/group/group-1/profile', GroupProfileRouteSkeleton],
+      ['/group/group-1/members', MembersSkeleton],
+      ['/group/group-1/topics', TopicsSkeleton],
       ['/group/group-1/topic-1', ConversationLayoutSkeleton],
       ['/settings/profile', SettingsPageSkeleton],
       ['/apps', AppsSkeleton],
@@ -613,3 +676,21 @@ describe('desktop router shared definition', () => {
     expect(sharedSource).not.toContain("import('@/routes/(main)/task/_layout')");
   });
 });
+
+it.each(mainAreaVariants)(
+  'resolves group topics inside the existing %s group layout',
+  (_name, factory) => {
+    const matches = matchRoutes(createMainAreaRoutes(factory), '/group/group-1/topics');
+    expect(matches?.at(-1)?.route.path).toBe('topics');
+    expect(matches?.some((match) => match.route.path === ':gid')).toBe(true);
+  },
+);
+
+it.each(mainAreaVariants)(
+  'resolves group members in the existing %s group layout',
+  (_name, factory) => {
+    const matches = matchRoutes(createMainAreaRoutes(factory), '/group/group-1/members');
+    expect(matches?.at(-1)?.route.path).toBe('members');
+    expect(matches?.some((match) => match.route.path === ':gid')).toBe(true);
+  },
+);

@@ -3,7 +3,7 @@ import { Notion } from '@lobehub/icons';
 import { Center, FileTypeIcon, Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { Upload } from 'antd';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { ArrowUpIcon, PlusIcon } from 'lucide-react';
 import React, { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,25 +22,38 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   actions: css`
     display: grid;
     grid-template-columns: repeat(auto-fit, 200px);
-    justify-content: center;
     gap: 12px;
+    justify-content: center;
 
     width: 100%;
     padding-inline: 16px;
+
+    @media (width <= 767px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      max-width: 520px;
+      padding-inline: 12px;
+    }
   `,
   actionTitle: css`
     margin-block-start: 12px;
     font-size: 16px;
     color: ${cssVar.colorTextSecondary};
+
+    @media (width <= 767px) {
+      margin-block-start: 8px;
+      font-size: clamp(12px, 3.4vw, 14px);
+      line-height: 1.3;
+    }
   `,
   card: css`
     cursor: pointer;
 
     position: relative;
 
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 
     width: 200px;
     height: 140px;
@@ -48,12 +61,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     border: 0;
     border-radius: ${cssVar.borderRadiusLG};
 
-    appearance: none;
-    color: inherit;
     font: inherit;
     font-weight: 500;
+    color: inherit;
     text-align: center;
 
+    appearance: none;
     background: ${cssVar.colorFillTertiary};
     box-shadow: 0 0 0 1px ${cssVar.colorFillTertiary} inset;
 
@@ -71,6 +84,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     &:disabled {
       cursor: not-allowed;
       opacity: 0.5;
+    }
+
+    @media (width <= 767px) {
+      width: 100%;
+      min-width: 0;
+      height: 112px;
+      padding: 8px;
     }
   `,
   glow: css`
@@ -91,6 +111,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     inset-inline-end: 8px;
 
     flex: none;
+
+    @media (width <= 767px) {
+      inset-block-end: -16px;
+      inset-inline-end: 4px;
+    }
   `,
 }));
 
@@ -102,6 +127,7 @@ interface PageExplorerPlaceholderProps {
 const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
   ({ hasPages = false, knowledgeBaseId }) => {
     const { t } = useTranslation(['file', 'common']);
+    const { mobile = false } = useResponsive();
     const { allowed: canCreate } = usePermission('create_content');
     const [isUploading, setIsUploading] = useState(false);
 
@@ -280,7 +306,12 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
     return (
       <>
         <NavHeader />
-        <Center gap={24} height={'100%'} style={{ paddingBottom: 100 }} width={'100%'}>
+        <Center
+          gap={mobile ? 12 : 24}
+          height={'100%'}
+          style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}
+          width={'100%'}
+        >
           {hasPages && (
             <Flexbox justify={'center'} style={{ textAlign: 'center' }}>
               <Text as={'h4'}>{t('pageEditor.empty.title')}</Text>
@@ -288,11 +319,11 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
             </Flexbox>
           )}
           <div className={styles.actions}>
-            <Flexbox
+            <button
               aria-label={t('pageEditor.empty.createNewDocument')}
-              as={'button'}
               className={styles.card}
               disabled={!canCreate}
+              type="button"
               onClick={() => handleCreateDocument('', t('pageList.untitled'))}
             >
               <span className={styles.actionTitle}>{t('pageEditor.empty.createNewDocument')}</span>
@@ -301,10 +332,10 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
                 className={styles.icon}
                 color={cssVar.purple}
                 icon={<Icon color={'#fff'} icon={PlusIcon} />}
-                size={ICON_SIZE}
+                size={mobile ? 56 : ICON_SIZE}
                 type={'file'}
               />
-            </Flexbox>
+            </button>
 
             {/* Upload Files (PDF, DOCX, Markdown) */}
             <Upload
@@ -314,11 +345,11 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
               multiple={false}
               showUploadList={false}
             >
-              <Flexbox
+              <button
                 aria-label={t('pageEditor.empty.uploadFiles')}
-                as={'button'}
                 className={styles.card}
                 disabled={!canCreate || isUploading}
+                type="button"
               >
                 <span className={styles.actionTitle}>
                   {isUploading ? 'Uploading...' : t('pageEditor.empty.uploadFiles')}
@@ -328,18 +359,18 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
                   className={styles.icon}
                   color={cssVar.gold}
                   icon={<Icon color={'#fff'} icon={ArrowUpIcon} />}
-                  size={ICON_SIZE}
+                  size={mobile ? 56 : ICON_SIZE}
                   type={'file'}
                 />
-              </Flexbox>
+              </button>
             </Upload>
 
             {/* Import from Notion */}
-            <Flexbox
+            <button
               aria-label={t('pageEditor.empty.importNotion')}
-              as={'button'}
               className={styles.card}
               disabled={!canCreate}
+              type="button"
               onClick={() => {
                 if (!canCreate) return;
 
@@ -352,10 +383,10 @@ const PageExplorerPlaceholder = memo<PageExplorerPlaceholderProps>(
                 className={styles.icon}
                 color={cssVar.geekblue}
                 icon={<Notion color={'#fff'} />}
-                size={ICON_SIZE}
+                size={mobile ? 56 : ICON_SIZE}
                 type={'file'}
               />
-            </Flexbox>
+            </button>
           </div>
         </Center>
         <input

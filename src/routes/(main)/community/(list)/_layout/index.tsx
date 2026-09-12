@@ -20,13 +20,13 @@ const Layout = () => {
           className={styles.contentContainer}
           gap={16}
           minWidth={MAX_WIDTH}
-          style={{ paddingBottom: 56, paddingTop: 16 }}
+          style={{ paddingBottom: 'var(--community-list-page-padding-block-end)' }}
           wrapperStyle={{
             minHeight: '100%',
             position: 'relative',
           }}
         >
-          <Flexbox gap={16} style={{ paddingBlockEnd: 40 }} width={'100%'}>
+          <Flexbox className={styles.contentWrapper} data-community-list-content="" gap={16}>
             <SWRConfig value={{ suspense: true }}>
               <SuspenseRouteBoundary>
                 <RouteSkeletonChromeProvider>
@@ -35,7 +35,6 @@ const Layout = () => {
               </SuspenseRouteBoundary>
             </SWRConfig>
           </Flexbox>
-          <div className={styles.spacer} />
           <Footer />
         </WideScreenContainer>
       </Flexbox>

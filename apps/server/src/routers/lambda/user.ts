@@ -629,7 +629,13 @@ export const userRouter = router({
   }),
 
   updateFullName: userProcedure
-    .input(z.string().trim().max(64, { message: 'FULLNAME_TOO_LONG' }))
+    .input(
+      z
+        .string()
+        .trim()
+        .min(1, { message: 'FULLNAME_REQUIRED' })
+        .max(64, { message: 'FULLNAME_TOO_LONG' }),
+    )
     .mutation(async ({ ctx, input }) => {
       return ctx.userModel.updateUser({ fullName: input });
     }),

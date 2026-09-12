@@ -7,7 +7,11 @@ import type {
   ConversationContext,
   HeterogeneousProviderConfig,
 } from '@lobechat/types';
-import { applyTopicModelToHeterogeneousProvider, resolveAgentAgencyConfig } from '@lobechat/types';
+import {
+  applyTopicModelToHeterogeneousProvider,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+  resolveAgentAgencyConfig,
+} from '@lobechat/types';
 import { toast } from '@lobehub/ui/base-ui';
 import { t } from 'i18next';
 import { type StateCreator } from 'zustand';
@@ -26,6 +30,7 @@ import { globalAgentContextManager } from '@/helpers/GlobalAgentContextManager';
 import { messageService } from '@/services/message';
 import { getAgentStoreState } from '@/store/agent';
 import { agentByIdSelectors, agentSelectors } from '@/store/agent/selectors';
+import { useAgentGroupStore } from '@/store/agentGroup';
 import { useChatStore } from '@/store/chat';
 import { topicSelectors } from '@/store/chat/selectors';
 import { selectRuntimeType } from '@/store/chat/slices/agentRun/actions/dispatch/agentDispatcher';
@@ -309,6 +314,7 @@ interface RegenerateUserMessageSource {
   context: ConversationContext;
   displayMessages: ConversationStore['displayMessages'];
   hooks: ConversationStore['hooks'];
+  hostedGroup: boolean;
   readDbMessages: () => ConversationStore['dbMessages'];
 }
 
@@ -322,6 +328,12 @@ const captureRegenerateUserMessageSource = (
     context,
     displayMessages,
     hooks,
+    hostedGroup:
+      !!context.groupId &&
+      (!context.scope || context.scope === 'group') &&
+      !context.threadId &&
+      useAgentGroupStore.getState().groupMap[context.groupId]?.clientId ===
+        DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
     readDbMessages: () => {
       const currentState = get();
       if (messageMapKey(currentState.context) === contextKey) return currentState.dbMessages;
@@ -335,7 +347,7 @@ const regenerateUserMessageFromSource = async (
   messageId: string,
   source: RegenerateUserMessageSource,
 ) => {
-  const { context, displayMessages, hooks, readDbMessages } = source;
+  const { context, displayMessages, hooks, hostedGroup, readDbMessages } = source;
   const chatStore = useChatStore.getState();
 
   // Block a genuine double-regenerate, and ONLY that. The guard used to be
@@ -430,6 +442,26 @@ const regenerateUserMessageFromSource = async (
       isWorkspaceAgent,
       workspaceScoped,
     });
+    // Hosted group retries use the same server-owned SSE path as their first
+    // send. Routing them through Gateway made retries depend on an optional
+    // browser Gateway URL and caused otherwise valid turns to stay blank.
+    if (hostedGroup) {
+      await chatStore.sendGroupMessage({
+        billing: { idempotencyKey: globalThis.crypto.randomUUID() },
+        context: {
+          ...context,
+          // The group timeline contains multiple topics; retry belongs to the
+          // original user turn, not whichever topic the composer currently owns.
+          topicId: dbMessages.find((m) => m.id === messageId)?.topicId ?? context.topicId,
+        },
+        message: item.content,
+        onComplete: () => hooks.onRegenerateComplete?.(messageId),
+        parentMessageId: messageId,
+        parentOperationId: operationId,
+      });
+
+      return;
+    }
 
     // ── Gateway mode: trigger server-side regeneration ──
     if (runtimeType === 'gateway') {
@@ -794,7 +826,7 @@ export const generationSlice: StateCreator<
   },
 
   continueGenerationMessage: async (displayMessageId: string, dbMessageId: string) => {
-    const { context, displayMessages, hooks } = get();
+    const { context, dbMessages, displayMessages, hooks } = get();
     const chatStore = useChatStore.getState();
 
     // Find the message (blockId refers to the assistant message to continue from)
@@ -819,6 +851,12 @@ export const generationSlice: StateCreator<
       isWorkspaceAgent,
       workspaceScoped,
     });
+    const hostedGroup =
+      !!context.groupId &&
+      (!context.scope || context.scope === 'group') &&
+      !context.threadId &&
+      useAgentGroupStore.getState().groupMap[context.groupId]?.clientId ===
+        DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID;
 
     // Hetero CLIs (CC / Codex) have no "continue a cut-off response" primitive
     // — each prompt is a fresh user turn from their perspective. Bail out
@@ -845,6 +883,21 @@ export const generationSlice: StateCreator<
     });
 
     try {
+      if (hostedGroup) {
+        await chatStore.sendGroupMessage({
+          billing: { idempotencyKey: globalThis.crypto.randomUUID() },
+          context: {
+            ...context,
+            topicId: dbMessages.find((item) => item.id === dbMessageId)?.topicId ?? context.topicId,
+          },
+          message: '',
+          onComplete: () => hooks.onContinueComplete?.(displayMessageId),
+          parentMessageId: dbMessageId,
+          parentOperationId: operationId,
+        });
+        return true;
+      }
+
       // ── Gateway mode: branch a server-side run from the cut-off message ──
       // `parentMessageId` triggers `resume: true` on the router, so the server
       // skips user-message creation and continues from the existing chain.
@@ -1025,6 +1078,7 @@ export const generationSlice: StateCreator<
   },
 
   delAndRegenerateMessage: async (messageId: string) => {
+    if (get().hooks.onRegenerateMessage) return get().hooks.onRegenerateMessage!(messageId);
     const regenerationSource = captureRegenerateUserMessageSource(get);
     const { context, displayMessages } = regenerationSource;
     const chatStore = useChatStore.getState();
@@ -1233,6 +1287,7 @@ export const generationSlice: StateCreator<
   },
 
   regenerateAssistantMessage: async (messageId: string) => {
+    if (get().hooks.onRegenerateMessage) return get().hooks.onRegenerateMessage!(messageId);
     const { displayMessages } = get();
 
     // Find the assistant message
@@ -1249,8 +1304,10 @@ export const generationSlice: StateCreator<
     await get().regenerateUserMessage(userId);
   },
 
-  regenerateUserMessage: async (messageId: string) =>
-    regenerateUserMessageFromSource(messageId, captureRegenerateUserMessageSource(get)),
+  regenerateUserMessage: async (messageId: string) => {
+    if (get().hooks.onRegenerateMessage) return get().hooks.onRegenerateMessage!(messageId);
+    return regenerateUserMessageFromSource(messageId, captureRegenerateUserMessageSource(get));
+  },
 
   resendThreadMessage: async (messageId: string) => {
     // Resend is essentially regenerating the user message in thread context
@@ -1258,6 +1315,7 @@ export const generationSlice: StateCreator<
   },
 
   stopGenerating: () => {
+    if (get().hooks.onStopGenerating) return get().hooks.onStopGenerating!();
     const state = get();
     const { context, editor, hooks } = state;
 

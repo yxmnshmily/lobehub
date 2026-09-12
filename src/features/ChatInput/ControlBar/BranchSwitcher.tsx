@@ -67,7 +67,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   createItemWrapper: css`
     padding: 4px;
-    border-block-start: 1px solid ${cssVar.colorSplit};
+    border-block-start: 0.5px solid ${cssVar.colorSplit};
   `,
   createItem: css`
     border-radius: calc(${cssVar.borderRadius} - 4px);
@@ -161,7 +161,7 @@ const styles = createStaticStyles(({ css }) => ({
   searchBar: css`
     padding-block: 4px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     .ant-input-affix-wrapper {
       padding-inline: 0;

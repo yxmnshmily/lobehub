@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: calc(50% - 4px);
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};

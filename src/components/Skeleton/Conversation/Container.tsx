@@ -31,7 +31,11 @@ const ConversationSkeletonContainer = ({
         flex={flex}
         height={height}
         paddingInline={16}
-        width={wideScreen ? '100%' : `min(${CONVERSATION_MIN_WIDTH}px, 100%)`}
+        width={
+          wideScreen
+            ? '100%'
+            : `min(var(--conversation-column-width, ${CONVERSATION_MIN_WIDTH}px), 100%)`
+        }
         {...rest}
       >
         {children}

@@ -16,7 +16,7 @@ import {
   type PlanLimitPricingBasis,
 } from './budget';
 
-/** Credits are displayed in units of 1M */
+/** English credit amounts retain the compact million notation. */
 const CREDIT_UNIT = 1_000_000;
 
 /** Plans with a `plans.plan.<id>.title` locale key */
@@ -72,7 +72,13 @@ const getBudgetDescriptionKey = (pricingBasis?: PlanLimitPricingBasis) => {
   }
 };
 
-const formatCreditAmount = (credits: number): string => {
+const formatCreditAmount = (credits: number, language?: string): string => {
+  if (language?.startsWith('zh')) {
+    return new Intl.NumberFormat(language, {
+      notation: 'compact',
+      maximumFractionDigits: 6,
+    }).format(credits);
+  }
   if (credits >= CREDIT_UNIT) return `${formatNumber(credits / CREDIT_UNIT, 2)}M`;
 
   return formatIntergerNumber(credits);
@@ -91,7 +97,7 @@ interface PlanLimitCardProps {
  * subscription state.
  */
 const PlanLimitCard = memo<PlanLimitCardProps>(({ errorBody, errorType, onRetry }) => {
-  const { t } = useTranslation('subscription');
+  const { t, i18n } = useTranslation('subscription');
 
   const context = getBudgetContextFromErrorBody(errorBody);
   const isInsufficientBudget = errorType === ChatErrorType.InsufficientBudgetForModel;
@@ -141,7 +147,7 @@ const PlanLimitCard = memo<PlanLimitCardProps>(({ errorBody, errorType, onRetry 
                       : styles.budgetFactValue
                   }
                 >
-                  {formatCreditAmount(fact.value!)}
+                  {formatCreditAmount(fact.value!, i18n.language)}
                 </span>
               </div>
             ))}

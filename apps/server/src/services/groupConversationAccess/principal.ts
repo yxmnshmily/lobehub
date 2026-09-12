@@ -92,6 +92,7 @@ export const resolveGroupConversationPrincipal = async (
   if (
     row.memberUserId !== input.actorUserId ||
     !(row.joinedAt instanceof Date) ||
+    row.membershipVersion === null ||
     !Number.isInteger(row.membershipVersion) ||
     (row.membershipVersion ?? 0) <= 0
   ) {

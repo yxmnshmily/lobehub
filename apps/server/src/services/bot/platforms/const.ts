@@ -128,7 +128,7 @@ export function normalizeBotReplyLocale(
   if (lang === 'zh' && parts.length >= 2) {
     const scriptOrRegion = parts[1].toLowerCase();
     if (scriptOrRegion === 'hans') return 'zh-CN';
-    if (scriptOrRegion === 'hant') return 'zh-TW';
+    if (scriptOrRegion === 'hant') return 'zh-CN';
   }
 
   const formatted = parts.length === 1 ? lang : `${lang}-${parts[1].toUpperCase()}`;

@@ -41,12 +41,12 @@ const filterItems = (items: ItemType[], keyword: string): ItemType[] => {
 const styles = createStaticStyles(({ css }) => ({
   footer: css`
     padding: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   header: css`
     padding-block: 8px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorFill};
+    border-block-end: 0.5px solid ${cssVar.colorFill};
     background: transparent;
   `,
   scroller: css`

@@ -19,7 +19,7 @@ const MAC_TRAFFIC_LIGHT_WIDTH = 80;
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     user-select: none;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgLayout};
   `,
   title: css`

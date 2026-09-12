@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 
 import { expo } from '@better-auth/expo';
 import { passkey } from '@better-auth/passkey';
@@ -183,7 +183,11 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
   const authEmailSender = getAuthEmailSender(
     emailEnv.RESEND_FROM || emailEnv.SMTP_FROM || emailEnv.SMTP_USER,
   );
-  const instanceRef: { current?: ReturnType<typeof betterAuth> } = {};
+  const instanceRef: {
+    current?: {
+      $context: Promise<{ internalAdapter: Parameters<typeof prepareEmailVerificationToken>[0] }>;
+    };
+  } = {};
   const prepareVerificationToken = async (email: string, token: string) => {
     if (!instanceRef.current) throw new Error('Better Auth is not initialized');
     const context = await instanceRef.current.$context;
@@ -351,6 +355,18 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       },
       user: {
         create: {
+          before: async (user) => ({
+            data: {
+              ...user,
+              // Persist once on creation; never replace an OAuth or uploaded avatar.
+              image: user.image?.trim()
+                ? user.image
+                : new URL(
+                    `avatars/landscape-${randomInt(1, 31)}.svg`,
+                    `${appEnv.APP_URL.replace(/\/$/, '')}/`,
+                  ).href,
+            },
+          }),
           after: async (user) => {
             const userService = new UserService(serverDB);
             await userService.initUser({
@@ -451,6 +467,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
         storeOTP: 'hashed',
         async sendVerificationOTP({ email, otp, type }, context) {
           if (type === 'email-verification') {
+            if (!context) throw new Error('Email verification context is unavailable');
             const user = await context.context.internalAdapter.findUserByEmail(email);
             if (user?.user.emailVerified) return;
           }
@@ -491,8 +508,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
                 sendAuthenticationCode(targetPhone, code),
               signUpOnVerification: {
                 getTempEmail: (targetPhone) => `${phoneAccountAlias(targetPhone)}@phone.invalid`,
-                getTempName: (targetPhone) =>
-                  `旅游群网用户-${phoneAccountAlias(targetPhone).slice(0, 6)}`,
+                getTempName: (targetPhone) => targetPhone.replace(/^\+86/, ''),
               },
             }),
           ]

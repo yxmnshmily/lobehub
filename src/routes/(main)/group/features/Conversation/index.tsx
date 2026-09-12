@@ -1,7 +1,7 @@
-import { Flexbox } from '@lobehub/ui';
 import { memo } from 'react';
 
 import DragUploadZone, { useUploadFiles } from '@/components/DragUploadZone';
+import ConversationFrame from '@/features/SuperGroup/ConversationFrame';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors } from '@/store/agent/selectors';
 import { useServerConfigStore } from '@/store/serverConfig';
@@ -19,10 +19,9 @@ const ChatConversation = memo(() => {
 
   return (
     <DragUploadZone style={{ height: '100%', width: '100%' }} onUploadFiles={handleUploadFiles}>
-      <Flexbox height={'100%'} style={{ overflow: 'hidden', position: 'relative' }} width={'100%'}>
-        <ChatHeader />
+      <ConversationFrame header={<ChatHeader />}>
         <ConversationArea mobile={isMobile} />
-      </Flexbox>
+      </ConversationFrame>
     </DragUploadZone>
   );
 });

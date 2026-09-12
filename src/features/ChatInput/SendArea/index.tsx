@@ -4,9 +4,10 @@ import { memo, useMemo } from 'react';
 
 import { type ActionKey } from '../ActionBar/config';
 import { actionMap } from '../ActionBar/config';
+import ContextWindow from '../ActionBar/Token';
 import { useChatInputResourceAccess } from '../hooks/useChatInputResourceAccess';
 import { useChatInputStore } from '../store';
-import ExpandButton from './ExpandButton';
+import CreditBalance from './CreditBalance';
 import { resolveSendAreaActionKeys } from './resolveActionKeys';
 import SendButton from './SendButton';
 
@@ -38,18 +39,27 @@ const SendArea = memo<SendAreaProps>(({ hideContextWindow = true }) => {
         ? mapActionsToItems(
             resolveSendAreaActionKeys(
               rightActions as ActionKey[],
-              hideContextWindow,
+              hideContextWindow || !!allowExpand,
               activeAudioInputMode,
             ),
           )
         : [],
-    [activeAudioInputMode, canShowControls, hideContextWindow, rightActions],
+    [activeAudioInputMode, allowExpand, canShowControls, hideContextWindow, rightActions],
   );
 
   return (
-    <Flexbox horizontal align={'center'} flex={'none'} gap={mobile ? 4 : 12}>
-      {canShowControls && allowExpand && !audioInputActive && <ExpandButton />}
+    <Flexbox
+      horizontal
+      align={'center'}
+      flex={mobile ? 1 : 'none'}
+      gap={mobile ? 4 : 12}
+      justify={mobile ? 'flex-end' : undefined}
+      style={mobile ? { minWidth: 0, maxWidth: '100%' } : undefined}
+      wrap={mobile ? 'wrap' : undefined}
+    >
+      {canShowControls && allowExpand && !audioInputActive && <ContextWindow />}
       {items}
+      {!audioInputActive && <CreditBalance />}
       {!audioInputActive && <SendButton />}
     </Flexbox>
   );

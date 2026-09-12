@@ -22,44 +22,42 @@ interface TravelGroupReadinessProps {
   status?: MyTravelGroupReadiness['status'];
 }
 
-const TravelGroupReadiness = memo<TravelGroupReadinessProps>(
-  ({ isRetrying, onRetry, status }) => {
-    if (!status || status === 'ready') return null;
+const TravelGroupReadiness = memo<TravelGroupReadinessProps>(({ isRetrying, onRetry, status }) => {
+  if (!status || status === 'ready') return null;
 
-    if (status === 'preparing') {
-      return (
-        <Flexbox horizontal align="center" className={styles.row} gap={8} role="status">
-          <Icon spin icon={LoaderCircleIcon} size={14} />
-          <Text color={cssVar.colorTextSecondary} fontSize={13}>
-            正在准备您的专属旅游群
-          </Text>
-        </Flexbox>
-      );
-    }
-
-    if (status === 'review_required') {
-      return (
-        <Flexbox horizontal align="center" className={styles.row} gap={8} role="status">
-          <Icon icon={TriangleAlertIcon} size={14} />
-          <Text color={cssVar.colorTextSecondary} fontSize={13}>
-            专属旅游群需要管理员检查
-          </Text>
-        </Flexbox>
-      );
-    }
-
+  if (status === 'preparing') {
     return (
-      <Flexbox horizontal align="center" className={styles.row} gap={8} role="alert">
+      <Flexbox horizontal align="center" className={styles.row} gap={8} role="status">
+        <Icon spin icon={LoaderCircleIcon} size={14} />
         <Text color={cssVar.colorTextSecondary} fontSize={13}>
-          专属旅游群准备失败
+          正在准备您的专属旅游群
         </Text>
-        <Button loading={isRetrying} size="small" type="text" onClick={onRetry}>
-          重试
-        </Button>
       </Flexbox>
     );
-  },
-);
+  }
+
+  if (status === 'review_required') {
+    return (
+      <Flexbox horizontal align="center" className={styles.row} gap={8} role="status">
+        <Icon icon={TriangleAlertIcon} size={14} />
+        <Text color={cssVar.colorTextSecondary} fontSize={13}>
+          专属旅游群需要管理员检查
+        </Text>
+      </Flexbox>
+    );
+  }
+
+  return (
+    <Flexbox horizontal align="center" className={styles.row} gap={8} role="alert">
+      <Text color={cssVar.colorTextSecondary} fontSize={13}>
+        专属旅游群准备失败
+      </Text>
+      <Button loading={isRetrying} size="small" type="text" onClick={onRetry}>
+        重试
+      </Button>
+    </Flexbox>
+  );
+});
 
 TravelGroupReadiness.displayName = 'TravelGroupReadiness';
 

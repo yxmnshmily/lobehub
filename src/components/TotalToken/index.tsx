@@ -1,14 +1,10 @@
+import { formatLocalizedTokens as formatNumber } from '@lobechat/utils/format';
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
 import { Tag } from '@lobehub/ui/base-ui';
 import { useTheme } from 'antd-style';
 import { ArrowDownToDot, ArrowUpFromDot } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-
-// 使用Intl.NumberFormat来添加千分号
-const formatNumber = (num: any) => {
-  return new Intl.NumberFormat('en-US').format(num);
-};
 
 const getColor = (token: number) => {
   if (token > 100_000) return 'error';

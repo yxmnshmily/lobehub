@@ -36,7 +36,7 @@ const DEVICE_HIDDEN_API_NAMES = new Set<string>([
  *
  * - `device`: a device is routed — `execScript` runs ON it: the skill archive
  *   is downloaded/extracted device-side and the command runs in the skill
- *   directory. LobeHub-managed credentials are deliberately NOT injected into
+ *   directory. 旅游群-managed credentials are deliberately NOT injected into
  *   devices (`injectCredsToSandbox` only targets the sandbox).
  * - `device-unrouted`: the user chose local-device execution but no device is
  *   routed this run — the model must disclose that instead of silently
@@ -51,7 +51,7 @@ const EXEC_ENV_PREAMBLES: Partial<
   Record<NonNullable<BuiltinToolResolveContext['executionEnv']>, string>
 > = {
   'device':
-    "Execution environment: the user's selected device, not a cloud sandbox. The skill archive is auto-extracted on the device and the command runs in the skill directory. LobeHub-managed credentials (e.g. `GITHUB_TOKEN`) are NOT injected.",
+    "Execution environment: the user's selected device, not a cloud sandbox. The skill archive is auto-extracted on the device and the command runs in the skill directory. 旅游群-managed credentials (e.g. `GITHUB_TOKEN`) are NOT injected.",
   'device-unrouted':
     'Fallback execution environment: an isolated cloud sandbox. The user chose local-device execution but no device is routed this run — say so before running commands that assume their machine.',
   'sandbox': "Execution environment: an isolated cloud sandbox, not the user's machine.",
@@ -68,7 +68,7 @@ const EXEC_ENV_FACTS: Partial<
   Record<NonNullable<BuiltinToolResolveContext['executionEnv']>, string>
 > = {
   'device':
-    'A local device is routed: `execScript` runs skill scripts on the device (archive auto-extracted, cwd = skill directory); use `lobe-local-system` runCommand for other shell commands. LobeHub-managed credentials are not available on the device.',
+    'A local device is routed: `execScript` runs skill scripts on the device (archive auto-extracted, cwd = skill directory); use `lobe-local-system` runCommand for other shell commands. 旅游群-managed credentials are not available on the device.',
   'device-unrouted':
     'No local device is routed; shell commands execute in the cloud sandbox this run.',
 };

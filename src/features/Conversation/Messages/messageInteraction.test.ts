@@ -23,6 +23,13 @@ describe('getMessageInteractionState', () => {
     });
   });
 
+  it('keeps an external read-only transcript from invoking owner-only context actions', () => {
+    expect(getMessageInteractionState(createMessage(), false, true)).toEqual({
+      effectiveDisableEditing: true,
+      shouldSuppressContextMenu: true,
+    });
+  });
+
   it('disables editing and suppresses the context menu for local-only messages', () => {
     expect(getMessageInteractionState(createMessage({ scope: LOCAL_MESSAGE_SCOPE }))).toEqual({
       effectiveDisableEditing: true,

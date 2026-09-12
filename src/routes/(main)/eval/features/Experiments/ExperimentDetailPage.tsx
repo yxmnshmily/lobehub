@@ -1,11 +1,12 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 import { useParams } from 'react-router';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { ArticleSkeleton } from '@/components/Skeleton';
 import { experimentSelectors, useEvalStore } from '@/store/eval';
@@ -51,7 +52,7 @@ const ExperimentDetailPage = memo(() => {
         loading={
           <>
             <ArticleSkeleton rows={2} title={240} />
-            <Skeleton.Text rows={6} />
+            <SkeletonText rows={6} />
           </>
         }
         onRetry={() => mutate()}

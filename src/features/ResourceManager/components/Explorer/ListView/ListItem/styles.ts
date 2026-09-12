@@ -35,7 +35,7 @@ export const styles = createStaticStyles(({ css }) => ({
   `,
 
   dragOver: css`
-    outline: 1px dashed ${cssVar.colorPrimaryBorder};
+    outline: 0.5px dashed ${cssVar.colorPrimaryBorder};
     outline-offset: -2px;
 
     &::before {

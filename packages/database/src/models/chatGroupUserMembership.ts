@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import { INVITATION_EXPIRY_DAYS } from '@lobechat/const';
-import { and, asc, eq, gt, isNull, lte, sql } from 'drizzle-orm';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
+import { and, asc, eq, exists, gt, isNull, lte, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
 
 import { chatGroups } from '../schemas/chatGroup';
@@ -140,7 +142,13 @@ export class ChatGroupUserMembershipModel {
 
         // Keep the same invitation -> group -> policy lock order used by acceptInvitationRecord.
         const [group] = await tx
-          .select({ id: chatGroups.id, ownerUserId: chatGroups.userId })
+          .select({
+            clientId: chatGroups.clientId,
+            id: chatGroups.id,
+            ownerUserId: chatGroups.userId,
+            visibility: chatGroups.visibility,
+            workspaceId: chatGroups.workspaceId,
+          })
           .from(chatGroups)
           .where(eq(chatGroups.id, params.chatGroupId))
           .for('update');
@@ -157,6 +165,11 @@ export class ChatGroupUserMembershipModel {
           .where(eq(chatGroupSponsoredCreditPolicies.chatGroupId, params.chatGroupId))
           .for('update');
         const useOwnerTemplate = Boolean(
+          !(
+            group.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID &&
+            group.visibility === 'private' &&
+            group.workspaceId === null
+          ) &&
           policy?.enabled &&
           policy.defaultMemberSponsorshipEnabled &&
           policy.payerUserIdSnapshot === group.ownerUserId &&
@@ -245,7 +258,12 @@ export class ChatGroupUserMembershipModel {
       }
 
       const [currentOwner] = await tx
-        .select({ userId: chatGroups.userId })
+        .select({
+          clientId: chatGroups.clientId,
+          userId: chatGroups.userId,
+          visibility: chatGroups.visibility,
+          workspaceId: chatGroups.workspaceId,
+        })
         .from(chatGroups)
         .where(eq(chatGroups.id, invitation.chatGroupId))
         .for('update');
@@ -263,7 +281,11 @@ export class ChatGroupUserMembershipModel {
       let sponsoredLimits:
         | { maxCreditsPerPeriod: number; maxCreditsPerRequest: number; policyVersion: number }
         | undefined;
-      if (invitation.sponsorshipModeSnapshot === 'group_owner') {
+      const automaticOwnerBilling =
+        currentOwner.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID &&
+        currentOwner.visibility === 'private' &&
+        currentOwner.workspaceId === null;
+      if (!automaticOwnerBilling && invitation.sponsorshipModeSnapshot === 'group_owner') {
         const [policy] = await tx
           .select()
           .from(chatGroupSponsoredCreditPolicies)
@@ -389,6 +411,67 @@ export class ChatGroupUserMembershipModel {
         ),
       )
       .orderBy(asc(chatGroupUserMemberships.userId))
+      .offset(offset)
+      .limit(limit + 1);
+    const hasMore = rows.length > limit;
+    return {
+      items: hasMore ? rows.slice(0, limit) : rows,
+      nextOffset: hasMore ? offset + limit : null,
+    };
+  };
+
+  /** Public roster for an owner or current member; billing and contact details stay private. */
+  listParticipants = async (params: { chatGroupId: string; limit?: number; offset?: number }) => {
+    const { limit, offset } = normalizePagination(params.offset, params.limit);
+    const viewerMembership = alias(chatGroupUserMemberships, 'viewer_membership');
+    const rows = await this.db
+      .select({
+        avatar: users.avatar,
+        displayName: sql<
+          string | null
+        >`coalesce(nullif(trim(${users.fullName}), ''), nullif(trim(${users.username}), ''))`,
+        memberUserId: users.id,
+        membershipVersion: sql<number>`case when ${users.id} = ${chatGroups.userId} then 0 else ${chatGroupUserMemberships.membershipVersion} end`,
+        role: sql<
+          'member' | 'owner'
+        >`case when ${users.id} = ${chatGroups.userId} then 'owner' else 'member' end`,
+      })
+      .from(chatGroups)
+      .innerJoin(users, sql`true`)
+      .leftJoin(
+        chatGroupUserMemberships,
+        and(
+          eq(chatGroupUserMemberships.chatGroupId, chatGroups.id),
+          eq(chatGroupUserMemberships.userId, users.id),
+          eq(chatGroupUserMemberships.role, 'member'),
+          isNull(chatGroupUserMemberships.removedAt),
+          gt(chatGroupUserMemberships.membershipVersion, 0),
+        ),
+      )
+      .where(
+        and(
+          eq(chatGroups.id, params.chatGroupId),
+          or(eq(users.id, chatGroups.userId), gt(chatGroupUserMemberships.membershipVersion, 0)),
+          or(
+            eq(chatGroups.userId, this.actorUserId),
+            exists(
+              this.db
+                .select({ userId: viewerMembership.userId })
+                .from(viewerMembership)
+                .where(
+                  and(
+                    eq(viewerMembership.chatGroupId, chatGroups.id),
+                    eq(viewerMembership.userId, this.actorUserId),
+                    eq(viewerMembership.role, 'member'),
+                    isNull(viewerMembership.removedAt),
+                    gt(viewerMembership.membershipVersion, 0),
+                  ),
+                ),
+            ),
+          ),
+        ),
+      )
+      .orderBy(sql`case when ${users.id} = ${chatGroups.userId} then 0 else 1 end`, asc(users.id))
       .offset(offset)
       .limit(limit + 1);
     const hasMore = rows.length > limit;

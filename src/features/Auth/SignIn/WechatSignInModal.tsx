@@ -65,7 +65,7 @@ export const WechatSignInModal = ({ authUrl, callbackUrl, onClose }: WechatSignI
         <header
           style={{
             alignItems: 'center',
-            borderBottom: '1px solid #eef0f3',
+            borderBottom: '0.5px solid #eef0f3',
             display: 'flex',
             justifyContent: 'space-between',
             minHeight: 56,

@@ -19,6 +19,8 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     flex-direction: column;
 
+    min-width: 0 !important;
+    max-width: 100% !important;
     height: 100%;
     min-height: 100%;
     max-height: 100%;
@@ -27,8 +29,19 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   drawer: css`
     z-index: 10;
+
+    flex-shrink: 1;
+
+    min-width: 0;
+    max-width: 100%;
     height: 100%;
+
     background: ${cssVar.colorBgContainer};
+
+    /* Clamp the remembered-width shell too, so its contents reflow with the panel. */
+    > div {
+      max-width: 100%;
+    }
   `,
 }));
 
@@ -47,7 +60,7 @@ const PortalPanel = memo(({ children }: PropsWithChildren) => {
   const [tmpWidth, setWidth] = useState(portalWidth);
   if (tmpWidth !== portalWidth) setWidth(portalWidth);
 
-  const { lg } = useResponsive();
+  const { xl } = useResponsive();
 
   const handleSizeChange: DraggablePanelProps['onSizeChange'] = (_, size) => {
     if (!size) return;
@@ -66,7 +79,9 @@ const PortalPanel = memo(({ children }: PropsWithChildren) => {
       expandable={false}
       maxWidth={maxWidth}
       minWidth={minWidth}
-      mode={lg ? 'fixed' : 'float'}
+      // A fixed detail pane is a desktop-wide affordance. Below xl it floats
+      // over the conversation instead of shrinking the primary task column.
+      mode={xl ? 'fixed' : 'float'}
       placement={'right'}
       showHandleWhenCollapsed={false}
       showHandleWideArea={false}

@@ -95,7 +95,7 @@ app.get('/docs', requireAuth, requirePlatformAdmin, (c, next) => {
     customCss: SCALAR_CUSTOM_CSS,
     favicon: '/favicon.ico',
     ...(locale ? { localization: { locale } } : {}),
-    pageTitle: 'LobeHub API',
+    pageTitle: '旅游群 API',
     // 'none' keeps the runtime bundle from injecting its own theme stylesheet
     // after our customCss, which would override every variable we set.
     theme: 'none',

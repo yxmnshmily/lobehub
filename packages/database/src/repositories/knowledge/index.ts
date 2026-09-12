@@ -3,6 +3,7 @@ import {
   CUSTOM_FOLDER_FILE_TYPE,
   MARKDOWN_MIME_TYPES,
   RESOURCE_CONTENT_PREVIEW_SOURCE_LENGTH,
+  VERIFY_INSTRUCTION_FILE_TYPE,
 } from '@lobechat/const';
 import type { FileUploader, QueryFileListParams } from '@lobechat/types';
 import {
@@ -544,6 +545,12 @@ export class KnowledgeRepo {
         this.visibilityFilter(visibility, d.visibility),
         // Folders are containers, not pages.
         kind === 'page' ? ne(d.fileType, CUSTOM_FOLDER_FILE_TYPE) : undefined,
+        // 目标/任务的验收标准会被写成 verify/instruction 页面，属于执行过程的沟通
+        // 文本而不是用户文稿；不过滤的话「最近文稿」会被这类条目淹没。
+        kind === 'page' ? ne(d.fileType, VERIFY_INSTRUCTION_FILE_TYPE) : undefined,
+        // 网页剪藏（搜索结果、网页链接）在资源管理里归「网页」分类，不是文稿；
+        // 放进来只会看到一串 URL 当标题。
+        kind === 'page' ? ne(d.fileType, 'article') : undefined,
       ],
       false,
     );
@@ -689,13 +696,17 @@ export class KnowledgeRepo {
     !sourceFilter || sourceFilter === ResourceSourceFilter.All ? undefined : sql`false`;
 
   /**
-   * Document rows only surface under All and Pages; every file-oriented category
-   * (Documents included) excludes the table entirely.
+   * Documents and its legacy Pages view include editor manuscripts; unrelated
+   * file categories continue to exclude document rows.
    */
   private documentCategoryFilter = (category?: string): SQL | undefined => {
-    if (!category || category === FilesTabs.All) return undefined;
-
-    const filter = buildDocumentCategoryFilter(d.fileType, category as FilesTabs);
+    // 无分类与「全部」也走同一套判断：不加类型白名单，但仍要排除执行过程的沟通
+    // 文本（目标/任务的验收标准 verify/instruction）。此前这两条分支直接 return
+    // undefined，导致过滤规则写了却不生效，「全部」里全是这类条目。
+    const filter = buildDocumentCategoryFilter(
+      d.fileType,
+      (category ?? FilesTabs.All) as FilesTabs,
+    );
     if (filter === 'all') return undefined;
     return filter === 'none' ? sql`false` : filter;
   };

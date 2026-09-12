@@ -14,6 +14,7 @@ describe('CustomerCenter model', () => {
   it('only exposes personal account, balance, billing, and creation sections', () => {
     expect(CUSTOMER_CENTER_SECTIONS).toEqual([
       'account-security',
+      'plans',
       'balance-usage',
       'recharge-history',
       'my-creations',
@@ -21,6 +22,7 @@ describe('CustomerCenter model', () => {
   });
 
   it('accepts only known customer-center section deep links', () => {
+    expect(resolveCustomerCenterSection('plans')).toBe('plans');
     expect(resolveCustomerCenterSection('balance-usage')).toBe('balance-usage');
     expect(resolveCustomerCenterSection('my-creations')).toBe('my-creations');
     expect(resolveCustomerCenterSection('private-group')).toBeUndefined();
@@ -37,7 +39,7 @@ describe('CustomerCenter model', () => {
     expect(resolveTotalTokenCount({ inputTokens: 200 })).toBeUndefined();
   });
 
-  it('formats Credits as integer units and Token usage as counts', () => {
+  it('formats 积分 as integer units and Token usage as counts', () => {
     expect(formatCredits(12_345, 'en-US')).toBe('12,345');
     expect(formatCredits(12_345.6, 'en-US')).toBe('—');
     expect(formatCredits(Number.MAX_SAFE_INTEGER + 1, 'en-US')).toBe('—');
@@ -45,7 +47,8 @@ describe('CustomerCenter model', () => {
     expect(formatCredits(Number.POSITIVE_INFINITY, 'en-US')).toBe('—');
     expect(formatCredits(-1, 'en-US')).toBe('—');
     expect(formatCredits(null, 'en-US')).toBe('—');
-    expect(formatTokenCount(12_345, 'en-US')).toBe('12,345');
+    expect(formatTokenCount(12_345, 'en-US')).toBe('12.3K');
+    expect(formatTokenCount(5_200_000, 'zh-CN')).toBe('520万');
     expect(formatTokenCount(undefined, 'en-US')).toBe('—');
     expect(formatTokenCount(-1, 'en-US')).toBe('—');
     expect(formatTokenCount(Number.MAX_SAFE_INTEGER + 1, 'en-US')).toBe('—');

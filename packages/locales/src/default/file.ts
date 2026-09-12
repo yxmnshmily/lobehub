@@ -306,6 +306,7 @@ export default {
   'tab.images': 'Images',
   'tab.moreTypes': 'More Types',
   'tab.pages': 'Pages',
+  'tab.other': 'Other',
   'tab.videos': 'Videos',
   'tab.websites': 'Websites',
   'title': 'Resources',

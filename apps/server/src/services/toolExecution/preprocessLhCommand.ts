@@ -9,7 +9,7 @@ const log = debug('lobe-server:lh-command');
 
 /** Error surfaced when an Agent Share visitor's sandbox command tries to invoke the `lh` CLI. */
 export const SHARE_VISITOR_LH_BLOCKED_MESSAGE =
-  'The LobeHub CLI is unavailable in shared conversations.';
+  'The 旅游群 CLI is unavailable in shared conversations.';
 
 export interface PreprocessResult {
   command: string;

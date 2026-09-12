@@ -20,7 +20,8 @@ const moonshotChatModels: AIChatModelCard[] = [
     id: 'kimi-k3',
     maxOutput: 131_072,
     pricing: {
-      currency: 'USD',
+      // Domestic api.moonshot.cn price. International endpoints require their own USD quote.
+      currency: 'CNY',
       units: [
         { name: 'textInput_cacheRead', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
         { name: 'textInput', rate: 20, strategy: 'fixed', unit: 'millionTokens' },

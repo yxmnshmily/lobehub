@@ -20,8 +20,9 @@ const InboxButton = memo(() => {
   if (!enabled) return null;
 
   return (
-    <Badge dot={unreadCount > 0} offset={[-6, 6]} size="small">
+    <Badge data-nav-expanded-only="" dot={unreadCount > 0} offset={[-6, 6]} size="small">
       <ActionIcon
+        aria-label={t('inbox.title')}
         icon={BellIcon}
         size={DESKTOP_HEADER_ICON_SMALL_SIZE}
         title={t('inbox.title')}

@@ -34,9 +34,15 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { parseMemoryExtractionConfig } from '@/server/globalConfig/parseMemoryExtractionConfig';
 import {
   buildWorkflowPayloadInput,
+  MemoryExtractionExecutor,
   MemoryExtractionWorkflowService,
   normalizeMemoryExtractionPayload,
 } from '@/server/services/memory/userMemory/extract';
+import {
+  buildUserPersonaJobInput,
+  UserPersonaService,
+} from '@/server/services/memory/userMemory/persona/service';
+import { after } from '@/server/utils/scheduleAfterResponse';
 
 import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
@@ -273,11 +279,24 @@ export const userMemoryRouter = router({
         };
       }
 
-      const totalTopics = await ctx.topicModel.countTopicsForMemoryExtractor({
+      const extractionConfig = parseMemoryExtractionConfig();
+      // Self-hosted servers can use the existing executor without a cloud queue.
+      // Serverless deployments still require durable workflow scheduling.
+      const runLocally = !process.env.QSTASH_TOKEN && !process.env.VERCEL;
+      const topicRange = {
         endDate: input.toDate,
         ignoreExtracted: false,
         startDate: input.fromDate,
-      });
+      };
+      const localTopics = runLocally
+        ? await ctx.topicModel.listTopicsForMemoryExtractor({
+            ...topicRange,
+            limit: extractionConfig.workflow?.maxTopicsPerUserPerRun ?? 100,
+          })
+        : undefined;
+      const totalTopics = localTopics
+        ? localTopics.length
+        : await ctx.topicModel.countTopicsForMemoryExtractor(topicRange);
       const metadata = initUserMemoryExtractionMetadata({
         progress: {
           completedTopics: 0,
@@ -306,10 +325,82 @@ export const userMemoryRouter = router({
         };
       }
 
-      const { webhook, upstashWorkflowExtraHeaders } = parseMemoryExtractionConfig();
+      const { webhook, upstashWorkflowExtraHeaders } = extractionConfig;
       const baseUrl = webhook.baseUrl || appEnv.INTERNAL_APP_URL || appEnv.APP_URL;
 
       try {
+        if (localTopics) {
+          // ponytail: process-bound self-hosted jobs; use QStash for restart-safe execution.
+          after(async () => {
+            try {
+              const claimed = await ctx.asyncTaskModel.transitionStatus(
+                taskId,
+                [AsyncTaskStatus.Pending],
+                AsyncTaskStatus.Processing,
+              );
+              if (!claimed) return;
+              const executor = await MemoryExtractionExecutor.create();
+              let createdMemories = false;
+              for (const [index, topic] of localTopics.entries()) {
+                const task = await ctx.asyncTaskModel.findById(taskId);
+                const control = (task?.metadata as UserMemoryExtractionMetadata | undefined)
+                  ?.control;
+                if (
+                  !task ||
+                  task.status !== AsyncTaskStatus.Processing ||
+                  control?.cancelRequestedAt
+                )
+                  return;
+                const result = await executor.extractTopic({
+                  asyncTaskId: taskId,
+                  forceAll: false,
+                  forceTopics: false,
+                  from: input.fromDate,
+                  layers: [],
+                  reportProgress: false,
+                  source: MemorySourceType.ChatTopic,
+                  to: input.toDate,
+                  topicId: topic.id,
+                  userId: ctx.userId,
+                  userInitiated: true,
+                  workspaceId: ctx.workspaceId ?? undefined,
+                });
+                createdMemories ||= result.memoryIds.length > 0;
+                // Keep the final increment until the homepage persona has been saved.
+                if (index < localTopics.length - 1) {
+                  await ctx.asyncTaskModel.incrementUserMemoryExtractionProgress(taskId);
+                }
+              }
+              if (createdMemories && !ctx.workspaceId) {
+                const task = await ctx.asyncTaskModel.findById(taskId);
+                const control = (task?.metadata as UserMemoryExtractionMetadata | undefined)
+                  ?.control;
+                if (!task || task.status === AsyncTaskStatus.Error || control?.cancelRequestedAt)
+                  return;
+                const jobInput = await buildUserPersonaJobInput(ctx.serverDB, ctx.userId);
+                await new UserPersonaService(ctx.serverDB).composeWriting({
+                  ...jobInput,
+                  userId: ctx.userId,
+                });
+              }
+              await ctx.asyncTaskModel.incrementUserMemoryExtractionProgress(taskId);
+            } catch {
+              // extractTopic persists detailed failures itself; retain those diagnostics.
+              const task = await ctx.asyncTaskModel.findById(taskId);
+              if (task?.status !== AsyncTaskStatus.Error) {
+                await ctx.asyncTaskModel.update(taskId, {
+                  error: new AsyncTaskError(
+                    AsyncTaskErrorType.ServerError,
+                    'Local memory extraction failed',
+                  ),
+                  status: AsyncTaskStatus.Error,
+                });
+              }
+            }
+          });
+          return { deduped: false, id: taskId, metadata, status: initialStatus };
+        }
+
         const { workflowRunId } = await MemoryExtractionWorkflowService.triggerProcessUsers(
           buildWorkflowPayloadInput(
             normalizeMemoryExtractionPayload({
@@ -323,6 +414,7 @@ export const userMemoryRouter = router({
               toDate: input.toDate,
               userIds: [ctx.userId],
               userInitiated: true,
+              workspaceId: ctx.workspaceId ?? undefined,
             }),
           ),
           { extraHeaders: upstashWorkflowExtraHeaders },

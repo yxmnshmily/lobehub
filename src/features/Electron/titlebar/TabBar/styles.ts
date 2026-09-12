@@ -47,7 +47,7 @@ export const useStyles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 8px;
     height: 8px;
-    border: 1.5px solid ${cssVar.colorBgLayout};
+    border: 0.5px solid ${cssVar.colorBgLayout};
     border-radius: 50%;
 
     background: ${cssVar.gold};
@@ -60,7 +60,7 @@ export const useStyles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 8px;
     height: 8px;
-    border: 1.5px solid ${cssVar.colorBgLayout};
+    border: 0.5px solid ${cssVar.colorBgLayout};
     border-radius: 50%;
 
     background: ${cssVar.colorInfo};
@@ -162,7 +162,7 @@ export const useStyles = createStaticStyles(({ css, cssVar }) => ({
     inset-block-start: 4px;
     inset-inline-start: 0;
 
-    width: 1px;
+    width: 0.5px;
     height: 18px;
 
     background-color: ${cssVar.colorBorder};
@@ -188,7 +188,7 @@ export const useStyles = createStaticStyles(({ css, cssVar }) => ({
       inset-block-end: 1px;
       inset-inline: 8px;
 
-      height: 1px;
+      height: 0.5px;
       border-radius: 1px;
 
       opacity: 0.65;

@@ -176,7 +176,14 @@ vi.mock('model-bank', async (importOriginal) => {
 
 describe('AiAgentService.execAgent - threadId handling', () => {
   let service: AiAgentService;
-  const mockDb = {} as any;
+  const mockDb = {
+    query: {
+      topics: { findFirst: vi.fn().mockResolvedValue(undefined) },
+      users: {
+        findFirst: vi.fn().mockResolvedValue({ phone: '13800000000', phoneNumberVerified: true }),
+      },
+    },
+  } as any;
   const userId = 'test-user-id';
 
   beforeEach(() => {

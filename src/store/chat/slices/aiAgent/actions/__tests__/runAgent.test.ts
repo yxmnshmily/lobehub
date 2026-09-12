@@ -500,6 +500,38 @@ describe('runAgent actions', () => {
         });
       });
 
+      it('keeps a classified terminal error visible on an empty assistant placeholder', async () => {
+        const { result } = renderHook(() => useChatStore());
+        const terminalError = {
+          message: '平台 DeepSeek 凭据无效，请管理员检查模型服务配置。',
+          type: 'InvalidProviderAPIKey',
+        };
+        const event: StreamEvent = {
+          data: {
+            finalState: { error: terminalError, status: 'error' },
+            reason: 'error',
+            uiMessages: [{ id: TEST_IDS.ASSISTANT_MESSAGE_ID, role: 'assistant', content: '' }],
+          },
+          operationId: TEST_IDS.OPERATION_ID,
+          timestamp: Date.now(),
+          type: 'agent_runtime_end',
+        };
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            event,
+            createStreamingContext({ assistantId: TEST_IDS.ASSISTANT_MESSAGE_ID }),
+          );
+        });
+
+        expect(result.current.internal_dispatchMessage).toHaveBeenCalledWith({
+          id: TEST_IDS.ASSISTANT_MESSAGE_ID,
+          type: 'updateMessage',
+          value: { error: terminalError },
+        });
+      });
+
       it('does not let a superseded run replace messages from a newer run', async () => {
         const replaceMessages = vi.fn();
         const operationContext = { agentId: 'agent-1', topicId: 'topic-1' };

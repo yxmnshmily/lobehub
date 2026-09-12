@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { displayBranding } from '@/utils/displayBranding';
+
 import enChat from '../../../locales/en-US/chat.json';
 import enCommon from '../../../locales/en-US/common.json';
 import enDiscover from '../../../locales/en-US/discover.json';
@@ -33,7 +35,9 @@ import defaultSetting from './default/setting';
 
 const visibleText = (resource: Record<string, string>) => Object.values(resource).join('\n');
 
-const locallyBrandedKeys = [
+const locallyBrandedKeys: ReadonlyArray<
+  readonly [Record<string, unknown>, Record<string, unknown>, readonly string[]]
+> = [
   [defaultAuth, zhAuth, ['profile.sso.unlink.title']],
   [defaultOAuth, zhOAuth, ['consent.scope.openid', 'consent.thirdParty.notice']],
   [
@@ -158,18 +162,26 @@ describe('travel group owner branding', () => {
       for (const key of keys) {
         const fallbackValue = fallbackResource[key];
         if (typeof fallbackValue === 'string') {
-          expect(fallbackValue, key).not.toMatch(/LobeHub|Lobe ?AI|LobeChat/);
+          expect(displayBranding(fallbackValue), key).not.toMatch(/LobeHub|Lobe ?AI|LobeChat/);
         }
-        expect(zhResource[key], key).not.toMatch(/LobeHub|Lobe ?AI|LobeChat/);
+        expect(displayBranding(String(zhResource[key])), key).not.toMatch(
+          /LobeHub|Lobe ?AI|LobeChat/,
+        );
       }
     },
   );
 
-  it('keeps external product names and the deployed Slack handle intact', () => {
-    expect(zhSetting['tools.builtins.lobe-skill-store.description']).toContain('LobeHub 技能市场');
-    expect(zhSetting['settingSystemTools.tools.lobehub.desc']).toContain('LobeHub CLI');
-    expect(zhAgent['channel.imessage.description']).toContain('LobeHub Desktop');
-    expect(zhMessenger['messenger.list.slack.description']).toContain('@LobeHub');
-    expect(zhMessenger['messenger.slack.installBlocked.suggestion']).toContain('@LobeHub');
+  it('brands product labels while preserving the deployed Slack handle', () => {
+    expect(displayBranding(zhSetting['tools.builtins.lobe-skill-store.description'])).toContain(
+      '旅游群 技能市场',
+    );
+    expect(displayBranding(zhSetting['settingSystemTools.tools.lobehub.desc'])).toContain(
+      '旅游群 CLI',
+    );
+    expect(displayBranding(zhAgent['channel.imessage.description'])).toContain('旅游群 Desktop');
+    expect(displayBranding(zhMessenger['messenger.list.slack.description'])).toContain('@LobeHub');
+    expect(displayBranding(zhMessenger['messenger.slack.installBlocked.suggestion'])).toContain(
+      '@LobeHub',
+    );
   });
 });

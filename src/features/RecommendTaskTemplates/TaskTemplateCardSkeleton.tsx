@@ -4,6 +4,8 @@ import { Divider } from 'antd';
 import { cssVar, cx } from 'antd-style';
 import { memo } from 'react';
 
+import SkeletonText from '@/components/Skeleton/Text';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { styles as briefStyles } from '@/features/DailyBrief/style';
 import { RECOMMENDATION_ICON_SIZE } from '@/features/Recommendations/iconSize';
 
@@ -30,7 +32,7 @@ export const TaskTemplateCardSkeleton = memo<TaskTemplateCardSkeletonProps>(
             size={RECOMMENDATION_ICON_SIZE.compact}
             style={{ borderRadius: cssVar.borderRadius, flex: 'none' }}
           />
-          <Skeleton height={16} width={'70%'} />
+          <SkeletonBar height={16} width={'70%'} />
         </Flexbox>
       );
 
@@ -62,7 +64,7 @@ export const TaskTemplateCardSkeleton = memo<TaskTemplateCardSkeletonProps>(
               gap={6}
               style={{ minWidth: 0, overflow: 'hidden' }}
             >
-              <Skeleton height={20} width={180} />
+              <SkeletonBar height={20} width={180} />
               <Skeleton.Avatar shape={'circle'} size={12} style={{ flex: 'none' }} />
             </Flexbox>
           </Flexbox>
@@ -72,11 +74,11 @@ export const TaskTemplateCardSkeleton = memo<TaskTemplateCardSkeletonProps>(
 
         <Divider dashed style={{ marginBlock: 0 }} />
 
-        <Skeleton.Text fontSize={14} rows={descriptionRows} style={{ marginBottom: 0 }} />
+        <SkeletonText fontSize={14} rows={descriptionRows} style={{ marginBottom: 0 }} />
 
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
-          <Skeleton height={22} width={72} />
-          <Skeleton height={32} width={96} />
+          <SkeletonBar height={22} width={72} />
+          <SkeletonBar height={32} width={96} />
         </Flexbox>
       </Block>
     );

@@ -132,7 +132,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   commentInputCard: css`
     padding-block: 4px;
     padding-inline: 8px;
-    border: 1px solid transparent;
+    border: 0.5px solid transparent;
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillTertiary};

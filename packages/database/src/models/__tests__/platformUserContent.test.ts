@@ -644,7 +644,7 @@ describe('PlatformUserContentModel', () => {
         status: 'succeeded',
         type: 'copy',
         updatedAt: new Date('2026-09-02T12:00:00.000Z'),
-        usage: { input: 123_456 },
+        usage: { totalInputTokens: 123_456 },
         userId: targetUserId,
       },
       {

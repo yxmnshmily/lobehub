@@ -4,14 +4,14 @@ import { memo, useLayoutEffect } from 'react';
 import { useLocation, useParams, useSearchParams } from 'react-router';
 
 import ResourceManager from '@/features/ResourceManager';
+import { KnowledgeBaseListProvider } from '@/features/ResourceManager/components/KnowledgeBaseListProvider';
 import { useInitFileCheck } from '@/features/ResourceManager/hooks/useInitFileCheck';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
-import WorkGallery from '@/features/WorkGallery';
 import { parseWorkGalleryKey } from '@/features/WorkGallery/const';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { FilesTabs } from '@/types/files';
 
-import HomeDashboard from './Home';
+import OtherResources from './OtherResources';
 
 /**
  * Path segment → category for routes that own one: /resource/all,
@@ -19,18 +19,28 @@ import HomeDashboard from './Home';
  */
 export const CATEGORY_BY_SEGMENT: Record<string, FilesTabs> = {
   all: FilesTabs.All,
-  audios: FilesTabs.Audios,
+  audios: FilesTabs.Other,
   documents: FilesTabs.Documents,
-  files: FilesTabs.Files,
+  files: FilesTabs.Other,
   images: FilesTabs.Images,
-  page: FilesTabs.Pages,
+  other: FilesTabs.Other,
+  page: FilesTabs.Documents,
   videos: FilesTabs.Videos,
   websites: FilesTabs.Websites,
+  works: FilesTabs.Other,
 };
 
-const SEGMENT_BY_CATEGORY = Object.fromEntries(
-  Object.entries(CATEGORY_BY_SEGMENT).map(([segment, category]) => [category, segment]),
-);
+const SEGMENT_BY_CATEGORY: Partial<Record<FilesTabs, string>> = {
+  [FilesTabs.All]: 'all',
+  [FilesTabs.Documents]: 'documents',
+  [FilesTabs.Pages]: 'documents',
+  [FilesTabs.Audios]: 'other',
+  [FilesTabs.Files]: 'other',
+  [FilesTabs.Other]: 'other',
+  [FilesTabs.Images]: 'images',
+  [FilesTabs.Videos]: 'videos',
+  [FilesTabs.Websites]: 'websites',
+};
 
 /** Canonical path for a category, e.g. /resource/page for Pages. */
 export const resourceCategoryPath = (category: FilesTabs): string =>
@@ -62,10 +72,9 @@ const ResourceHomePage = memo(() => {
   // The Work gallery owns its own path segment; `?works=<key>` narrows it
   // (task / document / linear / github), defaulting to the combined view.
   const isWorksPath = pathCategory === WORKS_PATH_SEGMENT;
-  const worksKey = isWorksPath ? (parseWorkGalleryKey(searchParams.get('works')) ?? 'all') : null;
-  // The bare /resource route is the library home dashboard; explorer views
-  // live under /resource/<category> (the all-files list at /resource/all).
-  const categoryParam = segmentCategory ?? FilesTabs.Home;
+  // 裸 /resource 就是「全部」这一页本身（URL 不变，不做跳转）：打开文件管理直接看到
+  // 资源列表，不再先落在一屏「库 / 最近文件 / 其他」的首页看板上。
+  const categoryParam = segmentCategory ?? FilesTabs.All;
 
   // Legacy URLs used `?category=<x>` / `?works=<key>` on the bare /resource
   // route; canonical forms are now /resource/<x> and /resource/works.
@@ -75,10 +84,7 @@ const ResourceHomePage = memo(() => {
 
   useLayoutEffect(() => {
     if (legacyWorksKey) {
-      navigate(
-        legacyWorksKey === 'all' ? '/resource/works' : `/resource/works?works=${legacyWorksKey}`,
-        { replace: true },
-      );
+      navigate('/resource/other', { replace: true });
       return;
     }
     if (legacyCategory) {
@@ -86,7 +92,22 @@ const ResourceHomePage = memo(() => {
       return;
     }
     if (isInvalidPath) navigate('/resource', { replace: true });
-  }, [legacyWorksKey, legacyCategory, isInvalidPath, navigate]);
+    if (pathCategory && ['page', 'files', 'audios', 'works'].includes(pathCategory)) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('works');
+      navigate(`${resourceCategoryPath(categoryParam)}${next.size ? `?${next}` : ''}`, {
+        replace: true,
+      });
+    }
+  }, [
+    legacyWorksKey,
+    legacyCategory,
+    isInvalidPath,
+    navigate,
+    pathCategory,
+    categoryParam,
+    searchParams,
+  ]);
 
   // Clear libraryId when on home route using useLayoutEffect
   // useLayoutEffect runs synchronously before browser paint, ensuring state is cleared
@@ -115,9 +136,16 @@ const ResourceHomePage = memo(() => {
   // Sync file view mode from URL
   useInitFileCheck();
 
-  if (worksKey) return <WorkGallery galleryKey={worksKey} />;
+  // 「其他」栏目：仍用标准页面外壳（ResourceManager），但内容喂产出物列表，
+  // 否则按文件分类查出来是空的（库里文件都是图片，other 分类下没有文件）。
+  if (categoryParam === FilesTabs.Other)
+    return (
+      <KnowledgeBaseListProvider>
+        <ResourceManager content={<OtherResources />} />
+      </KnowledgeBaseListProvider>
+    );
 
-  return <ResourceManager content={isValidPathCategory ? undefined : <HomeDashboard />} />;
+  return <ResourceManager />;
 });
 
 ResourceHomePage.displayName = 'ResourceHomePage';

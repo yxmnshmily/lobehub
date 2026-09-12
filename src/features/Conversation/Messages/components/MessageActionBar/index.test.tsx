@@ -50,6 +50,9 @@ vi.mock('@lobehub/ui', async (importOriginal) => ({
 vi.mock('@/hooks/usePermission', () => ({
   usePermission: () => ({ allowed: permissionMock.canEdit, reason: '' }),
 }));
+vi.mock('../../../store', () => ({
+  useConversationStore: (selector: any) => selector({ hooks: {} }),
+}));
 
 vi.mock('./useBuildActions', () => ({
   useBuildActions: () => ({

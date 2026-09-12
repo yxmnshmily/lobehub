@@ -34,7 +34,8 @@ import { platformCreditEntries } from '@/database/schemas/platformCredit';
 import { travelServiceOrders } from '@/database/schemas/serviceLedger';
 import { travelGenerationTasks } from '@/database/schemas/travelGeneration';
 import { works } from '@/database/schemas/work';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
+import { getMonthlyExchangeRate } from '@/server/services/monthlyExchangeRate';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { isSafeArtifactIdentifier } from '@/server/services/travelGeneration/artifactSafety';
 import {
@@ -323,7 +324,7 @@ export const buildCustomerWorkPage = (
   cursor?: string,
   filters: CustomerGenerationFilters = {},
 ) => {
-  const filtered = rows.flatMap((row) => {
+  const filtered = rows.flatMap<CustomerWorkSource>((row) => {
     if (row.source === 'generation') {
       const isCompleteAsset =
         row.asset !== null &&
@@ -425,16 +426,28 @@ const assertIntegerCredits = (value: number): number => {
   return value;
 };
 
-const toSafeCreditAccount = (account: PlatformCreditAccountItem) => {
+const toSafeCreditAccount = (
+  account: Pick<PlatformCreditAccountItem, 'balanceCredits' | 'updatedAt'> & {
+    availableCredits: number;
+    heldCredits: number;
+  },
+) => {
   const balanceCredits = assertIntegerCredits(account.balanceCredits);
-  if (balanceCredits < 0) {
+  const availableCredits = assertIntegerCredits(account.availableCredits);
+  const heldCredits = assertIntegerCredits(account.heldCredits);
+  if (
+    balanceCredits < 0 ||
+    availableCredits < 0 ||
+    heldCredits < 0 ||
+    availableCredits !== balanceCredits - heldCredits
+  ) {
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Credits balance contains invalid data',
     });
   }
 
-  return { balanceCredits, updatedAt: account.updatedAt };
+  return { availableCredits, balanceCredits, heldCredits, updatedAt: account.updatedAt };
 };
 
 const toSafeCreditEntry = (entry: PlatformCreditEntryItem) => ({
@@ -512,6 +525,25 @@ const projectContentOrNull = <T>(
 };
 
 export const customerCenterRouter = router({
+  // Shared reference data only; anonymous model catalogs need the same rate.
+  getDisplayExchangeRate: publicProcedure.query(() => getMonthlyExchangeRate()),
+  getUsageDetails: customerCenterProcedure.query(async ({ ctx }) => {
+    const usage = await new PlatformUserUsageModel(ctx.serverDB, ctx.userId).getUsage({
+      recentLimit: 100,
+    });
+    const value = (metric: AvailableNumber) => (metric.available ? metric.value : null);
+    return usage.recent
+      .filter((row) => row.countedInCanonicalTotals)
+      .map((row) => ({
+        createdAt: row.createdAt,
+        id: `${row.source}:${row.id}`,
+        inputTokens: value(row.metrics.totalInputTokens),
+        kind: row.kind.available ? row.kind.value : 'unknown',
+        model: row.model.available ? row.model.value : null,
+        outputTokens: value(row.metrics.totalOutputTokens),
+        totalTokens: value(row.metrics.totalTokens),
+      }));
+  }),
   getGenerationDetail: customerCenterProcedure
     .input(z.object({ id: z.string().min(1).max(255) }).strict())
     .query(async ({ ctx, input }) => {
@@ -585,15 +617,75 @@ export const customerCenterRouter = router({
             : [],
         ),
       );
-      return projectCustomerGenerationDetail(task, {
-        isSettled: isCustomerGenerationSettled(task, settledIdentities),
-      });
+      const isSettled = isCustomerGenerationSettled(task, settledIdentities);
+      if (!isSettled) return projectCustomerGenerationDetail(task, { isSettled: false });
+      const artifacts = (task.artifacts ?? []).filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+      );
+      const documentIds = artifacts.flatMap((item) =>
+        isSafeArtifactIdentifier(item.documentId) ? [item.documentId as string] : [],
+      );
+      const generationIds = artifacts.flatMap((item) =>
+        isSafeArtifactIdentifier(item.generationId) ? [item.generationId as string] : [],
+      );
+      const [liveDocuments, liveGenerations] = await Promise.all([
+        documentIds.length
+          ? ctx.serverDB
+              .select({ id: documents.id })
+              .from(documents)
+              .where(
+                asDatabaseExpression(
+                  and(
+                    inArray(asQueryColumn(documents.id), documentIds),
+                    eq(asQueryColumn(documents.userId), ctx.userId),
+                    customerWorkspaceCondition(documents.workspaceId, ctx.workspaceId),
+                  ),
+                ),
+              )
+              .limit(documentIds.length)
+          : Promise.resolve([]),
+        generationIds.length
+          ? ctx.serverDB
+              .select({ id: generations.id })
+              .from(generations)
+              .where(
+                asDatabaseExpression(
+                  and(
+                    inArray(asQueryColumn(generations.id), generationIds),
+                    eq(asQueryColumn(generations.userId), ctx.userId),
+                    customerWorkspaceCondition(generations.workspaceId, ctx.workspaceId),
+                    isNotNull(asQueryColumn(generations.fileId)),
+                  ),
+                ),
+              )
+              .limit(generationIds.length)
+          : Promise.resolve([]),
+      ]);
+      const liveIds = new Set([...liveDocuments, ...liveGenerations].map(({ id }) => id));
+      const visibleArtifacts = artifacts.filter((item) =>
+        item.type === 'document'
+          ? liveIds.has(item.documentId as string)
+          : item.type === 'image'
+            ? liveIds.has(item.generationId as string)
+            : true,
+      );
+      return projectCustomerGenerationDetail(
+        { ...task, artifacts: visibleArtifacts },
+        {
+          isSettled,
+        },
+      );
     }),
   getPage: customerCenterProcedure.input(pageInput).query(async ({ ctx, input }) => {
     const cursor = input.cursor ? decodeCustomerCenterCursor(input.cursor) : undefined;
     const queryLimit = input.limit + 1;
 
     if (input.kind === 'ledger') {
+      const ledgerScope = and(
+        eq(asQueryColumn(platformCreditEntries.userIdSnapshot), ctx.userId),
+        customerWorkspaceCondition(platformCreditEntries.workspaceId, ctx.workspaceId),
+      );
       const updatedAt = sql<Date>`date_trunc('milliseconds', ${platformCreditEntries.updatedAt})`;
       const rows = await ctx.serverDB
         .select({
@@ -608,8 +700,7 @@ export const customerCenterRouter = router({
         .where(
           asDatabaseExpression(
             and(
-              eq(asQueryColumn(platformCreditEntries.userIdSnapshot), ctx.userId),
-              customerWorkspaceCondition(platformCreditEntries.workspaceId, ctx.workspaceId),
+              ledgerScope,
               cursorCondition(updatedAt, asQueryColumn(platformCreditEntries.id), cursor),
             ),
           ),
@@ -620,8 +711,14 @@ export const customerCenterRouter = router({
         )
         .limit(queryLimit);
 
+      const [summary] = await ctx.serverDB
+        .select({ total: sql<number>`count(*)`.mapWith(Number) })
+        .from(platformCreditEntries)
+        .where(asDatabaseExpression(ledgerScope));
+
       return {
         kind: input.kind,
+        total: summary.total,
         ...buildCustomerCenterPage(
           rows.map((entry) => ({
             amountCredits: assertIntegerCredits(entry.amountCredits),
@@ -930,7 +1027,7 @@ export const customerCenterRouter = router({
     const contentModel = new PlatformUserContentModel(ctx.serverDB);
 
     const [account, entries, usage, content] = await Promise.allSettled([
-      creditModel.getAccount().then(toSafeCreditAccount),
+      creditModel.getAccountWithAvailability().then(toSafeCreditAccount),
       creditModel
         .listEntries(input?.ledgerLimit)
         .then((ledgerEntries) => ledgerEntries.map(toSafeCreditEntry)),

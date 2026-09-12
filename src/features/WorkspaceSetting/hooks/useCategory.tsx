@@ -113,7 +113,7 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
             },
           ].filter(Boolean) as WorkspaceSettingCategoryItem[],
           key: WorkspaceSettingsGroupKey.Subscription,
-          title: '旅行服务费',
+          title: '套餐费用',
         },
         {
           items: [
@@ -148,11 +148,6 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
               key: WorkspaceSettingsTabs.Connector,
               label: t('workspaceSetting.tab.connector'),
             },
-            {
-              icon: KeyRound,
-              key: WorkspaceSettingsTabs.Creds,
-              label: t('tab.creds'),
-            },
             // Messenger (chat platform) is intentionally omitted from workspace
             // settings: the System Bot binding is a per-user/personal identity
             // (the link is owned by `userId`, not the workspace), and reaching a
@@ -162,8 +157,14 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
           key: WorkspaceSettingsGroupKey.Agent,
           title: t('workspaceSetting.group.agent'),
         },
-        (canCreateContent || enableOAuthApps) && {
+        {
           items: [
+            { icon: KeyRound, key: WorkspaceSettingsTabs.Creds, label: t('tab.creds') },
+            canManageWorkspace && {
+              icon: Database,
+              key: WorkspaceSettingsTabs.Storage,
+              label: t('tab.storage'),
+            },
             canCreateContent && {
               icon: KeyIcon,
               key: WorkspaceSettingsTabs.APIKey,
@@ -176,16 +177,11 @@ export const useWorkspaceSettingCategory = (): WorkspaceSettingCategoryGroup[] =
             },
           ].filter(Boolean) as WorkspaceSettingCategoryItem[],
           key: WorkspaceSettingsGroupKey.Developer,
-          title: t('group.developer'),
+          title: t('tab.advanced'),
         },
         // The Admin group is available to Admin and Owner.
         canManageWorkspace && {
           items: [
-            {
-              icon: Database,
-              key: WorkspaceSettingsTabs.Storage,
-              label: t('tab.storage'),
-            },
             {
               icon: ScrollText,
               key: WorkspaceSettingsTabs.AuditLog,

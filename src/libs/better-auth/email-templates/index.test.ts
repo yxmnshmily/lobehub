@@ -190,7 +190,8 @@ describe('email templates', () => {
     expect(template.subject).toBe('请验证你的邮箱｜旅游群网');
     expect(template.html).toContain('cid:travel-group-logo');
     expect(template.html).toContain('旅游群网面向旅游从业者');
-    expect(template.html).toContain('jinwang1016@163.com');
+    expect(template.html).toContain('微信号：jinwang1016');
+    expect(template.html).not.toContain('jinwang1016@163.com');
     expect(template.html).toContain('yxmnshmily@qq.com');
     expect(template.attachments).toEqual([
       expect.objectContaining({ cid: 'travel-group-logo', filename: 'travel-group-logo.png' }),
@@ -247,7 +248,8 @@ describe('email templates', () => {
       expect(template.text.trim().length).toBeGreaterThan(0);
       expect(template.html).toContain('cid:travel-group-logo');
       expect(template.html).toContain('yxmnshmily@qq.com');
-      expect(template.html).toContain('jinwang1016@163.com');
+      expect(template.html).toContain('微信号：jinwang1016');
+      expect(template.html).not.toContain('jinwang1016@163.com');
       expect(template.html).not.toContain('LobeHub');
       expect(template.html).not.toContain('Lobe AI');
       expect(template.html).not.toContain('🤯');

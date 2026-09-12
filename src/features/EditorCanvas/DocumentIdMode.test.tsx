@@ -208,7 +208,7 @@ describe('DocumentIdMode', () => {
     };
     useFetchDocument.mockReturnValue(createFetchDocumentResult({ data: remoteDocument }));
     vi.mocked(editorSelectors.isDocumentLoading).mockImplementation(
-      (documentId: string) => (state: typeof documentStoreState) => !state.documents[documentId],
+      (documentId) => (state) => !documentId || !state.documents[documentId],
     );
     initDocumentWithEditor.mockImplementation(({ documentId }: { documentId: string }) => {
       documentStoreState.documents[documentId] = {};

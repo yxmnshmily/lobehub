@@ -9,7 +9,7 @@ const styles = createStaticStyles(({ css }) => ({
   container: css`
     flex-shrink: 0;
     width: 360px;
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   content: css`
     overflow-y: auto;
@@ -45,7 +45,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   title: css`
     margin: 0;

@@ -14,9 +14,10 @@ interface EmptyStateProps {
   agentId: string;
   hasFilters: boolean;
   onClearFilters: () => void;
+  onStart?: () => void;
 }
 
-const EmptyState = memo<EmptyStateProps>(({ agentId, hasFilters, onClearFilters }) => {
+const EmptyState = memo<EmptyStateProps>(({ agentId, hasFilters, onClearFilters, onStart }) => {
   const { t } = useTranslation('topic');
   const navigate = useWorkspaceAwareNavigate();
 
@@ -34,7 +35,7 @@ const EmptyState = memo<EmptyStateProps>(({ agentId, hasFilters, onClearFilters 
       {hasFilters ? (
         <Button onClick={onClearFilters}>{t('management.empty.filtered.action')}</Button>
       ) : (
-        <Button type={'primary'} onClick={() => navigate(AGENT_CHAT_URL(agentId))}>
+        <Button type={'primary'} onClick={onStart ?? (() => navigate(AGENT_CHAT_URL(agentId)))}>
           {t('management.empty.noTopics.action')}
         </Button>
       )}

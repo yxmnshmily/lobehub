@@ -20,7 +20,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     color: ${cssVar.colorTextDescription};
   `,
   icon: css`
-    border: 1px solid ${cssVar.colorFillTertiary};
+    border: 0.5px solid ${cssVar.colorFillTertiary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgElevated};
   `,

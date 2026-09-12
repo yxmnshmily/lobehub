@@ -1,12 +1,13 @@
 'use client';
 
 import { Flexbox, Icon } from '@lobehub/ui';
-import { Button, confirmModal, Skeleton, Switch, Tag, Text, toast } from '@lobehub/ui/base-ui';
+import { Button, confirmModal, Switch, Tag, Text, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { ArrowLeftIcon, Trash2Icon } from 'lucide-react';
 import { type FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import OAuthAppStats from '@/business/client/OAuthAppStats';
 import { useClientDataSWR } from '@/libs/swr';
 import { authKeys } from '@/libs/swr/keys';
@@ -37,13 +38,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   card: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
   dangerCard: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorErrorBorder};
+    border: 0.5px solid ${cssVar.colorErrorBorder};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -110,9 +111,9 @@ const AppDetail: FC<AppDetailProps> = ({ canEdit, id, onBack, onChanged }) => {
   if (!detail)
     return (
       <Flexbox gap={16}>
-        <Skeleton.Text rows={1} width={200} />
+        <SkeletonText rows={1} width={200} />
         <div className={styles.card}>
-          <Skeleton.Text rows={4} />
+          <SkeletonText rows={4} />
         </div>
       </Flexbox>
     );

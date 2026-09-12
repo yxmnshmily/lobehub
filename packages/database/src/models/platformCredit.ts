@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import { CREDITS_PER_DOLLAR } from '@lobechat/const/currency';
-import { and, desc, eq, inArray, isNull, like, lte, or, sql } from 'drizzle-orm';
+import { CostExchangeRateSchema } from '@lobechat/types';
+import { usdToCredits } from '@lobechat/utils/credits';
+import { and, desc, eq, inArray, isNull, like, lte, notInArray, or, sql } from 'drizzle-orm';
 
 import {
   type PlatformCreditAccountItem,
@@ -34,6 +36,17 @@ export const PLATFORM_CREDIT_RESERVATION_STALE_LEASE = 'Credits 预留租约已�
 export const PLATFORM_CREDIT_USAGE_EXCEEDS_RESERVATION = '实际用量超过 Credits 预留';
 export const PLATFORM_CREDIT_SPONSORED_AUTHORIZATION_UNAVAILABLE =
   'PLATFORM_CREDIT_SPONSORED_AUTHORIZATION_UNAVAILABLE';
+export const PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE = 'platform-managed-agent-metered-request';
+export const PLATFORM_CREDIT_PREPAID_BUDGET_SOURCE_TYPE = 'platform-managed-agent-prepaid-request';
+export const PLATFORM_CREDIT_LEGACY_MANAGED_BUDGET_SOURCE_TYPE = 'platform-managed-agent-request';
+export const PLATFORM_CREDIT_MINIMUM_BALANCE = 50_000;
+/**
+ * How long past its lease a `provider_started` reservation may sit without a
+ * completion before it counts as abandoned. Generous on purpose: a slow provider
+ * legitimately outlives its lease, and only a call that will never report back
+ * should lose its hold.
+ */
+export const PROVIDER_STARTED_ABANDON_AFTER_MS = 60 * 60 * 1000;
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_COST_USD = 1_000_000_000_000_000;
@@ -76,7 +89,7 @@ const tokenFields = [
   'totalTokens',
 ] as const satisfies readonly (keyof PlatformCreditTokenUsage)[];
 
-const tokenFieldSet = new Set<string>(tokenFields);
+const tokenFieldSet = new Set<string>([...tokenFields, 'costExchangeRate']);
 
 const normalizeRequiredText = (value: string, field: string, maxLength = MAX_TEXT_LENGTH) => {
   const normalized = value.trim();
@@ -89,6 +102,15 @@ const normalizeRequiredText = (value: string, field: string, maxLength = MAX_TEX
 const normalizeOptionalText = (value?: string | null, field = '字段') => {
   if (value === undefined || value === null) return null;
   return normalizeRequiredText(value, field);
+};
+
+const normalizeProviderRequestId = (value?: string | null) => {
+  if (value === undefined || value === null) return null;
+  const normalized = value.trim();
+  if (!/^[A-Z0-9][\w.:/=-]{0,199}$/i.test(normalized)) {
+    throw new Error('服务商请求 ID无效');
+  }
+  return normalized;
 };
 
 const assertCredits = (
@@ -159,7 +181,12 @@ const normalizeTokenUsage = (usage: PlatformCreditTokenUsage): PlatformCreditTok
     if (!tokenFieldSet.has(key)) throw new Error(PLATFORM_CREDIT_INVALID_USAGE);
   }
 
-  const normalized: Record<string, number> = {};
+  const normalized: PlatformCreditTokenUsage = {};
+  if (usage.costExchangeRate !== undefined) {
+    const quote = CostExchangeRateSchema.safeParse(usage.costExchangeRate);
+    if (!quote.success) throw new Error(PLATFORM_CREDIT_INVALID_USAGE);
+    normalized.costExchangeRate = quote.data;
+  }
   for (const field of tokenFields) {
     const value = usage[field];
     if (value === undefined) continue;
@@ -207,7 +234,7 @@ const findEntryByKey = async (db: LobeChatDatabase, accountId: string, idempoten
 };
 
 const activeBudgetHeldCredits = async (db: LobeChatDatabase, accountId: string) => {
-  const [result] = await db
+  const [legacy] = await db
     .select({
       heldCredits:
         sql<number>`coalesce(sum(${platformCreditBudgets.authorizedCredits} - ${platformCreditBudgets.consumedCredits}), 0)`.mapWith(
@@ -219,9 +246,37 @@ const activeBudgetHeldCredits = async (db: LobeChatDatabase, accountId: string) 
       and(
         eq(platformCreditBudgets.accountId, accountId),
         eq(platformCreditBudgets.status, 'active'),
+        notInArray(platformCreditBudgets.sourceType, [
+          PLATFORM_CREDIT_LEGACY_MANAGED_BUDGET_SOURCE_TYPE,
+          PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE,
+        ]),
       ),
     );
-  const heldCredits = result?.heldCredits ?? 0;
+  const [metered] = await db
+    .select({
+      heldCredits:
+        sql<number>`coalesce(sum(${platformCreditReservations.reservedCredits}), 0)`.mapWith(
+          Number,
+        ),
+    })
+    .from(platformCreditReservations)
+    .innerJoin(
+      platformCreditBudgets,
+      and(
+        eq(platformCreditBudgets.id, platformCreditReservations.budgetId),
+        eq(platformCreditBudgets.accountId, accountId),
+        eq(platformCreditBudgets.status, 'active'),
+        eq(platformCreditBudgets.sourceType, PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE),
+      ),
+    )
+    .where(
+      inArray(platformCreditReservations.status, [
+        'reserved',
+        'provider_started',
+        'provider_completed',
+      ]),
+    );
+  const heldCredits = (legacy?.heldCredits ?? 0) + (metered?.heldCredits ?? 0);
   assertCredits(heldCredits, { allowZero: true });
   return heldCredits;
 };
@@ -251,7 +306,12 @@ const isSelfAuthorizationBudget = (budget: PlatformCreditBudgetItem, payerUserId
 const sameTokenUsage = (left: PlatformCreditTokenUsage | null, right: PlatformCreditTokenUsage) => {
   const leftValue = left ?? {};
   if (Object.keys(leftValue).length !== Object.keys(right).length) return false;
-  return tokenFields.every((field) => leftValue[field] === right[field]);
+  return (
+    tokenFields.every((field) => leftValue[field] === right[field]) &&
+    leftValue.costExchangeRate?.rate === right.costExchangeRate?.rate &&
+    leftValue.costExchangeRate?.rateDate === right.costExchangeRate?.rateDate &&
+    leftValue.costExchangeRate?.updatedAt === right.costExchangeRate?.updatedAt
+  );
 };
 
 const sameCompletionUsage = (
@@ -282,7 +342,10 @@ const sameUsageEntry = (
   existing.type === 'usage_charge' &&
   existing.actorUserIdSnapshot === normalized.actorUserId &&
   existing.costUsd === normalized.costUsd &&
-  existing.amountCredits === -input.credits &&
+  // Replay the historical amount only; all new writes still require usdToCredits.
+  // The legacy binary multiplication could add one credit to an exact decimal cost.
+  (existing.amountCredits === -input.credits ||
+    existing.amountCredits === -Math.ceil(normalized.costUsd * CREDITS_PER_DOLLAR)) &&
   existing.generationId === normalized.generationId &&
   existing.generationType === normalized.generationType &&
   existing.idempotencyKey === normalized.idempotencyKey &&
@@ -296,7 +359,7 @@ const normalizeUsageCharge = (userId: string, input: ChargePlatformUsageInput) =
   const actorUserId = normalizeRequiredText(input.actorUserId, '执行用户 ID', 255);
   if (actorUserId !== userId) throw new Error(PLATFORM_CREDIT_INVALID_USAGE);
   const costUsd = normalizeCostUsd(input.costUsd);
-  if (input.credits !== Math.ceil(costUsd * CREDITS_PER_DOLLAR)) {
+  if (input.credits !== usdToCredits(costUsd)) {
     throw new Error(PLATFORM_CREDIT_INVALID_USAGE);
   }
   return {
@@ -365,6 +428,7 @@ export interface ReserveRemainingPlatformCreditCallInput extends Omit<
 > {
   budgetLeaseVersion: number;
   requestHash: string;
+  reservedCredits?: number;
 }
 
 export interface RecordPlatformProviderCompletionInput {
@@ -374,6 +438,10 @@ export interface RecordPlatformProviderCompletionInput {
   providerRequestId?: string | null;
   reservationId: string;
   tokenUsage: PlatformCreditTokenUsage;
+}
+
+export interface RecordPlatformProviderRequestIdInput extends ReleasePlatformCreditReservationInput {
+  providerRequestId: string;
 }
 
 export interface SettleReservedPlatformUsageInput extends ChargePlatformUsageInput {
@@ -460,18 +528,77 @@ export class PlatformCreditModel {
       .orderBy(desc(platformCreditEntries.createdAt), desc(platformCreditEntries.id))
       .limit(normalizeListLimit(limit));
 
-  getAvailableCredits = () =>
+  getAccountWithAvailability = () =>
     this.db.transaction(async (tx) => {
       const transaction = tx as LobeChatDatabase;
       const account = await ensureAccount(transaction, this.userId, true);
+      const now = new Date(Date.now());
+      const expiredBudgets = await transaction
+        .select({ id: platformCreditBudgets.id })
+        .from(platformCreditBudgets)
+        .where(
+          and(
+            eq(platformCreditBudgets.accountId, account.id),
+            eq(platformCreditBudgets.status, 'active'),
+            lte(platformCreditBudgets.expiresAt, now),
+          ),
+        );
+      if (expiredBudgets.length > 0) {
+        const budgetIds = expiredBudgets.map(({ id }) => id);
+        await transaction
+          .update(platformCreditReservations)
+          .set({ status: 'expired', updatedAt: now })
+          .where(
+            and(
+              eq(platformCreditReservations.accountId, account.id),
+              inArray(platformCreditReservations.budgetId, budgetIds),
+              eq(platformCreditReservations.status, 'reserved'),
+              lte(platformCreditReservations.expiresAt, now),
+            ),
+          );
+        const activeCalls = await transaction
+          .select({ budgetId: platformCreditReservations.budgetId })
+          .from(platformCreditReservations)
+          .where(
+            and(
+              eq(platformCreditReservations.accountId, account.id),
+              inArray(platformCreditReservations.budgetId, budgetIds),
+              inArray(platformCreditReservations.status, [
+                'reserved',
+                'provider_started',
+                'provider_completed',
+              ]),
+            ),
+          );
+        const activeBudgetIds = new Set(activeCalls.map(({ budgetId }) => budgetId));
+        const releasableBudgetIds = budgetIds.filter((id) => !activeBudgetIds.has(id));
+        if (releasableBudgetIds.length > 0) {
+          await transaction
+            .update(platformCreditBudgets)
+            .set({ status: 'expired', updatedAt: now })
+            .where(
+              and(
+                eq(platformCreditBudgets.accountId, account.id),
+                eq(platformCreditBudgets.status, 'active'),
+                inArray(platformCreditBudgets.id, releasableBudgetIds),
+              ),
+            );
+        }
+      }
       const heldCredits = await activeBudgetHeldCredits(transaction, account.id);
       assertBalanceCoversHolds(account.balanceCredits, heldCredits);
       return {
         availableCredits: account.balanceCredits - heldCredits,
         balanceCredits: account.balanceCredits,
         heldCredits,
+        updatedAt: account.updatedAt,
       };
     });
+
+  getAvailableCredits = async () => {
+    const { updatedAt: _updatedAt, ...credits } = await this.getAccountWithAvailability();
+    return credits;
+  };
 
   async getBudgetBySource(
     input: GetPlatformCreditBudgetBySourceInput,
@@ -560,8 +687,12 @@ export class PlatformCreditModel {
         throw new Error(PLATFORM_CREDIT_RESERVATION_INVALID_STATE);
       }
 
+      const metered = sourceType === PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE;
       const heldCredits = await activeBudgetHeldCredits(transaction, account.id);
-      assertBalanceCoversHolds(account.balanceCredits, heldCredits + input.authorizedCredits);
+      assertBalanceCoversHolds(
+        account.balanceCredits,
+        heldCredits + (metered ? PLATFORM_CREDIT_MINIMUM_BALANCE : input.authorizedCredits),
+      );
       const [budget] = await transaction
         .insert(platformCreditBudgets)
         .values({
@@ -808,9 +939,21 @@ export class PlatformCreditModel {
         );
       const allocatedCredits = allocation?.allocatedCredits ?? 0;
       assertCredits(allocatedCredits, { allowZero: true });
-      const reservedCredits = budget.authorizedCredits - budget.consumedCredits - allocatedCredits;
+      const remainingCredits = budget.authorizedCredits - budget.consumedCredits - allocatedCredits;
+      const metered = budget.sourceType === PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE;
+      if (metered) assertCredits(input.reservedCredits as number);
+      const reservedCredits = metered
+        ? Math.min(input.reservedCredits as number, remainingCredits)
+        : remainingCredits;
       if (reservedCredits <= 0) throw new Error(PLATFORM_CREDIT_INSUFFICIENT_BALANCE);
       assertCredits(reservedCredits);
+      if (metered) {
+        const heldCredits = await activeBudgetHeldCredits(transaction, account.id);
+        assertBalanceCoversHolds(
+          account.balanceCredits,
+          heldCredits + reservedCredits + PLATFORM_CREDIT_MINIMUM_BALANCE,
+        );
+      }
 
       const [reservation] = await transaction
         .insert(platformCreditReservations)
@@ -902,10 +1045,10 @@ export class PlatformCreditModel {
     const leaseVersion = normalizeLeaseVersion(input.leaseVersion);
     assertCredits(input.credits, { allowZero: true });
     const costUsd = normalizeCostUsd(input.costUsd);
-    if (input.credits !== Math.ceil(costUsd * CREDITS_PER_DOLLAR)) {
+    if (input.credits !== usdToCredits(costUsd)) {
       throw new Error(PLATFORM_CREDIT_INVALID_USAGE);
     }
-    const providerRequestId = normalizeOptionalText(input.providerRequestId, '服务商请求 ID');
+    const providerRequestId = normalizeProviderRequestId(input.providerRequestId);
     const tokenUsage = normalizeTokenUsage(input.tokenUsage);
     const actualUsage: PlatformCreditCompletionUsage = { cost: costUsd, ...tokenUsage };
 
@@ -921,9 +1064,17 @@ export class PlatformCreditModel {
       if (reservation.leaseVersion !== leaseVersion) {
         throw new Error(PLATFORM_CREDIT_RESERVATION_STALE_LEASE);
       }
+      if (
+        reservation.providerRequestId &&
+        providerRequestId &&
+        reservation.providerRequestId !== providerRequestId
+      ) {
+        throw new Error(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
+      }
+      const effectiveProviderRequestId = reservation.providerRequestId ?? providerRequestId;
       if (reservation.status === 'provider_completed' || reservation.status === 'settled') {
         if (
-          reservation.providerRequestId !== providerRequestId ||
+          reservation.providerRequestId !== effectiveProviderRequestId ||
           !sameCompletionUsage(reservation.actualUsage, costUsd, tokenUsage)
         ) {
           throw new Error(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
@@ -937,13 +1088,50 @@ export class PlatformCreditModel {
         .update(platformCreditReservations)
         .set({
           actualUsage,
-          providerRequestId,
+          providerRequestId: effectiveProviderRequestId,
           status: 'provider_completed',
           updatedAt: new Date(),
         })
         .where(eq(platformCreditReservations.id, reservation.id))
         .returning();
       return completed;
+    });
+  }
+
+  async recordProviderRequestId(
+    input: RecordPlatformProviderRequestIdInput,
+  ): Promise<PlatformCreditReservationItem> {
+    const reservationId = normalizeRequiredText(input.reservationId, '预留 ID');
+    const leaseVersion = normalizeLeaseVersion(input.leaseVersion);
+    const providerRequestId = normalizeProviderRequestId(input.providerRequestId)!;
+
+    return this.db.transaction(async (tx) => {
+      const transaction = tx as LobeChatDatabase;
+      const account = await ensureAccount(transaction, this.userId, true);
+      const { reservation } = await lockOwnedReservationContext(
+        transaction,
+        this.userId,
+        account.id,
+        reservationId,
+      );
+      if (reservation.leaseVersion !== leaseVersion) {
+        throw new Error(PLATFORM_CREDIT_RESERVATION_STALE_LEASE);
+      }
+      if (reservation.providerRequestId) {
+        if (reservation.providerRequestId !== providerRequestId) {
+          throw new Error(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
+        }
+        return reservation;
+      }
+      if (reservation.status !== 'provider_started') {
+        throw new Error(PLATFORM_CREDIT_RESERVATION_INVALID_STATE);
+      }
+      const [updated] = await transaction
+        .update(platformCreditReservations)
+        .set({ providerRequestId, updatedAt: new Date() })
+        .where(eq(platformCreditReservations.id, reservation.id))
+        .returning();
+      return updated;
     });
   }
 
@@ -1069,6 +1257,121 @@ export class PlatformCreditModel {
         .where(eq(platformCreditBudgets.id, budget.id))
         .returning();
       return expired;
+    });
+  }
+
+  /**
+   * Budgets whose lease expired with a hold still unclaimed.
+   *
+   * A `reserved` reservation past its lease is *not* the abandoned-call case
+   * {@link reapAbandonedProviderReservations} handles — that one reached the
+   * provider. This is a hold whose owner never came back, and while it sits there
+   * it counts as a live call, so the budget can never expire.
+   * {@link reapExpiredBudget} expires exactly those holds and the budget with them,
+   * but it is per-budget and nothing in the platform drives it — so a stale hold
+   * pinned its budget forever. Return the budgets to drive, owner-scoped because
+   * the per-budget API works through the owner's account.
+   */
+  static async findBudgetsWithStaleReservations(
+    db: LobeChatDatabase,
+    options?: { limit?: number; now?: Date },
+  ): Promise<{ id: string; userId: string }[]> {
+    const now = options?.now ?? new Date();
+    const limit = options?.limit ?? 50;
+
+    const rows = await db
+      .select({ id: platformCreditBudgets.id, userId: platformCreditBudgets.userId })
+      .from(platformCreditBudgets)
+      .where(
+        and(
+          eq(platformCreditBudgets.status, 'active'),
+          lte(platformCreditBudgets.expiresAt, now),
+          inArray(
+            platformCreditBudgets.id,
+            db
+              .select({ id: platformCreditReservations.budgetId })
+              .from(platformCreditReservations)
+              .where(
+                and(
+                  eq(platformCreditReservations.status, 'reserved'),
+                  lte(platformCreditReservations.expiresAt, now),
+                ),
+              ),
+          ),
+        ),
+      )
+      .limit(limit);
+
+    // The per-budget reaper works through the owner's account, so a budget with no
+    // owner is not one it can drive. Narrowed here rather than in SQL: the column
+    // is nullable and the caller needs the non-null shape.
+    return rows.flatMap((row) => (row.userId ? [{ id: row.id, userId: row.userId }] : []));
+  }
+
+  /**
+   * Release reservations whose provider call started and then vanished.
+   *
+   * A call that reached the provider is normally settled by the process that made
+   * it, and {@link reapExpiredBudget} deliberately counts `provider_started` as a
+   * live call. When that process dies — restart, OOM, deploy — no usage ever
+   * arrives, so the hold stays pinned and the budget can never expire. Past the
+   * lease plus a grace window the call is abandoned and its hold returns to the
+   * account, which is exactly what `expired` already means for reservations that
+   * were never claimed.
+   */
+  static async reapAbandonedProviderReservations(
+    db: LobeChatDatabase,
+    options?: { abandonAfterMs?: number; now?: Date },
+  ): Promise<{ budgetIds: string[]; reaped: number }> {
+    const now = options?.now ?? new Date();
+    const abandonAfterMs = options?.abandonAfterMs ?? PROVIDER_STARTED_ABANDON_AFTER_MS;
+    const abandonedBefore = new Date(now.getTime() - abandonAfterMs);
+
+    return db.transaction(async (tx) => {
+      const transaction = tx as LobeChatDatabase;
+      const reaped = await transaction
+        .update(platformCreditReservations)
+        .set({ status: 'expired', updatedAt: now })
+        .where(
+          and(
+            eq(platformCreditReservations.status, 'provider_started'),
+            lte(platformCreditReservations.expiresAt, abandonedBefore),
+          ),
+        )
+        .returning({ budgetId: platformCreditReservations.budgetId });
+
+      const budgetIds = [...new Set(reaped.map((row) => row.budgetId))];
+
+      for (const budgetId of budgetIds) {
+        const [budget] = await transaction
+          .select()
+          .from(platformCreditBudgets)
+          .where(eq(platformCreditBudgets.id, budgetId))
+          .limit(1);
+        if (!budget || budget.status !== 'active') continue;
+
+        const [activeCalls] = await transaction
+          .select({ count: sql`count(*)`.mapWith(Number) })
+          .from(platformCreditReservations)
+          .where(
+            and(
+              eq(platformCreditReservations.budgetId, budgetId),
+              inArray(platformCreditReservations.status, [
+                'provider_completed',
+                'provider_started',
+                'reserved',
+              ]),
+            ),
+          );
+        if (budget.expiresAt.getTime() > now.getTime() || (activeCalls?.count ?? 0) > 0) continue;
+
+        await transaction
+          .update(platformCreditBudgets)
+          .set({ status: 'expired', updatedAt: now })
+          .where(eq(platformCreditBudgets.id, budgetId));
+      }
+
+      return { budgetIds, reaped: reaped.length };
     });
   }
 
@@ -1232,8 +1535,12 @@ export class PlatformCreditModel {
       if (existingByKey) throw new Error(PLATFORM_CREDIT_IDEMPOTENCY_CONFLICT);
 
       const balanceAfterCredits = account.balanceCredits - input.credits;
+      const metered = budget.sourceType === PLATFORM_CREDIT_METERED_BUDGET_SOURCE_TYPE;
       const heldCredits = await activeBudgetHeldCredits(transaction, account.id);
-      assertBalanceCoversHolds(balanceAfterCredits, heldCredits - input.credits);
+      assertBalanceCoversHolds(
+        balanceAfterCredits,
+        heldCredits - input.credits + (metered ? PLATFORM_CREDIT_MINIMUM_BALANCE : 0),
+      );
       const [entry] = await transaction
         .insert(platformCreditEntries)
         .values({
@@ -1342,6 +1649,27 @@ export interface ReversePlatformCreditInput {
   reason: string;
 }
 
+export interface PlatformCreditPendingReservationItem {
+  actorUserId: string;
+  callKind: PlatformCreditReservationCallKind;
+  createdAt: Date;
+  expiresAt: Date;
+  generationId: string;
+  generationType: string | null;
+  id: string;
+  model: string;
+  payerUserId: string;
+  provider: string;
+  providerRequestId: string | null;
+  reservedCredits: number;
+  settledCredits: number;
+  status: Extract<
+    PlatformCreditReservationItem['status'],
+    'provider_completed' | 'provider_started'
+  >;
+  updatedAt: Date;
+}
+
 export class PlatformCreditAdminModel {
   constructor(
     protected readonly db: LobeChatDatabase,
@@ -1405,13 +1733,67 @@ export class PlatformCreditAdminModel {
 
   getAccountForUser = (userId: string) => ensureAccount(this.db, userId);
 
-  listEntriesForUser = (userId: string, limit = 100) =>
+  listEntriesForUser = (userId: string, limit = 100, offset = 0) =>
     this.db
       .select()
       .from(platformCreditEntries)
       .where(eq(platformCreditEntries.userIdSnapshot, userId))
       .orderBy(desc(platformCreditEntries.createdAt), desc(platformCreditEntries.id))
-      .limit(normalizeListLimit(limit));
+      .limit(normalizeListLimit(limit))
+      .offset(Number.isSafeInteger(offset) && offset >= 0 ? offset : 0);
+
+  listPendingReservationsForUser = (
+    userId: string,
+    limit = 100,
+    offset = 0,
+  ): Promise<PlatformCreditPendingReservationItem[]> => {
+    const targetUserId = normalizeRequiredText(userId, '目标用户 ID', 255);
+
+    return this.db
+      .select({
+        actorUserId: platformCreditBudgets.actorUserIdSnapshot,
+        callKind: platformCreditReservations.callKind,
+        createdAt: platformCreditReservations.createdAt,
+        expiresAt: platformCreditReservations.expiresAt,
+        generationId: platformCreditReservations.generationId,
+        generationType: platformCreditReservations.generationType,
+        id: platformCreditReservations.id,
+        model: platformCreditReservations.model,
+        payerUserId: platformCreditAccounts.userIdSnapshot,
+        provider: platformCreditReservations.provider,
+        providerRequestId: platformCreditReservations.providerRequestId,
+        reservedCredits: platformCreditReservations.reservedCredits,
+        settledCredits: platformCreditReservations.settledCredits,
+        status: sql<
+          'provider_completed' | 'provider_started'
+        >`${platformCreditReservations.status}`,
+        updatedAt: platformCreditReservations.updatedAt,
+      })
+      .from(platformCreditReservations)
+      .innerJoin(
+        platformCreditBudgets,
+        and(
+          eq(platformCreditBudgets.id, platformCreditReservations.budgetId),
+          eq(platformCreditBudgets.accountId, platformCreditReservations.accountId),
+        ),
+      )
+      .innerJoin(
+        platformCreditAccounts,
+        eq(platformCreditAccounts.id, platformCreditReservations.accountId),
+      )
+      .where(
+        and(
+          inArray(platformCreditReservations.status, ['provider_completed', 'provider_started']),
+          or(
+            eq(platformCreditAccounts.userIdSnapshot, targetUserId),
+            eq(platformCreditBudgets.actorUserIdSnapshot, targetUserId),
+          ),
+        ),
+      )
+      .orderBy(desc(platformCreditReservations.updatedAt), desc(platformCreditReservations.id))
+      .limit(normalizeListLimit(limit))
+      .offset(Number.isSafeInteger(offset) && offset >= 0 ? offset : 0);
+  };
 
   async reverse(input: ReversePlatformCreditInput): Promise<PlatformCreditEntryItem> {
     const entryId = normalizeRequiredText(input.entryId, '流水 ID', 255);

@@ -44,38 +44,48 @@ interface TopicGridProps {
   agentId: string;
   groupBy: GroupBy;
   groups: GroupedTopic[];
+  onOpen?: (topicId: string) => void;
+  readOnly?: boolean;
   showGroupTitles: boolean;
 }
 
-const TopicGrid = memo<TopicGridProps>(({ groups, agentId, showGroupTitles, groupBy }) => {
-  const { t } = useTranslation('topic');
+const TopicGrid = memo<TopicGridProps>(
+  ({ groups, agentId, showGroupTitles, groupBy, onOpen, readOnly }) => {
+    const { t } = useTranslation('topic');
 
-  return (
-    <Flexbox gap={12}>
-      {groups.map((group) => {
-        if (group.children.length === 0) return null;
-        const title =
-          groupBy === 'byProject'
-            ? getProjectGroupTitle(group.id, group.title, t)
-            : group.title || getTimeGroupTitle(group.id, t);
-        return (
-          <Fragment key={group.id}>
-            {showGroupTitles && (
-              <Text as={'div'} className={styles.groupTitle}>
-                {title}
-              </Text>
-            )}
-            <div className={styles.grid}>
-              {group.children.map((topic) => (
-                <TopicCard agentId={agentId} key={topic.id} topic={topic} />
-              ))}
-            </div>
-          </Fragment>
-        );
-      })}
-    </Flexbox>
-  );
-});
+    return (
+      <Flexbox gap={12}>
+        {groups.map((group) => {
+          if (group.children.length === 0) return null;
+          const title =
+            groupBy === 'byProject'
+              ? getProjectGroupTitle(group.id, group.title, t)
+              : group.title || getTimeGroupTitle(group.id, t);
+          return (
+            <Fragment key={group.id}>
+              {showGroupTitles && (
+                <Text as={'div'} className={styles.groupTitle}>
+                  {title}
+                </Text>
+              )}
+              <div className={styles.grid}>
+                {group.children.map((topic) => (
+                  <TopicCard
+                    agentId={agentId}
+                    key={topic.id}
+                    topic={topic}
+                    onOpen={onOpen}
+                    readOnly={readOnly}
+                  />
+                ))}
+              </div>
+            </Fragment>
+          );
+        })}
+      </Flexbox>
+    );
+  },
+);
 
 TopicGrid.displayName = 'AgentTopicManagerGrid';
 

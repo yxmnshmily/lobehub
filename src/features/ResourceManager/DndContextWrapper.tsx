@@ -247,7 +247,7 @@ export const DndContextWrapper = memo<PropsWithChildren>(({ children }) => {
                   style={{
                     alignItems: 'center',
                     background: cssVar.colorBgElevated,
-                    border: `1px solid ${cssVar.colorPrimaryBorder}`,
+                    border: `0.5px solid ${cssVar.colorPrimaryBorder}`,
                     borderRadius: cssVar.borderRadiusLG,
                     boxShadow: cssVar.boxShadow,
                     display: 'flex',

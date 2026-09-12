@@ -44,7 +44,7 @@ const styles = createStaticStyles(({ css }) => ({
     transform: translate(-50%, -100%);
 
     padding: 4px;
-    border: 1px solid light-dark(rgb(229 231 235), rgb(64 64 64));
+    border: 0.5px solid light-dark(rgb(229 231 235), rgb(64 64 64));
     border-radius: 999px;
 
     background: light-dark(#fff, #1f1f1f);

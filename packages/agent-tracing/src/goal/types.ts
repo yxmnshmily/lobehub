@@ -27,6 +27,12 @@ export type GoalTickBranch =
   | 'pending_decision'
   /** No task node is eligible: none exists, or all remaining ones are blocked. */
   | 'no_frontier'
+  /**
+   * Nothing is actionable because a prerequisite was given up on (`retired` /
+   * `rejected`). Only `resolved` satisfies `depends_on`, so such a node blocks
+   * everything behind it forever — the goal would otherwise just stop.
+   */
+  | 'blocked_by_given_up'
   /** The graph has no tasks yet — decompose the goal into explorable directions first. */
   | 'plan_decomposition'
   /** Every task node finished; the goal-level acceptance contract is next. */

@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: ${cssVar.paddingXS};
     padding-inline: ${cssVar.paddingSM};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusSM};
 
     font-family: ${cssVar.fontFamilyCode};
@@ -36,7 +36,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     margin-block-start: ${cssVar.marginXS};
     padding: ${cssVar.padding};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background-color: ${cssVar.colorBgContainer};
@@ -54,7 +54,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 12px;
   `,
   dependencyCard: css`
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusSM};
   `,
   footer: css`

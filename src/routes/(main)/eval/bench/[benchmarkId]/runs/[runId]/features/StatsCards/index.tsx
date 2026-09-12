@@ -1,7 +1,7 @@
 'use client';
 
 import type { EvalRunMetrics } from '@lobechat/types';
-import { formatCost, formatShortenNumber } from '@lobechat/utils';
+import { formatLocalizedTokens as formatShortenNumber } from '@lobechat/utils';
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
@@ -9,12 +9,14 @@ import { CheckCircle2, Clock, DollarSign, Hash } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+
 import { formatDuration } from '../../../../../../utils';
 
 const styles = createStaticStyles(({ css }) => ({
   card: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   grid: css`
@@ -90,6 +92,7 @@ interface StatsCardsProps {
 
 const StatsCards = memo<StatsCardsProps>(({ metrics }) => {
   const { t } = useTranslation('eval');
+  const { formatOptional: formatCost } = useMonthlyExchangeRate();
 
   const passedCount = metrics?.passedCases ?? 0;
   const totalCases = metrics?.totalCases ?? 0;
@@ -119,11 +122,11 @@ const StatsCards = memo<StatsCardsProps>(({ metrics }) => {
       subtitle:
         metrics?.perCaseCost !== undefined ? (
           <>
-            ~${formatCost(metrics.perCaseCost)}{' '}
+            ~{formatCost(metrics.perCaseCost)}{' '}
             <span className={styles.subtitleUnit}>{t('run.metrics.perCase')}</span>
           </>
         ) : undefined,
-      value: metrics?.totalCost !== undefined ? `$${formatCost(metrics.totalCost)}` : '-',
+      value: metrics?.totalCost !== undefined ? formatCost(metrics.totalCost) : '-',
     },
     {
       bgColor: cssVar.colorInfoBg,

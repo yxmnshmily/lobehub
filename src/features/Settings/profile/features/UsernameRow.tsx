@@ -1,11 +1,8 @@
 'use client';
 
-import { Flexbox, Icon, Input } from '@lobehub/ui';
+import { Flexbox, Input } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
-import { type InputRef } from 'antd';
-import { Loader2Icon } from 'lucide-react';
-import { type ChangeEvent } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useUserStore } from '@/store/user';
@@ -19,8 +16,9 @@ const UsernameRow = () => {
   const updateUsername = useUserStore((s) => s.updateUsername);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [dirty, setDirty] = useState(false);
-  const inputRef = useRef<InputRef>(null);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const locked = useRef(false);
 
   const usernameRegex = /^\w+$/;
 
@@ -32,24 +30,27 @@ const UsernameRow = () => {
     return '';
   };
 
-  const handleSave = useCallback(async () => {
-    const value = inputRef.current?.input?.value?.trim();
-    if (!value || value === username) {
+  const handleSave = async () => {
+    if (locked.current) return;
+    const next = value.trim();
+    if (next === username || (!next && !username)) {
       setError('');
+      setEditing(false);
       return;
     }
 
-    const validationError = validateUsername(value);
+    const validationError = validateUsername(next);
     if (validationError) {
       setError(validationError);
       return;
     }
 
     try {
+      locked.current = true;
       setSaving(true);
       setError('');
-      await updateUsername(value);
-      setDirty(false);
+      await updateUsername(next);
+      setEditing(false);
     } catch (err: any) {
       console.error('Failed to update username:', err);
       if (err?.data?.code === 'CONFLICT' || err?.message === 'USERNAME_TAKEN') {
@@ -58,77 +59,78 @@ const UsernameRow = () => {
         setError(t('profile.usernameUpdateFailed'));
       }
     } finally {
+      locked.current = false;
       setSaving(false);
     }
-  }, [username, updateUsername, t]);
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setDirty(value.trim() !== (username || ''));
-    if (!value.trim()) {
-      setError('');
-      return;
-    }
-    if (!usernameRegex.test(value)) {
-      setError(t('profile.usernameRule'));
-      return;
-    }
-    setError('');
   };
 
-  const handleCancel = useCallback(() => {
-    if (inputRef.current?.input) {
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        'value',
-      )?.set;
-      nativeInputValueSetter?.call(inputRef.current.input, username || '');
-      inputRef.current.input.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+  const handleCancel = () => {
     setError('');
-    setDirty(false);
-    inputRef.current?.blur();
-  }, [username]);
+    setEditing(false);
+  };
 
   return (
-    <ProfileRow anchor={'profile-username'} label={t('profile.username')}>
-      <Flexbox horizontal align="center" gap={8}>
-        {saving && <Icon spin icon={Loader2Icon} size={16} style={{ opacity: 0.5 }} />}
-        {error && (
-          <Text style={{ fontSize: 12, whiteSpace: 'nowrap' }} type="danger">
-            {error}
-          </Text>
-        )}
-        {dirty && !saving && (
+    <ProfileRow
+      anchor="profile-username"
+      label={t('profile.username')}
+      action={
+        editing ? (
+          <Flexbox horizontal gap={8}>
+            <Button disabled={saving} size="small" onClick={handleCancel}>
+              {t('profile.cancel')}
+            </Button>
+            <Button loading={saving} size="small" type="primary" onClick={handleSave}>
+              {t('profile.save')}
+            </Button>
+          </Flexbox>
+        ) : (
           <Button
             size="small"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleCancel();
+            type="default"
+            onClick={() => {
+              setValue(username || '');
+              setError('');
+              setEditing(true);
             }}
           >
-            {t('profile.cancel')}
+            {t(username ? 'profile.edit' : 'profile.set')}
           </Button>
-        )}
-        <Input
-          defaultValue={username || ''}
-          disabled={saving}
-          key={username}
-          placeholder={t('profile.usernamePlaceholder')}
-          ref={inputRef}
-          status={error ? 'error' : undefined}
-          variant="filled"
-          onBlur={handleSave}
-          onChange={handleChange}
-          onPressEnter={handleSave}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              handleCancel();
-            }
-          }}
-        />
-      </Flexbox>
+        )
+      }
+    >
+      {editing ? (
+        <Flexbox gap={8} style={{ minWidth: 0, flex: 1 }}>
+          <Input
+            autoFocus
+            aria-label={t('profile.username')}
+            disabled={saving}
+            maxLength={64}
+            placeholder={t('profile.usernamePlaceholder')}
+            status={error ? 'error' : undefined}
+            value={value}
+            onPressEnter={handleSave}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError('');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !saving) {
+                e.preventDefault();
+                handleCancel();
+              }
+            }}
+          />
+          {error && (
+            <Text role="alert" type="danger">
+              {error}
+            </Text>
+          )}
+        </Flexbox>
+      ) : (
+        <Text style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+          {username || t('profile.usernameOptional')}
+        </Text>
+      )}
     </ProfileRow>
   );
 };

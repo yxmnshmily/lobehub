@@ -51,8 +51,10 @@ export interface MessageListQueryContext {
   /** Agent-share visitor surface — routes the read through `shareChat.getMessages`. */
   agentShareId?: string;
   groupId?: string | null;
+  isolatedTopic?: boolean;
   threadId?: string | null;
   topicId?: string | null;
+  topicOnly?: boolean;
   topicShareId?: string;
 }
 
@@ -62,6 +64,7 @@ export interface CanonicalMessageListContext {
   groupId: string | null;
   threadId: string | null;
   topicId: string | null;
+  topicOnly?: boolean;
   topicShareId?: string;
 }
 
@@ -78,6 +81,9 @@ export const normalizeMessageListQueryContext = (
   groupId: context.groupId ?? null,
   threadId: context.threadId ?? null,
   topicId: context.topicId ?? null,
+  ...(context.groupId && context.topicId && (context.isolatedTopic || context.topicOnly)
+    ? { topicOnly: true }
+    : {}),
   ...(context.topicShareId === undefined ? {} : { topicShareId: context.topicShareId }),
   ...(context.agentShareId === undefined ? {} : { agentShareId: context.agentShareId }),
 });

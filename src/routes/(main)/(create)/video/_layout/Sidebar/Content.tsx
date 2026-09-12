@@ -1,5 +1,7 @@
 'use client';
 
+import { Flexbox, Icon } from '@lobehub/ui';
+import { Video } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -13,7 +15,22 @@ import { generationTopicSelectors } from '@/store/video/slices/generationTopic/s
 const useVideoSidebarProps = (): GenerationLayoutCommonProps => {
   const { t } = useTranslation('common');
   return {
-    breadcrumb: [{ href: '/video', title: t('tab.video') }],
+    breadcrumb: [
+      {
+        href: '/video',
+        title: (
+          <Flexbox
+            horizontal
+            align="center"
+            gap={6}
+            style={{ color: 'inherit', fontSize: 14, whiteSpace: 'nowrap' }}
+          >
+            <Icon icon={Video} />
+            <span>{t('tab.video')}</span>
+          </Flexbox>
+        ),
+      },
+    ],
     generationTopicsSelector: generationTopicSelectors.generationTopics,
     namespace: 'video',
     navKey: 'video',

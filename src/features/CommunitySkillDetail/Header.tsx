@@ -80,7 +80,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   statsBar: css`
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 88%, transparent);
+    border: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 88%, transparent);
     border-radius: 16px;
     background: ${cssVar.colorBgContainer};
   `,
@@ -114,7 +114,7 @@ const StatBlock = memo<{
       gap={5}
       justify={'center'}
       style={{
-        borderInlineStart: bordered ? `1px solid ${cssVar.colorBorderSecondary}` : undefined,
+        borderInlineStart: bordered ? `0.5px solid ${cssVar.colorBorderSecondary}` : undefined,
         minHeight: 78,
         paddingBlock: 10,
         textAlign: 'center',
@@ -295,7 +295,7 @@ const Header = memo<{ mobile?: boolean }>(({ mobile: isMobile }) => {
           size={mobile ? 72 : 88}
           style={{
             background: cssVar.colorBgContainer,
-            border: `1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 86%, transparent)`,
+            border: `0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 86%, transparent)`,
             borderRadius: mobile ? 18 : 22,
             flex: 'none',
           }}

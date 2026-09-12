@@ -12,10 +12,13 @@ import { useIsDark } from '@/hooks/useIsDark';
 
 import AuthFooterLinks from './AuthFooterLinks';
 import AuthLangButton from './AuthLangButton';
+import AuthSessionEntry from './AuthSessionEntry';
 import AuthThemeButton from './AuthThemeButton';
 import { styles } from './style';
 
-const authRouteTitleKeys: Record<string, string> = {
+const authRouteTitleKeys: Partial<
+  Record<string, 'betterAuth.signin.emailStep.title' | 'betterAuth.signup.title'>
+> = {
   '/signin': 'betterAuth.signin.emailStep.title',
   '/signup': 'betterAuth.signup.title',
 };
@@ -24,6 +27,8 @@ const AuthContainer: FC<PropsWithChildren> = ({ children }) => {
   const isDarkMode = useIsDark();
   const { pathname } = useLocation();
   const { i18n, t } = useTranslation('auth');
+  const mountedPath = pathname.replace(/^\/lobehub(?=\/|$)/, '').replace(/\/$/, '') || '/';
+  const isGuestEntry = mountedPath === '/signin' || mountedPath === '/signup';
 
   useEffect(() => {
     const mountedPath = pathname.replace(/^\/lobehub(?=\/|$)/, '').replace(/\/$/, '') || '/';
@@ -49,7 +54,11 @@ const AuthContainer: FC<PropsWithChildren> = ({ children }) => {
           style={{ justifyContent: 'safe center', minHeight: 0, overflowY: 'auto' }}
           width={'100%'}
         >
-          {children}
+          {isGuestEntry ? (
+            <AuthSessionEntry key={mountedPath}>{children}</AuthSessionEntry>
+          ) : (
+            children
+          )}
         </Center>
         <Flexbox horizontal align={'center'} justify={'space-between'} padding={16} width={'100%'}>
           <Flexbox horizontal align={'center'}>

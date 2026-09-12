@@ -19,11 +19,11 @@ import TaskSubtasks from './TaskSubtasks';
  * task from the task store, so the host is responsible for setting
  * `activeTaskId` (e.g. via `setActiveTaskId`) before rendering this.
  */
-const TaskDetailSections = memo(() => {
+const TaskDetailSections = memo(({ compact = false }: { compact?: boolean }) => {
   return (
     <>
-      <Flexbox gap={4} style={{ paddingBlock: '24px 36px' }}>
-        <TaskDetailTitleInput />
+      <Flexbox gap={compact ? 12 : 4} style={{ paddingBlock: compact ? '12px 16px' : '24px 36px' }}>
+        <TaskDetailTitleInput compact={compact} />
         {/* Everything here wraps rather than compresses: this block also renders
             inside the chat-side Portal and beside the task-agent panel, where the
             column can get far narrower than the viewport. Without wrapping, the
@@ -33,23 +33,26 @@ const TaskDetailSections = memo(() => {
           {/* `minWidth` is what makes the row actually wrap: a `flex: 1` column
               with `min-width: 0` shrinks to a sliver instead, and the properties
               panel keeps its place while the assignee chip overflows. */}
-          <Flexbox align={'flex-start'} flex={1} gap={16} style={{ minWidth: 240 }}>
+          <Flexbox align={'flex-start'} flex={1} gap={compact ? 8 : 16} style={{ minWidth: 240 }}>
             <TaskParentBar />
             <Flexbox horizontal align={'center'} gap={8} style={{ maxWidth: '100%' }} wrap={'wrap'}>
               <TaskDetailAssignee />
               <TaskModelConfig />
+              {compact && <TaskDetailRunPauseAction />}
             </Flexbox>
-            <TaskDetailRunPauseAction />
+            {!compact && <TaskDetailRunPauseAction />}
           </Flexbox>
-          <TaskProperties />
+          {!compact && <TaskProperties />}
         </Flexbox>
+        {compact && <TaskProperties compact />}
       </Flexbox>
-      <Flexbox gap={24} style={{ paddingBottom: 120 }}>
-        <TaskInstruction />
+      <Flexbox gap={compact ? 16 : 24} style={{ paddingBottom: compact ? 32 : 120 }}>
+        <TaskInstruction compact={compact} />
         <TaskAcceptance />
-        <TaskSubtasks />
+        {!compact && <TaskSubtasks />}
         <TaskArtifacts />
         <TaskActivities />
+        {compact && <TaskSubtasks />}
       </Flexbox>
     </>
   );

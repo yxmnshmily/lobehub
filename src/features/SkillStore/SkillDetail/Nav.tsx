@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   nav: css`
-    border-block-end: 1px solid ${cssVar.colorBorder};
+    border-block-end: 0.5px solid ${cssVar.colorBorder};
   `,
   tabs: css`
     scrollbar-width: none;

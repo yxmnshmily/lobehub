@@ -5,7 +5,7 @@ import { AES_GCM_URL, BASE_PROVIDER_DOC_URL, FORM_STYLE } from '@lobechat/const'
 import { ProviderCombine, ProviderIcon } from '@lobehub/icons';
 import { type FormGroupItemType, type FormItemProps } from '@lobehub/ui';
 import { Center, Flexbox, Form, Icon, stopPropagation, Tooltip } from '@lobehub/ui';
-import { Avatar, Skeleton, Switch } from '@lobehub/ui/base-ui';
+import { Avatar, Switch } from '@lobehub/ui/base-ui';
 import { useDebounceFn } from 'ahooks';
 import { Form as AntdForm } from 'antd';
 import { createStaticStyles, cssVar, cx, responsive } from 'antd-style';
@@ -16,6 +16,7 @@ import { memo, useCallback, useLayoutEffect, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import urlJoin from 'url-join';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { FormInput, FormPassword } from '@/components/FormInput';
 import { SkeletonInput, SkeletonSwitch } from '@/components/Skeleton';
 import { usePermission } from '@/hooks/usePermission';
@@ -404,7 +405,7 @@ const ProviderConfig = memo<ProviderConfigProps>(
       endpointItem,
       showResponsesApiSwitch
         ? {
-            children: isLoading ? <Skeleton height={36} /> : <Switch loading={configUpdating} />,
+            children: isLoading ? <SkeletonBar height={36} /> : <Switch loading={configUpdating} />,
             desc: t('providerModels.config.responsesApi.desc'),
             label: t('providerModels.config.responsesApi.title'),
             minWidth: undefined,
@@ -415,7 +416,7 @@ const ProviderConfig = memo<ProviderConfigProps>(
       showChecker
         ? {
             children: isLoading ? (
-              <Skeleton height={36} />
+              <SkeletonBar height={36} />
             ) : (
               <Checker
                 checkErrorRender={checkErrorRender}

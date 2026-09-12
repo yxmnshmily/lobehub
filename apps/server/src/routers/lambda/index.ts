@@ -62,6 +62,7 @@ import { generationBatchRouter } from './generationBatch';
 import { generationTopicRouter } from './generationTopic';
 import { goalRouter } from './goal';
 import { groupConversationRouter } from './groupConversation';
+import { groupInfoRouter } from './groupInfo';
 import { groupMembershipRouter } from './groupMembership';
 import { groupSponsoredCreditRouter } from './groupSponsoredCredit';
 import { homeRouter } from './home';
@@ -156,6 +157,7 @@ export const lambdaRouter = router({
   goal: goalRouter,
   group: agentGroupRouter,
   groupConversation: groupConversationRouter,
+  groupInfo: groupInfoRouter,
   groupMembership: groupMembershipRouter,
   groupSponsoredCredit: groupSponsoredCreditRouter,
   healthcheck: publicProcedure.query(() => "i'm live!"),

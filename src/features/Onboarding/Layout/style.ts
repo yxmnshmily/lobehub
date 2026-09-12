@@ -12,7 +12,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden auto;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -24,7 +24,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden auto;
 
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};

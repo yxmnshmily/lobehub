@@ -5,6 +5,7 @@ import useSWR from 'swr';
 
 import { toolKeys } from '@/libs/swr/keys';
 import { lambdaClient, toolsClient } from '@/libs/trpc/client';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { type StoreSetter } from '@/store/types';
 import { setNamespace } from '@/utils/storeDebug';
 
@@ -315,8 +316,9 @@ export class ComposioStoreActionImpl {
   };
 
   useFetchUserComposioConnections = (enabled: boolean): SWRResponse<ComposioServer[]> => {
+    const configured = useServerConfigStore(serverConfigSelectors.enableComposio);
     return useSWR<ComposioServer[]>(
-      enabled ? toolKeys.composioConnections() : null,
+      enabled && configured ? toolKeys.composioConnections() : null,
       async () => {
         const composioPlugins = await lambdaClient.composio.getComposioPlugins.query();
 
@@ -375,6 +377,8 @@ export class ComposioStoreActionImpl {
           );
         },
         revalidateOnFocus: false,
+        // Optional connector discovery must not fail the surrounding task route.
+        suspense: false,
       },
     );
   };

@@ -7,8 +7,9 @@ import { Table } from 'antd';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { type AgentUsageModelRow } from '@/types/usage/usageRecord';
-import { formatNumber, formatUsageValue } from '@/utils/format';
+import { formatLocalizedTokens as formatUsageValue, formatNumber } from '@/utils/format';
 
 interface ModelBreakdownProps {
   isLoading?: boolean;
@@ -17,6 +18,7 @@ interface ModelBreakdownProps {
 
 const ModelBreakdown = memo<ModelBreakdownProps>(({ rows, isLoading }) => {
   const { t } = useTranslation('spend');
+  const { format } = useMonthlyExchangeRate();
 
   const columns = [
     {
@@ -53,7 +55,7 @@ const ModelBreakdown = memo<ModelBreakdownProps>(({ rows, isLoading }) => {
       align: 'right' as const,
       dataIndex: 'cost',
       key: 'cost',
-      render: (value: number) => `$${formatNumber(value, 2)}`,
+      render: (value: number) => format(value, 6),
       title: t('usageStats.breakdown.cost'),
     },
   ];

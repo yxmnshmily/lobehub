@@ -7,7 +7,7 @@ import { memo } from 'react';
 
 export const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
-    border: 1px solid ${cssVar.colorSplit};
+    border: 0.5px solid ${cssVar.colorSplit};
     border-radius: 8px;
     color: ${cssVar.colorText};
     background: ${cssVar.colorBgContainer};

@@ -1,7 +1,8 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
 
@@ -19,7 +20,7 @@ const FileTreeSkeleton = memo<FileTreeSkeletonProps>(({ rows = 8, showRootFile =
     <Flexbox gap={2}>
       {showRootFile && (
         <Flexbox horizontal align={'center'} gap={6} height={ROW_HEIGHT} paddingInline={8}>
-          <Skeleton
+          <SkeletonBar
             style={{
               borderRadius: cssVar.borderRadius,
               height: 14,
@@ -27,7 +28,7 @@ const FileTreeSkeleton = memo<FileTreeSkeletonProps>(({ rows = 8, showRootFile =
               width: 14,
             }}
           />
-          <Skeleton
+          <SkeletonBar
             style={{
               borderRadius: cssVar.borderRadius,
               height: 16,
@@ -52,7 +53,7 @@ const FileTreeSkeleton = memo<FileTreeSkeletonProps>(({ rows = 8, showRootFile =
             paddingInline={8}
             style={{ paddingInlineStart: 8 + depth * 16 }}
           >
-            <Skeleton
+            <SkeletonBar
               style={{
                 borderRadius: cssVar.borderRadius,
                 height: 14,
@@ -60,7 +61,7 @@ const FileTreeSkeleton = memo<FileTreeSkeletonProps>(({ rows = 8, showRootFile =
                 width: 14,
               }}
             />
-            <Skeleton
+            <SkeletonBar
               style={{
                 borderRadius: cssVar.borderRadius,
                 height: 16,

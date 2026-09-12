@@ -80,7 +80,8 @@ const ALL_SIDEBAR_ITEMS: SidebarItemConfig[] = [
 // would render an empty accordion no user can populate.
 export const getAvailableSidebarItems = (isWorkspaceMode: boolean): SidebarItemConfig[] =>
   ALL_SIDEBAR_ITEMS.filter((item) => {
-    if (isWorkspaceMode && item.id === 'memory') return false;
+    if (item.id === 'memory' || item.id === 'community' || item.id === 'pages') return false;
+    if (!isWorkspaceMode && item.id === 'image') return false;
     if (!isWorkspaceMode && item.id === 'private') return false;
     return true;
   });
@@ -116,7 +117,7 @@ const styles = createStaticStyles(({ css }) => ({
   accordionGroup: css`
     margin-inline: -5px;
     padding: 4px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   item: css`

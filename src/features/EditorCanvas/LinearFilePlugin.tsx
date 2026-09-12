@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import FileIcon from '@/components/FileIcon';
 import { formatSize, formatSpeed, formatTime } from '@/utils/format';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { preserveInsertedFileSize } from './editorAttachments';
 import type { EditorFileUploadTracker } from './editorFileUploadTracker';
@@ -36,7 +37,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 100%;
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorText};
@@ -106,7 +107,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorTextSecondary};
@@ -125,7 +126,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 100%;
     padding-block: 10px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorText};
@@ -162,6 +163,7 @@ interface LinearFileCardProps {
 const subscribeToNoUpload = () => () => {};
 
 export const LinearFileCard = memo<LinearFileCardProps>(({ node, uploadTracker }) => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation(['editor', 'file']);
 
   const { fileUrl, message, name, size, status } = node;
@@ -256,7 +258,7 @@ export const LinearFileCard = memo<LinearFileCardProps>(({ node, uploadTracker }
       </div>
       <div className={styles.download} data-lobehub-file-download="">
         <ActionIcon
-          aria-label="Download"
+          aria-label={translateTravel('下载')}
           icon={DownloadIcon}
           size={'small'}
           variant={'filled'}

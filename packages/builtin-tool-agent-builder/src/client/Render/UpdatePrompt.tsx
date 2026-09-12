@@ -16,7 +16,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   promptCard: css`
     margin-inline-start: 12px;
     padding: 12px;
-    border-inline-start: 3px solid ${cssVar.colorSuccess};
+    border-inline-start: 0.5px solid ${cssVar.colorSuccess};
     background: ${cssVar.colorFillTertiary};
   `,
   promptContent: css`

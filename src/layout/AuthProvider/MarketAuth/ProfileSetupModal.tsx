@@ -6,7 +6,7 @@ import { type UploadProps } from 'antd';
 import { Form, Upload } from 'antd';
 import { cssVar } from 'antd-style';
 import { CircleHelp, Globe, ImagePlus, Trash2 } from 'lucide-react';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import EmojiPicker from '@/components/EmojiPicker';
@@ -87,6 +87,15 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
     // Avatar state
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const avatarPreviewUrlRef = useRef<string | null>(null);
+    const avatarStableUrlRef = useRef<string | null>(null);
+    const avatarUploadIdRef = useRef(0);
+
+    const releaseAvatarPreview = useCallback(() => {
+      if (!avatarPreviewUrlRef.current) return;
+      URL.revokeObjectURL(avatarPreviewUrlRef.current);
+      avatarPreviewUrlRef.current = null;
+    }, []);
 
     // Banner state
     const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -152,15 +161,29 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
 
         // Reset avatar and banner
         // Use avatarUrl from userProfile if available, otherwise use the current user's avatar as default
-        setAvatarUrl(userProfile?.avatarUrl || currentUserAvatar || null);
+        const initialAvatarUrl = userProfile?.avatarUrl || currentUserAvatar || null;
+        avatarUploadIdRef.current += 1;
+        releaseAvatarPreview();
+        avatarStableUrlRef.current = initialAvatarUrl;
+        setAvatarUploading(false);
+        setAvatarUrl(initialAvatarUrl);
         setBannerUrl(userProfile?.bannerUrl || null);
       }
-    }, [open, userProfile, defaultDisplayName, form, currentUserAvatar]);
+    }, [open, userProfile, defaultDisplayName, form, currentUserAvatar, releaseAvatarPreview]);
+
+    useEffect(() => releaseAvatarPreview, [releaseAvatarPreview]);
 
     // Handle avatar change (emoji)
-    const handleAvatarChange = useCallback((emoji: string) => {
-      setAvatarUrl(emoji);
-    }, []);
+    const handleAvatarChange = useCallback(
+      (emoji: string) => {
+        avatarUploadIdRef.current += 1;
+        releaseAvatarPreview();
+        avatarStableUrlRef.current = emoji;
+        setAvatarUploading(false);
+        setAvatarUrl(emoji);
+      },
+      [releaseAvatarPreview],
+    );
 
     // Handle avatar upload
     const handleAvatarUpload = useCallback(
@@ -170,26 +193,45 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
           return;
         }
 
+        const uploadId = ++avatarUploadIdRef.current;
+        const previousAvatarUrl = avatarStableUrlRef.current;
+        releaseAvatarPreview();
+        const previewUrl = URL.createObjectURL(file);
+        avatarPreviewUrlRef.current = previewUrl;
+        setAvatarUrl(previewUrl);
         setAvatarUploading(true);
         try {
           const result = await uploadWithProgress({ file });
-          if (result?.url) {
-            setAvatarUrl(result.url);
+          if (uploadId !== avatarUploadIdRef.current) return;
+          if (!result?.url) {
+            releaseAvatarPreview();
+            setAvatarUrl(previousAvatarUrl);
+            toast.error(t('profileSetup.errors.uploadFailed'));
+            return;
           }
+          avatarStableUrlRef.current = result.url;
+          setAvatarUrl(result.url);
         } catch (error) {
+          if (uploadId !== avatarUploadIdRef.current) return;
+          releaseAvatarPreview();
+          setAvatarUrl(previousAvatarUrl);
           console.error('[ProfileSetupModal] Avatar upload failed:', error);
           toast.error(t('profileSetup.errors.uploadFailed'));
         } finally {
-          setAvatarUploading(false);
+          if (uploadId === avatarUploadIdRef.current) setAvatarUploading(false);
         }
       },
-      [uploadWithProgress, t],
+      [releaseAvatarPreview, uploadWithProgress, t],
     );
 
     // Handle avatar delete
     const handleAvatarDelete = useCallback(() => {
+      avatarUploadIdRef.current += 1;
+      releaseAvatarPreview();
+      avatarStableUrlRef.current = null;
+      setAvatarUploading(false);
       setAvatarUrl(null);
-    }, []);
+    }, [releaseAvatarPreview]);
 
     // Handle banner upload
     const handleBannerUpload: UploadProps['customRequest'] = useCallback(
@@ -226,6 +268,8 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
     }, []);
 
     const doSubmit = useCallback(async () => {
+      if (avatarUploading || bannerUploading) return;
+
       // If not in automatic authorization mode, need to validate accessToken
       if (!enableMarketTrustedClient && !accessToken) {
         toast.error(t('profileSetup.errors.notAuthenticated'));
@@ -313,7 +357,9 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
       }
     }, [
       accessToken,
+      avatarUploading,
       avatarUrl,
+      bannerUploading,
       bannerUrl,
       enableMarketTrustedClient,
       form,
@@ -367,6 +413,7 @@ const ProfileSetupModal = memo<ProfileSetupModalProps>(
         confirmLoading={loading}
         keyboard={!isFirstTimeSetup}
         maskClosable={!isFirstTimeSetup}
+        okButtonProps={{ disabled: avatarUploading || bannerUploading }}
         okText={isFirstTimeSetup ? t('profileSetup.getStarted') : t('profileSetup.save')}
         open={open}
         width={640}

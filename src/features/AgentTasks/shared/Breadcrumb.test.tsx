@@ -28,7 +28,8 @@ vi.mock('@/features/Workspace/WorkspaceLink', () => ({
 
 // Agent crumb metadata isn't under test here; the agent store isn't mocked.
 vi.mock('./useAgentDisplayMeta', () => ({
-  useAgentDisplayMeta: () => undefined,
+  useAgentDisplayMeta: (id?: string) =>
+    id === 'group-supervisor' ? { title: '旅游群' } : undefined,
 }));
 
 vi.mock('zustand/react/shallow', () => ({
@@ -44,6 +45,11 @@ vi.mock('./style', () => ({
 }));
 
 describe('Breadcrumb', () => {
+  it('shows an embedded page’s supplied agent without requiring an agent route', () => {
+    mocks.taskState = createState({});
+    render(<Breadcrumb agentId="group-supervisor" />);
+    expect(screen.getByText('旅游群')).toBeVisible();
+  });
   beforeEach(() => {
     mocks.taskState = createState({
       'T-child': {

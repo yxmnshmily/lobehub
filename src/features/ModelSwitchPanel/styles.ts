@@ -1,5 +1,14 @@
 import { createStaticStyles } from 'antd-style';
 
+export const MOBILE_MODEL_DETAIL_WIDTH =
+  'calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)))';
+
+export const providerGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  columnGap: 4,
+} as const;
+
 export const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     pointer-events: auto;
@@ -8,9 +17,12 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 0 !important;
   `,
   detailPopup: css`
+    box-sizing: border-box;
+    width: min(400px, ${MOBILE_MODEL_DETAIL_WIDTH});
+    min-width: 0;
+    max-width: ${MOBILE_MODEL_DETAIL_WIDTH};
     user-select: none;
     overscroll-behavior: contain;
-    width: 400px;
   `,
   dropdownMenu: css`
     user-select: none;
@@ -51,10 +63,10 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorFillTertiary};
   `,
   footer: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   toolbar: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   trigger: css`
     display: inline-flex;

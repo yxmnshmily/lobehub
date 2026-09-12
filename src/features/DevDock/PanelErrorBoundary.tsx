@@ -16,13 +16,13 @@ class PanelErrorBoundary extends Component<PropsWithChildren, PanelErrorBoundary
     if (!this.state.error) return this.props.children;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 16 }}>
-        <span style={{ fontSize: 12 }}>Panel crashed: {this.state.error.message}</span>
+        <span style={{ fontSize: 12 }}>面板加载失败： {this.state.error.message}</span>
         <Button
           size={'small'}
           style={{ alignSelf: 'flex-start' }}
           onClick={() => this.setState({ error: undefined })}
         >
-          Retry
+          重试
         </Button>
       </div>
     );

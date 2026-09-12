@@ -7,7 +7,7 @@ export const styles = createStaticStyles(({ css }) => ({
   `,
   dropZoneActive: css`
     background: ${cssVar.colorPrimaryBg};
-    outline: 1px dashed ${cssVar.colorPrimaryBorder};
+    outline: 0.5px dashed ${cssVar.colorPrimaryBorder};
     outline-offset: -4px;
   `,
   header: css`
@@ -33,7 +33,7 @@ export const styles = createStaticStyles(({ css }) => ({
     min-width: 1040px;
     padding-block: 8px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 12px;
     color: ${cssVar.colorTextDescription};

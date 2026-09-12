@@ -11,7 +11,7 @@ import { styles } from '../shared/style';
 
 const DEBOUNCE_MS = 300;
 
-const TaskDetailTitleInput = memo(() => {
+const TaskDetailTitleInput = memo(({ compact = false }: { compact?: boolean }) => {
   const { t } = useTranslation('chat');
   const { allowed: canEditTask } = usePermission('create_content');
   const name = useTaskStore(taskDetailSelectors.activeTaskName);
@@ -46,6 +46,7 @@ const TaskDetailTitleInput = memo(() => {
       className={styles.titleInput}
       disabled={!canEditTask}
       placeholder={t('taskDetail.titlePlaceholder')}
+      style={compact ? { fontSize: 20, padding: 0 } : undefined}
       value={localName}
       variant={'borderless'}
       onChange={handleNameChange}

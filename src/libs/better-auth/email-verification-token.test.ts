@@ -34,10 +34,7 @@ const createAdapterHarness = () => {
       records.delete(identifier);
     },
     findVerificationValue: async (identifier: string) => records.get(identifier) || null,
-    updateVerificationByIdentifier: async (
-      identifier: string,
-      data: RecordValue,
-    ) => {
+    updateVerificationByIdentifier: async (identifier: string, data: RecordValue) => {
       if (failUpdate) {
         failUpdate = false;
         throw new Error('injected pointer update failure');
@@ -82,7 +79,15 @@ const authBaseURL = 'https://travel.example.test';
 const createVerificationHandlerHarness = async (expiresIn = 3600) => {
   let verificationToken: string | undefined;
   let failVerificationWrite = false;
-  const instanceRef: { current?: Awaited<ReturnType<typeof getTestInstance>> } = {};
+  const instanceRef: {
+    current?: {
+      auth: {
+        $context: Promise<{
+          internalAdapter: Parameters<typeof registerEmailVerificationToken>[0];
+        }>;
+      };
+    };
+  } = {};
   const instance = await getTestInstance(
     {
       basePath: '/api/auth',
@@ -294,10 +299,7 @@ describe('oneTimeEmailVerificationToken recovery redirect', () => {
 
     expect(responses.map((response) => response.status)).toEqual([302, 302]);
     expect(responses.map((response) => response.headers.get('location')).sort()).toEqual(
-      [
-        '/lobehub/onboarding',
-        '/lobehub/verify-email?error=INVALID_VERIFICATION_TOKEN',
-      ].sort(),
+      ['/lobehub/onboarding', '/lobehub/verify-email?error=INVALID_VERIFICATION_TOKEN'].sort(),
     );
   });
 

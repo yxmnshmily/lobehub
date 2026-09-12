@@ -7,6 +7,9 @@ import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { aiAgentRouter } from '../aiAgent';
 
 const mocks = vi.hoisted(() => ({
+  getAccessiblePublishedAssistantRequest: vi.fn(),
+  listAccessibleTopics: vi.fn(),
+  ownedFiles: vi.fn(),
   createBudget: vi.fn(),
   createSponsoredBudget: vi.fn(),
   execPlatformManagedAgent: vi.fn(),
@@ -17,13 +20,34 @@ const mocks = vi.hoisted(() => ({
   resolveTarget: vi.fn(),
   resolveAdmission: vi.fn(),
   runIdempotently: vi.fn(),
+  findResultTopic: vi.fn(),
 }));
 
+vi.mock('@/server/services/groupConversationAccess/conversationRepository', () => ({
+  GroupConversationAccessRepository: vi.fn(() => ({
+    getAccessiblePublishedAssistantRequest: mocks.getAccessiblePublishedAssistantRequest,
+    listAccessibleTopics: mocks.listAccessibleTopics,
+  })),
+}));
+
+vi.mock('@/database/models/file', () => ({
+  FileModel: vi.fn(() => ({ findByIds: mocks.ownedFiles })),
+}));
 vi.mock('@lobechat/database', async (importOriginal) => ({
   ...(await importOriginal<any>()),
   ChatGroupSponsoredCreditModel: vi.fn(() => ({ resolveAdmission: mocks.resolveAdmission })),
 }));
-vi.mock('@/database/core/db-adaptor', () => ({ getServerDB: vi.fn(() => ({ query: {} })) }));
+vi.mock('@/server/services/groupConversationAccess/principal', () => ({
+  resolveGroupConversationPrincipal: mocks.resolveAdmission,
+}));
+vi.mock('@/database/core/db-adaptor', () => ({
+  getServerDB: vi.fn(() => ({
+    query: {
+      topics: { findFirst: mocks.findResultTopic },
+      users: { findFirst: async () => ({ phone: '13800000000', phoneNumberVerified: true }) },
+    },
+  })),
+}));
 vi.mock('@/envs/auth', () => ({ authEnv: { AUTH_SECRET: 'group-chat-test-secret' } }));
 vi.mock('@/server/routers/lambda/_helpers/workspaceAgentGuard', () => ({
   assertCanUseWorkspaceAgent: vi.fn(),
@@ -91,6 +115,7 @@ const useInvitedMemberPrincipal = () => {
   });
   return mocks.resolveTarget.mockResolvedValue({
     groupId,
+    platformModel: { model: 'platform-model', provider: 'platform-provider' },
     principal: {
       actorUserId: userId,
       billingUserId: 'group-owner',
@@ -112,9 +137,12 @@ const useInvitedMemberPrincipal = () => {
 describe('execGroupAgent hosted billing contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.listAccessibleTopics.mockResolvedValue({ items: [], nextCursor: null });
+    mocks.findResultTopic.mockResolvedValue({ id: 'topic-a' });
     mocks.getMessagesAndTopics.mockResolvedValue({ messages: [], topics: [] });
     mocks.resolveTarget.mockResolvedValue({
       groupId,
+      platformModel: { model: 'platform-model', provider: 'platform-provider' },
       principal: {
         actorUserId: userId,
         billingUserId: userId,
@@ -155,6 +183,25 @@ describe('execGroupAgent hosted billing contract', () => {
     });
   });
 
+  it('accepts a hosted send without a per-request Credits ceiling', async () => {
+    const response = await caller().execGroupAgent({
+      agentId,
+      billing: { idempotencyKey: 'uncapped-send' },
+      groupId,
+      message: '你好',
+    } as any);
+    expect(response).toMatchObject(result);
+    expect(mocks.createBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      userId,
+      expect.objectContaining({ maxCredits: undefined }),
+    );
+    expect(mocks.execPlatformManagedGroupAgent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ maxCredits: undefined, sharedBudget: expect.anything() }),
+    );
+  });
+
   it('derives a server-owned budget and uses only the hosted entry for the default group', async () => {
     const response = await caller().execGroupAgent({
       agentId,
@@ -169,13 +216,13 @@ describe('execGroupAgent hosted billing contract', () => {
       expect.anything(),
       userId,
       expect.objectContaining({
-        maxCredits: 500,
+        maxCredits: undefined,
         requestIdentity: expect.stringMatching(/^group-chat:v2:[a-f0-9]{64}$/),
       }),
     );
     expect(mocks.execPlatformManagedGroupAgent).toHaveBeenCalledWith(
       expect.objectContaining({ agentId, groupId, message: '写一篇西藏旅游文案' }),
-      expect.objectContaining({ maxCredits: 500, sharedBudget: expect.anything() }),
+      expect.objectContaining({ maxCredits: undefined, sharedBudget: expect.anything() }),
     );
     expect(mocks.execGroupAgent).not.toHaveBeenCalled();
   });
@@ -275,7 +322,7 @@ describe('execGroupAgent hosted billing contract', () => {
     async (field) => {
       await expect(
         (caller() as any).startHostedTravelGroupTask({
-          billing: { idempotencyKey: 'member-safe-start', maxCredits: 500 },
+          billing: { idempotencyKey: 'member-safe-start' },
           groupId,
           prompt: '写一篇旅游文案',
           [field]: 'attacker-controlled',
@@ -308,8 +355,12 @@ describe('execGroupAgent hosted billing contract', () => {
       }),
       expect.anything(),
     );
-    expect(response).toEqual({ accepted: true, runHandle: expect.stringMatching(/^[\w-]{43}$/) });
-    expect(Object.keys(response).sort()).toEqual(['accepted', 'runHandle']);
+    expect(response).toEqual({
+      accepted: true,
+      resultTopicId: 'topic-a',
+      runHandle: expect.stringMatching(/^[\w-]{43}$/),
+    });
+    expect(Object.keys(response).sort()).toEqual(['accepted', 'resultTopicId', 'runHandle']);
     const hostedRun = mocks.execPlatformManagedAgent.mock.calls[0]?.[0]?.appContext?.hostedGroupRun;
     expect(hostedRun).toMatchObject({
       actorUserIdSnapshot: userId,
@@ -320,6 +371,200 @@ describe('execGroupAgent hosted billing contract', () => {
     expect(hostedRun.handleHash).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(hostedRun)).not.toContain(response.runHandle);
   });
+
+  it('uses the sponsorship policy ceiling without creating an automatic budget', async () => {
+    useInvitedMemberPrincipal();
+    mocks.resolveAdmission.mockResolvedValueOnce({
+      actorUserId: userId,
+      chatGroupId: groupId,
+      groupPeriodLimitCredits: 2_000,
+      maxCreditsPerPeriod: 1_500,
+      maxCreditsPerRequest: 500,
+      membershipVersion: 4,
+      payerUserId: 'group-owner',
+      policyVersion: 2,
+      workspaceId: null,
+    });
+
+    await expect(
+      (caller() as any).startHostedTravelGroupTask({
+        billing: { idempotencyKey: 'member-automatic-budget' },
+        groupId,
+        prompt: '请只回复：测试成功',
+      }),
+    ).resolves.toMatchObject({ accepted: true });
+
+    expect(mocks.createSponsoredBudget).toHaveBeenCalledWith(
+      expect.anything(),
+      userId,
+      expect.objectContaining({ maxCredits: 500 }),
+    );
+    expect(mocks.execPlatformManagedAgent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ maxCredits: 500, sharedBudget: expect.anything() }),
+    );
+  });
+
+  it('regenerates the server-saved original request in its original archive, not the latest topic', async () => {
+    useInvitedMemberPrincipal();
+    const original = {
+      prompt: '原始要求\n\n[附件](</api/file/proxy/original>)',
+      mentionedAgentIds: [],
+      topicId: 'original-topic',
+    };
+    mocks.getAccessiblePublishedAssistantRequest.mockResolvedValueOnce(original);
+    mocks.listAccessibleTopics.mockResolvedValue({ items: [{ id: 'newer-topic' }] });
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'retry-original', maxCredits: 500 },
+      groupId,
+      regenerateMessageId: 'a'.repeat(64),
+    });
+    expect(mocks.getAccessiblePublishedAssistantRequest).toHaveBeenCalledWith(
+      userId,
+      groupId,
+      'a'.repeat(64),
+    );
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0]).toMatchObject({
+      prompt: original.prompt,
+      appContext: {
+        topicId: original.topicId,
+        hostedGroupRun: {
+          originalRequest: { prompt: original.prompt, mentionedAgentIds: [] },
+        },
+      },
+    });
+    await expect(
+      caller().startHostedTravelGroupTask({
+        billing: { idempotencyKey: 'tampered-retry' },
+        groupId,
+        regenerateMessageId: 'a'.repeat(64),
+        prompt: '替换原文',
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('continues the current accessible group conversation without creating another topic', async () => {
+    useInvitedMemberPrincipal();
+    mocks.listAccessibleTopics.mockResolvedValue({
+      items: [{ id: 'existing-group-topic' }],
+      nextCursor: null,
+    });
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'member-continue', maxCredits: 500 },
+      groupId,
+      prompt: '继续上一条消息',
+    });
+    expect(mocks.listAccessibleTopics).toHaveBeenCalledWith(userId, groupId, {
+      recent: true,
+      limit: 1,
+    });
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].appContext.topicId).toBe(
+      'existing-group-topic',
+    );
+  });
+
+  it.each([
+    '请帮我规划一份多日游行程，按天列出路线、交通、体验和休息时间。',
+    '出个 短视频文案吧',
+    '根据之前的文案，做一个封面9:16，象鼻山当主视觉',
+  ])('creates a separate topic for an independent request: %s', async (prompt) => {
+    useInvitedMemberPrincipal();
+    mocks.listAccessibleTopics.mockResolvedValue({
+      items: [{ id: 'old-greeting-topic', title: '简单问候对话' }],
+      nextCursor: null,
+    });
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'independent-request', maxCredits: 500 },
+      groupId,
+      prompt,
+    });
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].appContext.topicId).toBeUndefined();
+  });
+
+  it.each([
+    '桂林4天2个人',
+    '马来西亚，2000元',
+    '继续作封面图',
+    '重试制作一张西藏封面图',
+    '把封面改成双人背影',
+  ])('keeps follow-up context: %s', async (prompt) => {
+    useInvitedMemberPrincipal();
+    mocks.listAccessibleTopics.mockResolvedValue({
+      items: [{ id: 'current-topic', title: '封面制作' }],
+      nextCursor: null,
+    });
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'follow-up-request', maxCredits: 500 },
+      groupId,
+      prompt,
+    });
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].appContext.topicId).toBe(
+      'current-topic',
+    );
+  });
+
+  it('passes only authorized attachment links to the group task', async () => {
+    useInvitedMemberPrincipal();
+    mocks.ownedFiles.mockResolvedValueOnce([
+      { id: 'own-file', name: 'note.txt', fileType: 'text/plain' },
+    ]);
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'attachment-task', maxCredits: 500 },
+      groupId,
+      fileIds: ['own-file'],
+      prompt: 'read this',
+    });
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].prompt).toContain('/f/own-file');
+  });
+  it('rejects unavailable attachments before starting a group task', async () => {
+    useInvitedMemberPrincipal();
+    mocks.ownedFiles.mockResolvedValueOnce([]);
+    await expect(
+      caller().startHostedTravelGroupTask({
+        billing: { idempotencyKey: 'foreign-attachment-task' },
+        groupId,
+        fileIds: ['foreign-file'],
+        prompt: 'read this',
+      }),
+    ).rejects.toThrow();
+    expect(mocks.execPlatformManagedAgent).not.toHaveBeenCalled();
+  });
+  it('routes a member mention through the trusted supervisor and binds the target to idempotency', async () => {
+    useInvitedMemberPrincipal();
+    await caller().startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'member-mention-start', maxCredits: 500 },
+      groupId,
+      mentionedAgentId: copywriterId,
+      prompt: '请帮我整理这个想法',
+    });
+    const input = mocks.execPlatformManagedAgent.mock.calls[0][0];
+    expect(input.agentId).toBe(agentId);
+    expect(input.appContext.toolDispatchPolicy.steps).toEqual([
+      expect.objectContaining({ apiName: 'speak', identifier: 'lobe-group-management' }),
+    ]);
+    expect(JSON.parse(input.appContext.toolDispatchPolicy.steps[0].arguments)).toMatchObject({
+      agentId: copywriterId,
+      instruction: '请帮我整理这个想法',
+    });
+    expect(mocks.runIdempotently.mock.calls[0][0].message).toContain(copywriterId);
+  });
+
+  it.each(['outside-group-agent', agentId])(
+    'rejects a non-participant mention %s before reserving credits',
+    async (mentionedAgentId) => {
+      useInvitedMemberPrincipal();
+      await expect(
+        caller().startHostedTravelGroupTask({
+          billing: { idempotencyKey: 'invalid-member-mention', maxCredits: 500 },
+          groupId,
+          mentionedAgentId,
+          prompt: '处理这个任务',
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(mocks.createSponsoredBudget).not.toHaveBeenCalled();
+      expect(mocks.execPlatformManagedAgent).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns a safe hosted run status through the opaque handle only', async () => {
     const response = await (caller() as any).getHostedTravelGroupRunStatus({
@@ -436,6 +681,59 @@ describe('execGroupAgent hosted billing contract', () => {
     },
   );
 
+  it('separates an owner composer request without losing the group context', async () => {
+    await caller().execAgent({
+      agentId,
+      appContext: { groupId, topicId: 'old-topic' },
+      billing: { idempotencyKey: 'owner-new-request' },
+      prompt: '出个短视频文案吧',
+    } as any);
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].appContext).toMatchObject({
+      groupId,
+      topicId: undefined,
+    });
+  });
+
+  it('does not split a private thread when it contains a new production request', async () => {
+    await caller().execAgent({
+      agentId,
+      appContext: { groupId, topicId: 'old-topic', threadId: 'private-thread' },
+      billing: { idempotencyKey: 'thread-request' },
+      prompt: '制作一张封面图',
+    } as any);
+    expect(mocks.execPlatformManagedAgent.mock.calls[0][0].appContext.topicId).toBe('old-topic');
+  });
+
+  it('applies the same boundary on the legacy owner group entry', async () => {
+    await caller().execGroupAgent({
+      agentId,
+      groupId,
+      topicId: 'old-topic',
+      message: '请帮我规划行程',
+      billing: { idempotencyKey: 'legacy-independent-request' },
+    });
+    expect(mocks.execPlatformManagedGroupAgent.mock.calls[0][0].topicId).toBeUndefined();
+  });
+
+  it('keeps a hosted retry on its original topic and forwards the parent message', async () => {
+    await caller().execGroupAgent({
+      agentId,
+      billing: { idempotencyKey: 'legacy-retry-request' },
+      groupId,
+      message: '请帮我规划行程',
+      parentMessageId: 'original-user-message',
+      topicId: 'original-topic',
+    });
+
+    expect(mocks.execPlatformManagedGroupAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentMessageId: 'original-user-message',
+        topicId: 'original-topic',
+      }),
+      expect.anything(),
+    );
+  });
+
   it('uses the same hosted budget contract for the current execAgent group entry', async () => {
     await expect(
       caller().execAgent({
@@ -456,7 +754,7 @@ describe('execGroupAgent hosted billing contract', () => {
         }),
         prompt: '继续改写',
       }),
-      expect.objectContaining({ maxCredits: 500, sharedBudget: expect.anything() }),
+      expect.objectContaining({ maxCredits: undefined, sharedBudget: expect.anything() }),
     );
     expect(mocks.execGroupAgent).not.toHaveBeenCalled();
   });

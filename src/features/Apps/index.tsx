@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { PlatformAvatar, SUPPORTED_MESSENGER_PLATFORMS } from '@/features/Messenger/constants';
+import ToggleLeftPanelButton from '@/features/NavPanel/ToggleLeftPanelButton';
 
 import { CLI_INSTALL_COMMAND } from './const';
 import { CliScene, DesktopScene, MobileScene } from './scenes';
@@ -38,7 +39,12 @@ const AppsPage = () => {
   return (
     <div className={styles.page}>
       <main className={styles.content}>
-        <h1 className={styles.headline}>{t('apps.title')}</h1>
+        <div style={{ alignItems: 'center', display: 'flex', gap: 12, paddingBlockEnd: 28 }}>
+          <ToggleLeftPanelButton id={null} />
+          <h1 className={styles.headline} style={{ marginBlock: 0 }}>
+            {t('apps.title')}
+          </h1>
+        </div>
 
         <div className={styles.grid}>
           <article className={`${styles.card} ${styles.spanFull}`}>

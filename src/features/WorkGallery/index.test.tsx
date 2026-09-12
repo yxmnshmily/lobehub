@@ -3,6 +3,16 @@ import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import WorkGallery from './index';
+import type * as SkeletonModule from './Skeleton';
+import type * as WorkPreviewCardModule from './WorkPreviewCard';
+
+vi.mock('@/features/NavHeader', () => ({
+  default: () => <header data-testid="shared-navigation-header" />,
+}));
+vi.mock('@/components/Skeleton/Article', () => ({ default: () => <div /> }));
+vi.mock('@/features/CustomerCenter/useMonthlyExchangeRate', () => ({
+  useMonthlyExchangeRate: () => ({ formatOptional: () => null }),
+}));
 
 const mocks = vi.hoisted(() => ({
   gallery: {
@@ -26,6 +36,27 @@ vi.mock('./useOpenWork', () => ({
 
 vi.mock('./WorkPreviewCard', () => ({
   default: ({ item }: { item: { id: string } }) => <div data-testid={`work-${item.id}`} />,
+}));
+
+vi.mock('./WorkPreview', () => ({ default: () => <div /> }));
+vi.mock('./Skeleton', () => ({
+  default: () => (
+    <>
+      {Array.from({ length: 8 }, (_, index) => (
+        <div data-testid="skeleton" key={index} />
+      ))}
+    </>
+  ),
+  WorkGalleryCardsSkeleton: ({ count }: { count: number }) => (
+    <>
+      {Array.from({ length: count }, (_, index) => (
+        <div data-testid="skeleton" key={index} />
+      ))}
+    </>
+  ),
+}));
+vi.mock('@/features/ResourceManager/components/Explorer/ItemDropdown/QuickActions', () => ({
+  default: ({ id }: { id: string }) => <div data-testid={`resource-actions-${id}`}>下载 删除</div>,
 }));
 
 vi.mock('@/features/AgentTasks/shared/useAgentDisplayMeta', () => ({
@@ -62,9 +93,11 @@ vi.mock('@lobehub/ui', () => ({
       {description}
     </div>
   ),
-  Flexbox: ({ children, horizontal: _horizontal, ...props }: ComponentProps<'div'> & { horizontal?: boolean }) => (
-    <div {...props}>{children}</div>
-  ),
+  Flexbox: ({
+    children,
+    horizontal: _horizontal,
+    ...props
+  }: ComponentProps<'div'> & { horizontal?: boolean }) => <div {...props}>{children}</div>,
   Skeleton: () => <div data-testid={'skeleton'} />,
 }));
 
@@ -79,6 +112,40 @@ vi.mock('@lobehub/ui/base-ui', () => ({
 }));
 
 describe('WorkGallery', () => {
+  it.each(['ready', 'empty', 'error'])('keeps the shared sidebar header in %s state', (state) => {
+    if (state !== 'ready') mocks.gallery.items = [];
+    if (state === 'error') mocks.gallery.error = new Error('failed');
+    render(<WorkGallery galleryKey="all" />);
+    expect(screen.getAllByTestId('shared-navigation-header')).toHaveLength(1);
+  });
+
+  it('keeps the shared sidebar header in the route loading skeleton', async () => {
+    const { default: Skeleton } = await vi.importActual<typeof SkeletonModule>('./Skeleton');
+    render(<Skeleton />);
+    expect(screen.getAllByTestId('shared-navigation-header')).toHaveLength(1);
+  });
+  it('renders resource actions in the shared document preview card', async () => {
+    const { default: Card } =
+      await vi.importActual<typeof WorkPreviewCardModule>('./WorkPreviewCard');
+    render(
+      <Card
+        item={
+          {
+            id: 'work-1',
+            resourceType: 'document',
+            type: 'document',
+            resourceId: 'doc-1',
+            title: '行程',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            event: { changeType: 'created' },
+          } as any
+        }
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('resource-actions-doc-1')).toHaveTextContent('下载 删除');
+  }, 20000);
   let intersectionCallback: IntersectionObserverCallback | undefined;
 
   beforeEach(() => {

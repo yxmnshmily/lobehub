@@ -31,7 +31,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   card: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
     background: ${cssVar.colorBgContainer};
   `,
@@ -45,7 +45,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 10px;
     padding-inline: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 12px;
     color: ${cssVar.colorTextTertiary};
@@ -58,7 +58,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 14px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   sub: css`
     margin-block-start: 4px;

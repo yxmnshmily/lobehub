@@ -12,7 +12,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 64px;
     padding-inline: 24px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     text-align: center;

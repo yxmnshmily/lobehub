@@ -13,6 +13,22 @@ const provider = (id: string, modelIds: string[]) =>
   }) as unknown as EnabledProviderWithModels;
 
 describe('selectAgentArtworkModel', () => {
+  it('uses an enabled Volcengine image model ahead of Google and OpenAI', () => {
+    const selection = selectAgentArtworkModel([
+      provider('google', ['gemini-3.1-flash-lite-image:image']),
+      provider('openai', ['gpt-image-2']),
+      provider('volcengine', ['doubao-seedream-4-5-251128']),
+    ]);
+    expect(selection?.provider.id).toBe('volcengine');
+    expect(selection?.model.id).toBe('doubao-seedream-4-5-251128');
+  });
+
+  it('does not select a Volcengine provider with no enabled image models', () => {
+    expect(
+      selectAgentArtworkModel([provider('volcengine', []), provider('openai', ['gpt-image-2'])])
+        ?.provider.id,
+    ).toBe('openai');
+  });
   it('prefers Nano Banana 2 Lite over gpt-image-2 across providers', () => {
     const selection = selectAgentArtworkModel([
       provider('openai', ['gpt-image-2']),

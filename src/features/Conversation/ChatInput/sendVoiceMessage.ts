@@ -6,7 +6,7 @@ import {
 
 type SendMessage = (
   params: SendMessageParams & { conversationContext?: ConversationContext },
-) => Promise<void>;
+) => Promise<void | boolean>;
 
 interface SendVoiceMessageOptions {
   context?: ConversationContext;

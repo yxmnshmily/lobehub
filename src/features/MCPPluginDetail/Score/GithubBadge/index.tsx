@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import urlJoin from 'url-join';
 
 import { OFFICIAL_SITE } from '@/const/url';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { useDetailContext } from '../../DetailProvider';
 
@@ -14,6 +15,7 @@ type BadgeStyle = 'flat' | 'flat-square' | 'plastic' | 'for-the-badge';
 type BadgeTheme = 'dark' | 'light';
 
 const GithubBadge = memo(() => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('discover');
   const { identifier = '' } = useDetailContext();
   const [selectedStyle, setSelectedStyle] = useState<BadgeStyle>('flat-square');
@@ -52,7 +54,7 @@ const GithubBadge = memo(() => {
 
       <Select
         options={styleOptions}
-        prefix={<Tag style={{ marginRight: 4 }}>style</Tag>}
+        prefix={<Tag style={{ marginRight: 4 }}>{translateTravel('样式')}</Tag>}
         value={selectedStyle}
         onChange={setSelectedStyle}
       />
@@ -68,7 +70,7 @@ const GithubBadge = memo(() => {
       <Divider style={{ color: cssVar.colorTextDescription, fontSize: 12 }}>OR</Divider>
       <Select
         options={themeOptions}
-        prefix={<Tag style={{ marginRight: 4 }}>theme</Tag>}
+        prefix={<Tag style={{ marginRight: 4 }}>{translateTravel('主题')}</Tag>}
         value={selectedTheme}
         onChange={setSelectedTheme}
       />

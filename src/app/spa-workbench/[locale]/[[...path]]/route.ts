@@ -26,11 +26,7 @@ async function getTemplate(request: Request): Promise<string> {
   if (isDev)
     return fetchViteDevTemplate(
       '/index.workbench.html',
-      resolveViteBrowserOrigin(
-        request.url,
-        undefined,
-        request.headers.get('x-forwarded-host'),
-      ),
+      resolveViteBrowserOrigin(request.url, undefined, request.headers.get('x-forwarded-host')),
     );
 
   const { workbenchHtmlTemplate } = await import('../../workbenchHtmlTemplate');

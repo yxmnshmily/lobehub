@@ -48,6 +48,7 @@ export const goalRuntime: ServerRuntimeRegistration = {
             agentId,
             createdByAgentId: agentId,
             config: {
+              ...(context.groupId ? { groupId: context.groupId } : {}),
               recovery: { maxAttemptsPerTask: resolveGoalAttemptBudget(args.maxIterations) },
               ...(scheduleConfig ? { schedule: scheduleConfig } : {}),
             },

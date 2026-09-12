@@ -54,11 +54,21 @@ const HomePortrait = memo(() => {
   // the built-in catalog covers everyone else.
   const fullBodyArtwork = useAgentStore(agentSelectors.getAgentFullBodyArtworkById(agentId ?? ''));
   const artwork = resolveChiefAgentArtwork(meta.avatar || DEFAULT_INBOX_AVATAR);
-  const hero = isInbox ? DEFAULT_INBOX_AVATAR : fullBodyArtwork || artwork.hero;
+  const defaultHero = '/lobehub/app-icons/travel-cloud-wave.png';
+  const hero = isInbox
+    ? defaultHero
+    : fullBodyArtwork || (artwork.id === 'lobe' ? defaultHero : artwork.hero);
 
   return (
     <div className={styles.root}>
-      <img aria-hidden alt="" className={styles.image} key={hero} src={hero} />
+      <img
+        aria-hidden
+        alt=""
+        className={styles.image}
+        key={hero}
+        src={hero}
+        style={hero === defaultHero ? { insetBlockEnd: -82 } : undefined}
+      />
     </div>
   );
 });

@@ -11,8 +11,9 @@ import urlJoin from 'url-join';
 
 import InlineTable from '@/components/InlineTable';
 import { ModelInfoTags } from '@/components/ModelSelect';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
-import { formatPriceByCurrency, formatTokenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@/utils/format';
 import { getTextInputUnitRate, getTextOutputUnitRate } from '@/utils/pricing';
 
 import { useDetailContext } from '../../../DetailProvider';
@@ -20,6 +21,7 @@ import { useDetailContext } from '../../../DetailProvider';
 const ModelList = memo(() => {
   const { models = [] } = useDetailContext();
   const { t } = useTranslation('discover');
+  const { money } = useMonthlyExchangeRate();
 
   return (
     <TooltipGroup>
@@ -93,9 +95,7 @@ const ModelList = memo(() => {
               key: 'inputPrice',
               render: (_, record) => {
                 const inputRate = getTextInputUnitRate(record.pricing);
-                return inputRate
-                  ? '$' + formatPriceByCurrency(inputRate, record.pricing?.currency)
-                  : '--';
+                return inputRate ? money(inputRate, record.pricing?.currency, 6) : '--';
               },
               showSorterTooltip: false,
               sorter: (a, b) => {
@@ -115,9 +115,7 @@ const ModelList = memo(() => {
               key: 'outputPrice',
               render: (_, record) => {
                 const outputRate = getTextOutputUnitRate(record.pricing);
-                return outputRate
-                  ? '$' + formatPriceByCurrency(outputRate, record.pricing?.currency)
-                  : '--';
+                return outputRate ? money(outputRate, record.pricing?.currency, 6) : '--';
               },
               showSorterTooltip: false,
               sorter: (a, b) => {

@@ -39,13 +39,17 @@ describe('useNavLayout', () => {
     mocks.showMarket = true;
   });
 
-  it('keeps Memory visible in personal mode', async () => {
+  it('hides community and memory from the personal sidebar', async () => {
     const { useNavLayout } = await import('./useNavLayout');
     const { result } = renderHook(() => useNavLayout());
 
     const memoryItem = result.current.bottomMenuItems.find((item) => item.key === 'memory');
 
-    expect(memoryItem?.hidden).not.toBe(true);
+    expect(memoryItem?.hidden).toBe(true);
+    expect(result.current.bottomMenuItems.find((item) => item.key === 'community')?.hidden).toBe(
+      true,
+    );
+    expect(result.current.bottomMenuItems.find((item) => item.key === 'pages')?.hidden).toBe(true);
   });
 
   it('hides Memory in workspace mode', async () => {

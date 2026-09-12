@@ -2,11 +2,10 @@ import type { Agent, GeneralAgentConfig } from '@lobechat/agent-runtime';
 import { GeneralChatAgent, GraphAgent } from '@lobechat/agent-runtime';
 import type { LobeAgentChatConfig, LobeAgentConfig } from '@lobechat/types';
 import { AgentGraphSchema } from '@lobechat/types';
-import debug from 'debug';
 
 import type { AgentRuntimeServiceOptions } from '@/server/services/agentRuntime/AgentRuntimeService';
 
-const log = debug('lobe-server:ai-agent-service');
+import { aiAgentDebug as log } from '../safeDebug';
 
 /**
  * Content written onto a tool row that the user stopped before it ran. Mirrors

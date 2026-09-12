@@ -1,5 +1,8 @@
 import { type AssistantContentBlock, type UIChatMessage } from '@lobechat/types';
+import { useResponsive } from 'antd-style';
 import { memo, useMemo } from 'react';
+
+import { MESSAGE_ACTION_BAR_PORTAL_ATTRIBUTES } from '@/const/messageActionPortal';
 
 import { ReactionPicker } from '../../../components/Reaction';
 import { messageStateSelectors, useConversationStore } from '../../../store';
@@ -9,39 +12,17 @@ import {
   type MessageActionContext,
   type MessageActionSlot,
 } from '../../components/MessageActionBar';
+import { ASSISTANT_MENU } from '../../components/MessageActionBar/assistantMenu';
 
-const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['delAndRegenerate', 'copy'];
-const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy'];
-const DEFAULT_MENU: MessageActionSlot[] = [
-  'edit',
-  'copy',
-  'copyOperationId',
-  'comments',
-  'branching',
-  'collapse',
-  'divider',
-  'share',
-  'select',
-  'divider',
-  'regenerate',
-  'del',
-];
+const DEFAULT_BAR_WITH_TOOLS: MessageActionSlot[] = ['delAndRegenerate', 'copy', 'download'];
+const DEFAULT_BAR: MessageActionSlot[] = ['edit', 'copy', 'download'];
 const IN_PROGRESS_BAR: MessageActionSlot[] = ['del'];
-// Finished turn whose last child block is a tool call (typical for heterogeneous
-// CC/Codex turns, which end on a Bash/Read/Edit/Task block with no trailing text).
-// There's no text block to edit/copy, but the turn IS complete — it can still be
-// shared and multi-selected/forwarded as one aggregated assistant reply. The
-// forward serializer keeps child text while excluding child tool payloads.
-const NO_TEXT_BLOCK_BAR: MessageActionSlot[] = ['delAndRegenerate'];
-const NO_TEXT_BLOCK_MENU: MessageActionSlot[] = [
-  'comments',
-  'share',
-  'select',
-  'divider',
-  'del',
-  'divider',
-  'copyOperationId',
-];
+// Tool-only turns still support whole-reply operations. Do not show text
+// actions with no target, or collapse a turn whose collapsed preview is empty.
+const NO_TEXT_BLOCK_BAR: MessageActionSlot[] = ['delAndRegenerate', 'copy', 'download'];
+const NO_TEXT_BLOCK_MENU = ASSISTANT_MENU.filter(
+  (slot) => typeof slot !== 'string' || !['edit', 'collapse', 'tts', 'translate'].includes(slot),
+);
 
 interface GroupActionsProps {
   actionsConfig?: MessageActionsConfig;
@@ -62,14 +43,12 @@ export const GroupActionsBar = memo<GroupActionsProps>(
       messageStateSelectors.isAssistantGroupItemGenerating(id),
     );
 
-    // No finalized text block (group is empty, or its last child is a tool call).
+    // No text anywhere in the group, not merely a tool at the end.
     if (!contentId) {
       // Still streaming → only delete is meaningful.
       if (isGenerating) {
         return <MessageActionBar bar={IN_PROGRESS_BAR} ctx={ctx} />;
       }
-      // Finished, but the turn ends on a tool-call block — no text to edit/copy,
-      // yet it's a complete reply that can still be shared and selected.
       return <MessageActionBar bar={NO_TEXT_BLOCK_BAR} ctx={ctx} menu={NO_TEXT_BLOCK_MENU} />;
     }
 
@@ -80,10 +59,27 @@ export const GroupActionsBar = memo<GroupActionsProps>(
         bar={actionsConfig?.bar ?? defaultBar}
         ctx={ctx}
         leading={<ReactionPicker messageId={id} />}
-        menu={actionsConfig?.menu ?? DEFAULT_MENU}
+        menu={actionsConfig?.menu ?? ASSISTANT_MENU}
       />
     );
   },
 );
 
 GroupActionsBar.displayName = 'GroupActionsBar';
+
+/** Mobile has no reliable hover target, so its actions render with the message.
+ * Desktop keeps the singleton portal to avoid mounting a full action tree per row. */
+export const GroupActionsSlot = memo<GroupActionsProps>((props) => {
+  const { mobile = false } = useResponsive();
+
+  if (mobile) return <GroupActionsBar {...props} />;
+
+  return (
+    <div
+      {...{ [MESSAGE_ACTION_BAR_PORTAL_ATTRIBUTES.assistantGroup]: '' }}
+      style={{ height: '28px' }}
+    />
+  );
+});
+
+GroupActionsSlot.displayName = 'GroupActionsSlot';

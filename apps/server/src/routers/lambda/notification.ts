@@ -2,10 +2,12 @@ import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
+import { NOTIFICATION_EVENTS } from '@/const/settings/notificationEvents';
 import { NotificationModel } from '@/database/models/notification';
 import { ResourceTransferRequestModel } from '@/database/models/resourceTransferRequest';
-import { router } from '@/libs/trpc/lambda';
+import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { NotificationService } from '@/server/services/notification';
 
 const notificationProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -44,7 +46,26 @@ const listLiveTransferCards = async (ctx: {
   return transferModel.listPendingForUser(ctx.userId);
 };
 
+const personalNotificationProcedure = authedProcedure.use(serverDatabase);
+
 export const notificationRouter = router({
+  getSettings: personalNotificationProcedure.query(({ ctx }) =>
+    new NotificationService(ctx.serverDB, ctx.userId).getSettings(),
+  ),
+  updateSetting: personalNotificationProcedure
+    .input(
+      z
+        .object({
+          channel: z.enum(['inbox', 'email', 'sms']),
+          enabled: z.boolean(),
+          type: z.enum(NOTIFICATION_EVENTS.map((item) => item.type)).optional(),
+        })
+        .strict(),
+    )
+    .mutation(({ ctx, input }) =>
+      new NotificationService(ctx.serverDB, ctx.userId).updateSetting(input),
+    ),
+
   archive: notificationWriteProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

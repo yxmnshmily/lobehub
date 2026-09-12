@@ -123,6 +123,7 @@ export interface GlobalServerConfig {
   oAuthSSOProviders?: string[];
   systemAgent?: PartialDeep<UserServiceModelConfig>;
   telemetry: {
+    disabled?: boolean;
     langfuse?: boolean;
   };
   /**

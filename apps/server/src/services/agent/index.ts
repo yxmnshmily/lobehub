@@ -21,6 +21,7 @@ import {
   RedisKeys,
 } from '@/libs/redis';
 import { getServerDefaultAgentConfig } from '@/server/globalConfig';
+import { savePublishedSuperGroupAgent } from '@/server/services/user/travelServiceGroupTemplate';
 
 import { type UpdateAgentResult } from './type';
 
@@ -267,7 +268,10 @@ export class AgentService {
     // AgentItem, whose `plugins` column type is intentionally left as
     // `string[]` (only the domain types are widened for the tri-state
     // rollout, not the JSONB column's compile-time annotation).
-    await this.agentModel.updateConfig(agentId, value as any);
+    const published =
+      !this.workspaceId &&
+      (await savePublishedSuperGroupAgent(this.db, this.userId, agentId, value as any));
+    if (!published) await this.agentModel.updateConfig(agentId, value as any);
 
     // 2. Query and return updated data (with default config merged)
     const agent = await this.getAgentConfigById(agentId);

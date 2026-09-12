@@ -8,7 +8,16 @@ import { ActionIcon, Button, Text, toast } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { $getRoot } from 'lexical';
 import { ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
-import { type KeyboardEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  memo,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
@@ -21,6 +30,7 @@ import {
   getAttachmentFileIdsFromEditor,
   pickAndInsertAttachments,
 } from '@/features/EditorCanvas/editorAttachments';
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { usePermission } from '@/hooks/usePermission';
 import { taskService } from '@/services/task';
@@ -92,6 +102,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
     variant = 'default',
   } = props;
   const isHero = variant === 'hero';
+  const groupScope = use(GroupWorkScopeContext);
   const { t } = useTranslation('chat');
   const { allowed: canCreateTask, reason } = usePermission('create_content');
 
@@ -166,8 +177,8 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
     () =>
       parentTaskId
         ? null
-        : `lobehub:task-create-draft:${activeWorkspaceId ?? 'personal'}:${projectId ?? agentId ?? 'all'}`,
-    [activeWorkspaceId, agentId, parentTaskId, projectId],
+        : `lobehub:task-create-draft:${activeWorkspaceId ?? 'personal'}:${groupScope ? `group:${groupScope.groupId}` : (projectId ?? agentId ?? 'all')}`,
+    [activeWorkspaceId, agentId, groupScope, parentTaskId, projectId],
   );
   // Tracks which scope key the editor is currently hydrated for. The component
   // is reused across workspace and task-scope route switches without unmounting.
@@ -389,6 +400,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
       // draft intact (the reset only runs on success).
       try {
         const result = await createTask({
+          ...(groupScope ? { config: { groupId: groupScope.groupId } } : {}),
           assigneeAgentId,
           assigneeUserId,
           editorData: draft.editorJson,
@@ -454,6 +466,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
       t,
       activeWorkspaceId,
       draftStorageKey,
+      groupScope,
       assigneeAgentId,
       assigneeUserId,
       createTask,
@@ -598,6 +611,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
 
     createGoalModal({
       agentId: assigneeAgentId,
+      groupId: groupScope?.groupId,
       initialRequirement: seed.requirement,
       initialTitle: intentTitle.trim() || seed.title,
       onCreated: resetComposer,
@@ -609,6 +623,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
     assigneeAgentId,
     intentAnswers,
     intentTitle,
+    groupScope,
     projectId,
     readDraft,
     resetComposer,
@@ -695,7 +710,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
           align={'center'}
           justify={'space-between'}
           style={{
-            borderTop: `1px solid ${cssVar.colorBorderSecondary}`,
+            borderTop: `0.5px solid ${cssVar.colorBorderSecondary}`,
             display: isReviewing ? 'none' : undefined,
             paddingBlock: 8,
             paddingInline: '8px 16px',

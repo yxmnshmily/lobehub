@@ -9,12 +9,12 @@ import {
 import { isCommandPressed } from '@lobechat/utils';
 import type { IEditor, ISlashMenuOption, ISlashSectionOption } from '@lobehub/editor';
 import { INSERT_MENTION_COMMAND, ReactAutoCompletePlugin } from '@lobehub/editor';
-import { Editor, useEditorState } from '@lobehub/editor/react';
+import { Editor } from '@lobehub/editor/react';
 import { combineKeys } from '@lobehub/ui';
 import { css, cx } from 'antd-style';
 import Fuse from 'fuse.js';
 import { INSERT_LINE_BREAK_COMMAND, KEY_ESCAPE_COMMAND } from 'lexical';
-import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, type ReactNode, use, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
 
@@ -36,6 +36,7 @@ import {
   userProfileSelectors,
 } from '@/store/user/selectors';
 
+import { ChatInputAutoFocusContext } from '../components/AutoFocusContext';
 import { useAgentId } from '../hooks/useAgentId';
 import { useChatInputDraft } from '../hooks/useChatInputDraft';
 import { useChatInputHistory } from '../hooks/useChatInputHistory';
@@ -86,6 +87,7 @@ const InputEditor = memo<{
   placeholderVariant?: PlaceholderVariant;
 }>(({ defaultRows = 2, initialContent = '', placeholder, placeholderVariant }) => {
   const { t } = useTranslation('chat');
+  const autoFocus = use(ChatInputAutoFocusContext);
   const mobile = useServerConfigStore((s) => s.isMobile);
   const [
     editor,
@@ -114,7 +116,7 @@ const InputEditor = memo<{
   const storeApi = useStoreApi();
   const { restoreDraft, saveDraftDebounced } = useChatInputDraft();
   const restoredDraftEditorRef = useRef<IEditor | null>(null);
-  const state = useEditorState(editor);
+  const activeRef = useRef(true);
   const { allowed: canCreateContent } = usePermission('create_content');
   // view-level General access on the bound agent/group = full read-only input,
   // matching the workspace-viewer treatment (ChatInputNotice explains why).
@@ -238,8 +240,12 @@ const InputEditor = memo<{
   usePasteFile(editor, handleUploadFiles);
 
   useEffect(() => {
+    activeRef.current = true;
     const fn = (e: BeforeUnloadEvent) => {
-      if (!state.isEmpty) {
+      // Read only when leaving: subscribing to the entire formatting toolbar
+      // schedules work on every keystroke, including after editor teardown.
+      if (editor?.getLexicalEditor() && !editor.isEmpty) {
+        e.preventDefault();
         // set returnValue to trigger alert modal
         // Note: No matter what value is set, the browser will display the standard text
         e.returnValue = 'You are typing something, are you sure you want to leave?';
@@ -247,9 +253,10 @@ const InputEditor = memo<{
     };
     window.addEventListener('beforeunload', fn);
     return () => {
+      activeRef.current = false;
       window.removeEventListener('beforeunload', fn);
     };
-  }, [state.isEmpty]);
+  }, [editor]);
 
   const enableRichRender = useUserStore(labPreferSelectors.enableInputMarkdown);
 
@@ -535,6 +542,17 @@ const InputEditor = memo<{
     [restoreDraft, storeApi],
   );
 
+  const handleHistoryChange = inputHistory.handleEditorChange;
+  const handleEditorChange = useCallback(() => {
+    // The upstream Editor debounces onChange but does not cancel its timer on
+    // unmount. Never serialize a destroyed kernel or write its stale draft.
+    if (!activeRef.current || storeApi.getState().editor !== editor || !editor?.getLexicalEditor())
+      return;
+    updateMarkdownContent();
+    handleHistoryChange();
+    saveDraftDebounced();
+  }, [editor, handleHistoryChange, saveDraftDebounced, storeApi, updateMarkdownContent]);
+
   const ghostMarkdown = inputHistory.ghostMarkdown;
 
   return (
@@ -549,8 +567,8 @@ const InputEditor = memo<{
         onSelect={inputHistory.confirm}
       />
       <Editor
-        autoFocus
         pasteAsPlainText
+        autoFocus={autoFocus}
         className={className}
         content={initialContent}
         editable={canCreateContent && canUseResource}
@@ -577,18 +595,15 @@ const InputEditor = memo<{
         }
         style={{
           fontSize: mobile ? 16 : undefined,
+          height: 'auto',
           minHeight: defaultRows > 1 ? defaultRows * 23 : undefined,
         }}
+        onChange={handleEditorChange}
         onCompositionEnd={({ event }) => compositionProps.onCompositionEnd(event)}
         onInit={handleEditorInit}
         onBlur={() => {
           disableScope(HotkeyEnum.AddUserMessage);
           saveDraftDebounced.flush();
-        }}
-        onChange={() => {
-          updateMarkdownContent();
-          inputHistory.handleEditorChange();
-          saveDraftDebounced();
         }}
         onCompositionStart={({ event }) => {
           compositionProps.onCompositionStart(event);
@@ -629,7 +644,7 @@ const InputEditor = memo<{
             !event.shiftKey
           ) {
             event.preventDefault();
-            editor?.dispatchCommand(INSERT_LINE_BREAK_COMMAND, undefined);
+            editor?.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
             return true;
           }
         }}

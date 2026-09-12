@@ -1,7 +1,6 @@
 import { SendButton as Send } from '@lobehub/editor/react';
 import { Flexbox, Tooltip } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui/base-ui';
-import { Dropdown } from 'antd';
+import { ActionIcon, DropdownMenu } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
 import { ChevronDownIcon } from 'lucide-react';
 import { memo } from 'react';
@@ -44,12 +43,18 @@ const SendButton = memo(() => {
         generating={generating}
         shape={shape}
         size={controlSize}
+        style={{ minWidth: shape === 'round' ? controlSize : controlSize + 16 }}
         title={generating ? t('stop', { ns: 'common' }) : sendLabel}
         onClick={generating || !canSend ? undefined : () => send()}
         onStop={() => handleStop()}
       />
       {!generating && canSend && sendMenu && (
-        <Dropdown disabled={isDisabled} menu={sendMenu} placement={'topRight'} trigger={['click']}>
+        <DropdownMenu
+          nativeButton
+          items={sendMenu.items}
+          placement={'topRight'}
+          triggerProps={{ disabled: isDisabled }}
+        >
           <ActionIcon
             aria-label={sendOptionsLabel}
             disabled={isDisabled}
@@ -57,7 +62,7 @@ const SendButton = memo(() => {
             size={{ blockSize: controlSize, size: 16 }}
             title={sendOptionsLabel}
           />
-        </Dropdown>
+        </DropdownMenu>
       )}
     </Flexbox>
   );

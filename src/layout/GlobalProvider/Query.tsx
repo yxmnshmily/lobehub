@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { type Cache, SWRConfig } from 'swr';
 
 import { mutate } from '@/libs/swr';
@@ -10,11 +10,47 @@ import { cacheHydration } from '@/libs/swr/cacheHydration';
 import { swrCacheProvider } from '@/libs/swr/localStorageProvider';
 import { getCacheScope, useCacheScope } from '@/libs/swr/useCacheScope';
 import { lambdaQuery, lambdaQueryClient } from '@/libs/trpc/client';
+import { subscribeMaterialDeletion } from '@/utils/materialDeletion';
 
 import SWRMutateInitializer from './SWRMutateInitializer';
 
 const QueryProvider = ({ children }: PropsWithChildren) => {
   const [queryClient] = useState(() => new QueryClient());
+  useEffect(
+    () =>
+      subscribeMaterialDeletion(() => {
+        void queryClient
+          .invalidateQueries({
+            predicate: ({ queryKey }) => {
+              const path = queryKey[0];
+              return (
+                Array.isArray(path) &&
+                [
+                  'customerCenter',
+                  'file',
+                  'document',
+                  'generation',
+                  'generationBatch',
+                  'work',
+                  'platformOperations',
+                ].includes(path[0])
+              );
+            },
+          })
+          .catch((error) => console.error('Failed to refresh material queries:', error));
+        void mutate(
+          (key) =>
+            Array.isArray(key) &&
+            typeof key[0] === 'string' &&
+            /^(?:resource|file|document|work|image|video):/.test(key[0]),
+          // Keep mounted lists and their scroll height while reconciling deletion.
+          // Passing undefined clears every matching cache and flashes loading UI.
+          (currentData: unknown) => currentData,
+          { revalidate: true },
+        ).catch((error) => console.error('Failed to refresh material lists:', error));
+      }),
+    [queryClient],
+  );
   // Cast required because pnpm installs separate QueryClient type instances for trpc and app
   const providerQueryClient = queryClient as unknown as React.ComponentProps<
     typeof lambdaQuery.Provider

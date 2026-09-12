@@ -2,26 +2,7 @@ import { DEFAULT_LANG } from '@/const/locale';
 
 import type resources from './default';
 
-export const locales = [
-  'ar',
-  'bg-BG',
-  'de-DE',
-  'en-US',
-  'es-ES',
-  'fr-FR',
-  'ja-JP',
-  'ko-KR',
-  'pt-BR',
-  'ru-RU',
-  'tr-TR',
-  'zh-CN',
-  'zh-TW',
-  'vi-VN',
-  'fa-IR',
-  'it-IT',
-  'pl-PL',
-  'nl-NL',
-] as const;
+export const locales = ['en-US', 'zh-CN'] as const;
 
 export type DefaultResources = typeof resources;
 export type NS = keyof DefaultResources;
@@ -32,14 +13,10 @@ export const matchLocale = (locale?: string): Locales | undefined => {
 
   const lowerLocale = locale.toLowerCase();
 
-  if (lowerLocale.startsWith('ar')) return 'ar';
-  if (lowerLocale.startsWith('fa')) return 'fa-IR';
+  if (/^(?:zh|cn)(?:-|$)/.test(lowerLocale)) return 'zh-CN';
+  if (/^en(?:-|$)/.test(lowerLocale)) return 'en-US';
 
-  if (lowerLocale.startsWith('cn')) return 'zh-CN';
-  if (lowerLocale.startsWith('zh-hans')) return 'zh-CN';
-  if (lowerLocale.startsWith('zh-hant')) return 'zh-TW';
-
-  return locales.find((l) => l.startsWith(locale));
+  return undefined;
 };
 
 export const normalizeLocale = (locale?: string): Locales => matchLocale(locale) ?? DEFAULT_LANG;
@@ -50,78 +27,8 @@ type LocaleOptions = {
 }[];
 
 export const localeOptions: LocaleOptions = [
-  {
-    label: 'English',
-    value: 'en-US',
-  },
-  {
-    label: '简体中文',
-    value: 'zh-CN',
-  },
-  {
-    label: '繁體中文',
-    value: 'zh-TW',
-  },
-  {
-    label: '日本語',
-    value: 'ja-JP',
-  },
-  {
-    label: '한국어',
-    value: 'ko-KR',
-  },
-  {
-    label: 'Deutsch',
-    value: 'de-DE',
-  },
-  {
-    label: 'Español',
-    value: 'es-ES',
-  },
-  {
-    label: 'العربية',
-    value: 'ar',
-  },
-  {
-    label: 'Français',
-    value: 'fr-FR',
-  },
-  {
-    label: 'Português',
-    value: 'pt-BR',
-  },
-  {
-    label: 'Русский',
-    value: 'ru-RU',
-  },
-  {
-    label: 'Türkçe',
-    value: 'tr-TR',
-  },
-  {
-    label: 'Polski',
-    value: 'pl-PL',
-  },
-  {
-    label: 'Nederlands',
-    value: 'nl-NL',
-  },
-  {
-    label: 'Italiano',
-    value: 'it-IT',
-  },
-  {
-    label: 'Tiếng Việt',
-    value: 'vi-VN',
-  },
-  {
-    label: 'Български',
-    value: 'bg-BG',
-  },
-  {
-    label: 'فارسی',
-    value: 'fa-IR',
-  },
-] as LocaleOptions;
+  { label: '简体中文', value: 'zh-CN' },
+  { label: 'English', value: 'en-US' },
+];
 
 export const supportLocales: string[] = [...locales, 'en', 'zh'];

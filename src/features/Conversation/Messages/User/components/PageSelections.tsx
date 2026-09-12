@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 8px;
 
     background: ${cssVar.colorFillQuaternary};
@@ -45,7 +45,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 6px;
     padding-inline: 10px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     color: ${cssVar.colorTextTertiary};
   `,
@@ -97,7 +97,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     max-height: 200px;
     margin-block: 8px;
     margin-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     object-fit: contain;

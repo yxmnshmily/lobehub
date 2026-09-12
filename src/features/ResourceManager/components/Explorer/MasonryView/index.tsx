@@ -26,6 +26,14 @@ import MasonryViewSkeleton from './Skeleton';
 import { useMasonryViewState } from './useMasonryViewState';
 
 const styles = createStaticStyles(({ css }) => ({
+  content: css`
+    padding-block: 12px 24px;
+    padding-inline: 24px;
+
+    @media (width <= 767px) {
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    }
+  `,
   selectAllHint: css`
     position: sticky;
     z-index: 1;
@@ -33,7 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px;
     padding-inline: 4px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 12px;
     color: ${cssVar.colorTextDescription};
@@ -45,9 +53,10 @@ const styles = createStaticStyles(({ css }) => ({
     z-index: 1;
     inset-block-start: 0;
 
+    margin-block-end: 8px;
     padding-block: 12px;
     padding-inline: 4px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,
@@ -214,7 +223,7 @@ const MasonryView = memo(function MasonryView({
       }}
       onScroll={handleScroll}
     >
-      <div style={{ paddingBlockEnd: 24, paddingBlockStart: 12, paddingInline: 24 }}>
+      <div className={styles.content}>
         <Flexbox horizontal align={'center'} className={styles.toolbar} gap={8}>
           <Checkbox
             checked={allSelected}

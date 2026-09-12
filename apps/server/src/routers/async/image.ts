@@ -22,8 +22,13 @@ import { GenerationBatchModel } from '@/database/models/generationBatch';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { GenerationService } from '@/server/services/generation';
-import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
+import {
+  assertPlatformImagePrepaidSupport,
+  PlatformAiRuntime,
+} from '@/server/services/platformAiRuntime';
 import { PlatformUsageReservationService } from '@/server/services/platformUsageBilling/reservation';
+import { PlatformManagedImageUsageSettlement } from '@/server/services/platformUsageBilling/settlement';
 import { buildPlatformImageSettlementIdentity } from '@/server/services/travelGeneration/platformImageSettlementIdentity';
 import { recoverPlatformImageReservation } from '@/server/services/travelGeneration/settlement';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
@@ -224,7 +229,11 @@ export const imageRouter = router({
         const platformUsageReservationService = platformManagedExecution
           ? new PlatformUsageReservationService(ctx.serverDB, ctx.userId)
           : undefined;
-        if (platformUsageReservationService) {
+        // Owner self-paid runs create no reservation window (maxCredits is
+        // deliberately undefined), so taskMetadata has no
+        // platformUsageReservation; those runs proceed with the per-call
+        // balance gate and direct settlement instead.
+        if (platformUsageReservationService && taskMetadata?.platformUsageReservation) {
           platformReservationHandle = readPlatformImageUsageReservationHandle(
             taskMetadata?.platformUsageReservation,
           );
@@ -278,6 +287,7 @@ export const imageRouter = router({
           if (!reservation || reservation.model !== resolvedModelId) {
             throw new Error('Platform image usage reservation does not match the resolved model.');
           }
+          assertPlatformImagePrepaidSupport();
         }
 
         const imageGenerationPromise = async (signal: AbortSignal) => {
@@ -306,6 +316,15 @@ export const imageRouter = router({
               return { success: true };
             }
             settlementLeaseVersion = claim.reservation.leaseVersion;
+          }
+          if (platformManagedExecution && !platformReservationHandle) {
+            // No upfront reservation for owner self-paid runs; enforce the
+            // minimum-balance gate before the provider call, then settle
+            // actual usage after it succeeds.
+            await new PlatformManagedImageUsageSettlement(
+              ctx.serverDB,
+              ctx.userId,
+            ).assertCanCallProvider();
           }
           log('Agent runtime initialized, calling createImage');
           const runtimeOptions: CreateImageMethodOptions = {
@@ -356,6 +375,19 @@ export const imageRouter = router({
               // provider a second time.
               await platformUsageReservationService.completeAndSettle(settlementInput);
             }
+          } else if (platformManagedExecution) {
+            // Owner/self-paid platform run: no reservation window was created
+            // (maxCredits is deliberately undefined), so settle the actual
+            // provider usage directly — the same no-hold model as the platform
+            // text path.
+            await new PlatformManagedImageUsageSettlement(ctx.serverDB, ctx.userId).settleImage({
+              asyncTaskId: taskId,
+              generationId,
+              model: resolvedModelId,
+              provider,
+              usage: modelUsage,
+              workspaceId: workspaceId ?? undefined,
+            });
           }
 
           // Check if operation has been cancelled
@@ -521,6 +553,13 @@ export const imageRouter = router({
           status: AsyncTaskStatus.Error,
         });
 
+        await notifyGenerationFailed({
+          kind: 'image',
+          asyncTaskId: taskId,
+          topicId: generationTopicId,
+          userId: ctx.userId,
+          workspaceId,
+        });
         log('Image task status updated to error: %s', errorType);
 
         if (

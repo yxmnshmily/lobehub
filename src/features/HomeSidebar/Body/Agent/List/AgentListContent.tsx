@@ -49,11 +49,9 @@ const AgentListContent = memo<AgentListContentProps>(
     });
     const { customList, pinnedList, defaultList } = useAgentList();
     const inboxFallbackTitle =
-      travelGroupStatus && travelGroupStatus !== 'ready'
-        ? t('defaultSession')
-        : '旅游群主AI';
+      travelGroupStatus && travelGroupStatus !== 'ready' ? t('defaultSession') : '旅游群主AI';
 
-  // Memoize computed visibility flags to prevent unnecessary recalculations
+    // Memoize computed visibility flags to prevent unnecessary recalculations
     const { showPinned, showCustom } = useMemo(() => {
       const hasPinned = Boolean(pinnedList?.length);
       const hasCustom = Boolean(customList?.length);
@@ -75,8 +73,8 @@ const AgentListContent = memo<AgentListContentProps>(
         </>
       );
 
-  // Always render the default SessionList so the "+ Create Agent" entry is visible
-  // even when the user has only the built-in Lobe AI inbox.
+    // Always render the default SessionList so the "+ Create Agent" entry is visible
+    // even when the user has only the built-in Lobe AI inbox.
     return (
       <>
         {!hideInbox && <InboxItem fallbackTitle={inboxFallbackTitle} style={{ minHeight: 36 }} />}

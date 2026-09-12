@@ -1,5 +1,5 @@
 import { Tooltip } from '@lobehub/ui';
-import { memo, useCallback } from 'react';
+import { memo, use, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
@@ -12,6 +12,7 @@ import { useAgentId } from '../../hooks/useAgentId';
 import { useAgentModelSelection } from '../../hooks/useAgentModelSelection';
 import { useModelLockTooltip } from '../../hooks/useModelLockTooltip';
 import { useReasoningEffortControl } from '../../hooks/useReasoningEffortControl';
+import { getRuntimeModelLabel, RuntimeModelContext } from '../../RuntimeModelContext';
 import { useActionBarContext } from '../context';
 import SelectorMenu from './SelectorMenu';
 
@@ -110,4 +111,31 @@ const ModelSwitch = memo(() => {
 
 ModelSwitch.displayName = 'ModelSwitch';
 
-export default ModelSwitch;
+export default function ScopedModelSwitch() {
+  const runtimeModel = use(RuntimeModelContext);
+  if (!runtimeModel) return <ModelSwitch />;
+  const label = getRuntimeModelLabel(runtimeModel);
+  const canRetry = runtimeModel.status === 'error' && !!runtimeModel.retry;
+  return (
+    <Tooltip title={canRetry ? label : '群模型由管理员统一配置'}>
+      <SelectorTrigger
+        aria-disabled={!canRetry}
+        ariaLabel={label}
+        role={canRetry ? 'button' : undefined}
+        tabIndex={canRetry ? 0 : undefined}
+        text={label}
+        onClick={canRetry ? runtimeModel.retry : undefined}
+        onKeyDown={
+          canRetry
+            ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  runtimeModel.retry?.();
+                }
+              }
+            : undefined
+        }
+      />
+    </Tooltip>
+  );
+}

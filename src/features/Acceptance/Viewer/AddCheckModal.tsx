@@ -165,7 +165,7 @@ const AddCheckContent = memo<AddCheckContentProps>(({ existingIds, onSubmit }) =
         padding={12}
         style={{
           background: cssVar.colorFillQuaternary,
-          border: `1px solid ${cssVar.colorBorderSecondary}`,
+          border: `0.5px solid ${cssVar.colorBorderSecondary}`,
           borderRadius: 8,
         }}
       >

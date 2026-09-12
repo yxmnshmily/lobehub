@@ -148,7 +148,7 @@ describe('Agent sidebar header nav', () => {
 
     render(<Nav />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
+    fireEvent.click(screen.getByText('actions.addNewTopic'));
 
     expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u');
     expect(mutateMock).toHaveBeenCalledTimes(1);
@@ -159,7 +159,7 @@ describe('Agent sidebar header nav', () => {
 
     render(<Nav />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
+    fireEvent.click(screen.getByText('actions.addNewTopic'));
 
     expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u');
     expect(mutateMock).toHaveBeenCalledTimes(1);
@@ -171,7 +171,7 @@ describe('Agent sidebar header nav', () => {
 
     render(<Nav />);
 
-    const startButton = screen.getByRole('button', { name: 'actions.addNewTopic' });
+    const startButton = screen.getByText('actions.addNewTopic');
     expect(startButton).toBeDisabled();
 
     fireEvent.click(startButton);
@@ -204,39 +204,14 @@ describe('Agent sidebar header nav', () => {
     );
   });
 
-  it('navigates to the agent goals page', () => {
-    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u');
+  it('hides goals and tasks from the agent profile navigation', () => {
+    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/profile');
 
     render(<Nav />);
-    fireEvent.click(screen.getByRole('button', { name: 'goalList.title' }));
 
-    expect(switchTopicMock).toHaveBeenCalledWith(null, { skipRefreshMessage: true });
-    expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u/goals');
+    expect(screen.queryByRole('button', { name: 'goalList.title' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tab.tasks' })).not.toBeInTheDocument();
   });
-
-  it('navigates to the agent tasks page', () => {
-    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u');
-
-    render(<Nav />);
-    fireEvent.click(screen.getByRole('button', { name: 'tab.tasks' }));
-
-    expect(switchTopicMock).toHaveBeenCalledWith(null, { skipRefreshMessage: true });
-    expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u/tasks');
-  });
-
-  it.each(['/agent/agt_eH4zL98zBx5u/tasks', '/agent/agt_eH4zL98zBx5u/task/task_2FCHvjS7d4CA'])(
-    'keeps the tasks entry active on %s',
-    (pathname) => {
-      usePathnameMock.mockReturnValue(pathname);
-
-      render(<Nav />);
-
-      expect(screen.getByRole('button', { name: 'tab.tasks' })).toHaveAttribute(
-        'data-active',
-        'true',
-      );
-    },
-  );
 
   it('navigates to the agent self-learning page', () => {
     usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u');
@@ -267,14 +242,28 @@ describe('Agent sidebar header nav', () => {
     expect(screen.getByRole('button', { name: 'title' })).toHaveAttribute('data-active', 'true');
   });
 
-  it('places topics above profile, goals, self-learning, and tasks in the agent navigation', () => {
+  it.each(['', '/profile', '/channel', '/topics', '/tasks'])(
+    'hides chat shortcuts without removing them on the agent route %s',
+    (suffix) => {
+      usePathnameMock.mockReturnValue(`/agent/agt_eH4zL98zBx5u${suffix}`);
+
+      render(<Nav />);
+
+      for (const name of ['actions.addNewTopic', 'tab.search', 'management.sidebarEntry']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+        expect(screen.getByText(name)).not.toBeVisible();
+      }
+      expect(screen.getByRole('button', { name: 'tab.profile' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'tab.tasks' })).not.toBeInTheDocument();
+    },
+  );
+
+  it('keeps only profile and self-learning in the visible navigation', () => {
     usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u');
 
     render(<Nav />);
 
     const labels = screen.getAllByRole('button').map((button) => button.textContent);
-    expect(labels.indexOf('management.sidebarEntry')).toBeLessThan(labels.indexOf('tab.profile'));
-    expect(labels.indexOf('tab.profile')).toBeLessThan(labels.indexOf('goalList.title'));
-    expect(labels.indexOf('goalList.title')).toBeLessThan(labels.indexOf('tab.tasks'));
+    expect(labels).toEqual(['tab.profile', 'title']);
   });
 });

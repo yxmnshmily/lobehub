@@ -40,9 +40,9 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     id: 'browsecomp',
     category: 'research',
     name: 'BrowseComp',
-    description: 'Measuring the ability for agents to browse the web, comprises 1,266 questions.',
+    description: '评估智能体浏览网页的能力，包含 1,266 道问题。',
     icon: Globe,
-    formatDescription: 'format: Topic (category/tags), Question (input), Answer (expected)',
+    formatDescription: '格式： Topic （分类/标签）, Question （输入）, Answer （预期答案）',
     requiredFields: ['question', 'answer', 'problem_topic', 'canary'],
     optionalFields: ['case_id'],
     fieldInference: {
@@ -61,9 +61,9 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     id: 'browsecomp-zh',
     category: 'research',
     name: 'BrowseComp-ZH',
-    description: 'Chinese web browsing: 289 multi-step reasoning questions',
+    description: '中文网页浏览评测：289 道多步骤推理问题。',
     icon: Globe,
-    formatDescription: 'format: Topic (category/tags), Question (input), Answer (expected)',
+    formatDescription: '格式： Topic （分类/标签）, Question （输入）, Answer （预期答案）',
     requiredFields: ['Question', 'Answer'],
     optionalFields: ['Topic', 'canary', 'case_id'],
     fieldInference: {
@@ -82,10 +82,9 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     id: 'widesearch',
     category: 'research',
     name: 'WideSearch',
-    description:
-      'Evaluating the capabilities of agents in broad information-seeking tasks, consisting of 200 questions.',
+    description: '评估智能体广泛收集信息的能力，包含 200 道问题。',
     icon: Globe,
-    formatDescription: 'format: instance_id, query (input), evaluation (expected), language',
+    formatDescription: '格式： instance_id, query （输入）, evaluation （预期答案）, language',
     requiredFields: ['instance_id', 'query', 'evaluation', 'language'],
     optionalFields: ['case_id'],
     fieldInference: {
@@ -104,12 +103,11 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
   'hle-text': {
     id: 'hle-text',
     category: 'research',
-    name: "Humanity's Last Exam, HLE (Text Only)",
-    description:
-      "Humanity's Last Exam (HLE) is a multi-modal benchmark at the frontier of human knowledge, consisting of 2150 questions.",
+    name: '人类终极考试 HLE（纯文本）',
+    description: '人类终极考试（HLE）是覆盖人类知识前沿的多模态评测，包含 2,150 道问题。',
     icon: Globe,
     formatDescription:
-      'format: id, question (input), answer (expected), answer_type, rationale, raw_subject, category',
+      '格式： id, question （输入）, answer （预期答案）, answer_type, rationale, raw_subject, category',
     requiredFields: [
       'id',
       'question',
@@ -131,12 +129,12 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
   'hle-verified': {
     id: 'hle-verified',
     category: 'research',
-    name: "Humanity's Last Exam, HLE (Verified Answers)",
+    name: '人类终极考试 HLE（已核验答案）',
     description:
-      "A subset of Humanity's Last Exam (HLE) with verified answers, designed to evaluate the ability to produce correct answers rather than just plausible ones.",
+      '人类终极考试（HLE）的已核验答案子集，用于评估生成正确答案而非仅看似合理答案的能力。',
     icon: Globe,
     formatDescription:
-      'format: id, question (input), answer (expected), answer_type, rationale, raw_subject, category, Verified_Classes',
+      '格式： id, question （输入）, answer （预期答案）, answer_type, rationale, raw_subject, category, Verified_Classes',
     requiredFields: [
       'id',
       'question',
@@ -161,7 +159,7 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     category: 'research',
     name: 'DeepSearchQA',
     description:
-      'A 900-prompt factuality benchmark from Google DeepMind, designed to evaluate agents on difficult multi-step information-seeking tasks across 17 different fields.',
+      'Google DeepMind 的事实准确性评测，包含 900 道题目，覆盖 17 个领域的复杂多步骤信息检索任务。',
     icon: Globe,
     formatDescription: 'problem, problem_category, answer, answer_type',
     requiredFields: ['problem', 'answer', 'problem_category', 'answer_type'],
@@ -184,9 +182,9 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     category: 'research',
     name: 'SealQA',
     description:
-      'SealQA is a new challenge benchmark for evaluating SEarch- Augmented Language models on fact-seeking questions where web search yields conflicting, noisy, or unhelpful results.',
+      'SealQA 用于评估搜索增强语言模型在搜索结果相互冲突、噪声较多或缺少有效信息时回答事实问题的能力。',
     icon: Globe,
-    formatDescription: 'format: question (input), answer (expected), topic (category)',
+    formatDescription: '格式： question （输入）, answer （预期答案）, topic （分类）',
     requiredFields: ['question', 'answer', 'topic', 'canary'],
     optionalFields: ['case_id'],
     fieldInference: {
@@ -205,10 +203,9 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
     id: 'xbench',
     category: 'research',
     name: 'xbench',
-    description: 'Chinese search: ~200 factual query questions',
+    description: '中文搜索评测：约 200 道事实查询问题。',
     icon: Globe,
-    formatDescription:
-      'format: id (item number), prompt (input), type (metadata), answer (expected)',
+    formatDescription: '格式： id （编号）, prompt （输入）, type （元数据）, answer （预期答案）',
     requiredFields: ['prompt', 'answer'],
     optionalFields: ['type', 'id'],
     fieldInference: {
@@ -228,11 +225,10 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
   'mmlu': {
     id: 'mmlu',
     category: 'reference',
-    name: 'MMLU (Reference)',
-    description: 'Multiple choice format (for reference only)',
+    name: 'MMLU（参考）',
+    description: '选择题格式（仅供参考）',
     icon: Globe,
-    formatDescription:
-      'format: question, choices array (or A/B/C/D columns), answer (index/letter)',
+    formatDescription: '格式： question, choices 数组（或 A/B/C/D 列）, answer （索引/字母）',
     requiredFields: ['question', 'choices', 'answer'],
     optionalFields: ['subject', 'difficulty'],
     fieldInference: {
@@ -252,11 +248,10 @@ export const DATASET_PRESETS: Record<string, DatasetPreset> = {
   'custom': {
     id: 'custom',
     category: 'custom',
-    name: 'Custom',
-    description: 'Define your own field mapping',
+    name: '自定义',
+    description: '自定义字段映射',
     icon: Database,
-    formatDescription:
-      'Custom format - you define the mapping. Only requirement: must have an "input" field.',
+    formatDescription: '自定义格式：由你配置字段映射，必须包含 input 字段。',
     requiredFields: ['input'],
     optionalFields: ['expected', 'choices', 'category', 'metadata'],
     fieldInference: {

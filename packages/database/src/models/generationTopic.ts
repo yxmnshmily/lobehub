@@ -3,12 +3,12 @@ import type {
   ImageGenerationTopic,
   VideoGenerationAsset,
 } from '@lobechat/types';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
 import { FileService } from '@/server/services/file';
 
 import type { GenerationTopicItem } from '../schemas/generation';
-import { generationTopics } from '../schemas/generation';
+import { generationBatches, generations, generationTopics } from '../schemas/generation';
 import { users } from '../schemas/user';
 import type { LobeChatDatabase } from '../type';
 import type { GenerationTopicType } from '../types/generation';
@@ -40,8 +40,31 @@ export class GenerationTopicModel {
       conditions.push(eq(generationTopics.type, type));
     }
 
+    const latestImage = this.db
+      .select({
+        url: sql<string>`coalesce(nullif(${generations.asset}->>'thumbnailUrl', ''), nullif(${generations.asset}->>'url', ''))`.as(
+          'latest_image_url',
+        ),
+      })
+      .from(generations)
+      .innerJoin(generationBatches, eq(generationBatches.id, generations.generationBatchId))
+      .where(
+        and(
+          eq(generationBatches.generationTopicId, generationTopics.id),
+          eq(generationTopics.type, 'image'),
+          sql`${generations.asset}->>'type' = 'image'`,
+          sql`coalesce(nullif(${generations.asset}->>'thumbnailUrl', ''), nullif(${generations.asset}->>'url', '')) is not null`,
+          isNull(generations.deletedAt),
+          isNull(generationBatches.deletedAt),
+        ),
+      )
+      .orderBy(desc(generations.createdAt), desc(generations.id))
+      .limit(1)
+      .as('latest_image');
+
     const rows = await this.db
       .select({
+        latestImageUrl: latestImage.url,
         avatar: users.avatar,
         fullName: users.fullName,
         topic: generationTopics,
@@ -49,14 +72,14 @@ export class GenerationTopicModel {
       })
       .from(generationTopics)
       .leftJoin(users, eq(generationTopics.userId, users.id))
+      .leftJoinLateral(latestImage, sql`true`)
       .orderBy(desc(generationTopics.updatedAt))
       .where(and(...conditions));
 
     return Promise.all(
-      rows.map(async ({ topic, avatar, fullName, username }) => {
-        const coverUrl = topic.coverUrl
-          ? await this.fileService.getFullFileUrl(topic.coverUrl)
-          : topic.coverUrl;
+      rows.map(async ({ topic, avatar, fullName, username, latestImageUrl }) => {
+        const coverKey = latestImageUrl ?? topic.coverUrl;
+        const coverUrl = coverKey ? await this.fileService.getFullFileUrl(coverKey) : coverKey;
         return {
           ...topic,
           coverUrl,

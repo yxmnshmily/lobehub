@@ -2,519 +2,237 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook } from '@testing-library/react';
-import { createRef, type RefObject } from 'react';
 import { type VListHandle } from 'virtua';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type * as ConversationStoreModule from '../../store';
-import { useConversationStore } from '../../store';
-import {
-  calculateConversationSpacerHeight,
-  CONVERSATION_SPACER_ID,
-  getConversationSpacerScrollEffect,
-  useConversationScroll,
-} from './useConversationScroll';
+import { useConversationScroll } from './useConversationScroll';
 
-vi.mock('../../store', async (importOriginal) => {
-  const actual = await importOriginal<typeof ConversationStoreModule>();
-  return {
-    ...actual,
-    useConversationStore: vi.fn(),
-  };
+const state = vi.hoisted(() => ({
+  displayMessages: [] as { id: string; role: string }[],
+  operationState: { isAIGenerating: false },
+}));
+vi.mock('../../store', () => ({
+  useConversationStore: (selector: (value: typeof state) => unknown) => selector(state),
+  dataSelectors: { displayMessages: (s: typeof state) => s.displayMessages },
+  messageStateSelectors: { isAIGenerating: (s: typeof state) => s.operationState.isAIGenerating },
+}));
+
+let resize: () => void;
+beforeEach(() => {
+  vi.useFakeTimers();
+  state.displayMessages = [{ id: 'old', role: 'assistant' }];
+  state.operationState.isAIGenerating = false;
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: () => void) {
+        resize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
 });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+const flush = () =>
+  act(() => {
+    vi.runOnlyPendingTimers();
+  });
 
-// ResizeObserver mock capturing the latest callback so tests can trigger it.
-class MockResizeObserver {
-  static latest: MockResizeObserver | null = null;
-  callback: ResizeObserverCallback;
-  observed: Element[] = [];
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-    MockResizeObserver.latest = this;
-  }
-  observe(el: Element) {
-    this.observed.push(el);
-  }
-  disconnect() {
-    this.observed = [];
-  }
-  unobserve() {}
-  trigger() {
-    this.callback([], this as unknown as ResizeObserver);
-  }
+function setup(
+  options: { autoScrollEnabled?: boolean; footerOffset?: number; headerOffset?: number } = {},
+) {
+  const handle = {
+    scrollToIndex: vi.fn(),
+    scrollSize: 1600,
+    viewportSize: 600,
+    scrollOffset: 1000,
+  };
+  const container = document.createElement('div');
+  container.innerHTML = '<div data-conversation-viewport><div></div></div>';
+  const cancelRestore = vi.fn();
+  const hook = renderHook(
+    ({ dataSource, contextKey }) =>
+      useConversationScroll({
+        ...options,
+        cancelRestore,
+        containerRef: { current: container },
+        contextKey,
+        dataSource,
+        virtuaRef: { current: handle as unknown as VListHandle },
+      }),
+    { initialProps: { dataSource: ['old'], contextKey: 'main_agent_topic' } },
+  );
+  const update = (ids: string[], contextKey = 'main_agent_topic') => {
+    state.displayMessages = ids.map((id) => ({
+      id,
+      role: id.startsWith('user') ? 'user' : 'assistant',
+    }));
+    hook.rerender({ dataSource: ids, contextKey });
+    flush();
+  };
+  return { ...hook, update, handle, cancelRestore };
 }
 
-describe('useConversationScroll — helpers', () => {
-  it('calculates remaining spacer height behind the latest assistant message', () => {
-    expect(calculateConversationSpacerHeight(800, 200, 80)).toBe(520);
+describe('conversation bottom following', () => {
+  it('follows the latest reply instead of pinning the user turn at the top', () => {
+    const { update, handle, cancelRestore } = setup();
+    update(['old', 'user', 'reply']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(2, { align: 'end', smooth: false });
+    expect(cancelRestore).toHaveBeenCalledOnce();
   });
 
-  it('clamps spacer height to zero when content already fills the viewport', () => {
-    expect(calculateConversationSpacerHeight(800, 300, 600)).toBe(0);
+  it('handles a user message and assistant placeholder arriving in separate renders', () => {
+    const { update, handle } = setup();
+    update(['old', 'user']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(1, { align: 'end', smooth: false });
+    update(['old', 'user', 'reply']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(2, { align: 'end', smooth: false });
   });
 
-  it('keeps the reserved spacer id stable', () => {
-    expect(CONVERSATION_SPACER_ID).toBe('__conversation_spacer__');
+  it('follows tool/image height changes even when message count and text are unchanged', () => {
+    const { update, handle } = setup();
+    update(['old', 'user', 'reply']);
+    handle.scrollToIndex.mockClear();
+    handle.scrollSize = 2600;
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).toHaveBeenCalledWith(2, { align: 'end', smooth: false });
   });
 
-  it('cancels pin retries without shrinking the spacer while AI is streaming', () => {
-    expect(
-      getConversationSpacerScrollEffect({
-        delta: -24,
-        hasPrevOffset: true,
-        hasUserIntent: true,
-        isAIGenerating: true,
-        isMounted: true,
-      }),
-    ).toEqual({ cancelPin: true, shrinkSpacer: false });
+  it('pauses on manual upward scrolling and resumes when Back to Bottom is clicked', () => {
+    const { update, handle, result } = setup();
+    update(['old', 'user', 'reply']);
+    act(() => result.current.onScrollOffset(1000));
+    act(() => result.current.onScrollOffset(850, true));
+    handle.scrollToIndex.mockClear();
+    act(() => resize());
+    flush();
+    update(['old', 'user', 'reply', 'tool']);
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
+    act(() => result.current.resumeFollowing());
+    flush();
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(3, { align: 'end', smooth: false });
   });
 
-  it('both cancels pin retries and shrinks the spacer after streaming stops', () => {
-    expect(
-      getConversationSpacerScrollEffect({
-        delta: -24,
-        hasPrevOffset: true,
-        hasUserIntent: true,
-        isAIGenerating: false,
-        isMounted: true,
-      }),
-    ).toEqual({ cancelPin: true, shrinkSpacer: true });
+  it('keeps an explicit history jump paused through queued frames, resize and stale bottom events', () => {
+    const { update, handle, result, cancelRestore } = setup();
+    update(['old', 'user', 'reply']);
+    handle.scrollToIndex.mockClear();
+    cancelRestore.mockClear();
+    act(() => resize());
+    act(() => result.current.pauseFollowing());
+    // The virtual list can emit the previous bottom offset before landing.
+    act(() => result.current.onScrollOffset(1000));
+    act(() => result.current.onScrollOffset(200));
+    act(() => resize());
+    flush();
+    update(['old', 'user', 'reply', 'tool']);
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
+    expect(cancelRestore).toHaveBeenCalledOnce();
+    act(() => result.current.resumeFollowing());
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(3, { align: 'end', smooth: false });
   });
 
-  it('does nothing when there is no previous offset to diff against', () => {
-    expect(
-      getConversationSpacerScrollEffect({
-        delta: -999,
-        hasPrevOffset: false,
-        hasUserIntent: true,
-        isAIGenerating: false,
-        isMounted: true,
-      }),
-    ).toEqual({ cancelPin: false, shrinkSpacer: false });
+  it('resumes after a history jump when the user scrolls to bottom or sends again', () => {
+    const { update, handle, result } = setup();
+    update(['old', 'user', 'reply']);
+    act(() => result.current.pauseFollowing());
+    act(() => result.current.onScrollOffset(200));
+    act(() => result.current.onScrollOffset(1000, true));
+    handle.scrollToIndex.mockClear();
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).toHaveBeenCalled();
+    act(() => result.current.pauseFollowing());
+    update(['old', 'user', 'reply', 'user-next']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(3, { align: 'end', smooth: false });
   });
 
-  it('ignores layout-driven negative offsets without user scroll intent', () => {
-    expect(
-      getConversationSpacerScrollEffect({
-        delta: -24,
-        hasPrevOffset: true,
-        hasUserIntent: false,
-        isAIGenerating: false,
-        isMounted: true,
-      }),
-    ).toEqual({ cancelPin: false, shrinkSpacer: false });
-  });
-});
-
-describe('useConversationScroll — pin behavior', () => {
-  const scrollToIndex = vi.fn();
-  const virtuaRef: RefObject<VListHandle | null> = createRef<VListHandle>();
-  const assistantId = 'assistant-1';
-  const userId = 'user-1';
-
-  /**
-   * State the mocked store will return. displayMessages is read by the hook
-   * to verify "user + assistant pair was just appended".
-   */
-  type StoreFixture = {
-    displayMessages: Array<{ id: string; role: 'user' | 'assistant' }>;
-    isAIGenerating: boolean;
-    virtuaScrollMethods: {
-      getItemOffset?: (i: number) => number;
-      getItemSize?: (i: number) => number;
-      getScrollOffset?: () => number;
-      getViewportSize?: () => number;
-    } | null;
-  };
-
-  // Latest fixture is mutable so rerenders see up-to-date displayMessages.
-  let currentFixture: StoreFixture = {
-    displayMessages: [],
-    isAIGenerating: false,
-    virtuaScrollMethods: null,
-  };
-
-  const deriveDisplayMessages = (isSecondLastFromUser: boolean) =>
-    isSecondLastFromUser
-      ? [
-          { id: userId, role: 'user' as const },
-          { id: assistantId, role: 'assistant' as const },
-        ]
-      : [{ id: assistantId, role: 'assistant' as const }];
-
-  const installStoreMock = () => {
-    vi.mocked(useConversationStore).mockImplementation((selector: any) => {
-      const probe: any = {
-        displayMessages: currentFixture.displayMessages,
-        operationState: { isAIGenerating: currentFixture.isAIGenerating },
-        virtuaScrollMethods: currentFixture.virtuaScrollMethods,
-      };
-      return selector(probe);
-    });
-  };
-
-  const renderScrollHook = (props: {
-    contextKey?: string;
-    dataSource: string[];
-    headerOffset?: number;
-    isSecondLastMessageFromUser: boolean;
-    fixture?: Partial<StoreFixture>;
-  }) => {
-    currentFixture = {
-      displayMessages: deriveDisplayMessages(props.isSecondLastMessageFromUser),
-      isAIGenerating: false,
-      virtuaScrollMethods: {
-        getScrollOffset: () => 0,
-        getViewportSize: () => 800,
-      },
-      ...props.fixture,
-    };
-    installStoreMock();
-
-    const hook = renderHook(
-      ({ contextKey, dataSource, isSecondLastMessageFromUser }) =>
-        useConversationScroll({
-          contextKey,
-          dataSource,
-          headerOffset: props.headerOffset,
-          isSecondLastMessageFromUser,
-          virtuaRef,
-        }),
-      {
-        initialProps: {
-          contextKey: props.contextKey,
-          dataSource: props.dataSource,
-          isSecondLastMessageFromUser: props.isSecondLastMessageFromUser,
-        },
-      },
-    );
-
-    const rerender = (next: {
-      contextKey?: string;
-      dataSource: string[];
-      isSecondLastMessageFromUser: boolean;
-    }) => {
-      currentFixture = {
-        ...currentFixture,
-        displayMessages: deriveDisplayMessages(next.isSecondLastMessageFromUser),
-      };
-      hook.rerender({ contextKey: undefined, ...next });
-    };
-
-    return { ...hook, rerender };
-  };
-
-  beforeEach(() => {
-    scrollToIndex.mockReset();
-    // Attach a live mock handle; scrollToPinned reads virtuaRef.current at call time.
-    virtuaRef.current = { scrollToIndex } as unknown as VListHandle;
-    vi.stubGlobal('ResizeObserver', MockResizeObserver);
-    MockResizeObserver.latest = null;
-    vi.useFakeTimers();
+  it('does not treat workflow collapse as manual scrolling', () => {
+    const { update, handle, result } = setup();
+    update(['old', 'user', 'reply']);
+    act(() => result.current.onScrollOffset(1000));
+    act(() => result.current.onScrollOffset(500, false));
+    handle.scrollToIndex.mockClear();
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).toHaveBeenCalled();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
+  it('a new send resumes following after reading history, but an ID replacement does not', () => {
+    const { update, handle, result } = setup();
+    update(['old', 'user-temp', 'reply-temp']);
+    act(() => result.current.onScrollOffset(1000));
+    act(() => result.current.onScrollOffset(400, true));
+    handle.scrollToIndex.mockClear();
+    update(['old', 'user-real', 'reply-real']);
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
+    update(['old', 'user-real', 'reply-real', 'user-next', 'reply-next']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(4, { align: 'end', smooth: false });
   });
 
-  it('scrolls to the user message when a user+assistant pair is appended', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: [assistantId, 'prev'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).toHaveBeenCalledTimes(1);
-    expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'start', smooth: true });
+  it('does not mistake prepended history for a new send', () => {
+    const { update, handle } = setup();
+    update(['user-history', 'reply-history', 'old']);
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('translates the pin target by headerOffset when a header slot row is present', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: [assistantId, 'prev'],
-      headerOffset: 1,
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    // User message index 2 sits at virtua row 3 (header row 0 + messages).
-    expect(scrollToIndex).toHaveBeenCalledTimes(1);
-    expect(scrollToIndex).toHaveBeenCalledWith(3, { align: 'start', smooth: true });
+  it('leaves real topic changes to the history restoration controller', () => {
+    const { update, handle } = setup();
+    update(['old', 'user', 'reply']);
+    handle.scrollToIndex.mockClear();
+    update(['old-other', 'user-other', 'reply-other'], 'main_agent_other');
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('does not scroll when only the assistant message is appended', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: [userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    scrollToIndex.mockClear();
-
-    rerender({
-      dataSource: [userId, assistantId, 'followup'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
+  it('lands after header and footer slots without adding a blank spacer', () => {
+    const { update, handle } = setup({ headerOffset: 1, footerOffset: 1 });
+    update(['old', 'user', 'reply']);
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(4, { align: 'end', smooth: false });
   });
 
-  it('does not scroll when the dataSource length is unchanged', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: ['a', 'b', 'c', 'd'],
-      isSecondLastMessageFromUser: true,
-    });
-    scrollToIndex.mockClear();
-
-    rerender({
-      dataSource: ['a', 'b', 'c', 'd'],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
+  it('keeps following when a draft is promoted to its saved topic ID', () => {
+    const { update, handle, result } = setup();
+    update(['old'], 'main_agent_new');
+    act(() => result.current.resumeFollowing());
+    flush();
+    update(['old', 'user', 'reply'], 'main_agent_new');
+    handle.scrollToIndex.mockClear();
+    update(['old', 'user-real', 'reply-real'], 'main_agent_saved');
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).toHaveBeenLastCalledWith(2, { align: 'end', smooth: false });
   });
 
-  it('does not scroll when the dataSource shrinks (deletion)', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: ['a', 'b', 'c', 'd', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    scrollToIndex.mockClear();
-
-    rerender({
-      dataSource: ['a', 'b', 'c', 'd'],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
+  it('respects disabled streaming auto-scroll but still locates a newly sent message', () => {
+    const { update, handle } = setup({ autoScrollEnabled: false });
+    update(['old', 'user', 'reply']);
+    expect(handle.scrollToIndex).toHaveBeenCalledOnce();
+    handle.scrollToIndex.mockClear();
+    act(() => resize());
+    flush();
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('does not treat a topic switch as a send even when the length delta is +2', () => {
-    const { rerender } = renderScrollHook({
-      contextKey: 'main_agt_1_tpc_a',
-      dataSource: [assistantId, 'prev'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      contextKey: 'main_agt_1_tpc_b',
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
+  it('cancels queued scrolling when the component unmounts', () => {
+    const { result, handle, unmount } = setup();
+    act(() => result.current.resumeFollowing());
+    handle.scrollToIndex.mockClear();
+    act(() => resize());
+    unmount();
+    flush();
+    expect(handle.scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('deactivates a live spacer when the context switches', async () => {
-    const { result, rerender } = renderScrollHook({
-      contextKey: 'main_agt_1_tpc_a',
-      dataSource: [assistantId, 'prev'],
-      isSecondLastMessageFromUser: false,
-      fixture: {
-        virtuaScrollMethods: {
-          getItemOffset: (i: number) => i * 100,
-          getItemSize: () => 80,
-          getScrollOffset: () => 0,
-          getViewportSize: () => 800,
-        },
-      },
-    });
-
-    rerender({
-      contextKey: 'main_agt_1_tpc_a',
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(50);
-    });
-
-    expect(result.current.spacerActive).toBe(true);
-
-    rerender({
-      contextKey: 'main_agt_1_tpc_b',
-      dataSource: ['x0', 'x1', 'x2'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    expect(result.current.spacerActive).toBe(false);
-    expect(result.current.listData).toEqual(['x0', 'x1', 'x2']);
-  });
-
-  it('does not throw or scroll when virtuaRef is not ready at send time', () => {
-    virtuaRef.current = null;
-
-    const { rerender } = renderScrollHook({
-      dataSource: [assistantId],
-      isSecondLastMessageFromUser: false,
-    });
-
-    expect(() =>
-      rerender({
-        dataSource: ['m0', userId, assistantId],
-        isSecondLastMessageFromUser: true,
-      }),
-    ).not.toThrow();
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
-  });
-
-  it('stops pinning once the user scrolls up', () => {
-    const { result, rerender } = renderScrollHook({
-      dataSource: [assistantId, 'prev'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    expect(scrollToIndex).toHaveBeenCalledTimes(1);
-    scrollToIndex.mockClear();
-
-    // User scrolls up: offset decreased (hook tracks prev via getScrollOffset=0)
-    act(() => {
-      // simulate viewport mount via prev offset seeding: first call seeds prev=0
-      result.current.onScrollOffset(0);
-      // then user scrolls up (negative delta)
-      result.current.onScrollOffset(-50, true);
-    });
-
-    // Simulate a later layout bump that would have re-fired a scroll before.
-    // Since pin was cleared, no scroll should be called.
-    // Re-render with same dataSource triggers the pin-re-fire effect path only
-    // when pinRef is set; it's null now.
-    rerender({
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
-  });
-
-  // Regression: settle re-pins fire while the content height is still changing
-  // (e.g. a workflow collapse at turn completion). A smooth scroll there is
-  // itself a visible slide, so only the initial send scroll may animate.
-  it('re-pins without smooth scrolling once the spacer layout settles', () => {
-    const { result, rerender } = renderScrollHook({
-      dataSource: [assistantId, 'prev'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      dataSource: ['m0', 'm1', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'start', smooth: true });
-    scrollToIndex.mockClear();
-
-    // Registering the spacer node bumps spacerLayoutVersion, which is the
-    // "layout settled" beat the pin controller retries on.
-    const spacerNode = document.createElement('div');
-    act(() => {
-      result.current.registerSpacerNode(spacerNode);
-    });
-
-    expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'start', smooth: false });
-  });
-
-  it('does not scroll on initial render', () => {
-    renderScrollHook({
-      dataSource: ['a', 'b', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).not.toHaveBeenCalled();
-  });
-
-  it('targets the correct index when multiple turns accumulate', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: ['a', 'b', 'c', 'd'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    rerender({
-      dataSource: ['a', 'b', 'c', 'd', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).toHaveBeenLastCalledWith(4, { align: 'start', smooth: true });
-  });
-
-  it('updates the pin index for the latest turn when a second pair is appended', () => {
-    const { rerender } = renderScrollHook({
-      dataSource: ['a', 'b'],
-      isSecondLastMessageFromUser: false,
-    });
-
-    // first send
-    rerender({
-      dataSource: ['a', 'b', userId, assistantId],
-      isSecondLastMessageFromUser: true,
-    });
-    expect(scrollToIndex).toHaveBeenLastCalledWith(2, { align: 'start', smooth: true });
-
-    // second send — fixture keeps displayMessages ending in user+assistant
-    rerender({
-      dataSource: ['a', 'b', userId, assistantId, 'u2', 'a2'],
-      isSecondLastMessageFromUser: true,
-    });
-
-    expect(scrollToIndex).toHaveBeenLastCalledWith(4, { align: 'start', smooth: true });
-  });
-
-  // Regression: the messages ResizeObserver must rebind to the freshly sent
-  // user + assistant DOM nodes. The earlier memo had `[dataSource,
-  // displayMessages]` deps but read an ref that is updated later inside the
-  // send-detection effect — so the signature could remain stale on the next
-  // render and the observer would never hook the new turn.
-  it('observes the freshly sent user + assistant DOM nodes after a send', async () => {
-    // Render user/assistant nodes with data-message-id so the hook's
-    // document.querySelector('[data-message-id="..."]') can find them.
-    const userEl = document.createElement('div');
-    userEl.setAttribute('data-message-id', userId);
-    const assistantEl = document.createElement('div');
-    assistantEl.setAttribute('data-message-id', assistantId);
-    document.body.append(userEl, assistantEl);
-
-    try {
-      const { rerender } = renderScrollHook({
-        dataSource: [assistantId, 'prev'],
-        isSecondLastMessageFromUser: false,
-      });
-
-      // Grab the observer that was created before the send. It may already
-      // exist (empty deps) or not; either way we reset the "latest" slot so
-      // the post-send observer is the one we inspect.
-      MockResizeObserver.latest = null;
-
-      rerender({
-        dataSource: ['m0', 'm1', userId, assistantId],
-        isSecondLastMessageFromUser: true,
-      });
-
-      // Flush any pending microtasks + rAFs the send effect scheduled.
-      await act(async () => {
-        vi.runAllTimers();
-        await Promise.resolve();
-      });
-
-      const observer = MockResizeObserver.latest as MockResizeObserver | null;
-      expect(observer, 'no ResizeObserver was created for messages').not.toBeNull();
-      const observedIds = observer!.observed.map((el: Element) =>
-        (el as HTMLElement).getAttribute('data-message-id'),
-      );
-      expect(observedIds).toContain(userId);
-      expect(observedIds).toContain(assistantId);
-    } finally {
-      userEl.remove();
-      assistantEl.remove();
-    }
+  it('honors Back to Bottom immediately without waiting for an animation frame', () => {
+    const { result, handle } = setup();
+    act(() => result.current.resumeFollowing());
+    expect(handle.scrollToIndex).toHaveBeenCalledWith(0, { align: 'end', smooth: false });
   });
 });

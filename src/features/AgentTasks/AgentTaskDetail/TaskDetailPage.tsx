@@ -1,15 +1,16 @@
 import { Flexbox } from '@lobehub/ui';
 import { Button } from '@lobehub/ui/base-ui';
-import { memo } from 'react';
+import { memo, use } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 
 import NotFound from '@/components/404';
 import AsyncError from '@/components/AsyncError';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
 import NavHeader from '@/features/NavHeader';
+import { GroupProjectScopeContext } from '@/features/Projects/Layout/GroupProjectScope';
 import ToggleRightPanelButton from '@/features/RightPanel/ToggleRightPanelButton';
 import WideScreenContainer from '@/features/WideScreenContainer';
+import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 import { useTaskStore } from '@/store/task';
@@ -29,6 +30,7 @@ interface TaskDetailPageProps {
 
 const TaskDetailPage = memo<TaskDetailPageProps>(({ taskId, showTaskAgentPanelToggle = true }) => {
   const { t } = useTranslation('chat');
+  const compact = Boolean(use(GroupProjectScopeContext));
   const saveStatus = useTaskStore(taskDetailSelectors.taskSaveStatus);
   const [showTaskAgentPanel, toggleTaskAgentPanel] = useGlobalStore((s) => [
     systemStatusSelectors.showTaskAgentPanel(s),
@@ -65,9 +67,9 @@ const TaskDetailPage = memo<TaskDetailPageProps>(({ taskId, showTaskAgentPanelTo
             desc={t('taskDetail.notFound.desc')}
             title={t('taskDetail.notFound.title')}
             extra={
-              <Link to={'/tasks'}>
+              <WorkspaceLink to={'/tasks'}>
                 <Button type={'primary'}>{t('taskDetail.notFound.backToTasks')}</Button>
-              </Link>
+              </WorkspaceLink>
             }
           />
         </Flexbox>
@@ -78,6 +80,8 @@ const TaskDetailPage = memo<TaskDetailPageProps>(({ taskId, showTaskAgentPanelTo
   return (
     <Flexbox flex={1} height={'100%'} style={{ minHeight: 0, position: 'relative' }}>
       <NavHeader
+        height={compact ? 36 : 44}
+        showTogglePanelButton={!compact}
         left={
           <>
             <Breadcrumb taskId={taskId} />
@@ -104,11 +108,12 @@ const TaskDetailPage = memo<TaskDetailPageProps>(({ taskId, showTaskAgentPanelTo
         }}
       />
       <Flexbox flex={1} style={{ minHeight: 0, overflowY: 'auto' }}>
-        {/* Detail is prose — instruction, deliverables, activity — so it keeps the
-            centered reading column rather than the list page's full-bleed rows,
-            whose value is the horizontal room for their metadata columns. */}
-        <WideScreenContainer>
-          {isInitialLoading ? <TaskDetailSkeleton /> : <TaskDetailSections />}
+        {/* Group projects use the available pane; standalone tasks retain their reading column. */}
+        <WideScreenContainer
+          fullWidth={compact}
+          paddingInline={compact ? 'clamp(16px, 3vw, 40px)' : 16}
+        >
+          {isInitialLoading ? <TaskDetailSkeleton /> : <TaskDetailSections compact={compact} />}
         </WideScreenContainer>
       </Flexbox>
       <TopicChatDrawer />

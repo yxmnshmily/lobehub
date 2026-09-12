@@ -1,7 +1,6 @@
 import type { AgentRuntimeContext } from '@lobechat/agent-runtime';
 import type { ExecAgentResult, MessagePluginItem } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
-import debug from 'debug';
 
 import { matchesAgentInterventionContinuationProvenance } from '@/business/server/agent-run/agentInterventionIdentity';
 import type { AgentOperationModel } from '@/database/models/agentOperation';
@@ -10,9 +9,8 @@ import { HumanApprovalAlreadyResolvedError } from '@/database/models/message';
 import { signUserJWT } from '@/libs/trpc/utils/internalJwt';
 import type { AgentRuntimeService } from '@/server/services/agentRuntime';
 
+import { aiAgentDebug as log } from '../safeDebug';
 import type { InternalExecAgentParams } from '../types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 /**
  * Mutable rollback guard owned by `execAgentWithApprovalRollback`. The claim

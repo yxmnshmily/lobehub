@@ -1404,12 +1404,53 @@ describe('LobeOpenAICompatibleFactory', () => {
             endpoint: defaultBaseURL,
             error: {
               cause: { message: 'api is undefined' },
+              status: 400,
             },
             errorType: bizErrorType,
             message: expect.any(String),
             provider,
           });
         }
+      });
+
+      it('should preserve Error cause classification with the top-level HTTP status', async () => {
+        const message = 'Resource has been exhausted (e.g. check quota).';
+        const apiError = new OpenAI.APIError(429, null as any, 'module error', new Headers());
+        (apiError as any).cause = new Error(message);
+
+        vi.spyOn(instance['client'].chat.completions, 'create').mockRejectedValue(apiError);
+
+        await expect(
+          instance.chat({
+            messages: [{ content: 'Hello', role: 'user' }],
+            model: 'mistralai/mistral-7b-instruct:free',
+            temperature: 0,
+          }),
+        ).rejects.toMatchObject({
+          error: { message, name: 'Error', status: 429 },
+          errorType: AgentRuntimeErrorType.RateLimitExceeded,
+          provider,
+        });
+      });
+
+      it('should preserve a lowercase provider code from an Error cause', async () => {
+        const cause = Object.assign(new Error('Unknown model'), { code: 'model_not_found' });
+        const apiError = new OpenAI.APIError(400, null as any, 'module error', new Headers());
+        (apiError as any).cause = cause;
+
+        vi.spyOn(instance['client'].chat.completions, 'create').mockRejectedValue(apiError);
+
+        await expect(
+          instance.chat({
+            messages: [{ content: 'Hello', role: 'user' }],
+            model: 'mistralai/mistral-7b-instruct:free',
+            temperature: 0,
+          }),
+        ).rejects.toMatchObject({
+          error: { code: 'model_not_found', status: 400 },
+          errorType: AgentRuntimeErrorType.ModelNotFound,
+          provider,
+        });
       });
 
       it('should return bizErrorType with an cause response with desensitize Url', async () => {
@@ -1439,6 +1480,7 @@ describe('LobeOpenAICompatibleFactory', () => {
             endpoint: 'https://api.***.com/v1',
             error: {
               cause: { message: 'api is undefined' },
+              status: 400,
             },
             errorType: bizErrorType,
             message: expect.any(String),

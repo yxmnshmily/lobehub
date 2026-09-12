@@ -1560,3 +1560,131 @@ describe('KnowledgeRepo', () => {
     });
   });
 });
+
+describe('KnowledgeRepo.queryRecent - 首页「最近文稿」', () => {
+  it('keeps goal/task verification instructions and folders out of recent pages', async () => {
+    await serverDB.insert(documents).values([
+      {
+        content: '交付说明正文',
+        fileType: 'custom/document',
+        filename: 'delivery.md',
+        source: 'editor-source',
+        sourceType: 'api',
+        title: 'T-30 交付归档｜阳朔亲子 9:16 竖版封面',
+        totalCharCount: 10,
+        totalLineCount: 2,
+        userId,
+      },
+      {
+        content: '封面为真实可查看的9:16竖版图片',
+        fileType: 'verify/instruction',
+        filename: 'instruction.md',
+        source: 'verify-source',
+        sourceType: 'agent',
+        title: '封面为真实可查看的9:16竖版图片',
+        totalCharCount: 18,
+        totalLineCount: 1,
+        userId,
+      },
+      {
+        content: '',
+        fileType: 'custom/folder',
+        filename: 'folder',
+        source: 'editor-source',
+        sourceType: 'api',
+        title: '.tool-results',
+        totalCharCount: 0,
+        totalLineCount: 0,
+        userId,
+      },
+      {
+        content: '搜索结果快照',
+        fileType: 'article',
+        filename: 'search.html',
+        source: 'https://www.so.com/s?q=%E6%96%B0%E7%96%86',
+        sourceType: 'web',
+        title: '新疆旅游 抖音 视频_360搜索',
+        totalCharCount: 30,
+        totalLineCount: 3,
+        userId,
+      },
+    ]);
+
+    const pages = await knowledgeRepo.queryRecent(10, 'page');
+    const names = pages.map((page) => page.name);
+
+    // 真文稿保留
+    expect(names).toContain('T-30 交付归档｜阳朔亲子 9:16 竖版封面');
+    // 目标/任务的验收标准文字（沟通文本）、文件夹、网页剪藏都不得出现
+    expect(names).not.toContain('封面为真实可查看的9:16竖版图片');
+    expect(names).not.toContain('.tool-results');
+    expect(names).not.toContain('新疆旅游 抖音 视频_360搜索');
+    expect(
+      pages.every(
+        (page) => page.fileType !== 'verify/instruction' && page.fileType !== 'article',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('KnowledgeRepo.query - 全部列表', () => {
+  it('keeps goal/task verification instructions out of the All list', async () => {
+    await serverDB.insert(documents).values([
+      {
+        content: '验收标准正文',
+        fileType: 'verify/instruction',
+        filename: 'verify.md',
+        source: 'verify-source',
+        sourceType: 'agent',
+        title: '封面为真实可查看的9:16竖版图片',
+        totalCharCount: 10,
+        totalLineCount: 1,
+        userId,
+      },
+      {
+        content: '交付正文',
+        fileType: 'agent/document',
+        filename: 'delivery.md',
+        source: 'agent-document://x',
+        sourceType: 'agent',
+        title: 'T-30 交付归档',
+        totalCharCount: 10,
+        totalLineCount: 1,
+        userId,
+      },
+      {
+        content: '搜索结果快照',
+        fileType: 'article',
+        filename: 'search.html',
+        source: 'https://www.so.com/s?q=%E6%96%B0%E7%96%86',
+        sourceType: 'web',
+        title: '新疆旅游 抖音 视频_360搜索',
+        totalCharCount: 30,
+        totalLineCount: 3,
+        userId,
+      },
+      {
+        content: '',
+        fileType: 'custom/folder',
+        filename: '我的素材',
+        source: 'editor',
+        sourceType: 'api',
+        title: '我的素材',
+        totalCharCount: 0,
+        totalLineCount: 0,
+        userId,
+      },
+    ]);
+
+    // 「全部」以前对分类直接短路、不加任何过滤，于是这 95 条验收标准会把真正的
+    // 文件挤满。这里钉住：执行过程文本与网页剪藏不出现，而用户自己的文稿与文件夹
+    // 照常出现。
+    const names = (await knowledgeRepo.query({ category: FilesTabs.All })).map(
+      (item) => item.name,
+    );
+    expect(names).toContain('T-30 交付归档');
+    expect(names).toContain('我的素材');
+    expect(names).not.toContain('封面为真实可查看的9:16竖版图片');
+    expect(names).not.toContain('新疆旅游 抖音 视频_360搜索');
+  });
+});

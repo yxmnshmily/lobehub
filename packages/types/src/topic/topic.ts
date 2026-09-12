@@ -596,6 +596,8 @@ export interface ChatTopic extends Omit<BaseDataModel, 'meta'> {
   favorite?: boolean;
   /** First user message (sliced server-side, used as preview fallback). */
   firstUserMessage?: string | null;
+  /** Actual conversation ownership, independent of its task's current group. */
+  groupId?: string | null;
   historySummary?: string;
   /** Total message count for the topic. */
   messageCount?: number | null;

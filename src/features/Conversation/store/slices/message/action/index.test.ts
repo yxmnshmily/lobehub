@@ -27,6 +27,80 @@ const createTestStore = (context?: Partial<ConversationContext>) =>
   });
 
 describe('message convenience actions', () => {
+  it('does not send an old media transaction through another group transport', async () => {
+    const store = createTestStore({ groupId: 'joined-group', scope: 'group' });
+    const send = vi.fn(async () => true);
+    store.setState({ hooks: { onSendMessage: send } });
+    await store.getState().sendMessage({
+      message: 'old recording',
+      conversationContext: { agentId: 'other-agent', groupId: 'other-group', scope: 'group' },
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('keeps preflight validation for an authorized transport', async () => {
+    const store = createTestStore();
+    const send = vi.fn(async () => true);
+    store.setState({ hooks: { onBeforeSendMessage: async () => false, onSendMessage: send } });
+    await store.getState().sendMessage({ message: 'blocked' });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('uses the shared plain-message command without creating a forged assistant message', async () => {
+    const store = createTestStore();
+    const createMessage = vi.fn();
+    const add = vi.fn(async () => true);
+    store.setState({
+      createMessage,
+      hooks: { onAddUserMessage: add, onSendMessage: async () => true },
+    });
+    expect(
+      await store.getState().addUserMessage({ message: 'human only', fileList: ['file-1'] }),
+    ).toBe(true);
+    await store.getState().addAIMessage('forged');
+    expect(add).toHaveBeenCalledWith({ message: 'human only', fileList: ['file-1'] });
+    expect(createMessage).not.toHaveBeenCalled();
+  });
+  it('routes shared edit, delete, retry and stop actions to the authorized transport', async () => {
+    const store = createTestStore({ groupId: 'joined-group', scope: 'group' });
+    const commands: string[] = [];
+    store.setState({
+      hooks: {
+        onDeleteMessage: async (id) => {
+          commands.push(`delete:${id}`);
+        },
+        onUpdateMessageContent: async (id, content) => {
+          commands.push(`edit:${id}:${content}`);
+        },
+        onRegenerateMessage: async (id) => {
+          commands.push(`retry:${id}`);
+        },
+        onStopGenerating: () => {
+          commands.push('stop');
+        },
+      },
+    });
+    await store.getState().deleteMessage('public-1');
+    await store.getState().updateMessageContent('public-1', '修订');
+    await store.getState().regenerateAssistantMessage('public-2');
+    store.getState().stopGenerating();
+    expect(commands).toEqual(['delete:public-1', 'edit:public-1:修订', 'retry:public-2', 'stop']);
+  });
+  it('uses the authorized transport without falling through to the owner send path', async () => {
+    const store = createTestStore({ groupId: 'joined-group', scope: 'group' });
+    const ownerSend = vi.fn();
+    vi.spyOn(useChatStore, 'getState').mockReturnValue({ sendMessage: ownerSend } as any);
+    const accepted: string[] = [];
+    store.setState({
+      hooks: {
+        onSendMessage: async ({ message }) => {
+          accepted.push(message);
+          return true;
+        },
+      },
+    });
+    await store.getState().sendMessage({ message: '群聊继续' });
+    expect(accepted).toEqual(['群聊继续']);
+    expect(ownerSend).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

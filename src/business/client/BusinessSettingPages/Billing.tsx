@@ -1,5 +1,5 @@
-import CustomerCenterPage from './CustomerCenterPage';
+import SubscriptionWorkspace from '@/features/CustomerCenter/SubscriptionWorkspace';
 
-const Billing = () => <CustomerCenterPage defaultSection={'recharge-history'} />;
+const Billing = () => <SubscriptionWorkspace section="billing" />;
 
 export default Billing;

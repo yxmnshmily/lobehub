@@ -188,29 +188,28 @@ In domain mode, you need to complete the following configurations based on scrip
 - Choose the access protocol: `http` or `https`
 - Regenerate secure keys: We highly recommend regenerating the secure keys; if you lack the key generation library required by the script, we suggest referring to the [Custom Deployment](#custom-deployment) section for key modifications.
 
-  <Callout type="tip">
-    **Single Domain Deployment**
-    If you only have one domain, you can distinguish services by different ports:
+      <Callout type="tip">
 
-    - Domain setup for the LobeHub service: `lobe.example.com:${PORT1}`
-    - Domain setup for the S3 service: `lobe.example.com:${PORT2}`
-      You need to configure forwarding rules for each port in the reverse proxy.
+  **Single Domain Deployment** If you only have one domain, you can distinguish services by different ports:
 
-    **Port Mode vs Domain Mode:**
+- Domain setup for the LobeHub service: `lobe.example.com:${PORT1}`
+- Domain setup for the S3 service: `lobe.example.com:${PORT2}` You need to configure forwarding rules for each port in the reverse proxy.
 
-    - Port Mode: The script automatically uses default ports (3210/9000/9001)
-    - Domain Mode: You can customize ports (via reverse proxy configuration)
+  **Port Mode vs Domain Mode:**
 
-  </Callout>
+  - Port Mode: The script automatically uses default ports (3210/9000/9001)
+  - Domain Mode: You can customize ports (via reverse proxy configuration)
 
-  <Callout type="warning">
+        </Callout>
+
+        <Callout type="warning">
+
     The following issues may impede access to your service:
 
-    - The domain configuration here must match the reverse proxy configuration in step `1`.
+- The domain configuration here must match the reverse proxy configuration in step `1`.
+  - If you are using Cloudflare for domain resolution and have activated `full proxy`, please use the `https` protocol.
 
-    - If you are using Cloudflare for domain resolution and have activated `full proxy`, please use the `https` protocol.
-
-    - If you have used the HTTPS protocol, ensure that your domain certificate is correctly configured; one-click deployment does not support self-signed certificates by default.
+  - If you have used the HTTPS protocol, ensure that your domain certificate is correctly configured; one-click deployment does not support self-signed certificates by default.
 
   </Callout>
 

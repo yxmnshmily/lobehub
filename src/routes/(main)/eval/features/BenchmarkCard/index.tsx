@@ -52,7 +52,7 @@ const getSystemIcon = (id: string) => {
 const styles = createStaticStyles(({ css }) => ({
   card: css`
     height: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -84,7 +84,7 @@ const styles = createStaticStyles(({ css }) => ({
   ctaBand: css`
     padding-block: 24px;
     padding-inline: 16px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     text-align: center;
@@ -148,7 +148,7 @@ const styles = createStaticStyles(({ css }) => ({
     }
   `,
   statDivider: css`
-    width: 1px;
+    width: 0.5px;
     height: 24px;
     background: ${cssVar.colorBorderSecondary};
   `,

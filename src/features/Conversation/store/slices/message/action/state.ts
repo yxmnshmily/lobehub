@@ -2,6 +2,7 @@ import { copyToClipboard } from '@lobehub/ui';
 import { produce } from 'immer';
 import { type StateCreator } from 'zustand';
 
+import { parseAgentMessageQuote } from '@/features/SuperGroup/messageQuote';
 import { messageService } from '@/services/message';
 import { useChatStore } from '@/store/chat';
 import { cleanSpeakerTag } from '@/store/chat/utils/cleanSpeakerTag';
@@ -87,9 +88,15 @@ export const messageStateSlice: StateCreator<
   },
 
   copyMessage: async (id, content) => {
-    const { hooks } = get();
+    const state = get();
+    const { hooks } = state;
+    const item = dataSelectors.getDisplayMessageById(id)(state);
+    const displayContent =
+      state.context.groupId && item?.role !== 'user'
+        ? parseAgentMessageQuote(content).content
+        : content;
 
-    await copyToClipboard(cleanSpeakerTag(content));
+    await copyToClipboard(cleanSpeakerTag(displayContent));
 
     // ===== Hook: onMessageCopied =====
     if (hooks.onMessageCopied) {

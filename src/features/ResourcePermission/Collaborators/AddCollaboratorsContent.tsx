@@ -2,21 +2,14 @@
 
 import { MAX_RESOURCE_COLLABORATORS_PER_ADD } from '@lobechat/const';
 import { Empty, Flexbox, Icon, SearchBar } from '@lobehub/ui';
-import {
-  Avatar,
-  Button,
-  SkeletonAvatar,
-  SkeletonText,
-  Text,
-  toast,
-  useModalContext,
-} from '@lobehub/ui/base-ui';
+import { Avatar, Button, SkeletonAvatar, Text, toast, useModalContext } from '@lobehub/ui/base-ui';
 import { useHover } from 'ahooks';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { CheckIcon, SearchXIcon, UsersIcon } from 'lucide-react';
 import { memo, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useFetchWorkspaceMembers } from '@/business/client/hooks/useFetchWorkspaceMembers';
 import { useWorkspaceMembers } from '@/business/client/hooks/useWorkspaceMembers';
 import type { PermissionResourceType, ResourceAccessLevel } from '@/services/resourcePermission';
@@ -28,7 +21,7 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     padding-block: 12px;
     padding-inline: 20px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   header: css`
     padding-block: 4px 12px;

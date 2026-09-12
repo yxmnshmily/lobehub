@@ -52,13 +52,13 @@ describe('preloadLang', () => {
   });
 
   it('should only preload the last hovered locale when moving across items', () => {
-    preloadLang('de-DE');
-    preloadLang('fr-FR');
-    preloadLang('ko-KR');
+    preloadLang('zh-CN');
+    preloadLang('en-US');
+    preloadLang('zh-CN');
 
     vi.runAllTimers();
 
     expect(load).toHaveBeenCalledTimes(1);
-    expect(load).toHaveBeenCalledWith('ko-KR', ['common', 'chat', 'setting'], expect.any(Function));
+    expect(load).toHaveBeenCalledWith('zh-CN', ['common', 'chat', 'setting'], expect.any(Function));
   });
 });

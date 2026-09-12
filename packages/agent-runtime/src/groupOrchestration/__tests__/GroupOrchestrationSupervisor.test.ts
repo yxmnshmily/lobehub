@@ -78,7 +78,11 @@ describe('GroupOrchestrationSupervisor', () => {
         type: 'supervisor_decided',
         payload: {
           decision: 'speak',
-          params: { agentId: 'agent-1', instruction: 'Please respond' },
+          params: {
+            agentId: 'agent-1',
+            instruction: 'Please respond',
+            replyToMessageId: 'msg_source_1',
+          },
           skipCallSupervisor: false,
         },
       };
@@ -90,6 +94,7 @@ describe('GroupOrchestrationSupervisor', () => {
         payload: {
           agentId: 'agent-1',
           instruction: 'Please respond',
+          replyToMessageId: 'msg_source_1',
         },
       });
     });

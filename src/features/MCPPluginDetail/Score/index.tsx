@@ -10,6 +10,7 @@ import {
 } from '@/features/MCP/calculateScore';
 import { useScoreList } from '@/features/MCP/useScoreList';
 import Title from '@/routes/(main)/community/features/Title';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { useDetailContext } from '../DetailProvider';
 import GithubBadge from './GithubBadge';
@@ -17,6 +18,7 @@ import ScoreList from './ScoreList';
 import TotalScore from './TotalScore';
 
 const Score = memo(() => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('discover');
   const {
     github,
@@ -74,7 +76,7 @@ const Score = memo(() => {
           </Block>
         </Flexbox>
         <Flexbox gap={16}>
-          <Title>GitHub Badge</Title>
+          <Title>{translateTravel('GitHub 徽章')}</Title>
           <Block gap={16} padding={16} variant={'outlined'}>
             <GithubBadge />
           </Block>

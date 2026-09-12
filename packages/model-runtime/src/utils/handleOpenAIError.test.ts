@@ -18,6 +18,7 @@ describe('handleOpenAIError', () => {
 
       expect(result.errorResult).toEqual({
         error: { message: 'API error', type: 'invalid_request' },
+        status: 472,
       });
       expect(result.message).toBe(apiError.message);
       expect(result.RuntimeError).toBeUndefined();
@@ -30,10 +31,41 @@ describe('handleOpenAIError', () => {
 
       const result = handleOpenAIError(apiError);
 
-      expect(result.errorResult).toEqual(cause);
+      expect(result.errorResult).toEqual({ ...cause, status: 472 });
       expect(result.message).toBe(apiError.message);
       expect(result.RuntimeError).toBeUndefined();
     });
+
+    it('should preserve classification fields when the APIError cause is an Error instance', () => {
+      const cause = new Error('Rate limit exceeded');
+      const apiError = new OpenAI.APIError(429, null as any, 'test-message', undefined);
+      (apiError as any).cause = cause;
+
+      const result = handleOpenAIError(apiError);
+
+      expect(result.errorResult).toEqual({
+        message: 'Rate limit exceeded',
+        name: 'Error',
+        status: 429,
+      });
+      expect(result.errorResult).not.toBe(cause);
+    });
+
+    it.each(['content_filter', 'context_length_exceeded', 'insufficient_quota', 'model_not_found'])(
+      'should preserve the bounded lowercase provider code %s from an Error cause',
+      (code) => {
+        const cause = Object.assign(new Error('Provider error'), { code });
+        const apiError = new OpenAI.APIError(400, null as any, 'test-message', undefined);
+        (apiError as any).cause = cause;
+
+        expect(handleOpenAIError(apiError).errorResult).toEqual({
+          code,
+          message: 'Provider error',
+          name: 'Error',
+          status: 400,
+        });
+      },
+    );
 
     it('should handle OpenAI APIError without error or cause', () => {
       const headers = new Headers({ 'content-type': 'application/json' });
@@ -58,7 +90,7 @@ describe('handleOpenAIError', () => {
       const result = handleOpenAIError(apiError);
 
       // Should prioritize error over cause
-      expect(result.errorResult).toEqual({ error: errorObject });
+      expect(result.errorResult).toEqual({ error: errorObject, status: 472 });
       expect(result.message).toBe(apiError.message);
     });
 
@@ -84,6 +116,7 @@ describe('handleOpenAIError', () => {
           message: 'The provider blocked this prompt.',
           type: 'content_filter',
         },
+        status: 400,
       });
       expect(result.message).toBe(apiError.message);
       expect(result.RuntimeError).toBe(AgentRuntimeErrorType.ProviderContentPolicyViolation);

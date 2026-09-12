@@ -10,15 +10,19 @@ export const ttsAction = defineAction({
   useBuild: (ctx) => {
     const { t } = useTranslation('chat');
     const startMessageTTS = useConversationStore((s) => s.startMessageTTS);
+    const targetId = ctx.role === 'group' ? ctx.contentBlock?.id : ctx.id;
 
     return useMemo(
-      () => ({
-        handleClick: () => startMessageTTS(ctx.id),
-        icon: Play,
-        key: 'tts',
-        label: t('tts.action'),
-      }),
-      [t, ctx.id, startMessageTTS],
+      () =>
+        targetId
+          ? {
+              handleClick: () => startMessageTTS(targetId),
+              icon: Play,
+              key: 'tts',
+              label: t('tts.action'),
+            }
+          : null,
+      [t, targetId, startMessageTTS],
     );
   },
 });

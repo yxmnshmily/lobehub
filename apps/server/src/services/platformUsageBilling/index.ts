@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import { CREDITS_PER_DOLLAR } from '@lobechat/const/currency';
+import { CostExchangeRateSchema } from '@lobechat/types';
+import { usdToCredits } from '@lobechat/utils/credits';
 
 import type { ModelUsage } from '@/types/message';
 
@@ -113,7 +115,14 @@ const copyTokenDetails = (usage: ModelUsage): PlatformUsageTokenDetails => {
     tokens[field] = value;
   }
 
-  return tokens as PlatformUsageTokenDetails;
+  return {
+    ...tokens,
+    ...(usage.costExchangeRate === undefined
+      ? {}
+      : {
+          costExchangeRate: CostExchangeRateSchema.parse(usage.costExchangeRate),
+        }),
+  } as PlatformUsageTokenDetails;
 };
 
 const buildIdempotency = (material: PlatformUsageIdempotencyMaterial) => {
@@ -163,7 +172,7 @@ export const preparePlatformUsageCharge = (
 
   // Keep exactly the rounding rule used by LobeHub's image/video usage converters:
   // any positive sub-credit cost is billed as one integer credit.
-  const credits = Math.ceil(costUsd * CREDITS_PER_DOLLAR);
+  const credits = usdToCredits(costUsd);
   if (!Number.isSafeInteger(credits)) {
     throw new PlatformUsageBillingError(
       'CREDITS_OVERFLOW',

@@ -35,7 +35,7 @@ const styles = createStaticStyles(({ css }) => {
       color: ${cssVar.colorTextQuaternary};
     `,
     iframe: css`
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: 8px;
     `,
     title: css`

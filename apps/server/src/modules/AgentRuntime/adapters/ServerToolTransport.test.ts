@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   executeTool: vi.fn(),
   getAgentVisibility: vi.fn(),
   getSharedBudget: vi.fn(),
+  getSharedBudgetLimit: vi.fn(() => undefined),
   registerWork: vi.fn(),
   recordException: vi.fn(),
   setSpanAttributes: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@/database/models/agent', () => ({
 }));
 vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
   getPlatformUsageSharedBudgetForOperation: mocks.getSharedBudget,
+  getPlatformUsageSharedBudgetLimit: mocks.getSharedBudgetLimit,
 }));
 
 vi.mock('../executorHelpers', async (importOriginal) => ({

@@ -100,7 +100,7 @@ const DebugInspector = memo(() => {
     >
       {/* Scroll bar visualization */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ color: '#9ca3af', fontSize: 10 }}>Scroll Position</div>
+        <div style={{ color: '#9ca3af', fontSize: 10 }}>滚动位置</div>
         <div
           style={{
             background: '#374151',
@@ -155,13 +155,13 @@ const DebugInspector = memo(() => {
       {/* Numeric information */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ color: '#9ca3af', fontSize: 10 }}>
-          scrollSize: <span style={{ color: 'white' }}>{Math.round(scrollSize)}px</span>
+          内容高度： <span style={{ color: 'white' }}>{Math.round(scrollSize)}px</span>
         </div>
         <div style={{ color: '#9ca3af', fontSize: 10 }}>
-          viewport: <span style={{ color: 'white' }}>{Math.round(viewportSize)}px</span>
+          视口： <span style={{ color: 'white' }}>{Math.round(viewportSize)}px</span>
         </div>
         <div style={{ color: '#9ca3af', fontSize: 10 }}>
-          offset: <span style={{ color: 'white' }}>{Math.round(scrollOffset)}px</span>
+          偏移： <span style={{ color: 'white' }}>{Math.round(scrollOffset)}px</span>
         </div>
         <div
           style={{
@@ -170,19 +170,19 @@ const DebugInspector = memo(() => {
             fontWeight: 'bold',
           }}
         >
-          toBottom: {Math.round(distanceToBottom)}px
+          距底部： {Math.round(distanceToBottom)}px
           {distanceToBottom <= AT_BOTTOM_THRESHOLD ? ' ≤' : ' >'} {AT_BOTTOM_THRESHOLD}
         </div>
 
-        <div style={{ borderTop: '1px solid #374151', marginTop: 4, paddingTop: 4 }}>
+        <div style={{ borderTop: '0.5px solid #374151', marginTop: 4, paddingTop: 4 }}>
           <div style={{ color: atBottom ? '#22c55e' : '#ef4444', fontSize: 10 }}>
-            atBottom: {atBottom ? 'YES' : 'NO'}
+            已到底部： {atBottom ? 'YES' : 'NO'}
           </div>
           <div style={{ color: isGenerating ? '#3b82f6' : '#6b7280', fontSize: 10 }}>
-            generating: {isGenerating ? 'YES' : 'NO'}
+            生成中： {isGenerating ? 'YES' : 'NO'}
           </div>
           <div style={{ color: isScrolling ? '#f59e0b' : '#6b7280', fontSize: 10 }}>
-            scrolling: {isScrolling ? 'YES' : 'NO'}
+            滚动中： {isScrolling ? 'YES' : 'NO'}
           </div>
         </div>
 
@@ -197,7 +197,7 @@ const DebugInspector = memo(() => {
             textAlign: 'center',
           }}
         >
-          autoScroll: {shouldAutoScroll ? 'YES' : 'NO'}
+          自动滚动： {shouldAutoScroll ? 'YES' : 'NO'}
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@
 
 import { DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, Button, type ModalInstance } from '@lobehub/ui/base-ui';
-import { Divider } from 'antd';
 import { useTheme } from 'antd-style';
 import { MoreHorizontalIcon, PlayIcon, Settings2Icon, UsersIcon } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -17,6 +16,7 @@ import { EditingIndicator, type EditLockClient, useEditLock } from '@/features/E
 import { EditorCanvas } from '@/features/EditorCanvas';
 import AccessLevelTag from '@/features/ResourcePermission/AccessLevelTag';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
+import { ProfileDocument } from '@/features/SuperGroup/ProfileSurface';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryRoute } from '@/hooks/useQueryRoute';
@@ -180,39 +180,10 @@ const GroupProfile = memo(() => {
   }, [editor, agentBuilderContentUpdate, groupId, setAgentBuilderContent]);
 
   return (
-    <>
-      <Flexbox
-        style={{ cursor: 'default', marginBottom: 12 }}
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        <Flexbox height={66} width={'100%'}>
-          <Flexbox horizontal align={'center'} gap={8} paddingBlock={12}>
-            <AutoSaveHint />
-            <GroupStatusTag />
-            <GroupVersionReviewTag />
-            <GroupForkTag />
-            <AccessLevelTag
-              resourceType={'agentGroup'}
-              resourceId={
-                hasActiveWorkspace && currentGroup?.visibility !== 'private'
-                  ? (groupId ?? undefined)
-                  : undefined
-              }
-            />
-          </Flexbox>
-        </Flexbox>
-        {/* Header: Group Avatar + Title */}
-        <GroupHeader />
-        {/* Start Conversation Button */}
-        <Flexbox
-          horizontal
-          align={'center'}
-          gap={8}
-          justify={'flex-start'}
-          style={{ marginTop: 16 }}
-        >
+    <ProfileDocument
+      identity={<GroupHeader />}
+      actions={
+        <>
           <Button
             icon={PlayIcon}
             type={'primary'}
@@ -247,9 +218,25 @@ const GroupProfile = memo(() => {
           >
             {t('advancedSettings')}
           </Button>
+        </>
+      }
+      status={
+        <Flexbox horizontal align={'center'} gap={8}>
+          <AutoSaveHint />
+          <GroupStatusTag />
+          <GroupVersionReviewTag />
+          <GroupForkTag />
+          <AccessLevelTag
+            resourceType={'agentGroup'}
+            resourceId={
+              hasActiveWorkspace && currentGroup?.visibility !== 'private'
+                ? (groupId ?? undefined)
+                : undefined
+            }
+          />
         </Flexbox>
-      </Flexbox>
-      <Divider />
+      }
+    >
       {/* Group Content Editor */}
       <EditingIndicator
         holderId={lock.lockedByOther ? lock.holderId : null}
@@ -264,7 +251,7 @@ const GroupProfile = memo(() => {
         placeholder={t('group.profile.contentPlaceholder', { ns: 'chat' })}
         onContentChange={onContentChange}
       />
-    </>
+    </ProfileDocument>
   );
 });
 

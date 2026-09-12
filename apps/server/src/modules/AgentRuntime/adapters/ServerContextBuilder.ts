@@ -3,10 +3,12 @@ import type {
   ContextBuildInput,
   ContextBuildOutput,
 } from '@lobechat/agent-runtime';
-import { isDeepSeekV4FamilyModel } from '@lobechat/model-runtime';
+import { getModelPropertyWithFallback, isDeepSeekV4FamilyModel } from '@lobechat/model-runtime';
 import type { OperationToolDispatchPolicy } from '@lobechat/types';
 
 import type { RuntimeExecutorContext } from '../context';
+import { log } from '../executorHelpers';
+import { fitGroupContextBudget } from './groupContextBudget';
 import { buildServerCallLlmContext } from './serverCallLlmContextBuilder';
 import { resolveServerCallLlmTooling } from './serverCallLlmTooling';
 
@@ -38,8 +40,40 @@ export class ServerContextBuilder implements ContextBuilder {
       tooling,
     });
 
+    let messages = result.processedMessages;
+    if (
+      this.ctx.platformManagedExecutionAuthorized &&
+      !this.ctx.agentShareVisitor &&
+      input.state.metadata?.groupId &&
+      !input.state.metadata?.threadId
+    ) {
+      const contextWindow = await getModelPropertyWithFallback<number | undefined>(
+        input.model,
+        'contextWindowTokens',
+        input.provider,
+      );
+      const fitted = fitGroupContextBudget(
+        messages,
+        tooling.resolved.tools ?? [],
+        contextWindow ?? 128_000,
+        (input.payload.messages ?? input.state.messages)
+          .filter((message) => message.role === 'user' && Boolean(message.id))
+          .map((message) => message.id),
+        (result.resolvedExtendParams as { max_tokens?: number } | undefined)?.max_tokens,
+        result.messageSourceIds,
+      );
+      messages = fitted.messages;
+      if (fitted.removedMessages) {
+        log(
+          '[%s] group context budget omitted %d historical messages; originals retained',
+          this.ctx.operationId,
+          fitted.removedMessages,
+        );
+      }
+    }
+
     return {
-      messages: result.processedMessages,
+      messages,
       modelParameters: dispatchStep
         ? {
             ...(result.resolvedExtendParams as object),

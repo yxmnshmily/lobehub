@@ -31,7 +31,7 @@ export const ResourceSectionSkeleton = ({
     style={{
       display: 'grid',
       gap: 12,
-      gridTemplateColumns: `repeat(auto-fill, minmax(${minItemWidth}px, 1fr))`,
+      gridTemplateColumns: `repeat(auto-fill, minmax(min(${minItemWidth}px, 100%), 1fr))`,
     }}
   >
     {Array.from({ length: count }).map((_, index) => (
@@ -43,13 +43,13 @@ export const ResourceSectionSkeleton = ({
 const styles = createStaticStyles(({ css }) => ({
   content: css`
     width: 100%;
-    max-width: 1080px;
-    margin-inline: auto;
+    /* Must match the real resource pages: full width, 24px inline gutter —
+       a centred 1080px column shifted the content on load. */
     padding-block: 32px 64px;
-    padding-inline: 32px;
+    padding-inline: 24px;
   `,
   header: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   scroll: css`
     overflow: hidden;

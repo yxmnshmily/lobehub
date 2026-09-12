@@ -43,7 +43,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex: none;
 
     max-width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   rect: css`
@@ -51,7 +51,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     position: absolute;
 
-    border: 2px solid ${cssVar.colorError};
+    border: 0.5px solid ${cssVar.colorError};
     border-radius: 4px;
 
     box-shadow: 0 0 0 1px rgb(0 0 0 / 25%);

@@ -66,7 +66,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   optionIcon: css`
     flex-shrink: 0;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgElevated};
   `,
@@ -178,7 +178,7 @@ const ModeSelect = memo<ModeSelectProps>(({ onChange, value }) => {
       trigger={'click'}
       styles={{
         content: {
-          border: `1px solid ${cssVar.colorBorderSecondary}`,
+          border: `0.5px solid ${cssVar.colorBorderSecondary}`,
           borderRadius: cssVar.borderRadiusLG,
           padding: 4,
         },

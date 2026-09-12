@@ -20,7 +20,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     scroll-margin-block-start: 16px;
     overflow: hidden;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgContainer};
   `,
   cardBody: css`
@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   cardHeader: css`
     gap: 6px;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorFillQuaternary};
   `,
   code: css`
@@ -61,7 +61,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   previewSection: css`
     gap: 8px;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   sectionLabel: css`
     gap: 8px;

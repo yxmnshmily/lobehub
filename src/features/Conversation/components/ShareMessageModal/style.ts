@@ -27,7 +27,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
       width: 100%;
       max-height: 70dvh;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
       border-radius: ${cssVar.borderRadiusLG};
 
       background: ${cssVar.colorBgLayout};

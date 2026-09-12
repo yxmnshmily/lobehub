@@ -18,6 +18,13 @@ import { type ChatTopic } from '@/types/topic';
 
 interface ShareDataProviderProps {
   context?: Partial<ConversationContext>;
+  snapshot?: ShareSnapshot;
+}
+
+export interface ShareSnapshot {
+  context: ConversationContext;
+  messages: UIChatMessage[];
+  title: string;
 }
 
 interface ShareDataContextValue {
@@ -25,6 +32,7 @@ interface ShareDataContextValue {
   dbMessages: UIChatMessage[];
   displayMessages: UIChatMessage[];
   isLoading: boolean;
+  isSnapshot?: boolean;
   systemRole?: string;
   title: string;
   topic?: ChatTopic;
@@ -36,7 +44,7 @@ const selectUndefinedTopic = () => undefined;
 
 const ShareDataContext = createContext<ShareDataContextValue | null>(null);
 
-const ShareDataProvider = memo<PropsWithChildren<ShareDataProviderProps>>(
+const StoredShareDataProvider = memo<PropsWithChildren<ShareDataProviderProps>>(
   ({ children, context }) => {
     const { t } = useTranslation('chat');
     const [activeAgentId, activeGroupId, activeThreadId, activeTopicId, useFetchMessages] =
@@ -59,6 +67,7 @@ const ShareDataProvider = memo<PropsWithChildren<ShareDataProviderProps>>(
       return {
         agentId: context?.agentId ?? activeAgentId ?? '',
         groupId: hasGroupId ? context?.groupId : activeGroupId,
+        isolatedTopic: context?.isolatedTopic,
         scope: context?.scope,
         threadId: hasThreadId ? context?.threadId : activeThreadId,
         topicId: hasTopicId ? context?.topicId : activeTopicId,
@@ -74,6 +83,7 @@ const ShareDataProvider = memo<PropsWithChildren<ShareDataProviderProps>>(
       return messageMapKey({
         agentId: resolvedContext.agentId,
         groupId: resolvedContext.groupId,
+        isolatedTopic: resolvedContext.isolatedTopic,
         scope: resolvedContext.scope,
         threadId: resolvedContext.threadId,
         topicId: resolvedContext.topicId,
@@ -114,7 +124,25 @@ const ShareDataProvider = memo<PropsWithChildren<ShareDataProviderProps>>(
   },
 );
 
-ShareDataProvider.displayName = 'ShareDataProvider';
+StoredShareDataProvider.displayName = 'StoredShareDataProvider';
+
+function ShareDataProvider({ snapshot, ...props }: PropsWithChildren<ShareDataProviderProps>) {
+  if (!snapshot) return <StoredShareDataProvider {...props} />;
+  return (
+    <ShareDataContext
+      value={{
+        context: snapshot.context,
+        dbMessages: snapshot.messages,
+        displayMessages: snapshot.messages,
+        title: snapshot.title,
+        isLoading: false,
+        isSnapshot: true,
+      }}
+    >
+      {props.children}
+    </ShareDataContext>
+  );
+}
 
 export const useShareData = () => {
   const context = use(ShareDataContext);

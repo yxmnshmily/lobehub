@@ -7,7 +7,6 @@ import type { OpenAIChatMessage } from '@lobechat/types';
 
 import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
-import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 
 export interface AiGenerationObjectInput {
   messages: OpenAIChatMessage[] | GenerateObjectPayload['messages'];
@@ -72,16 +71,12 @@ export class AiGenerationService {
     input: AiGenerationObjectInput,
     options: AiGenerationObjectOptions = {},
   ): Promise<T> {
-    const runtime =
-      this.options.modelRuntimeMode === 'platform-managed'
-        ? await new PlatformAiRuntime(this.db).init({
-            actorUserId: this.userId,
-            provider: input.provider,
-            workspaceId: this.workspaceId,
-          })
-        : this.workspaceId
-          ? await initModelRuntimeFromDB(this.db, this.userId, input.provider, this.workspaceId)
-          : await initModelRuntimeFromDB(this.db, this.userId, input.provider);
+    if (this.options.modelRuntimeMode === 'platform-managed') {
+      throw new Error('[PREPAID_RESERVATION_REQUIRED] 平台付费生成须经过费用上限验证和积分预留。');
+    }
+    const runtime = this.workspaceId
+      ? await initModelRuntimeFromDB(this.db, this.userId, input.provider, this.workspaceId)
+      : await initModelRuntimeFromDB(this.db, this.userId, input.provider);
     return (await runtime.generateObject(
       {
         messages: input.messages as GenerateObjectPayload['messages'],

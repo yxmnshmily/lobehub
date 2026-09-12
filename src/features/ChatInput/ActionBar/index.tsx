@@ -1,19 +1,13 @@
 import { type ChatInputActionsProps } from '@lobehub/editor/react';
-import { ChatInputActions } from '@lobehub/editor/react';
 import { memo, useMemo } from 'react';
-
-import { useGlobalStore } from '@/store/global';
-import { systemStatusSelectors } from '@/store/global/selectors';
-import { useUserStore } from '@/store/user';
-import { labPreferSelectors } from '@/store/user/slices/preference/selectors';
 
 import { type ActionKey, type ActionKeys } from '../ActionBar/config';
 import { actionMap } from '../ActionBar/config';
 import { useChatInputResourceAccess } from '../hooks/useChatInputResourceAccess';
 import { useChatInputStore } from '../store';
 import { type DropdownPlacement } from './context';
-import { ActionBarContext } from './context';
 import { filterChatOnlyActions } from './filterChatOnlyActions';
+import Toolbar from './Toolbar';
 
 const mapActionToItem = (actionKey: ActionKey) => {
   const Render = actionMap[actionKey];
@@ -59,15 +53,21 @@ export interface ActionToolbarProps {
 
 const ActionToolbar = memo<ActionToolbarProps>(
   ({ borderRadius, disableCollapse = false, dropdownPlacement, extraActionItems = [] }) => {
-    const [expandInputActionbar, toggleExpandInputActionbar] = useGlobalStore((s) => [
-      systemStatusSelectors.expandInputActionbar(s),
-      s.toggleExpandInputActionbar,
-    ]);
-    const enableRichRender = useUserStore(labPreferSelectors.enableInputMarkdown);
     const { canConfigureResource, canShowControls } = useChatInputResourceAccess();
 
     const leftActions = useChatInputStore((s) => {
-      const actions = s.leftActions.filter((item) => (enableRichRender ? true : item !== 'typo'));
+      const actions = s.leftActions
+        .map((item) =>
+          Array.isArray(item)
+            ? item.filter((key) => key !== 'typo' && !(s.readOnlyConfig && key === 'clear'))
+            : item,
+        )
+        .filter(
+          (item) =>
+            item !== 'typo' &&
+            !(s.readOnlyConfig && item === 'clear') &&
+            (!Array.isArray(item) || item.length > 0),
+        );
       return canConfigureResource ? actions : filterChatOnlyActions(actions);
     });
 
@@ -78,31 +78,16 @@ const ActionToolbar = memo<ActionToolbarProps>(
       [disableCollapse, extraActionItems, leftActions],
     );
 
-    const contextValue = useMemo(
-      () => ({ borderRadius, dropdownPlacement }),
-      [borderRadius, dropdownPlacement],
-    );
-
     if (!canShowControls) return null;
 
     return (
-      <ActionBarContext value={contextValue}>
-        <ChatInputActions
-          autoCollapse={!disableCollapse}
-          collapseOffset={mobile ? 48 : 80}
-          defaultGroupCollapse={!disableCollapse}
-          groupCollapse={disableCollapse ? false : !expandInputActionbar}
-          items={items}
-          style={{ paddingLeft: 6 }}
-          onGroupCollapseChange={
-            disableCollapse
-              ? undefined
-              : (v) => {
-                  toggleExpandInputActionbar(!v);
-                }
-          }
-        />
-      </ActionBarContext>
+      <Toolbar
+        borderRadius={borderRadius}
+        disableCollapse={disableCollapse}
+        dropdownPlacement={dropdownPlacement}
+        items={items}
+        mobile={mobile}
+      />
     );
   },
 );

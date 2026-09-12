@@ -16,11 +16,13 @@ import type {
   Embeddings,
   EmbeddingsOptions,
   EmbeddingsPayload,
+  GenerateObjectBoundedOptions,
   GenerateObjectOptions,
   GenerateObjectPayload,
   HandleCreateVideoWebhookPayload,
   HandleCreateVideoWebhookResult,
   ModelRequestOptions,
+  PreparedGenerateObjectBounded,
   PullModelParams,
   TextToSpeechOptions,
   TextToSpeechPayload,
@@ -59,6 +61,11 @@ export interface LobeRuntimeAI {
   >;
 
   models?: () => Promise<any>;
+
+  prepareGenerateObjectBounded?: (
+    payload: GenerateObjectPayload,
+    options: GenerateObjectBoundedOptions,
+  ) => Promise<PreparedGenerateObjectBounded>;
 
   // Model management related interface
   pullModel?: (params: PullModelParams, options?: ModelRequestOptions) => Promise<Response>;

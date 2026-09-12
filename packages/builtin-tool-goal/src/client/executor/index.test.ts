@@ -18,6 +18,16 @@ const params = {
 };
 
 describe('goalExecutor.createGoal', () => {
+  it('passes the originating group to the durable goal', async () => {
+    mocks.create.mockResolvedValue({ goal: { id: 'goal_1', title: 'A goal' } });
+    mocks.advance.mockResolvedValue({ message: 'Started' });
+    await goalExecutor.createGoal(params, { agentId: 'agt_1', groupId: 'group-1' } as never);
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ groupId: 'group-1' }),
+      }),
+    );
+  });
   it('reports the created goal even when starting it fails', async () => {
     // The goal is already committed. Reporting creation failure makes the agent
     // create a second goal, and both then do the same paid work.

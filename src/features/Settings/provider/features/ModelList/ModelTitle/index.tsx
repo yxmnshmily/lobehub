@@ -1,10 +1,11 @@
 import { DropdownMenu, Flexbox, Tooltip } from '@lobehub/ui';
-import { ActionIcon, Button, confirmModal, Skeleton, Text, toast } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, confirmModal, Text, toast } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { CircleX, EllipsisVertical, LucideRefreshCcwDot, PlusIcon } from 'lucide-react';
 import { memo, use, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
 import { useAiInfraStore } from '@/store/aiInfra';
@@ -63,14 +64,14 @@ const ModelTitle = memo<ModelFetcherProps>(
           background: cssVar.colorBgContainer,
           marginTop: mobile ? 0 : -12,
           paddingTop: mobile ? 0 : 20,
-          position: 'sticky',
-          top: mobile ? -2 : -32,
-          zIndex: 15,
+          position: mobile ? 'relative' : 'sticky',
+          top: mobile ? undefined : -32,
+          zIndex: mobile ? undefined : 15,
         }}
       >
-        <Flexbox horizontal align={'center'} gap={0} justify={'space-between'}>
-          <Flexbox horizontal align={'center'} gap={8}>
-            <Text strong style={{ fontSize: 16 }}>
+        <Flexbox horizontal align={'center'} gap={8} justify={'space-between'}>
+          <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0 }}>
+            <Text ellipsis strong style={{ fontSize: 16, minWidth: 0 }}>
               {t('providerModels.list.title')}
             </Text>
 
@@ -93,9 +94,9 @@ const ModelTitle = memo<ModelFetcherProps>(
             )}
           </Flexbox>
           {isLoading ? (
-            <Skeleton height={28} width={120} />
+            <SkeletonBar height={28} width={120} />
           ) : isEmpty ? null : (
-            <Flexbox horizontal align={'center'} gap={8}>
+            <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
               {!mobile && (
                 <Search
                   value={searchKeyword}
@@ -108,10 +109,12 @@ const ModelTitle = memo<ModelFetcherProps>(
                 {showModelFetcher && (
                   <Tooltip title={canManageProvider ? undefined : reason}>
                     <Button
+                      aria-label={t('providerModels.list.fetcher.fetch')}
                       disabled={!canManageProvider}
                       icon={LucideRefreshCcwDot}
                       loading={fetchRemoteModelsLoading}
                       size={'small'}
+                      title={mobile ? t('providerModels.list.fetcher.fetch') : undefined}
                       onClick={async () => {
                         if (!canManageProvider) return;
                         setFetchRemoteModelsLoading(true);
@@ -135,9 +138,10 @@ const ModelTitle = memo<ModelFetcherProps>(
                         }
                       }}
                     >
-                      {fetchRemoteModelsLoading
-                        ? t('providerModels.list.fetcher.fetching')
-                        : t('providerModels.list.fetcher.fetch')}
+                      {!mobile &&
+                        (fetchRemoteModelsLoading
+                          ? t('providerModels.list.fetcher.fetching')
+                          : t('providerModels.list.fetcher.fetch'))}
                     </Button>
                   </Tooltip>
                 )}

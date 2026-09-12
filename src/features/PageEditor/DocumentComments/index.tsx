@@ -1,10 +1,11 @@
 'use client';
 
 import { Center, Flexbox } from '@lobehub/ui';
-import { Button, Skeleton, Text, toast } from '@lobehub/ui/base-ui';
+import { Button, Text, toast } from '@lobehub/ui/base-ui';
 import { memo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import AsyncError from '@/components/AsyncError';
 import SurfaceSkeleton from '@/components/Skeleton/Surface';
@@ -225,8 +226,8 @@ const DocumentComments = memo<{ documentId: string }>(({ documentId }) => {
       <Flexbox horizontal align={'center'} className={styles.header} gap={8}>
         {isHeaderLoading ? (
           <>
-            <Skeleton height={28} width={48} />
-            <Skeleton height={20} width={16} />
+            <SkeletonBar height={28} width={48} />
+            <SkeletonBar height={20} width={16} />
           </>
         ) : (
           <>

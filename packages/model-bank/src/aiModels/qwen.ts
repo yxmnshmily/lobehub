@@ -7,6 +7,59 @@ import {
 // https://help.aliyun.com/zh/model-studio/models?spm=a2c4g.11186623
 
 const qwenChatModels: AIChatModelCard[] = [
+  // Beijing catalog: https://help.aliyun.com/zh/model-studio/qwen3-8-max
+  {
+    abilities: { functionCall: true, reasoning: true, vision: true },
+    contextWindowTokens: 1_000_000,
+    displayName: 'Qwen3.8 Max',
+    id: 'qwen3.8-max',
+    maxOutput: 131_072,
+    pricing: {
+      currency: 'CNY',
+      units: [
+        { name: 'textInput', rate: 12, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 36, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 1.5, strategy: 'fixed', unit: 'millionTokens' },
+      ],
+    },
+    settings: { extendParams: ['enableReasoning', 'reasoningBudgetToken'] },
+    type: 'chat',
+  },
+  // https://help.aliyun.com/zh/model-studio/kimi-k3-by-moonshot
+  {
+    abilities: { functionCall: true, reasoning: true, vision: true },
+    contextWindowTokens: 1_048_576,
+    displayName: 'Kimi K3',
+    id: 'kimi/kimi-k3',
+    maxOutput: 1_048_576,
+    pricing: {
+      currency: 'CNY',
+      units: [
+        { name: 'textInput', rate: 20, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 100, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
+      ],
+    },
+    type: 'chat',
+  },
+  // https://help.aliyun.com/zh/model-studio/glm-5-2-by-zhipu
+  {
+    abilities: { functionCall: true, reasoning: true },
+    contextWindowTokens: 1_048_576,
+    displayName: 'GLM-5.2',
+    id: 'ZHIPU/GLM-5.2',
+    maxOutput: 131_072,
+    pricing: {
+      currency: 'CNY',
+      units: [
+        { name: 'textInput', rate: 8, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 28, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
+      ],
+    },
+    settings: { extendParams: ['enableReasoning'] },
+    type: 'chat',
+  },
   {
     abilities: {
       functionCall: true,
@@ -1948,9 +2001,34 @@ const qwenChatModels: AIChatModelCard[] = [
     pricing: {
       currency: 'CNY',
       units: [
-        { name: 'textInput_cacheRead', rate: 2 * 0.2, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textInput', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textOutput', rate: 8, strategy: 'fixed', unit: 'millionTokens' },
+        // Domestic list prices; account-specific promotional discounts are not assumed.
+        {
+          name: 'textInput_cacheRead',
+          strategy: 'tiered',
+          unit: 'millionTokens',
+          tiers: [
+            { rate: 0.4, upTo: 256_000 },
+            { rate: 1.2, upTo: 'infinity' },
+          ],
+        },
+        {
+          name: 'textInput',
+          strategy: 'tiered',
+          unit: 'millionTokens',
+          tiers: [
+            { rate: 2, upTo: 256_000 },
+            { rate: 6, upTo: 'infinity' },
+          ],
+        },
+        {
+          name: 'textOutput',
+          strategy: 'tiered',
+          unit: 'millionTokens',
+          tiers: [
+            { rate: 8, upTo: 256_000 },
+            { rate: 24, upTo: 'infinity' },
+          ],
+        },
       ],
     },
     releasedAt: '2026-06-01',
@@ -4441,7 +4519,14 @@ const qwenVideoModels: AIVideoModelCard[] = [
     },
     pricing: {
       currency: 'CNY',
-      units: [{ name: 'videoGeneration', rate: 1, strategy: 'fixed', unit: 'second' }],
+      units: [
+        {
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'second',
+          lookup: { pricingParams: ['resolution'], prices: { '720P': 0.6, '1080P': 1 } },
+        },
+      ],
     },
     releasedAt: '2026-04-26',
     type: 'video',
@@ -4468,7 +4553,14 @@ const qwenVideoModels: AIVideoModelCard[] = [
     },
     pricing: {
       currency: 'CNY',
-      units: [{ name: 'videoGeneration', rate: 1, strategy: 'fixed', unit: 'second' }],
+      units: [
+        {
+          name: 'videoGeneration',
+          strategy: 'lookup',
+          unit: 'second',
+          lookup: { pricingParams: ['resolution'], prices: { '720P': 0.6, '1080P': 1 } },
+        },
+      ],
     },
     releasedAt: '2026-04-03',
     type: 'video',

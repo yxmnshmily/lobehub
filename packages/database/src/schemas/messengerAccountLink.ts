@@ -4,6 +4,7 @@ import { createInsertSchema } from 'drizzle-zod';
 
 import { timestamps } from './_helpers';
 import { agents } from './agent';
+import { chatGroups } from './chatGroup';
 import { users } from './user';
 import { workspaces } from './workspace';
 
@@ -73,6 +74,10 @@ export const messengerAccountLinks = pgTable(
      * `set null` on agent delete so a deleted agent doesn't orphan the link.
      */
     activeAgentId: text('active_agent_id').references(() => agents.id, {
+      onDelete: 'set null',
+    }),
+    /** Stable workgroup binding. The supervisor is resolved again for every inbound message. */
+    activeGroupId: text('active_group_id').references(() => chatGroups.id, {
       onDelete: 'set null',
     }),
 

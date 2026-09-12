@@ -6,9 +6,11 @@ import List from '@/features/HomeSidebar/Body/Agent/List';
 import { AgentModalProvider } from '@/features/HomeSidebar/Body/Agent/ModalProvider';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { useFetchAgentList } from '@/hooks/useFetchAgentList';
 
 const SwitchPanel = memo<PropsWithChildren>(({ children }) => {
   const navigate = useWorkspaceAwareNavigate();
+  const { error, mutate } = useFetchAgentList();
   return (
     <Popover
       placement="bottomLeft"
@@ -24,7 +26,7 @@ const SwitchPanel = memo<PropsWithChildren>(({ children }) => {
                 overflowY: 'auto',
               }}
             >
-              <List onMoreClick={() => navigate('/')} />
+              <List error={error} onMoreClick={() => navigate('/')} onRetry={() => mutate()} />
             </Flexbox>
           </AgentModalProvider>
         </Suspense>

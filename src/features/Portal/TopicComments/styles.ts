@@ -6,7 +6,7 @@ export const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px;
     padding-inline: 10px;
-    border-inline-start: 2px solid ${cssVar.colorBorder};
+    border-inline-start: 0.5px solid ${cssVar.colorBorder};
     border-radius: 0 ${cssVar.borderRadius} ${cssVar.borderRadius} 0;
 
     color: ${cssVar.colorTextSecondary};
@@ -35,7 +35,7 @@ export const styles = createStaticStyles(({ css }) => ({
   card: css`
     position: relative;
     padding-block: 14px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:hover .topic-comment-actions {
       opacity: 1;
@@ -66,7 +66,7 @@ export const styles = createStaticStyles(({ css }) => ({
   editEditor: css`
     padding-block: 8px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -96,6 +96,6 @@ export const styles = createStaticStyles(({ css }) => ({
   reply: css`
     margin-inline-start: 20px;
     padding-inline-start: 12px;
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));

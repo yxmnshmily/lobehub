@@ -352,7 +352,9 @@ describe('replyTemplate', () => {
     });
 
     it('falls back to English for locales without a translated dictionary', () => {
-      expect(renderError(undefined, 'ja-JP')).toBe('**Agent Execution Failed**');
+      expect(Reflect.apply(renderError, undefined, [undefined, 'ja-JP'])).toBe(
+        '**Agent Execution Failed**',
+      );
     });
   });
 

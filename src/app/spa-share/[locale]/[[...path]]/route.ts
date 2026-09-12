@@ -8,7 +8,12 @@ import { appEnv } from '@/envs/app';
 import { fileEnv } from '@/envs/file';
 import { pythonEnv } from '@/envs/python';
 import { translation } from '@/libs/i18n/serverTranslation';
-import { buildAnalyticsConfig, renderSpaHtml } from '@/libs/spaHtml';
+import {
+  buildAnalyticsConfig,
+  fetchViteDevTemplate,
+  renderSpaHtml,
+  resolveViteBrowserOrigin,
+} from '@/libs/spaHtml';
 import { type Locales, normalizeLocale } from '@/locales/resources';
 import { getServerGlobalConfig } from '@/server/globalConfig';
 import { type SPAClientEnv, type SPAServerConfig } from '@/types/spaServerConfig';
@@ -19,10 +24,16 @@ export function generateStaticParams() {
   return staticLocales.map((locale) => ({ locale }));
 }
 
-// No dev branch here: share is developed against its own Vite server
-// (`dev:spa:share`), and asking the main one for a shell it doesn't own gets the
-// main SPA back through the HTML fallback — silently, since that responds 200.
-async function getTemplate(): Promise<string> {
+const isDev = process.env.NODE_ENV === 'development';
+
+async function getTemplate(request: Request): Promise<string> {
+  // Request the real share HTML entry, not the main SPA's index fallback.
+  // Its relative entry script works with both the main and standalone Vite root.
+  if (isDev)
+    return fetchViteDevTemplate(
+      '/apps/share/index.html',
+      resolveViteBrowserOrigin(request.url, undefined, request.headers.get('x-forwarded-host')),
+    );
   const { shareHtmlTemplate } = await import('../../shareHtmlTemplate');
 
   return shareHtmlTemplate;
@@ -65,7 +76,7 @@ async function buildSeoMeta(locale: string): Promise<string> {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ locale: string; path?: string[] }> },
 ) {
   const { locale: rawLocale } = await params;
@@ -79,7 +90,7 @@ export async function GET(
     isMobile: false,
   };
 
-  const template = await getTemplate();
+  const template = await getTemplate(request);
 
   return renderSpaHtml(template, { seoMeta: await buildSeoMeta(locale), serverConfig: spaConfig });
 }

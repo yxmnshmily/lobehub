@@ -1,3 +1,4 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { Flexbox } from '@lobehub/ui';
 import { Skeleton } from '@lobehub/ui/base-ui';
 import { Card } from 'antd';
@@ -25,7 +26,7 @@ const styles = createStaticStyles(({ css }) => ({
     height: 287px;
     padding-block: 64px;
     padding-inline: 24px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     text-align: center;
@@ -51,21 +52,21 @@ const BenchmarkDetailLoading = () => (
             style={{ borderRadius: cssVar.borderRadiusLG }}
           />
           <Flexbox flex={1} gap={8}>
-            <Skeleton height={24} width={200} />
-            <Skeleton height={14} width={320} />
+            <SkeletonBar height={24} width={200} />
+            <SkeletonBar height={14} width={320} />
           </Flexbox>
         </Flexbox>
         <Flexbox horizontal gap={8}>
-          <Skeleton height={28} width={72} />
-          <Skeleton height={28} width={28} />
+          <SkeletonBar height={28} width={72} />
+          <SkeletonBar height={28} width={28} />
         </Flexbox>
       </Flexbox>
     </Flexbox>
 
     <Flexbox horizontal align={'center'} className={styles.hero} justify={'space-between'}>
       <Flexbox gap={8}>
-        <Skeleton height={32} width={64} />
-        <Skeleton height={14} width={144} />
+        <SkeletonBar height={32} width={64} />
+        <SkeletonBar height={14} width={144} />
       </Flexbox>
     </Flexbox>
 
@@ -76,7 +77,7 @@ const BenchmarkDetailLoading = () => (
           key={i}
           styles={{ body: { padding: 16 } }}
           style={{
-            border: `1px solid ${cssVar.colorBorderSecondary}`,
+            border: `0.5px solid ${cssVar.colorBorderSecondary}`,
             borderRadius: cssVar.borderRadius,
             flex: 1,
             minWidth: 0,
@@ -89,11 +90,11 @@ const BenchmarkDetailLoading = () => (
                 size={36}
                 style={{ borderRadius: cssVar.borderRadius }}
               />
-              <Skeleton height={14} width={80} />
+              <SkeletonBar height={14} width={80} />
             </Flexbox>
             <Flexbox gap={4}>
-              <Skeleton height={24} width={60} />
-              <Skeleton height={12} width={100} />
+              <SkeletonBar height={24} width={60} />
+              <SkeletonBar height={12} width={100} />
             </Flexbox>
           </Flexbox>
         </Card>
@@ -101,26 +102,26 @@ const BenchmarkDetailLoading = () => (
     </Flexbox>
 
     <Flexbox className={styles.sectionTitle}>
-      <Skeleton height={18} width={80} />
+      <SkeletonBar height={18} width={80} />
     </Flexbox>
     <Flexbox className={styles.section} gap={16}>
       <Skeleton.Avatar shape={'square'} size={56} style={{ borderRadius: cssVar.borderRadiusLG }} />
       <Flexbox align={'center'} gap={6}>
-        <Skeleton height={16} width={112} />
-        <Skeleton height={12} width={216} />
+        <SkeletonBar height={16} width={112} />
+        <SkeletonBar height={12} width={216} />
       </Flexbox>
-      <Skeleton height={28} width={112} />
+      <SkeletonBar height={28} width={112} />
     </Flexbox>
     <Flexbox className={styles.sectionTitle}>
-      <Skeleton height={18} width={56} />
+      <SkeletonBar height={18} width={56} />
     </Flexbox>
     <Flexbox className={`${styles.section} ${styles.runsSection}`} gap={16}>
       <Skeleton.Avatar shape={'square'} size={56} style={{ borderRadius: cssVar.borderRadiusLG }} />
       <Flexbox align={'center'} gap={6}>
-        <Skeleton height={16} width={96} />
-        <Skeleton height={12} width={240} />
+        <SkeletonBar height={16} width={96} />
+        <SkeletonBar height={12} width={240} />
       </Flexbox>
-      <Skeleton height={28} width={104} />
+      <SkeletonBar height={28} width={104} />
     </Flexbox>
   </>
 );

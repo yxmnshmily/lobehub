@@ -17,10 +17,7 @@ import { createAiProviderSlice } from './slices/aiProvider';
 //  ===============  Aggregate createStoreFn ============ //
 
 export interface AiInfraStore
-  extends AIProviderStoreState,
-    AiProviderAction,
-    AiModelAction,
-    ResetableStore {
+  extends AIProviderStoreState, AiProviderAction, AiModelAction, ResetableStore {
   /* empty */
 }
 

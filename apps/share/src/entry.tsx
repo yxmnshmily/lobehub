@@ -7,7 +7,12 @@ import { createSPABrowserRouter, createSPARoot } from '@/spa/runtime';
 
 import { shareRoutes } from './router';
 
-const router = createSPABrowserRouter(shareRoutes);
+const mountPath = '/lobehub';
+const basename =
+  window.location.pathname === mountPath || window.location.pathname.startsWith(`${mountPath}/`)
+    ? mountPath
+    : undefined;
+const router = createSPABrowserRouter(shareRoutes, { basename });
 
 createSPARoot(document.getElementById('root')!).render(
   <BootErrorBoundary>

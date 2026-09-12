@@ -66,7 +66,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: ${STYLE_THUMB_SIZE + 8}px;
     padding: 4px;
-    border: 1px solid transparent;
+    border: 0.5px solid transparent;
     border-radius: ${cssVar.borderRadiusLG};
 
     transition:
@@ -103,7 +103,7 @@ const styles = createStaticStyles(({ css }) => ({
   referenceEmpty: css`
     aspect-ratio: 1;
     width: ${STYLE_THUMB_SIZE}px;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorTextTertiary};
@@ -201,7 +201,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -257,7 +257,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-inline: ${FULL_BODY_INSET}px;
 
     height: calc((100% - ${FULL_BODY_INSET * 2}px) * ${HOME_PORTRAIT_VISIBLE_RATIO});
-    border: 1px dashed ${cssVar.colorTextSecondary};
+    border: 0.5px dashed ${cssVar.colorTextSecondary};
     border-radius: ${cssVar.borderRadiusSM};
   `,
   framePreviewLabel: css`

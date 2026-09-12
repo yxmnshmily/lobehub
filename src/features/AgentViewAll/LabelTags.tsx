@@ -22,7 +22,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     max-width: 140px;
     padding-block: 1px;
     padding-inline: 8px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 999px;
 
     font-size: 11px;

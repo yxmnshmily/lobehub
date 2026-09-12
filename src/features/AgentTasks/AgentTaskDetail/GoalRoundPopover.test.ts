@@ -16,6 +16,6 @@ describe('formatRoundCost', () => {
 describe('formatTokens', () => {
   it('abbreviates thousands', () => {
     expect(formatTokens(999)).toBe('999');
-    expect(formatTokens(15_400)).toBe('15.4k');
+    expect(formatTokens(15_400)).toBe('15.4K');
   });
 });

@@ -67,7 +67,7 @@ export default function Root() {
 
 const buttonStyle: CSSProperties = {
   background: 'transparent',
-  border: '1px solid currentcolor',
+  border: '0.5px solid currentcolor',
   borderRadius: 6,
   color: 'inherit',
   cursor: 'pointer',

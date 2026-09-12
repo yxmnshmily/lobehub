@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     padding-block: 14px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: color-mix(in srgb, ${cssVar.colorBgContainer} 72%, transparent);

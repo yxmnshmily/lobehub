@@ -53,7 +53,7 @@
   "benchmark.detail.stats.perRun": "/ 次",
   "benchmark.detail.stats.runs": "评测",
   "benchmark.detail.stats.tags": "标签",
-  "benchmark.detail.stats.topAgents": "Top Agents",
+  "benchmark.detail.stats.topAgents": "表现最佳的智能体",
   "benchmark.detail.stats.totalCases": "总用例数",
   "benchmark.detail.stats.waiting": "Waiting...",
   "benchmark.detail.tabs.data": "数据",

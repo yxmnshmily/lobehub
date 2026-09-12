@@ -1,7 +1,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useUserStore } from '@/store/user';
@@ -42,9 +42,10 @@ const getGreetingKey = (hour: number): 'afternoon' | 'evening' | 'morning' => {
 
 interface HomeHeaderProps {
   centered?: boolean;
+  identity?: ReactNode;
 }
 
-const HomeHeader = memo<HomeHeaderProps>(({ centered }) => {
+const HomeHeader = memo<HomeHeaderProps>(({ centered, identity }) => {
   const { t } = useTranslation('home');
   const displayName = useUserStore(userProfileSelectors.displayUserName);
   const isLogin = useUserStore(authSelectors.isLogin);
@@ -61,10 +62,10 @@ const HomeHeader = memo<HomeHeaderProps>(({ centered }) => {
     // composer. The layout's lift math (MINIMAL_LIFT) counts on these heights.
     <Flexbox gap={centered ? 8 : 16} justify={'center'}>
       {centered ? (
-        <AgentSelect />
+        (identity ?? <AgentSelect />)
       ) : (
         <Flexbox horizontal align={'center'} className={styles.toolbar}>
-          <AgentSelect />
+          {identity ?? <AgentSelect />}
         </Flexbox>
       )}
       <Text as={'h1'} className={styles.greeting} weight={600}>

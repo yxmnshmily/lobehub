@@ -111,7 +111,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex-direction: row;
 
     height: 500px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   description: css`
@@ -123,7 +123,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-block-start: ${cssVar.paddingSM};
     margin-inline: ${cssVar.paddingSM};
     padding: ${cssVar.padding};
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillTertiary};
@@ -135,7 +135,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex: 1;
 
     padding: 0;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   listHeader: css`
     padding: 0;

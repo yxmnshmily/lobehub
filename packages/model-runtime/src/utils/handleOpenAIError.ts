@@ -25,6 +25,30 @@ export const handleOpenAIError = (
       errorResult = { headers: error.headers, status: error.status };
     }
 
+    if (
+      errorResult &&
+      typeof errorResult === 'object' &&
+      !Array.isArray(errorResult) &&
+      Number.isSafeInteger(error.status) &&
+      error.status >= 400 &&
+      error.status <= 599
+    ) {
+      if (errorResult instanceof Error) {
+        const code = (errorResult as Error & { code?: unknown }).code;
+        const safeCode =
+          (typeof code === 'string' && /^[\w:-]{1,64}$/.test(code)) ||
+          (typeof code === 'number' && Number.isSafeInteger(code));
+        errorResult = {
+          ...(safeCode ? { code } : {}),
+          message: errorResult.message,
+          name: errorResult.name,
+          status: error.status,
+        };
+      } else {
+        errorResult = { ...errorResult, status: error.status };
+      }
+    }
+
     return {
       errorResult,
       message: error.message,

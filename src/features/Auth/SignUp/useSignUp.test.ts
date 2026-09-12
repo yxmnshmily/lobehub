@@ -138,9 +138,13 @@ describe('useSignUp', () => {
       });
 
       expect(mockSignUpEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ callbackURL: `${originalLocation.origin}/lobehub/onboarding` }),
+        expect.objectContaining({
+          callbackURL: `${originalLocation.origin}/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault`,
+        }),
       );
-      expect(window.location.href).toBe('/lobehub/onboarding');
+      expect(window.location.href).toBe(
+        '/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault',
+      );
     });
 
     it('should thread callbackUrl from search params through onboarding', async () => {
@@ -178,7 +182,7 @@ describe('useSignUp', () => {
       );
       expect(mockSignUpEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          callbackURL: `${originalLocation.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding&status=success&email=new%40example.com`,
+          callbackURL: `${originalLocation.origin}/lobehub/verify-email?callbackUrl=%2Flobehub%2Fonboarding%3FcallbackUrl%3D%252Flobehub%252Fgroup%252Fdefault&status=success&email=new%40example.com`,
         }),
       );
     });
@@ -285,7 +289,9 @@ describe('useSignUp', () => {
         }),
       );
       expect(mockMessageError).not.toHaveBeenCalled();
-      expect(window.location.href).toBe('/lobehub/onboarding');
+      expect(window.location.href).toBe(
+        '/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault',
+      );
     });
 
     it('should stop sign up when captcha modal is cancelled', async () => {
@@ -368,7 +374,9 @@ describe('useSignUp', () => {
         await Promise.all([firstRequest!, secondRequest!]);
       });
       expect(result.current.loading).toBe(false);
-      expect(window.location.href).toBe('/lobehub/onboarding');
+      expect(window.location.href).toBe(
+        '/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault',
+      );
     });
   });
 });

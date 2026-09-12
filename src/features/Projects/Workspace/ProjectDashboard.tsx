@@ -38,7 +38,7 @@ import type { ProjectDetail } from '@/store/project';
 const styles = createStaticStyles(({ css }) => ({
   attention: css`
     padding-block: 10px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: 0;
@@ -76,7 +76,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   progress: css`
     padding: 18px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
     background: color-mix(in srgb, ${cssVar.colorBgContainer} 84%, ${cssVar.colorFillQuaternary});
   `,
@@ -87,13 +87,13 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   railCard: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
     background: color-mix(in srgb, ${cssVar.colorBgContainer} 78%, transparent);
   `,
   section: css`
     padding-block: 18px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   works: css`
     display: grid;

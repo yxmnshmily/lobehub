@@ -1,12 +1,13 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { SkeletonText, Tag, Text } from '@lobehub/ui/base-ui';
+import { Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 
 import { previewSections } from '../helpers';
@@ -40,7 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   separator: css`
     flex: none;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   retry: css`

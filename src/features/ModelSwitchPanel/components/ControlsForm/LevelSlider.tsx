@@ -23,14 +23,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     transition: color 0.2s ease;
 
-
     &:hover {
       color: ${cssVar.colorTextSecondary};
     }
 
     &:focus-visible {
       border-radius: 6px;
-      outline: 1px solid ${cssVar.colorBorder};
+      outline: 0.5px solid ${cssVar.colorBorder};
       outline-offset: 2px;
     }
   `,

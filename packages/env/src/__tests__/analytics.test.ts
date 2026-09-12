@@ -9,12 +9,14 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   // 在每个测试用例之后,恢复所有的环境变量
   vi.resetModules();
 });
 
 describe('getAnalyticsConfig', () => {
   it('should return the correct analytics config', () => {
+    vi.stubEnv('TELEMETRY_DISABLED', '0');
     // 设置环境变量
     process.env.PLAUSIBLE_DOMAIN = 'example.com';
     process.env.POSTHOG_KEY = 'posthog_key';
@@ -30,6 +32,7 @@ describe('getAnalyticsConfig', () => {
     const config = getAnalyticsConfig();
 
     expect(config).toEqual({
+      TELEMETRY_DISABLED: false,
       ENABLED_PLAUSIBLE_ANALYTICS: true,
       PLAUSIBLE_DOMAIN: 'example.com',
       PLAUSIBLE_SCRIPT_BASE_URL: 'https://plausible.io',

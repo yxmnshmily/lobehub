@@ -1,6 +1,7 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobechat/const';
 
 import { lambdaClient } from '@/libs/trpc/client';
+import { notifyMaterialDeletion } from '@/utils/materialDeletion';
 import {
   type CheckFileHashResult,
   type FileItem,
@@ -55,6 +56,7 @@ export class FileService {
 
   removeFile = async (id: string): Promise<void> => {
     await lambdaClient.file.removeFile.mutate({ id });
+    notifyMaterialDeletion();
   };
 
   removeUnreferencedFile = async (id: string): Promise<void> => {
@@ -63,6 +65,7 @@ export class FileService {
 
   removeFiles = async (ids: string[]): Promise<void> => {
     await lambdaClient.file.removeFiles.mutate({ ids });
+    notifyMaterialDeletion();
   };
 
   // V2.0 Migrate from getFiles to getKnowledgeItems
@@ -81,9 +84,11 @@ export class FileService {
   deleteKnowledgeItemsByQuery = async (
     params: QueryFileListParams & { excludedIds?: string[] },
   ) => {
-    return lambdaClient.file.deleteKnowledgeItemsByQuery.mutate(
+    const result = await lambdaClient.file.deleteKnowledgeItemsByQuery.mutate(
       params as QueryFileListSchemaType & { excludedIds?: string[] },
     );
+    notifyMaterialDeletion();
+    return result;
   };
 
   // V2.0 Migrate from getFileItem to getKnowledgeItem

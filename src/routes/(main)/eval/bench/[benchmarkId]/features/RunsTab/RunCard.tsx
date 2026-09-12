@@ -16,6 +16,7 @@ import {
 import { Fragment, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useEvalStore } from '@/store/eval';
 
@@ -35,7 +36,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   card: css`
     padding: 20px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -181,6 +182,7 @@ interface RunCardProps {
 
 const RunCard = memo<RunCardProps>(({ benchmarkId, run, onRefresh, onEdit }) => {
   const { t } = useTranslation('eval');
+  const { formatOptional: formatCost } = useMonthlyExchangeRate();
 
   const deleteRun = useEvalStore((s) => s.deleteRun);
   const startRun = useEvalStore((s) => s.startRun);
@@ -312,7 +314,7 @@ const RunCard = memo<RunCardProps>(({ benchmarkId, run, onRefresh, onEdit }) => 
     },
     metrics?.totalCost != null && {
       className: styles.metaHighlight,
-      text: `$${metrics.totalCost.toFixed(2)}`,
+      text: formatCost(metrics.totalCost),
     },
   ].filter((item): item is { className?: string; text: string } => Boolean(item));
 

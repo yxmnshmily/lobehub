@@ -17,6 +17,7 @@ import type {
 import { TRPCError } from '@trpc/server';
 import { sql } from 'drizzle-orm';
 
+import { AgentModel } from '@/database/models/agent';
 import { AgentOperationModel } from '@/database/models/agentOperation';
 import { GoalModel } from '@/database/models/goal';
 import { GoalGraphModel } from '@/database/models/goalGraph';
@@ -27,13 +28,16 @@ import { WorkModel } from '@/database/models/work';
 import type { LobeChatDatabase } from '@/database/type';
 import { assertAgentUsableBy } from '@/database/utils/agent-access';
 import { AgentRuntimeCoordinator } from '@/server/modules/AgentRuntime/AgentRuntimeCoordinator';
+import { PlatformUsageSharedBudgetError } from '@/server/services/platformUsageBilling/sharedBudget';
 
 import { TaskService } from '../task';
 import { TaskRunnerService } from '../taskRunner';
+import { resolveGroupExecution } from '../taskRunner/groupExecution';
 import { AcceptanceService } from '../verify/acceptanceService';
 import { VerifyPlanGeneratorService } from '../verify/planGenerator';
 import { GoalCriteriaGeneratorService, type GoalDecompositionDraft } from './criteriaGenerator';
 import {
+  collectDependents,
   decideNextMove,
   frontierNeedsBudget,
   GOAL_ACCEPTANCE_TASK_TITLE,
@@ -158,6 +162,15 @@ export class GoalService {
       : this.graphModel;
 
   create = async (input: CreateGoalGraphInput): Promise<GoalGraphSnapshot> => {
+    const groupExecution = await resolveGroupExecution(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      input.config,
+      input.agentId,
+    );
+    if (groupExecution)
+      input = { ...input, agentId: groupExecution.supervisorAgentId ?? groupExecution.agentId };
     if (input.agentId) {
       await assertAgentUsableBy(this.db, input.agentId, {
         userId: this.userId,
@@ -558,6 +571,13 @@ export class GoalService {
         (optionId === 'fail' && source.title === GOAL_ACCEPTANCE_TASK_TITLE)
       ) {
         await this.graphModel.updateNodeStatus(goalId, source.id, 'retired', resolution);
+      } else if (optionId === 'drop_dependents') {
+        // The prerequisite is not coming back, so retire the work that can only
+        // wait on it — otherwise the goal stays wedged on an edge that can never
+        // be satisfied.
+        for (const dependent of collectDependents(graph, source.id)) {
+          await this.graphModel.updateNodeStatus(goalId, dependent.id, 'retired', resolution);
+        }
       }
     }
     const terminalAcceptanceFailed =
@@ -660,6 +680,54 @@ export class GoalService {
           message: move.message,
           nodeId: move.focusNodeId,
           outcome: move.outcome,
+        });
+      }
+
+      case 'blocked_by_given_up': {
+        // A prerequisite was given up on, so nothing behind it can ever run —
+        // `selectFrontier` only counts `resolved` as satisfying `depends_on`. Ask
+        // the user which way out they want instead of stopping the goal with no
+        // question attached to it.
+        const givenUp = graph.nodes.find((node) => node.id === move.focusNodeId);
+        if (!givenUp) {
+          return observe({ goalId, message: move.message, outcome: 'no_progress' });
+        }
+
+        const blocked = frontier.eligible.find(({ blockedBy }) => blockedBy.includes(givenUp.id));
+        const gateOpen = graph.decisions.some(
+          (decision) => decision.nodeId === givenUp.id && decision.status === 'pending',
+        );
+
+        if (!gateOpen) {
+          const node = await this.coordinatorGraph.createNode(goalId, {
+            description: move.message,
+            kind: 'decision',
+            status: 'waiting',
+            title: '前置步骤已放弃',
+          });
+          if (node) {
+            await this.coordinatorGraph.createEdge(goalId, givenUp.id, node.id, 'leads_to');
+            await this.coordinatorGraph.createDecision(goalId, node.id, {
+              authority: 'user',
+              options: [
+                { id: 'retry', label: '重做前置步骤' },
+                { id: 'drop_dependents', label: '放弃依赖它的任务' },
+              ],
+              question: `${move.message}。重做前置步骤，还是放弃依赖它的任务？`,
+              recommendedOptionId: 'retry',
+              requestedUserId: this.userId,
+            });
+            effects.push({ type: 'opened_decision', detail: move.message, nodeId: node.id });
+          }
+        }
+
+        await this.transitionStatus(graph.goal, 'review', move.message);
+        effects.push({ type: 'goal_status', detail: 'review' });
+        return observe({
+          goalId,
+          message: move.message,
+          nodeId: blocked?.node.id,
+          outcome: 'waiting_human',
         });
       }
 
@@ -867,9 +935,19 @@ export class GoalService {
     let task: TaskItem | undefined;
     try {
       const description = frontier.description ?? frontier.title;
+      const groupExecution = await resolveGroupExecution(
+        this.db,
+        this.userId,
+        this.workspaceId,
+        graph.goal.config,
+        graph.goal.config?.taskAssignments?.[frontier.id] ?? graph.goal.agentId,
+      );
       task = await this.taskService.createTask({
-        assigneeAgentId: graph.goal.agentId ?? undefined,
-        config: { checkpoint: { topic: { after: false } } },
+        assigneeAgentId: groupExecution?.agentId ?? graph.goal.agentId ?? undefined,
+        config: {
+          checkpoint: { topic: { after: false } },
+          ...(groupExecution ? { groupId: groupExecution.groupId } : {}),
+        },
         description: description?.slice(0, TASK_DESCRIPTION_MAX_LENGTH),
         instruction: this.buildTaskInstruction(graph, frontier.title, frontier.description),
         name: frontier.title,
@@ -1085,6 +1163,15 @@ export class GoalService {
     } catch (error) {
       // We claimed the task, so nothing else will put it back. Release it or the
       // Task stays 'running' with no run behind it and only the lease reclaims it.
+      if (
+        (error instanceof TRPCError && error.code === 'PRECONDITION_FAILED') ||
+        error instanceof PlatformUsageSharedBudgetError
+      ) {
+        await this.taskModel.updateStatusIfCurrent(task.id, 'running', 'paused', {
+          error: error.message,
+        });
+        return this.openFailureDecision(graph, nodeId, task.id, error.message, effects);
+      }
       await this.taskModel
         .updateStatusIfCurrent(task.id, 'running', task.status)
         .catch((releaseError) => {
@@ -1265,8 +1352,8 @@ export class GoalService {
   /**
    * Turn a goal with no tasks into an explorable structure: the LLM plans the
    * core question plus 1–5 independent directions, each carrying only its own
-   * deliverable requirements. A planning failure degrades to one task seeded
-   * from the raw requirement — the goal must never stall on its planner.
+   * deliverable requirements. Only personal goals may degrade to one raw task;
+   * group planning failures need an explicit replan, never supervisor-only work.
    */
   private planDecomposition = async (graph: GoalGraphSnapshot, effects: GoalAdvanceEffect[]) => {
     const goalId = graph.goal.id;
@@ -1293,7 +1380,67 @@ export class GoalService {
     }
 
     const generator = new GoalCriteriaGeneratorService(this.db, this.userId, this.workspaceId);
-    const plan = await generator.decompose({ requirement }).catch(() => undefined);
+    const groupExecution = await resolveGroupExecution(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      graph.goal.config,
+      graph.goal.agentId,
+    );
+    const agentModel = new AgentModel(this.db, this.userId, this.workspaceId);
+    const members = groupExecution
+      ? await Promise.all(
+          groupExecution.members.map(async ({ agentId }) => {
+            const agent = await agentModel.getAgentConfigById(agentId);
+            return {
+              agentId,
+              description: agent?.description ?? undefined,
+              title: agent?.title ?? undefined,
+            };
+          }),
+        )
+      : undefined;
+    const plan = await generator
+      .decompose({ requirement, ...(members ? { members } : {}) })
+      .catch(() => undefined);
+
+    // Validate the entire assignment plan before inserting any task nodes. A
+    // partial invalid plan otherwise leaves unassigned nodes that later fall
+    // back to the supervisor and silently bypass group collaboration.
+    const invalidAssignments =
+      groupExecution &&
+      plan?.tasks.some(
+        (draft) =>
+          !draft.assigneeAgentId ||
+          !groupExecution.members.some((member) => member.agentId === draft.assigneeAgentId),
+      );
+    if (groupExecution && (!plan?.tasks.length || invalidAssignments)) {
+      const reason = invalidAssignments
+        ? '群协作规划失败：成员分工缺失或包含群外成员。请重新规划成员分工。'
+        : '群协作规划失败：规划服务未返回有效分工，可能是模型异常或结果校验未通过。请检查配置后重新规划。';
+      const node = await this.coordinatorGraph.createNode(goalId, {
+        description: reason,
+        kind: 'decision',
+        status: 'waiting',
+        title: '重新规划群成员分工',
+      });
+      if (node) {
+        if (problem)
+          await this.coordinatorGraph.createEdge(goalId, problem.id, node.id, 'leads_to');
+        await this.coordinatorGraph.createDecision(goalId, node.id, {
+          authority: 'user',
+          options: [{ id: 'retry', label: '重新规划成员分工' }],
+          question: reason,
+          recommendedOptionId: 'retry',
+          requestedUserId: this.userId,
+        });
+        effects.push({ type: 'opened_decision', nodeId: node.id, detail: reason });
+      }
+      // claimPlanning already moved the persisted row to running.
+      await this.transitionStatus({ ...graph.goal, status: 'running' }, 'review', reason);
+      effects.push({ type: 'goal_status', detail: 'review' });
+      return { goalId, message: reason, nodeId: node?.id, outcome: 'waiting_human' as const };
+    }
 
     // Rare shape: a goal already past `planning` whose Tasks were all removed.
     // There is no status edge to claim on that path, so shrink the duplicate
@@ -1320,6 +1467,7 @@ export class GoalService {
     }
 
     const createdIds: (string | undefined)[] = [];
+    const taskAssignments = { ...graph.goal.config?.taskAssignments };
     for (const draft of draftTasks) {
       const node = await this.coordinatorGraph.createNode(goalId, {
         description: draft.instruction,
@@ -1328,10 +1476,16 @@ export class GoalService {
       });
       createdIds.push(node?.id);
       if (!node) continue;
+      if (groupExecution && draft.assigneeAgentId) {
+        taskAssignments[node.id] = draft.assigneeAgentId;
+      }
       if (problem)
         await this.coordinatorGraph.createEdge(goalId, problem.id, node.id, 'decomposes');
       effects.push({ nodeId: node.id, type: 'created_node', detail: draft.title });
     }
+
+    if (groupExecution)
+      await this.goalModel.update(goalId, { config: { ...graph.goal.config, taskAssignments } });
 
     // The planner's `dependsOn` indices become `depends_on` edges, drawn
     // dependent → prerequisite the way `decideNextMove` reads a blocker. Only

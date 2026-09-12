@@ -2,6 +2,7 @@
 
 import { BRANDING_PROVIDER } from '@lobechat/business-const';
 import { CREDITS_PER_DOLLAR } from '@lobechat/const/currency';
+import { usdToCredits } from '@lobechat/utils/credits';
 import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, Popover } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
@@ -12,6 +13,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import NewModelBadge from '@/components/ModelSelect/NewModelBadge';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { serverConfigSelectors } from '@/store/serverConfig/selectors';
@@ -90,6 +92,7 @@ const GenerationModelItem = memo<GenerationModelItemProps>(
   }) => {
     const isDarkMode = useIsDark();
     const { t } = useTranslation('components');
+    const { format, money } = useMonthlyExchangeRate();
     const enableBusinessFeatures = useServerConfigStore(
       serverConfigSelectors.enableBusinessFeatures,
     );
@@ -103,7 +106,7 @@ const GenerationModelItem = memo<GenerationModelItemProps>(
 
       if (enableBusinessFeatures && providerId === BRANDING_PROVIDER) {
         if (typeof exactUsd === 'number') {
-          const credits = exactUsd * CREDITS_PER_DOLLAR;
+          const credits = usdToCredits(exactUsd);
           return t(
             isVideo
               ? 'GenerationModelItem.creditsPerVideoExact'
@@ -122,10 +125,14 @@ const GenerationModelItem = memo<GenerationModelItemProps>(
         }
       } else {
         if (typeof exactUsd === 'number') {
-          return `${numeral(exactUsd).format('$0,0.00[000]')} / ${isVideo ? 'video' : 'image'}`;
+          const imageUnit = model.pricing?.units.find((unit) => unit.name === 'imageGeneration');
+          if (!isVideo && imageUnit?.strategy === 'fixed' && imageUnit.unit === 'image') {
+            return `${money(imageUnit.rate, model.pricing?.currency || 'USD', 6)} / image`;
+          }
+          return `${format(exactUsd, 6)} / ${isVideo ? 'video' : 'image'}`;
         }
         if (typeof approxUsd === 'number') {
-          return `~ ${numeral(approxUsd).format('$0,0.00[000]')} / ${isVideo ? 'video' : 'image'}`;
+          return `~ ${format(approxUsd, 6)} / ${isVideo ? 'video' : 'image'}`;
         }
       }
       return undefined;
@@ -139,6 +146,9 @@ const GenerationModelItem = memo<GenerationModelItemProps>(
       priceKind,
       providerId,
       t,
+      format,
+      money,
+      model.pricing,
     ]);
 
     const popoverContent = useMemo(() => {

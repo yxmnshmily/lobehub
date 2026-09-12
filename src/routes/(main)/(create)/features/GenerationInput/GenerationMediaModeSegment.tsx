@@ -3,7 +3,7 @@
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Segmented, type SegmentedOptions, Select, type SelectProps } from '@lobehub/ui/base-ui';
 import { createStaticStyles, useResponsive } from 'antd-style';
-import { ImageIcon, Video } from 'lucide-react';
+import { FilePenLine, ImageIcon, Video } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -65,11 +65,15 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
           ),
           value: 'video',
         },
+        {
+          label: <span className={styles.heroText}>{t('tab.pages')}</span>,
+          value: 'page',
+        },
       ],
       [t],
     );
 
-    const toolbarOptions = useMemo<SegmentedOptions<'image' | 'video'>>(
+    const toolbarOptions = useMemo<SegmentedOptions<'image' | 'video' | 'page'>>(
       () => [
         {
           icon: <Icon icon={ImageIcon} size={16} />,
@@ -82,6 +86,12 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
           label: t('tab.video'),
           title: t('tab.video'),
           value: 'video',
+        },
+        {
+          icon: <Icon icon={FilePenLine} size={16} />,
+          label: t('tab.pages'),
+          title: t('tab.pages'),
+          value: 'page',
         },
       ],
       [t],
@@ -109,14 +119,14 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
     const handleChange = useCallback(
       (value: string) => {
         if (value === mode) return;
-        navigate(value === 'video' ? '/video' : '/image');
+        navigate(value === 'page' ? '/page' : value === 'video' ? '/video' : '/image');
       },
       [mode, navigate],
     );
 
     if (!isHero)
       return (
-        <Segmented<'image' | 'video'>
+        <Segmented<'image' | 'video' | 'page'>
           options={toolbarOptions}
           size={mobile ? 'large' : 'small'}
           value={mode}

@@ -6,6 +6,33 @@ import { CONTENT_POLICY_ERROR_MESSAGE } from './contentPolicyError';
 import { categorizeImageGenerationError } from './imageError';
 
 describe('categorizeImageGenerationError', () => {
+  it.each([
+    [
+      400,
+      'Image request parameters were rejected. Check the model parameter schema before retrying.',
+    ],
+    [
+      422,
+      'Image request parameters were rejected. Check the model parameter schema before retrying.',
+    ],
+    [403, 'Image generation permission was denied. Check provider account and model access.'],
+    [
+      429,
+      'The provider rejected the request due to a rate or quota limit. Check provider limits before retrying.',
+    ],
+  ])('distinguishes HTTP %s failures without exposing provider secrets', (status, message) => {
+    const result = categorizeImageGenerationError({
+      error: {
+        status,
+        message: 'upstream secret sk-private at https://internal.test?token=private',
+      },
+      isAborted: false,
+      isEditingImage: false,
+    });
+    expect(result.errorMessage).toBe(message);
+    expect(JSON.stringify(result)).not.toMatch(/sk-private|internal.test|token=private/);
+  });
+
   it('should map runtime content policy violations to async content moderation errors', () => {
     const result = categorizeImageGenerationError({
       error: {

@@ -1,3 +1,4 @@
+import { isRecord } from '@lobechat/utils/object';
 import { toast } from '@lobehub/ui/base-ui';
 import { Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
@@ -19,8 +20,8 @@ import { sanitizeRedirectPath, toAbsoluteAuthCallbackUrl } from '@/utils/onboard
 import { EMAIL_REGEX, USERNAME_REGEX } from './SignInEmailStep';
 
 const LAST_AUTH_PROVIDER_KEY = 'lobehub:auth:last-provider:v1';
-const isEmailNotVerifiedError = (error: { code?: string } | null | undefined) =>
-  error?.code === 'EMAIL_NOT_VERIFIED';
+const isEmailNotVerifiedError = (error: unknown) =>
+  isRecord(error) && error.code === 'EMAIL_NOT_VERIFIED';
 
 const getWechatAuthorizationUrl = (result: unknown): string | undefined => {
   if (!result || typeof result !== 'object') return undefined;
@@ -35,14 +36,9 @@ const getWechatAuthorizationUrl = (result: unknown): string | undefined => {
     const redirectUri = url.searchParams.get('redirect_uri');
     if (redirectUri) {
       try {
-        const callbackUrl = new URL(redirectUri);
-        const usesLoopbackHost = ['127.0.0.1', 'localhost'].includes(callbackUrl.hostname);
-        if (usesLoopbackHost && callbackUrl.pathname.endsWith('/api/auth/callback/wechat')) {
-          const currentOrigin = new URL(window.location.origin);
-          callbackUrl.protocol = currentOrigin.protocol;
-          callbackUrl.host = currentOrigin.host;
-          url.searchParams.set('redirect_uri', callbackUrl.toString());
-        }
+        // OAuth callbacks belong to the server configuration, not the visiting host.
+        // Rewriting here can diverge from the registered domain and OAuth state cookies.
+        new URL(redirectUri);
       } catch {
         return undefined;
       }

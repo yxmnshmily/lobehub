@@ -1,6 +1,8 @@
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   title: css`
     font-size: 28px;
@@ -11,9 +13,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const PersonaHeader = () => {
+  const translateTravel = useTravelTranslation();
   return (
     <Text as={'h1'} className={styles.title}>
-      Persona
+      {translateTravel('个人画像')}
     </Text>
   );
 };

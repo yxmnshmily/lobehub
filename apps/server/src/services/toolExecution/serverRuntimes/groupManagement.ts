@@ -44,7 +44,8 @@ const AGENT_MEMBER_UNAVAILABLE = buildError(
   'AGENT_MEMBER_UNAVAILABLE',
 );
 
-const START_FAILED = buildError('Agent member(s) failed to start.', 'AGENT_MEMBER_START_FAILED');
+const startFailed = (diagnosis?: string) =>
+  buildError(diagnosis || 'Agent member(s) failed to start.', 'AGENT_MEMBER_START_FAILED');
 
 class GroupManagementExecutionRuntime {
   // ==================== Communication Coordination ====================
@@ -57,12 +58,18 @@ class GroupManagementExecutionRuntime {
     if (!ctx.agentMember) return AGENT_MEMBER_UNAVAILABLE;
     if (!params.agentId) return buildError('agentId is required.', 'INVALID_ARGUMENTS');
 
-    const { started } = await ctx.agentMember.run({
-      members: [{ agentId: params.agentId, instruction: params.instruction }],
+    const { started, error } = await ctx.agentMember.run({
+      members: [
+        {
+          agentId: params.agentId,
+          instruction: params.instruction,
+          replyToMessageId: params.replyToMessageId,
+        },
+      ],
       mode: 'in_group',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
     });
-    if (!started) return START_FAILED;
+    if (!started) return startFailed(error);
 
     return {
       content: '',
@@ -81,13 +88,13 @@ class GroupManagementExecutionRuntime {
     const agentIds = params.agentIds ?? [];
     if (agentIds.length === 0) return buildError('agentIds is required.', 'INVALID_ARGUMENTS');
 
-    const { started } = await ctx.agentMember.run({
+    const { started, error } = await ctx.agentMember.run({
       disableTools: true,
       members: agentIds.map((agentId) => ({ agentId, instruction: params.instruction })),
       mode: 'in_group',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
     });
-    if (!started) return START_FAILED;
+    if (!started) return startFailed(error);
 
     return {
       content: '',
@@ -105,13 +112,13 @@ class GroupManagementExecutionRuntime {
     if (!ctx.agentMember) return AGENT_MEMBER_UNAVAILABLE;
     if (!params.agentId) return buildError('agentId is required.', 'INVALID_ARGUMENTS');
 
-    const { started } = await ctx.agentMember.run({
+    const { started, error } = await ctx.agentMember.run({
       members: [{ agentId: params.agentId, instruction: params.reason }],
       mode: 'in_group',
       // Delegate hands control to the member — finish without another supervisor turn.
       onComplete: 'finish',
     });
-    if (!started) return START_FAILED;
+    if (!started) return startFailed(error);
 
     return {
       content: '',
@@ -137,13 +144,13 @@ class GroupManagementExecutionRuntime {
       return buildError('agentId and instruction are required.', 'INVALID_ARGUMENTS');
     }
 
-    const { started } = await ctx.agentMember.run({
+    const { started, error } = await ctx.agentMember.run({
       members: [{ agentId: params.agentId, instruction: params.instruction }],
       mode: 'isolated',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
       timeout: params.timeout,
     });
-    if (!started) return START_FAILED;
+    if (!started) return startFailed(error);
 
     return {
       content: '',
@@ -162,14 +169,14 @@ class GroupManagementExecutionRuntime {
     const tasks = params.tasks ?? [];
     if (tasks.length === 0) return buildError('tasks is required.', 'INVALID_ARGUMENTS');
 
-    const { started } = await ctx.agentMember.run({
+    const { started, error } = await ctx.agentMember.run({
       members: tasks.map((task) => ({ agentId: task.agentId, instruction: task.instruction })),
       mode: 'isolated',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
       // Per-task timeouts collapse to the longest; the barrier waits for all.
       timeout: tasks.reduce((max, task) => Math.max(max, task.timeout ?? 0), 0) || undefined,
     });
-    if (!started) return START_FAILED;
+    if (!started) return startFailed(error);
 
     return {
       content: '',
@@ -180,28 +187,26 @@ class GroupManagementExecutionRuntime {
   };
 
   // ==================== Not yet implemented on the server ====================
-  // Mirror the client stubs: return inline (non-deferred) results so the
-  // supervisor LLM keeps orchestrating instead of parking.
+  // Return inline errors so unsupported actions are not mistaken for completed
+  // work and do not park the supervisor waiting for a callback that cannot arrive.
 
-  interrupt = async (params: InterruptParams): Promise<BuiltinServerRuntimeOutput> => ({
-    content: `Interrupt is not yet supported in server orchestration (task ${params.taskId}).`,
-    success: true,
-  });
+  interrupt = async (params: InterruptParams): Promise<BuiltinServerRuntimeOutput> =>
+    buildError(
+      `Interrupt is not yet supported in server orchestration (task ${params.taskId}).`,
+      'NOT_IMPLEMENTED',
+    );
 
-  summarize = async (_params: SummarizeParams): Promise<BuiltinServerRuntimeOutput> => ({
-    content: 'Summarize is not yet implemented in server orchestration.',
-    success: true,
-  });
+  summarize = async (_params: SummarizeParams): Promise<BuiltinServerRuntimeOutput> =>
+    buildError('Summarize is not yet implemented in server orchestration.', 'NOT_IMPLEMENTED');
 
-  createWorkflow = async (params: CreateWorkflowParams): Promise<BuiltinServerRuntimeOutput> => ({
-    content: `Workflow creation is not yet implemented ("${params.name}").`,
-    success: true,
-  });
+  createWorkflow = async (params: CreateWorkflowParams): Promise<BuiltinServerRuntimeOutput> =>
+    buildError(`Workflow creation is not yet implemented ("${params.name}").`, 'NOT_IMPLEMENTED');
 
-  vote = async (params: VoteParams): Promise<BuiltinServerRuntimeOutput> => ({
-    content: `Voting is not yet implemented (question: "${params.question}").`,
-    success: true,
-  });
+  vote = async (params: VoteParams): Promise<BuiltinServerRuntimeOutput> =>
+    buildError(
+      `Voting is not yet implemented (question: "${params.question}").`,
+      'NOT_IMPLEMENTED',
+    );
 }
 
 const runtime = new GroupManagementExecutionRuntime();

@@ -5,6 +5,9 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const analyticsTrack = vi.fn();
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: { platformAccess: { isPlatformAdmin: { useQuery: () => ({ data: true }) } } },
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -13,6 +16,7 @@ vi.mock('react-i18next', () => ({
       ({
         'changelog': 'Changelog',
         'getApp': 'Get App',
+        'tab.about': 'About the system',
         'userPanel.discord': 'Discord',
         'userPanel.docs': 'Docs',
         'userPanel.feedback': 'Feedback',
@@ -29,12 +33,14 @@ interface RenderFooterOptions {
   enableBusinessFeatures?: boolean;
   hideGitHub?: boolean;
   homeSidebar?: boolean;
+  isDevMode?: boolean;
 }
 
 let mockServerConfigState: Record<string, unknown>;
 let mockUserState: Record<string, unknown>;
 
 const renderFooter = async ({
+  isDevMode = false,
   billboardItems = [],
   desktop = false,
   enableBusinessFeatures = false,
@@ -54,7 +60,7 @@ const renderFooter = async ({
   };
   mockUserState = {
     defaultSettings: {},
-    settings: { general: { isDevMode: false } },
+    settings: { general: { isDevMode } },
   };
 
   vi.doMock('@lobechat/const', async (importOriginal) => {
@@ -121,6 +127,7 @@ const renderFooter = async ({
     return selector(mockServerConfigState);
   }
   vi.doMock('@/store/serverConfig', () => ({
+    featureFlagsSelectors: () => ({ hideDocs: false }),
     serverConfigSelectors: {
       enableBusinessFeatures: (s: Record<string, unknown>) => !!s.enableBusinessFeatures,
     },
@@ -163,6 +170,15 @@ afterEach(() => {
 });
 
 describe('Footer help menu tracking', () => {
+  it('puts About the system first and links to the existing page', async () => {
+    const user = userEvent.setup();
+    await renderFooter({ hideGitHub: false });
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    const about = await screen.findByRole('link', { name: 'About the system' });
+    expect(about).toHaveAttribute('href', '/settings/about');
+    expect(screen.getAllByRole('menuitem')[0]).toContainElement(about);
+  }, 20000);
+
   it('shows Get App immediately before GitHub on web', async () => {
     const user = userEvent.setup();
     await renderFooter({ hideGitHub: false });
@@ -241,3 +257,49 @@ describe('Footer help menu tracking', () => {
     expect(keys).not.toContain('billboard-promo');
   }, 20000);
 });
+
+it('opens application settings instead of the profile redirect', async () => {
+  const user = userEvent.setup();
+  await renderFooter();
+  await user.click(screen.getByRole('button', { name: 'Help' }));
+  expect(await screen.findByRole('link', { name: 'Settings' })).toHaveAttribute(
+    'href',
+    '/settings/appearance',
+  );
+});
+
+it('routes the settings gear to application settings', async () => {
+  await renderFooter({ isDevMode: true });
+  expect(screen.getByRole('button', { name: 'Settings' }).closest('a')).toHaveAttribute(
+    'href',
+    '/settings/appearance',
+  );
+});
+
+it('opens external help links from the first click', async () => {
+  const user = userEvent.setup();
+  const openSpy = vi.fn();
+  vi.stubGlobal('open', openSpy);
+
+  await renderFooter({ hideGitHub: false });
+
+  // 菜单项是 role=menuitem 的 div，里面的原生 <a> 默认跳转会被菜单自身的
+  // 收起/重渲染吞掉（表现为"点两次才跳转"），所以必须由点击事件同步打开，
+  // 且第一次点击就生效。这里逐条钉住，防止改回依赖原生 <a> 默认行为。
+  for (const name of ['Docs', 'Discord', 'GitHub']) {
+    if (!screen.queryByRole('link', { name })) {
+      await user.click(screen.getByRole('button', { name: 'Help' }));
+    }
+
+    const link = await screen.findByRole('link', { name });
+    openSpy.mockClear();
+    await user.click(link);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(
+      link.getAttribute('href'),
+      '_blank',
+      'noopener,noreferrer',
+    );
+  }
+}, 30000);

@@ -34,7 +34,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   header: css`
     padding-block-end: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   iconTile: css`
     display: flex;

@@ -1,9 +1,11 @@
+import type { GenerateObjectPayload } from '@lobechat/model-runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RbacModel } from '@/database/models/rbac';
 import { UserModel } from '@/database/models/user';
 
 import {
+  computeMaximumTextCredits,
   getPlatformAiRuntimeCapability,
   getPlatformAiRuntimeMarker,
   markPlatformAiRuntime,
@@ -31,6 +33,90 @@ vi.mock('@/server/routers/lambda/aiProvider', () => ({
   aiProviderRouter: { createCaller: platformCatalogMocks.providerCreateCaller },
 }));
 vi.mock('@/server/modules/ModelRuntime', () => modelRuntimeMocks);
+
+describe('platform bounded chat admission', () => {
+  it('includes the highest conditional cache-write rate in the ceiling', () => {
+    expect(
+      computeMaximumTextCredits(
+        {
+          currency: 'USD',
+          units: [
+            { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
+            { name: 'textOutput', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
+            {
+              name: 'textInput_cacheWrite',
+              lookup: { prices: { '1h': 3, '2h': 6 }, pricingParams: ['ttl'] },
+              strategy: 'lookup',
+              unit: 'millionTokens',
+            },
+          ],
+        },
+        1_000_000,
+        1_000_000,
+      ),
+    ).toBe(9_000_000);
+  });
+  const modelLimits = { contextWindowTokens: 1048576, maxOutput: 393216 };
+  const pricing = {
+    currency: 'USD' as const,
+    units: [
+      {
+        name: 'textInput' as const,
+        rate: 0.5,
+        strategy: 'fixed' as const,
+        unit: 'millionTokens' as const,
+      },
+      {
+        name: 'textOutput' as const,
+        rate: 1,
+        strategy: 'fixed' as const,
+        unit: 'millionTokens' as const,
+      },
+    ],
+  };
+  const payload = { messages: [], model: 'deepseek-v4-flash', max_tokens: 393216 };
+
+  it('uses the proven input ceiling and clamps the completion, not a token estimate', async () => {
+    const chat = vi.fn();
+    const runtime = {
+      prepareChatBounded: vi.fn(async (_payload, maxOutputTokens) => ({
+        chat,
+        inputTokenLimit: 1048576,
+        maxOutputTokens,
+      })),
+    };
+    await new PlatformAiRuntime({} as any).prepareChatBounded({
+      payload,
+      pricing,
+      modelLimits,
+      remainingCredits: 1_000_000,
+      runtime: runtime as any,
+    });
+    expect(runtime.prepareChatBounded).toHaveBeenCalledWith(payload, 8192, modelLimits);
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it('refuses a call whose worst-case input alone exceeds the reservation', async () => {
+    const chat = vi.fn();
+    const runtime = {
+      prepareChatBounded: vi.fn(async () => ({
+        chat,
+        inputTokenLimit: 1048576,
+        maxOutputTokens: 8192,
+      })),
+    };
+    await expect(
+      new PlatformAiRuntime({} as any).prepareChatBounded({
+        payload,
+        pricing,
+        modelLimits,
+        remainingCredits: 100,
+        runtime: runtime as any,
+      }),
+    ).rejects.toThrow('可用积分不足');
+    expect(chat).not.toHaveBeenCalled();
+  });
+});
 
 describe('PlatformCredentialResolver', () => {
   const hasGlobalRole = vi.fn();
@@ -162,7 +248,12 @@ describe('bounded platform text generation', () => {
   const pricing = {
     currency: 'USD' as const,
     units: [
-      { name: 'textInput' as const, rate: 1, strategy: 'fixed' as const, unit: 'millionTokens' as const },
+      {
+        name: 'textInput' as const,
+        rate: 1,
+        strategy: 'fixed' as const,
+        unit: 'millionTokens' as const,
+      },
       {
         name: 'textOutput' as const,
         rate: 2,
@@ -171,7 +262,7 @@ describe('bounded platform text generation', () => {
       },
     ],
   };
-  const payload = {
+  const payload: GenerateObjectPayload = {
     messages: [{ content: 'Write travel copy', role: 'user' as const }],
     model: route.model,
     schema: { name: 'travel_copy', schema: { properties: {}, type: 'object' } },
@@ -273,7 +364,9 @@ describe('bounded platform text generation', () => {
       route,
     });
     expect(prepared.envelope.maxOutputTokens).toBe(45);
-    await expect(prepared.execute()).resolves.toMatchObject({ output: { content: 'bounded copy' } });
+    await expect(prepared.execute()).resolves.toMatchObject({
+      output: { content: 'bounded copy' },
+    });
     expect(execute).toHaveBeenCalledOnce();
   });
 

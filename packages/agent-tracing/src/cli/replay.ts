@@ -26,7 +26,7 @@ const resolveConnection = (): ReplayConnection => {
   const token = process.env.LOBEHUB_JWT;
   if (!token) {
     throw new Error(
-      'Replay needs a LobeHub token. Either set LOBEHUB_JWT (and optionally ' +
+      'Replay needs a 旅游群 token. Either set LOBEHUB_JWT (and optionally ' +
         'LOBEHUB_SERVER_URL), or use `lh trace op replay`, which uses your ' +
         '`lh login` session.',
     );

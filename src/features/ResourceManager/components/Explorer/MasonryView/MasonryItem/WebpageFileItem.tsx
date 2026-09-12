@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   excerptWrapper: css`
     padding: 14px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     /* the reading-card paper feel: a quiet tinted sheet above the fold */
     background:

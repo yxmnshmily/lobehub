@@ -17,6 +17,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
   ({
     agentId,
     canRecordVoiceMessage,
+    readOnlyConfig,
     children,
     contextSelectionKey,
     contextWindowMessages,
@@ -47,6 +48,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
           createStore({
             allowExpand,
             canRecordVoiceMessage,
+            readOnlyConfig,
             contextSelectionKey,
             contextWindowMessages,
             draftKey,
@@ -77,6 +79,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
           leftActions={leftActions}
           mentionItems={mentionItems}
           mobile={mobile}
+          readOnlyConfig={readOnlyConfig}
           resolveSendBlocked={resolveSendBlocked}
           rightActions={rightActions}
           sendButtonProps={sendButtonProps}

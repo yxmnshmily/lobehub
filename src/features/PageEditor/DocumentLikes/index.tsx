@@ -8,6 +8,7 @@ import { ThumbsUp } from 'lucide-react';
 import { memo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import AsyncError from '@/components/AsyncError';
 import { useClientDataSWR } from '@/libs/swr';
@@ -38,7 +39,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: ${BUTTON_SIZE}px;
     height: ${BUTTON_SIZE}px;
     padding: 0;
-    border: 1px solid ${cssVar.colorPrimary};
+    border: 0.5px solid ${cssVar.colorPrimary};
     border-radius: 50%;
 
     color: ${cssVar.colorPrimary};
@@ -98,7 +99,7 @@ const styles = createStaticStyles(({ css }) => ({
     &::after {
       content: '';
       width: 40px;
-      height: 1px;
+      height: 0.5px;
       background: ${cssVar.colorBorderSecondary};
     }
   `,
@@ -208,7 +209,7 @@ const DocumentLikes = memo<{ documentId: string }>(({ documentId }) => {
     return (
       <Flexbox data-document-likes align={'center'} className={styles.section} gap={16}>
         <Skeleton.Avatar shape={'circle'} size={BUTTON_SIZE} />
-        <Skeleton height={20} width={200} />
+        <SkeletonBar height={20} width={200} />
       </Flexbox>
     );
 

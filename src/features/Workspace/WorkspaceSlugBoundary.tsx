@@ -35,7 +35,7 @@ const WorkspaceSlugBoundary: FC = () => {
         <div style={{ fontSize: 48 }}>🔍</div>
         <div style={{ fontWeight: 600, fontSize: 20 }}>{t('notFound.title')}</div>
         <div style={{ opacity: 0.6 }}>{t('notFound.check')}</div>
-        <Button onClick={() => navigate('/')}>{t('notFound.backHome')}</Button>
+        <Button onClick={() => navigate('/group/default')}>{t('notFound.backHome')}</Button>
       </Center>
     );
   }

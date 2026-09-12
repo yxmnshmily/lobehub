@@ -53,7 +53,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 1px;
     padding-inline: 6px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 999px;
 
     font-family: ${cssVar.fontFamilyCode};

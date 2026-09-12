@@ -149,13 +149,16 @@ const NavItem = memo<NavItemProps>(
       <Block
         horizontal
         align={'center'}
+        aria-label={typeof title === 'string' ? title : undefined}
         className={cx(styles.container, className)}
         clickable={!disabled}
+        data-nav-item=""
         gap={8}
         height={description ? undefined : 36}
         paddingBlock={description ? 8 : undefined}
         paddingInline={4}
         style={mergedStyle}
+        title={typeof title === 'string' ? title : rest['aria-label']}
         variant={variant}
         onClick={(e) => {
           // Always prevent default <a> navigation for normal clicks to avoid full page reload.
@@ -190,7 +193,14 @@ const NavItem = memo<NavItemProps>(
         )}
 
         {iconPostfix}
-        <Flexbox horizontal align={'center'} flex={1} gap={8} style={{ overflow: 'hidden' }}>
+        <Flexbox
+          horizontal
+          align={'center'}
+          data-nav-label=""
+          flex={1}
+          gap={8}
+          style={{ overflow: 'hidden' }}
+        >
           {titlePrefix}
           {description ? (
             <Flexbox flex={1} gap={3} style={{ overflow: 'hidden' }}>

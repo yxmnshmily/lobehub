@@ -22,7 +22,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     kbd {
       min-width: 26px;
       height: 26px;
-      border: 1px solid ${cssVar.colorBorder};
+      border: 0.5px solid ${cssVar.colorBorder};
     }
   `,
 }));

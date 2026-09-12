@@ -7,6 +7,7 @@ import { EyeOff, MoreHorizontal, Plus } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import type { TaskKanbanGroupBy, TaskListItem } from '@/store/task/slices/list/initialState';
 
 import type { TaskItemRouteScope } from '../features/AgentTaskItem';
@@ -80,7 +81,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: center;
 
     height: 36px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 999px;
 
     color: ${cssVar.colorTextTertiary};
@@ -254,8 +255,8 @@ const KanbanColumn = memo<KanbanColumnProps>(
                 size={16}
                 style={{ borderRadius: 4, flex: 'none' }}
               />
-              <Skeleton height={14} style={{ minWidth: 64 }} width={64} />
-              <Skeleton height={12} style={{ minWidth: 20 }} width={20} />
+              <SkeletonBar height={14} style={{ minWidth: 64 }} width={64} />
+              <SkeletonBar height={12} style={{ minWidth: 20 }} width={20} />
             </>
           ) : headerVariant === 'group' && groupMeta ? (
             <>

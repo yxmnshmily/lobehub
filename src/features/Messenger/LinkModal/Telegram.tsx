@@ -20,7 +20,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     inset-inline-start: 50%;
     transform: translate(-50%, -50%);
 
-    border: 3px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 50%;
 
     line-height: 0;
@@ -29,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     position: relative;
 
     padding: 14px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: ${cssVar.colorBgContainer};

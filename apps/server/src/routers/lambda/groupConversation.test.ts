@@ -14,6 +14,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listAccessiblePublishedAssistantMessages: vi.fn(),
   listAccessibleTextMessages: vi.fn(),
   listAccessibleTopics: vi.fn(),
+  listAccessibleTasks: vi.fn(),
 }));
 
 vi.mock('@/libs/trpc/lambda/middleware', () => ({
@@ -44,6 +45,7 @@ vi.mock('@/server/services/groupConversationAccess/conversationRepository', () =
         repositoryMocks.listAccessiblePublishedAssistantMessages,
       listAccessibleTextMessages: repositoryMocks.listAccessibleTextMessages,
       listAccessibleTopics: repositoryMocks.listAccessibleTopics,
+      listAccessibleTasks: repositoryMocks.listAccessibleTasks,
     })),
     GroupConversationIdempotencyConflictError: IdempotencyConflictError,
     GroupConversationInvalidInputError: InvalidInputError,
@@ -70,7 +72,131 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+it('validates log filters and delegates the authorized actor and pagination', async () => {
+  repositoryMocks.listAccessibleTasks.mockResolvedValue({ items: [], nextOffset: null });
+  await callerFor(memberId).listTasks({ groupId, offset: 50, category: 'error' });
+  expect(repositoryMocks.listAccessibleTasks).toHaveBeenCalledWith(memberId, groupId, 50, 'error');
+  await expect(
+    callerFor(memberId).listTasks({ groupId, category: 'invalid' as never }),
+  ).rejects.toThrow();
+});
+
+it.each([undefined, false, true])(
+  'reads the authorized group timeline with includeInProgress=%s',
+  async (includeInProgress) => {
+    repositoryMocks.listAccessibleTextMessages.mockResolvedValue({ items: [], nextCursor: null });
+    repositoryMocks.listAccessiblePublishedAssistantMessages.mockResolvedValue([]);
+    await callerFor(memberId).listTextMessages({ groupId });
+    await callerFor(memberId).listPublishedAssistantMessages({ groupId, includeInProgress });
+    expect(repositoryMocks.listAccessibleTextMessages).toHaveBeenCalledWith(
+      memberId,
+      groupId,
+      undefined,
+      expect.anything(),
+    );
+    expect(repositoryMocks.listAccessiblePublishedAssistantMessages).toHaveBeenCalledWith(
+      memberId,
+      groupId,
+      undefined,
+      undefined,
+      includeInProgress,
+    );
+  },
+);
+
 describe('groupConversationRouter', () => {
+  it('preserves published AI attachment cards through the same safe projection', async () => {
+    repositoryMocks.listAccessiblePublishedAssistantMessages.mockResolvedValueOnce([
+      {
+        id: publicAssistantId,
+        kind: 'assistant',
+        content: '生成结果',
+        topicId,
+        visibleAt: createdAt,
+        fileList: [
+          {
+            id: 'file-a',
+            name: '结果.pdf',
+            fileType: 'application/pdf',
+            size: 8,
+            url: '/f/file-a',
+            userId: ownerId,
+          },
+        ],
+      },
+    ]);
+    const result = await callerFor(memberId).listPublishedAssistantMessages({ groupId });
+    expect(result[0].fileList).toEqual([
+      { id: 'file-a', name: '结果.pdf', fileType: 'application/pdf', size: 8, url: '/f/file-a' },
+    ]);
+    expect(JSON.stringify(result)).not.toContain(ownerId);
+  });
+  it('returns the shared sender display fields without copying private profile data', async () => {
+    repositoryMocks.listAccessibleTextMessages.mockResolvedValueOnce({
+      items: [
+        {
+          authorKind: 'owner',
+          content: '你好',
+          publicMessageId,
+          topicId,
+          visibleAt: createdAt,
+          sender: {
+            id: 'c'.repeat(64),
+            fullName: '群主',
+            avatar: 'avatar.png',
+            email: 'private@example.test',
+          },
+        },
+      ],
+      nextCursor: null,
+    });
+    const result = await callerFor(memberId).listTextMessages({ groupId });
+    expect(result.items[0].sender).toEqual({
+      id: 'c'.repeat(64),
+      fullName: '群主',
+      avatar: 'avatar.png',
+    });
+  });
+  it('preserves common message attachment shapes without exposing file ownership or storage keys', async () => {
+    repositoryMocks.listAccessibleTextMessages.mockResolvedValueOnce({
+      items: [
+        {
+          authorKind: 'self',
+          content: '附件',
+          publicMessageId,
+          topicId,
+          visibleAt: createdAt,
+          fileList: [
+            {
+              id: 'file-a',
+              name: '行程.pdf',
+              size: 4,
+              fileType: 'application/pdf',
+              url: '/f/file-a',
+              downloadUrl: '/f/file-a?download=1',
+              userId: ownerId,
+              storageKey: 'private-key',
+            },
+          ],
+          imageList: [{ id: 'image-a', alt: '照片', url: '/f/image-a', userId: ownerId }],
+        },
+      ],
+      nextCursor: null,
+    });
+    const result = await callerFor(memberId).listTextMessages({ groupId });
+    expect(result.items[0].fileList).toEqual([
+      {
+        id: 'file-a',
+        name: '行程.pdf',
+        size: 4,
+        fileType: 'application/pdf',
+        url: '/f/file-a',
+        downloadUrl: '/f/file-a?download=1',
+      },
+    ]);
+    expect(result.items[0].imageList).toEqual([{ id: 'image-a', alt: '照片', url: '/f/image-a' }]);
+    expect(JSON.stringify(result)).not.toContain('private-key');
+  });
   it('is registered once on the lambda root without replacing existing routers', async () => {
     const source = await readFile(new URL('./index.ts', import.meta.url), 'utf8');
 
@@ -90,6 +216,7 @@ describe('groupConversationRouter', () => {
         kind: 'owner',
         membershipVersion: 0,
         resourceOwnerUserId: ownerId,
+        ownerDisplayName: '旅游策划师',
         title: '默认私人旅游群',
         usage: { credits: 99 },
       },
@@ -104,10 +231,29 @@ describe('groupConversationRouter', () => {
         kind: 'owner',
         membershipVersion: 0,
         title: '默认私人旅游群',
+        ownerDisplayName: '旅游策划师',
+        isDefaultGroup: true,
       },
     ]);
     expect(JSON.stringify(groups)).not.toContain(ownerId);
     expect(repositoryMocks.listAccessibleGroupSummaries).toHaveBeenCalledWith(ownerId);
+  });
+
+  it('accepts the infinite-query transport direction separately from topic sort order', async () => {
+    repositoryMocks.listAccessibleTopics.mockResolvedValueOnce({ items: [], nextCursor: null });
+    await expect(
+      callerFor(memberId).listTopics({
+        groupId,
+        limit: 50,
+        order: 'latest',
+        direction: 'forward',
+      } as any),
+    ).resolves.toEqual({ items: [], nextCursor: null });
+    expect(repositoryMocks.listAccessibleTopics).toHaveBeenCalledWith(
+      memberId,
+      groupId,
+      expect.objectContaining({ direction: 'latest' }),
+    );
   });
 
   it('lets an active member read joined-history topics and pure-text messages', async () => {
@@ -155,14 +301,44 @@ describe('groupConversationRouter', () => {
       memberId,
       groupId,
       topicId,
-      { cursor: undefined, limit: 20 },
+      { cursor: undefined, direction: 'oldest', limit: 20 },
     );
+  });
+
+  it('passes only the topic page status and dates, without private model metadata', async () => {
+    repositoryMocks.listAccessibleTopics.mockResolvedValueOnce({
+      items: [
+        {
+          id: topicId,
+          title: '行程',
+          createdAt,
+          updatedAt: createdAt,
+          status: 'completed',
+          trigger: 'chat',
+          model: 'private',
+        },
+      ],
+      nextCursor: null,
+    });
+    await expect(callerFor(memberId).listTopics({ groupId })).resolves.toEqual({
+      items: [
+        {
+          id: topicId,
+          title: '行程',
+          createdAt,
+          updatedAt: createdAt,
+          status: 'completed',
+          trigger: 'chat',
+        },
+      ],
+      nextCursor: null,
+    });
   });
 
   it('returns only the published assistant text projection for the authenticated member', async () => {
     repositoryMocks.listAccessiblePublishedAssistantMessages.mockResolvedValueOnce([
       {
-        agentId: 'must-not-leak',
+        agentId: 'authorized-group-assistant',
         actorUserId: 'must-not-leak',
         content: '西藏旅游文案',
         id: publicAssistantId,
@@ -181,6 +357,7 @@ describe('groupConversationRouter', () => {
       callerFor(memberId).listPublishedAssistantMessages({ groupId, topicId }),
     ).resolves.toEqual([
       {
+        agentId: 'authorized-group-assistant',
         content: '西藏旅游文案',
         id: publicAssistantId,
         kind: 'assistant',
@@ -192,6 +369,8 @@ describe('groupConversationRouter', () => {
       memberId,
       groupId,
       topicId,
+      undefined,
+      undefined,
     );
 
     await expect(
@@ -347,4 +526,15 @@ describe('groupConversationRouter', () => {
     await expect(callerFor('').listGroups()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     expect(repositoryMocks.listAccessibleGroupSummaries).not.toHaveBeenCalled();
   });
+});
+
+it('keeps newest-first order separate from tRPC infinite-query direction', async () => {
+  repositoryMocks.listAccessibleTextMessages.mockResolvedValue({ items: [], nextCursor: null });
+  await callerFor(memberId).listTextMessages({ groupId, order: 'latest', direction: 'forward' });
+  expect(repositoryMocks.listAccessibleTextMessages).toHaveBeenCalledWith(
+    memberId,
+    groupId,
+    undefined,
+    expect.objectContaining({ direction: 'latest' }),
+  );
 });

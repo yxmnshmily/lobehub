@@ -52,7 +52,7 @@ const MentionDropdown = memo<MenuRenderProps>(
       <Flexbox
         style={{
           background: cssVar.colorBgElevated,
-          border: `1px solid ${cssVar.colorBorderSecondary}`,
+          border: `0.5px solid ${cssVar.colorBorderSecondary}`,
           borderRadius: 12,
           boxShadow: cssVar.boxShadowSecondary,
           left: position.x,
@@ -70,7 +70,7 @@ const MentionDropdown = memo<MenuRenderProps>(
             return (
               <div
                 key={`divider-${(option as any)?.key ?? 'divider'}`}
-                style={{ borderTop: `1px solid ${cssVar.colorBorderSecondary}` }}
+                style={{ borderTop: `0.5px solid ${cssVar.colorBorderSecondary}` }}
               />
             );
           }

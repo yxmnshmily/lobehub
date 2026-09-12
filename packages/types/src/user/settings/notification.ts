@@ -42,4 +42,5 @@ export interface NotificationSettings {
    * see `push_tokens` table.
    */
   push?: NotificationChannelSettings;
+  sms?: NotificationChannelSettings;
 }

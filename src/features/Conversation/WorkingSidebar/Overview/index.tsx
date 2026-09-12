@@ -1,7 +1,7 @@
 'use client';
 
 import { Center, Empty, Flexbox, Icon, type IconProps } from '@lobehub/ui';
-import { Button, Skeleton, Tag, Text } from '@lobehub/ui/base-ui';
+import { Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import {
@@ -16,6 +16,7 @@ import {
 import { memo, type ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { getAllWorkSummaries } from '@/features/Conversation/store/slices/data/workSummaries';
 import WorkSummaryCard from '@/features/Work/WorkSummaryCard';
 import { useAgentStore } from '@/store/agent';
@@ -208,7 +209,7 @@ const Overview = memo<OverviewProps>(
 
             {repoType && workingDirectory && isGitLoading ? (
               <div className={styles.skeleton}>
-                <Skeleton.Text rows={2} />
+                <SkeletonText rows={2} />
               </div>
             ) : gitError ? (
               <Center className={styles.error} gap={8}>

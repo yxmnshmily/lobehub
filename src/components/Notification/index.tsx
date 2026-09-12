@@ -24,7 +24,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorSplit};
+    border: 0.5px solid ${cssVar.colorSplit};
     border-radius: 8px;
 
     background: ${cssVar.colorBgContainer};

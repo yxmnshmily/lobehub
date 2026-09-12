@@ -45,7 +45,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-end: 0;
     inset-inline-start: 24px;
 
-    border: 4px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: calc(${cssVar.borderRadiusLG} + 4px);
 
     background: ${cssVar.colorBgContainer};
@@ -148,7 +148,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};
@@ -159,7 +159,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-end: -6px;
     inset-inline-end: -6px;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     opacity: 0;
@@ -409,7 +409,13 @@ export const AgentProfileArtwork = memo<AgentProfileArtworkProps>(
           ) : generationError === 'background' ? (
             <Center className={styles.generationFeedback}>
               <Flexbox align={'center'} gap={10}>
-                <Text>{t('settingAgent.artwork.generateFailed')}</Text>
+                <Text>
+                  {t(
+                    generation?.error?.includes('InvalidProviderAPIKey')
+                      ? 'settingAgent.artwork.invalidApiKey'
+                      : 'settingAgent.artwork.generateFailed',
+                  )}
+                </Text>
                 <Button
                   icon={WandSparkles}
                   size={'small'}

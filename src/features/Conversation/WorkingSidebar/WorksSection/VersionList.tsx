@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import { formatTaskItemDate } from '@/features/AgentTasks/features/formatTaskItemDate';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useClientDataSWR } from '@/libs/swr';
 import { workKeys } from '@/libs/swr/keys';
 import { workService } from '@/services/work';
-import { computeWorkVersionCostDeltas, formatWorkVersionCost } from '@/utils/workVersionCost';
+import { computeWorkVersionCostDeltas } from '@/utils/workVersionCost';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   context: css`
@@ -28,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   versionList: css`
     margin-inline-start: 34px;
     padding-block: 6px 10px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   versionRow: css`
     padding-block: 6px;
@@ -41,6 +42,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 const VersionList = memo<{ workId: string }>(({ workId }) => {
   const { i18n, t } = useTranslation(['chat', 'common']);
+  const { formatOptional: formatWorkVersionCost } = useMonthlyExchangeRate();
   const {
     data = [],
     error,

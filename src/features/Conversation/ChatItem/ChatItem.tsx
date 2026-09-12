@@ -3,7 +3,10 @@
 import { agentDisplayName } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { cx } from 'antd-style';
-import { memo } from 'react';
+import { memo, use } from 'react';
+
+import { GroupChatPresentation } from '@/features/SuperGroup/GroupChatPresentation';
+import { GroupReplyAction, GroupSpeakingStatus } from '@/features/SuperGroup/GroupMessageQuote';
 
 import FollowUpChips from '../FollowUp/FollowUpChips';
 import { contextSelectors, useConversationStore } from '../store';
@@ -47,6 +50,7 @@ const ChatItem = memo<ChatItemProps>(
     ...rest
   }) => {
     const isUser = placement === 'right';
+    const groupChat = use(GroupChatPresentation);
     const conversationKey = useConversationStore(contextSelectors.conversationKey);
     const isEmptyMessage =
       !message || String(message).trim() === '' || message === placeholderMessage;
@@ -69,6 +73,7 @@ const ChatItem = memo<ChatItemProps>(
       <Flexbox
         align={isUser ? 'flex-end' : 'flex-start'}
         className={cx('message-wrapper', styles.container, className)}
+        data-group-bubble={groupChat ? placement : undefined}
         data-message-id={id}
         gap={8}
         paddingBlock={8}
@@ -84,18 +89,32 @@ const ChatItem = memo<ChatItemProps>(
           direction={isUser ? 'horizontal-reverse' : 'horizontal'}
           gap={8}
         >
-          {showAvatar &&
+          {(showAvatar || groupChat) &&
             (customAvatarRender ? customAvatarRender(avatar, avatarContent) : avatarContent)}
-          <Title avatar={avatar} showTitle={showTitle} time={time} titleAddon={titleAddon} />
+          <Title
+            avatar={avatar}
+            showTitle={showTitle || groupChat}
+            time={time}
+            titleAddon={
+              groupChat ? (
+                <>
+                  {titleAddon}
+                  <GroupSpeakingStatus loading={loading} />
+                </>
+              ) : (
+                titleAddon
+              )
+            }
+          />
         </Flexbox>
         <Flexbox
           className={'message-body'}
           gap={8}
           style={{
-            maxWidth: '100%',
+            maxWidth: groupChat ? undefined : '100%',
             overflow: 'hidden',
             position: 'relative',
-            width: isUser ? undefined : '100%',
+            width: groupChat || isUser ? undefined : '100%',
           }}
         >
           {aboveMessage}
@@ -124,8 +143,23 @@ const ChatItem = memo<ChatItemProps>(
         {id && conversationKey && (
           <FollowUpChips conversationKey={conversationKey} messageId={id} />
         )}
-        {(actionAddon || actions) && (
-          <Actions actionAddon={actionAddon} actions={actions} placement={placement} />
+        {(actionAddon || actions || (groupChat && id)) && (
+          <Actions
+            actionAddon={actionAddon}
+            placement={placement}
+            actions={
+              groupChat ? (
+                <>
+                  {actions}
+                  {groupChat && id && !disabled && !editing && !loading && (
+                    <GroupReplyAction id={id} name={agentDisplayName(avatar, '群成员')} />
+                  )}
+                </>
+              ) : (
+                actions
+              )
+            }
+          />
         )}
         {afterActions && (
           <Flexbox

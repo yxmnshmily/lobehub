@@ -20,6 +20,7 @@ import { type FileListItem } from '@/types/files';
 
 import { useFileItemClick } from '../../hooks/useFileItemClick';
 import DropdownMenu from '../../ItemDropdown/DropdownMenu';
+import { QuickActions } from '../../ItemDropdown/QuickActions';
 import { useFileItemDropdown } from '../../ItemDropdown/useFileItemDropdown';
 import AudioFileItem from './AudioFileItem';
 import DefaultFileItem from './DefaultFileItem';
@@ -71,6 +72,12 @@ const isCustomPage = (fileType?: string, name?: string) => {
 };
 
 const styles = createStaticStyles(({ css }) => ({
+  actionBar: css`
+    button {
+      min-width: 44px;
+      min-height: 44px !important;
+    }
+  `,
   actions: css`
     opacity: 0;
     transition: opacity ${cssVar.motionDurationMid};
@@ -82,14 +89,16 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    padding-block-end: 60px;
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
 
     transition: all ${cssVar.motionDurationMid};
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       border-color: ${cssVar.colorPrimary};
       box-shadow: ${cssVar.boxShadowTertiary};
 
@@ -109,12 +118,26 @@ const styles = createStaticStyles(({ css }) => ({
         opacity: 1;
       }
     }
+
+    @media (width <= 767px), (hover: none) {
+      .checkbox,
+      .dropdown,
+      .floatingChunkBadge {
+        opacity: 1;
+      }
+    }
   `,
   checkbox: css`
     position: absolute;
     z-index: 2;
     inset-block-start: 8px;
     inset-inline-start: 8px;
+
+    display: grid;
+    place-items: center;
+
+    min-width: 44px;
+    min-height: 44px;
 
     opacity: 0;
 
@@ -144,6 +167,12 @@ const styles = createStaticStyles(({ css }) => ({
     z-index: 2;
     inset-block-start: 8px;
     inset-inline-end: 8px;
+
+    display: grid;
+    place-items: center;
+
+    min-width: 44px;
+    min-height: 44px;
 
     opacity: 0;
 
@@ -367,6 +396,13 @@ const MasonryFileItem = memo<MasonryFileItemProps>(
           onPointerDown={stopPropagation}
         >
           <DropdownMenu items={menuItems} />
+        </div>
+
+        <div
+          className={styles.actionBar}
+          style={{ position: 'absolute', insetInlineEnd: 0, bottom: 0, zIndex: 2 }}
+        >
+          <QuickActions menuItems={menuItems} />
         </div>
 
         <div

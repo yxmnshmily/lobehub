@@ -22,6 +22,7 @@ import { getRuntimeErrorMessage } from '@/utils/locale/runtimeErrorMessage';
 const styles = createStaticStyles(({ css }) => ({
   popup: css`
     width: 380px;
+    max-width: calc(100vw - 32px);
   `,
 }));
 const Error = memo<{ error: ChatMessageError }>(({ error }) => {

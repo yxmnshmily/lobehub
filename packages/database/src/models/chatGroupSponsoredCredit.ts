@@ -1183,6 +1183,7 @@ export class ChatGroupSponsoredCreditModel {
     if (!budgetLocator?.sponsorChatGroupIdSnapshot) {
       throw new Error(CHAT_GROUP_SPONSORED_CREDIT_FORBIDDEN);
     }
+    const sponsorChatGroupId = budgetLocator.sponsorChatGroupIdSnapshot;
 
     return this.db.transaction(async (tx) => {
       const database = tx as Database;
@@ -1194,24 +1195,19 @@ export class ChatGroupSponsoredCreditModel {
           workspaceId: chatGroups.workspaceId,
         })
         .from(chatGroups)
-        .where(eq(chatGroups.id, budgetLocator.sponsorChatGroupIdSnapshot!))
+        .where(eq(chatGroups.id, sponsorChatGroupId))
         .for('update');
       const [policy] = await database
         .select()
         .from(chatGroupSponsoredCreditPolicies)
-        .where(
-          eq(
-            chatGroupSponsoredCreditPolicies.chatGroupId,
-            budgetLocator.sponsorChatGroupIdSnapshot,
-          ),
-        )
+        .where(eq(chatGroupSponsoredCreditPolicies.chatGroupId, sponsorChatGroupId))
         .for('update');
       const [membership] = await database
         .select()
         .from(chatGroupUserMemberships)
         .where(
           and(
-            eq(chatGroupUserMemberships.chatGroupId, budgetLocator.sponsorChatGroupIdSnapshot),
+            eq(chatGroupUserMemberships.chatGroupId, sponsorChatGroupId),
             eq(chatGroupUserMemberships.userId, this.actorUserId),
           ),
         )

@@ -1,4 +1,5 @@
-import { Skeleton } from '@lobehub/ui/base-ui';
+import SkeletonBar from '@/components/Skeleton/Bar';
+
 import { createStaticStyles, cx } from 'antd-style';
 import { type ReactNode } from 'react';
 import { memo } from 'react';
@@ -82,7 +83,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
         padding-block: 4px 8px;
         padding-inline: 16px;
-        border: 1px solid ${cssVar.colorBorderSecondary};
+        border: 0.5px solid ${cssVar.colorBorderSecondary};
         border-radius: ${cssVar.borderRadiusLG};
 
         &:hover {
@@ -117,7 +118,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
         justify-content: flex-start;
 
         padding-block: 8px;
-        border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+        border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
         font-size: 14px;
         font-weight: 600;
@@ -129,7 +130,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
         justify-content: flex-end;
 
         padding-block: 8px;
-        border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+        border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
       }
 
       td[data-list-slot='actions'] {
@@ -207,7 +208,7 @@ const LiteTableInner = <RecordType,>({
                           data-list-slot={column.listSlot}
                           key={column.key}
                         >
-                          <Skeleton style={{ height: 14, minWidth: 0, width: '100%' }} />
+                          <SkeletonBar style={{ height: 14, minWidth: 0, width: '100%' }} />
                         </td>
                       ))}
                     </tr>

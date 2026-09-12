@@ -17,6 +17,7 @@ const routerMocks = vi.hoisted(() => {
     businessFileUploadCheck: vi.fn(),
     businessFileTransferStorageCheck: vi.fn(),
     hasWorkspaceScopedPermission: vi.fn(),
+    resolvePublishedResource: vi.fn(),
     serverDB: {
       // `where` doubles as an awaitable empty result (restricted-KB lookups)
       // and as a `.limit()` chain (workspace-role lookups).
@@ -143,6 +144,11 @@ vi.mock('@/business/server/lambda-routers/file', () => ({
 
 vi.mock('@/server/services/workspacePermission', () => ({
   hasWorkspaceScopedPermission: routerMocks.hasWorkspaceScopedPermission,
+}));
+vi.mock('@/server/services/groupConversationAccess/conversationRepository', () => ({
+  GroupConversationAccessRepository: vi.fn(() => ({
+    resolvePublishedResource: routerMocks.resolvePublishedResource,
+  })),
 }));
 
 const mockAsyncTaskFindByIds = vi.fn();
@@ -303,6 +309,40 @@ describe('fileRouter', () => {
 
     // Use actual context with default mocks
     ({ ctx, caller } = createCallerWithCtx());
+  });
+
+  it.each(['findById', 'getFileItemById'] as const)(
+    'opens an authorized published file through %s',
+    async (method) => {
+      routerMocks.resolvePublishedResource.mockResolvedValue({
+        ownerId: 'owner',
+        publishedAt: new Date(1000),
+      });
+      mockFileModelFindById.mockResolvedValueOnce(undefined).mockResolvedValueOnce({
+        id: 'published-file',
+        name: '行程.pdf',
+        fileType: 'application/pdf',
+        size: 100,
+        userId: 'owner',
+        updatedAt: new Date(500),
+        createdAt: new Date(500),
+      });
+      expect(await caller[method]({ id: 'published-file' })).toMatchObject({
+        id: 'published-file',
+        name: '行程.pdf',
+      });
+    },
+  );
+
+  it('does not expose a file changed after publication', async () => {
+    routerMocks.resolvePublishedResource.mockResolvedValue({
+      ownerId: 'owner',
+      publishedAt: new Date(1000),
+    });
+    mockFileModelFindById
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ id: 'published-file', updatedAt: new Date(2000) });
+    await expect(caller.findById({ id: 'published-file' })).rejects.toThrow('File not found');
   });
 
   describe('checkFileHash', () => {
@@ -816,6 +856,27 @@ describe('fileRouter', () => {
   });
 
   describe('getKnowledgeItems', () => {
+    it('accepts Other list pagination ordered by update time at the actual router boundary', async () => {
+      mockKnowledgeRepoQuery.mockResolvedValue([]);
+      await expect(
+        caller.getKnowledgeItems({
+          category: 'other',
+          sorter: 'updatedAt',
+          sortType: 'desc',
+          limit: 30,
+          offset: 0,
+          includeContentPreview: false,
+        }),
+      ).resolves.toMatchObject({ items: [], hasMore: false });
+      expect(mockKnowledgeRepoQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'other',
+          sorter: 'updatedAt',
+          limit: 31,
+        }),
+      );
+    });
+
     it('should pass workspace context to the knowledge repository', async () => {
       ({ caller } = createCallerWithCtx({ workspaceId: 'workspace-1' }));
 

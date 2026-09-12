@@ -3,7 +3,7 @@
 import { type GridProps } from '@lobehub/ui';
 import { Block, Center, Grid } from '@lobehub/ui';
 import { Select, Text } from '@lobehub/ui/base-ui';
-import { cssVar } from 'antd-style';
+import { cssVar, useResponsive } from 'antd-style';
 import { type ReactNode } from 'react';
 import { memo } from 'react';
 import useMergeState from 'use-merge-value';
@@ -32,6 +32,7 @@ const canParseAsRatio = (value: string): boolean => {
 
 const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultValue, ...rest }) => {
   const isDarkMode = useIsDark();
+  const { mobile = false } = useResponsive();
   const [active, setActive] = useMergeState('auto', {
     defaultValue,
     onChange,
@@ -53,8 +54,8 @@ const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultVal
     );
   }
   return (
-    <Block padding={4} variant={'filled'} {...rest}>
-      <Grid gap={4} maxItemWidth={72} rows={16}>
+    <Block padding={mobile ? 2 : 4} variant={'filled'} {...rest}>
+      <Grid gap={mobile ? 2 : 4} maxItemWidth={mobile ? 64 : 72} rows={16}>
         {options?.map((item) => {
           const isActive = active === item.value;
           let content: ReactNode;
@@ -63,7 +64,7 @@ const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultVal
             content = (
               <div
                 style={{
-                  border: `2px dashed ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
+                  border: `0.5px dashed ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
                   borderRadius: 3,
                   height: 16,
                   width: 16,
@@ -77,7 +78,7 @@ const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultVal
               <div
                 style={{
                   aspectRatio: `${width} / ${height}`,
-                  border: `2px solid ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
+                  border: `0.5px solid ${isActive ? cssVar.colorText : cssVar.colorTextDescription}`,
                   borderRadius: 3,
                   height: isWidthGreater ? undefined : 16,
                   width: isWidthGreater ? 16 : undefined,
@@ -93,7 +94,7 @@ const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultVal
               gap={4}
               justify={'center'}
               key={item.value}
-              padding={8}
+              padding={mobile ? 4 : 8}
               shadow={isActive && !isDarkMode}
               variant={'filled'}
               style={{
@@ -107,7 +108,11 @@ const SizeSelect = memo<SizeSelectProps>(({ options, onChange, value, defaultVal
               <Center height={16} style={{ marginTop: 4 }} width={16}>
                 {content}
               </Center>
-              <Text fontSize={12} type={isActive ? undefined : 'secondary'}>
+              <Text
+                fontSize={12}
+                style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                type={isActive ? undefined : 'secondary'}
+              >
                 {item.label || item.value}
               </Text>
             </Block>

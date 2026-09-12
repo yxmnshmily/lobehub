@@ -127,7 +127,7 @@ const assertNotSelfTargeting = (operatorUserId: string, targetUserId: string) =>
   }
 };
 
-const wrapAccountAdministrationError = (error: unknown): never => {
+const wrapAccountAdministrationError: (error: unknown) => never = (error) => {
   if (error instanceof PlatformUserAccountAdministrationError) throw error;
   throw new PlatformUserAccountAdministrationError(
     'OPERATION_FAILED',
@@ -148,7 +148,9 @@ export class PlatformUserAccountAdministrationService {
     PlatformUserAccountAdministrationDependencies['requestPasswordReset']
   >;
   private readonly resolveResetPasswordRedirect: (email: string) => string;
-  private readonly revokeUser: (userId: string) => Promise<void>;
+  private readonly revokeUser: NonNullable<
+    PlatformUserAccountAdministrationDependencies['revokeUser']
+  >;
 
   constructor(
     db: LobeChatDatabase,
@@ -281,6 +283,45 @@ export class PlatformUserAccountAdministrationService {
           }
 
           return { id: input.targetUserId, resetRequested: true as const };
+        },
+      );
+    } catch (error) {
+      wrapAccountAdministrationError(error);
+    }
+  }
+
+  async setPassword(
+    input: ForceManagedUserPasswordResetInput & { password: string },
+  ): Promise<{ id: string }> {
+    try {
+      assertNotSelfTargeting(input.operatorUserId, input.targetUserId);
+      if (input.password.length < 12 || input.password.length > 128) {
+        throw new PlatformUserAccountAdministrationError(
+          'INVALID_PROFILE',
+          '密码须为 12–128 个字符',
+        );
+      }
+      const context = await this.getAuthContext();
+      const accounts = await context.internalAdapter.findAccounts(input.targetUserId);
+      if (!accounts.some(({ providerId }) => providerId === 'credential')) {
+        throw new PlatformUserAccountAdministrationError(
+          'INVALID_PROFILE',
+          '该用户未设置密码登录，请使用邮件重置入口',
+        );
+      }
+      const hash = await context.password.hash(input.password);
+      return await this.audit.runOperation(
+        {
+          action: 'user.password_reset_requested',
+          operationId: input.operationId,
+          operatorUserId: input.operatorUserId,
+          targetUserId: input.targetUserId,
+        },
+        async () => {
+          await this.revokeUser(input.targetUserId);
+          await context.internalAdapter.updatePassword(input.targetUserId, hash);
+          await this.revokeUser(input.targetUserId);
+          return { id: input.targetUserId };
         },
       );
     } catch (error) {

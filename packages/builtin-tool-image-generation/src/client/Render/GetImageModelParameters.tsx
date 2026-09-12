@@ -59,7 +59,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   parameterName: css`

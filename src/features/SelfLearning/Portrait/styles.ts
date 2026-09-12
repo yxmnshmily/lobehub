@@ -41,7 +41,7 @@ export const portraitStyles = createStaticStyles(({ css }) => ({
 
     padding-block: 14px;
     padding-inline: 18px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     @media (width <= 1100px) {
       grid-template-columns: minmax(200px, 1fr) minmax(140px, 1fr) 84px;
@@ -69,7 +69,7 @@ export const portraitStyles = createStaticStyles(({ css }) => ({
     background: ${cssVar.colorWarning};
   `,
   dotNone: css`
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     background: transparent;
   `,
   dotOk: css`
@@ -79,7 +79,7 @@ export const portraitStyles = createStaticStyles(({ css }) => ({
     padding-block: 8px;
     padding-inline: 14px;
     border: 0;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font: inherit;
 
@@ -108,7 +108,7 @@ export const portraitStyles = createStaticStyles(({ css }) => ({
     padding-block: 10px;
     padding-inline: 14px;
     border: 0;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font: inherit;
 

@@ -85,7 +85,7 @@ const styles = createStaticStyles(({ css }) => ({
       position: absolute;
       inset: ${OVERLAY_BORDER_INSET}px;
 
-      border: 1.5px dashed #fff;
+      border: 0.5px dashed #fff;
       border-radius: ${cssVar.borderRadiusLG};
     }
   `,

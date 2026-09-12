@@ -117,6 +117,8 @@ export interface HostedGroupMemberFinalMarker {
   actorUserIdSnapshot: string;
   assistantMessageId: string;
   contentHash: string;
+  /** Canonical messages belonging to this request, in execution order. */
+  executionMessageIds?: string[];
   groupId: string;
   membershipVersion: number;
   operationId: string;
@@ -431,7 +433,9 @@ export class AgentOperationModel {
     operationId: string,
     params: RecordOperationCompletionParams,
   ): Promise<boolean> {
-    const updates: Partial<NewAgentOperation> & { metadata?: unknown } = {
+    const updates: Omit<Partial<NewAgentOperation>, 'metadata'> & {
+      metadata?: NewAgentOperation['metadata'] | ReturnType<typeof sql>;
+    } = {
       completionReason: params.completionReason,
       status: params.status,
     };

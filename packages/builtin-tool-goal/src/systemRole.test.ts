@@ -4,10 +4,14 @@ import { systemPrompt } from './systemRole';
 
 describe('Goal systemPrompt', () => {
   it('hands successful goal execution off instead of duplicating it', () => {
-    expect(systemPrompt).toContain('the goal owns the work');
     expect(systemPrompt).toContain(
-      'do not perform, reproduce, preview, or self-check the requested work in the current conversation',
+      'the goal owns decomposition, dispatch and acceptance',
     );
-    expect(systemPrompt).toContain('its live card shows progress');
+    expect(systemPrompt).toContain('do not reproduce its work in the main conversation');
+  });
+
+  it('creates the goal immediately instead of downgrading to a task chain', () => {
+    expect(systemPrompt).toContain('creates the goal immediately in this group');
+    expect(systemPrompt).toContain('do not downgrade to a task chain');
   });
 });

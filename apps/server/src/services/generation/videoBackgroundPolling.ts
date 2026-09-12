@@ -15,6 +15,7 @@ import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { VideoGenerationService } from '@/server/services/generation/video';
 import { buildVideoGenerationFilePayload } from '@/server/services/generation/videoFile';
+import { notifyGenerationFailed } from '@/server/services/notification/generation';
 import { PlatformAiRuntime } from '@/server/services/platformAiRuntime';
 import { AsyncTaskError, AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { FileSource } from '@/types/files';
@@ -188,6 +189,14 @@ export async function processBackgroundVideoPolling(
             (error instanceof Error ? error.message : 'Unknown error'),
       ),
       status: AsyncTaskStatus.Error,
+    });
+
+    await notifyGenerationFailed({
+      kind: 'video',
+      asyncTaskId,
+      topicId: generationTopicId,
+      userId,
+      workspaceId,
     });
 
     if (ENABLE_BUSINESS_FEATURES && prechargeResult !== undefined) {

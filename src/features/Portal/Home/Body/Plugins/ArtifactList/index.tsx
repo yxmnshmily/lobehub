@@ -1,11 +1,12 @@
 import { Center, Flexbox, Icon } from '@lobehub/ui';
-import { Avatar, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Avatar, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Origami } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Balancer from 'react-wrap-balancer';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useChatStore } from '@/store/chat';
 import { dbMessageSelectors, displayMessageSelectors } from '@/store/chat/selectors';
 
@@ -19,14 +20,14 @@ const ArtifactList = () => {
   return !isCurrentChatLoaded ? (
     <Flexbox gap={12} paddingInline={12}>
       {[1, 1, 1, 1, 1, 1].map((key, index) => (
-        <Skeleton height={68} key={`${key}-${index}`} radius={8} />
+        <SkeletonBar height={68} key={`${key}-${index}`} radius={8} />
       ))}
     </Flexbox>
   ) : messages.length === 0 ? (
     <Center
       gap={8}
       paddingBlock={24}
-      style={{ border: `1px dashed ${cssVar.colorSplit}`, borderRadius: 8, marginInline: 12 }}
+      style={{ border: `0.5px dashed ${cssVar.colorSplit}`, borderRadius: 8, marginInline: 12 }}
     >
       <Avatar
         avatar={<Icon icon={Origami} size={'large'} />}

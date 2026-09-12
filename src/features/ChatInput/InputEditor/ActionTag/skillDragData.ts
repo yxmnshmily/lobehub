@@ -81,7 +81,7 @@ const setSkillDragImage = (event: React.DragEvent, label: string): void => {
   Object.assign(preview.style, {
     alignItems: 'center',
     background: resolveCssVar(cssVar.colorBgElevated, host),
-    border: `1px solid ${resolveCssVar(cssVar.colorBorderSecondary, host)}`,
+    border: `0.5px solid ${resolveCssVar(cssVar.colorBorderSecondary, host)}`,
     borderRadius: '10px',
     color: resolveCssVar(cssVar.colorText, host),
     display: 'inline-flex',

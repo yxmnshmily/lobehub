@@ -223,9 +223,9 @@ export const SETTINGS_SEARCH_ITEMS: SettingsSearchItem[] = [
     tab: SettingsTabs.Profile,
   },
   {
-    anchor: 'profile-username',
-    keywords: ['username', 'handle', 'user name'],
-    labelKey: 'profile.username',
+    anchor: 'profile-user-id',
+    keywords: ['user id', 'uid', 'account id', '用户ID', '用户编号'],
+    labelKey: 'profile.userId',
     ns: 'auth',
     tab: SettingsTabs.Profile,
   },
@@ -311,12 +311,6 @@ export const SETTINGS_SEARCH_ITEMS: SettingsSearchItem[] = [
     descKey: 'settingCommon.responseLanguage.desc',
     keywords: ['response language', 'reply'],
     labelKey: 'settingCommon.responseLanguage.title',
-    tab: SettingsTabs.Appearance,
-  },
-  {
-    anchor: 'appearance-primary-color',
-    keywords: ['color', 'accent'],
-    labelKey: 'settingAppearance.primaryColor.title',
     tab: SettingsTabs.Appearance,
   },
   {
@@ -674,9 +668,9 @@ export const SETTINGS_SEARCH_ITEMS: SettingsSearchItem[] = [
     tab: SettingsTabs.Notification,
   },
   {
-    anchor: 'notification-push',
-    keywords: ['push'],
-    labelKey: 'notification.push.title',
+    anchor: 'notification-sms',
+    keywords: ['sms', '短信'],
+    labelKey: 'notification.sms.title',
     tab: SettingsTabs.Notification,
   },
 ];

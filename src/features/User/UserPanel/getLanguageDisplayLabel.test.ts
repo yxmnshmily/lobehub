@@ -10,6 +10,6 @@ describe('getLanguageDisplayLabel', () => {
   });
 
   it('shows the manually selected locale without the auto-mode label', () => {
-    expect(getLanguageDisplayLabel('fr-FR', 'en-US', 'Follow System')).toBe('Français');
+    expect(getLanguageDisplayLabel('en-US', 'zh-CN', 'Follow System')).toBe('English');
   });
 });

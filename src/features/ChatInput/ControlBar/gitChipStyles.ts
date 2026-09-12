@@ -33,7 +33,7 @@ export const gitChipStyles = createStaticStyles(({ css }) => ({
   `,
   separator: css`
     flex: none;
-    width: 1px;
+    width: 0.5px;
     height: 10px;
     background: ${cssVar.colorSplit};
   `,

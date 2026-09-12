@@ -25,6 +25,12 @@ import { preferenceSelectors, userGeneralSettingsSelectors } from '@/store/user/
 import { GlobalStyle } from '@/styles';
 import { setCookie } from '@/utils/client/cookie';
 
+import {
+  getMonochromeCustomTheme,
+  getThemeSurfaceTokens,
+  shouldUseThemeSurfaceTokens,
+} from './themeSurfaceTokens';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   app: css`
     position: relative;
@@ -91,14 +97,7 @@ export interface AppThemeProps {
 }
 
 const AppTheme = memo<AppThemeProps>(
-  ({
-    children,
-    defaultPrimaryColor,
-    defaultNeutralColor,
-    globalCDN,
-    customFontURL,
-    customFontFamily,
-  }) => {
+  ({ children, defaultNeutralColor, defaultPrimaryColor, globalCDN, customFontURL, customFontFamily }) => {
     const language = useGlobalStore(systemStatusSelectors.language);
     const isDark = useIsDark();
 
@@ -107,6 +106,7 @@ const AppTheme = memo<AppThemeProps>(
       userGeneralSettingsSelectors.neutralColor(s),
       userGeneralSettingsSelectors.animationMode(s),
     ]);
+    const useThemeSurfaceTokens = shouldUseThemeSurfaceTokens(neutralColor);
     const [userFontFamily, userFontFamilyCode] = useUserStore((s) => [
       preferenceSelectors.fontFamily(s),
       preferenceSelectors.terminalFontFamily(s),
@@ -163,17 +163,31 @@ const AppTheme = memo<AppThemeProps>(
       <ThemeProvider
         appearance={currentAppearence}
         className={cx(styles.app, styles.scrollbar, styles.scrollbarPolyfill)}
-        defaultAppearance={currentAppearence}
-        defaultThemeMode={currentAppearence}
         customTheme={{
           neutralColor: neutralColor ?? defaultNeutralColor,
           primaryColor: primaryColor ?? defaultPrimaryColor,
+          ...getMonochromeCustomTheme(neutralColor, defaultNeutralColor),
         }}
+        defaultAppearance={currentAppearence}
+        defaultThemeMode={currentAppearence}
         theme={{
           cssVar: { key: 'lobe-vars' },
           token: {
+            // DeepSeek-style neutral layers: crisp text, restrained hairlines,
+            // and distinct platform / content / elevated surfaces.
+            ...(useThemeSurfaceTokens ? getThemeSurfaceTokens(isDark) : {}),
             fontFamily,
             fontFamilyCode,
+            // Every hairline in the product — component-library dividers, table
+            // rules, collapse content borders — is drawn from this seed token,
+            // so the 0.5px line weight is enforced once here instead of per
+            // stylesheet (those cover only our own CSS).
+            // Focus rings are an accessibility affordance, not decoration, so the
+            // 0.5px hairline does not apply to them — keep them at their
+            // original visible weight.
+            controlOutlineWidth: 2,
+            lineWidth: 0.5,
+            lineWidthFocus: 3,
             motion: animationMode !== 'disabled',
             motionUnit: animationMode === 'agile' ? 0.05 : 0.1,
           },

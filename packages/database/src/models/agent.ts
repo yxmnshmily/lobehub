@@ -584,9 +584,24 @@ export class AgentModel {
    * (external CLI/device) agents.
    * Excludes virtual agents (like inbox, supervisors, etc).
    */
-  queryAgents = async (params?: { keyword?: string; limit?: number; offset?: number }) => {
-    const { keyword, limit = 9999, offset = 0 } = params ?? {};
-    const searchCondition = this.buildQueryAgentsWhere(keyword);
+  queryAgents = async (params?: {
+    keyword?: string;
+    limit?: number;
+    offset?: number;
+    pluginId?: string;
+  }) => {
+    const { keyword, limit = 9999, offset = 0, pluginId } = params ?? {};
+    const pluginCondition = pluginId
+      ? sql`EXISTS (
+          SELECT 1 FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(${agents.plugins}) = 'array' THEN ${agents.plugins} ELSE '[]'::jsonb END
+          ) AS plugin(entry)
+          WHERE plugin.entry = ${JSON.stringify(pluginId)}::jsonb
+            OR (plugin.entry->>'identifier' = ${pluginId}
+              AND COALESCE(plugin.entry->>'mode', 'pinned') <> 'disabled')
+        )`
+      : undefined;
+    const searchCondition = and(this.buildQueryAgentsWhere(keyword), pluginCondition);
 
     const rows = await this.db
       .select({
@@ -603,7 +618,7 @@ export class AgentModel {
       })
       .from(agents)
       .where(searchCondition)
-      .orderBy(desc(agents.updatedAt))
+      .orderBy(desc(agents.updatedAt), asc(agents.id))
       .limit(limit)
       .offset(offset);
 

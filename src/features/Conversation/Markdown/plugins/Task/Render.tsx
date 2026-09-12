@@ -4,6 +4,8 @@ import { createStaticStyles } from 'antd-style';
 import { ClipboardList } from 'lucide-react';
 import { memo, useMemo } from 'react';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 import { type MarkdownElementProps } from '../type';
 import { useTaskCardScope } from './context';
 import { type ParsedTaskContent, parseTaskContent } from './parseTaskContent';
@@ -19,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 12px;
     padding-inline: 14px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: 8px;
 
     font-family: ${cssVar.fontFamilyCode};
@@ -131,6 +133,7 @@ interface TaskRenderProps extends MarkdownElementProps {
 }
 
 const Render = memo<TaskRenderProps>(({ children }) => {
+  const translateTravel = useTravelTranslation();
   const enabled = useTaskCardScope();
   const text = typeof children === 'string' ? children : String(children ?? '');
   const parsed = useMemo<ParsedTaskContent>(() => parseTaskContent(text), [text]);
@@ -162,7 +165,7 @@ const Render = memo<TaskRenderProps>(({ children }) => {
           <div className={styles.divider} />
           <Flexbox gap={4}>
             <Text fontSize={12} type={'secondary'}>
-              Instruction
+              {translateTravel('任务指令')}
             </Text>
             <div className={styles.instruction}>{parsed.instruction}</div>
           </Flexbox>
@@ -171,9 +174,9 @@ const Render = memo<TaskRenderProps>(({ children }) => {
 
       {(parsed.description || parsed.dependencies || parsed.review) && (
         <Flexbox gap={4}>
-          <FieldRow label="Description" value={parsed.description} />
-          <FieldRow label="Dependencies" value={parsed.dependencies} />
-          <FieldRow label="Review" value={parsed.review} />
+          <FieldRow label={translateTravel('描述')} value={parsed.description} />
+          <FieldRow label={translateTravel('依赖项')} value={parsed.dependencies} />
+          <FieldRow label={translateTravel('审查')} value={parsed.review} />
         </Flexbox>
       )}
 
@@ -182,10 +185,10 @@ const Render = memo<TaskRenderProps>(({ children }) => {
         parsed.workspace?.length ||
         parsed.reviewRubrics?.length) && (
         <Flexbox gap={4}>
-          <RawSection items={parsed.subtasks ?? []} label="Subtasks" />
-          <RawSection items={parsed.activities ?? []} label="Activities" />
-          <RawSection items={parsed.workspace ?? []} label="Workspace" />
-          <RawSection items={parsed.reviewRubrics ?? []} label="Review rubrics" />
+          <RawSection items={parsed.subtasks ?? []} label={translateTravel('子任务')} />
+          <RawSection items={parsed.activities ?? []} label={translateTravel('活动记录')} />
+          <RawSection items={parsed.workspace ?? []} label={translateTravel('工作区')} />
+          <RawSection items={parsed.reviewRubrics ?? []} label={translateTravel('评审标准')} />
         </Flexbox>
       )}
     </Flexbox>

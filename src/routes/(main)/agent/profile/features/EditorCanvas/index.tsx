@@ -34,7 +34,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 300px;
     padding-block: 18px;
     padding-inline: 18px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};

@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: space-between;
 
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   grid: css`
@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     /* same card treatment as the full-access row so the whole Scope block
        reads as one system */
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   grantCheck: css`
@@ -44,12 +44,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   grantList: css`
     padding-block: 4px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   grantRow: css`
     padding-block: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: none;

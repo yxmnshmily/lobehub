@@ -59,6 +59,8 @@ export interface GoalAcceptancePolicy {
 
 export interface GoalConfig {
   acceptance?: GoalAcceptancePolicy;
+  /** Workspace group that owns this goal; the agent is its coordinator. */
+  groupId?: string;
   /**
    * How many of a goal's Tasks may be in flight at once. Independent Tasks are
    * the common case — four bug fixes that share no code have no reason to run
@@ -68,6 +70,8 @@ export interface GoalConfig {
   maxConcurrentTasks?: number | null;
   recovery?: GoalRecoveryPolicy;
   schedule?: GoalSchedulePolicy;
+  /** Validated group member assigned to each graph task node. */
+  taskAssignments?: Record<string, string>;
 }
 
 /**

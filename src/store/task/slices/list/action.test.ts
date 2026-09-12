@@ -37,6 +37,36 @@ beforeEach(() => {
 });
 
 describe('TaskListSliceAction', () => {
+  it('does not let a late previous-group response replace the current group list', async () => {
+    const { useClientDataSWR } = await import('@/libs/swr');
+    useTaskStore.getState().useFetchTaskList({ groupId: 'old' });
+    const previous = vi.mocked(useClientDataSWR).mock.calls.at(-1)?.[2] as any;
+    useTaskStore.getState().useFetchTaskList({ groupId: 'current' });
+    previous.onSuccess({ data: [{ id: 'old-task' }], total: 1 });
+    expect(useTaskStore.getState().tasks).toEqual([]);
+    expect(useTaskStore.getState().listAgentId).toBe('__group__:current');
+  });
+  it('requests the group rather than only its supervisor in list, board and schedules', async () => {
+    const { useClientDataSWR } = await import('@/libs/swr');
+    const { taskService } = await import('@/services/task');
+    for (const method of [
+      'useFetchTaskList',
+      'useFetchTaskGroupList',
+      'useFetchScheduledTaskList',
+    ] as const) {
+      vi.mocked(useClientDataSWR).mockClear();
+      const view = renderHook(() =>
+        useTaskStore.getState()[method]({ agentId: 'supervisor', groupId: 'travel' }),
+      );
+      const [key, fetcher] = vi.mocked(useClientDataSWR).mock.calls.at(-1)!;
+      expect(key).toContain('__group__:travel');
+      await (fetcher as (key: unknown) => unknown)(key);
+      const query = method === 'useFetchTaskGroupList' ? taskService.groupList : taskService.list;
+      expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ groupId: 'travel' }));
+      expect(vi.mocked(query).mock.calls.at(-1)?.[0].assigneeAgentId).toBeUndefined();
+      view.unmount();
+    }
+  });
   describe('setListAgentId', () => {
     it('should update listAgentId', () => {
       useTaskStore.getState().setListAgentId('agt_1');

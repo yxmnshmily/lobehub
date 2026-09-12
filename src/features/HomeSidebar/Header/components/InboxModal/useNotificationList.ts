@@ -47,14 +47,18 @@ export const useNotificationList = ({
     [category, isRead, workspaceId],
   );
 
-  const swr = useSWRInfinite(getKey, async ([, , cursor, filterCategory, filterIsRead]) => {
-    return notificationService.list({
-      category: filterCategory as string | undefined,
-      cursor: cursor as string | undefined,
-      isRead: filterIsRead as boolean | undefined,
-      limit: PAGE_SIZE,
-    });
-  });
+  const swr = useSWRInfinite(
+    getKey,
+    async ([, , cursor, filterCategory, filterIsRead]) => {
+      return notificationService.list({
+        category: filterCategory as string | undefined,
+        cursor: cursor as string | undefined,
+        isRead: filterIsRead as boolean | undefined,
+        limit: PAGE_SIZE,
+      });
+    },
+    { refreshInterval: 15_000 },
+  );
 
   const { mutate } = swr;
   useEffect(() => {

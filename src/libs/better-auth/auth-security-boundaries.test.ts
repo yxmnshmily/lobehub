@@ -24,7 +24,15 @@ const createHarness = async (options?: {
   const remember = (store: Map<string, string[]>, email: string, url: string) => {
     store.set(email, [...(store.get(email) || []), url]);
   };
-  const instanceRef: { current?: Awaited<ReturnType<typeof getTestInstance>> } = {};
+  const instanceRef: {
+    current?: {
+      auth: {
+        $context: Promise<{
+          internalAdapter: Parameters<typeof registerEmailVerificationToken>[0];
+        }>;
+      };
+    };
+  } = {};
   const instance = await getTestInstance(
     {
       basePath: '/api/auth',

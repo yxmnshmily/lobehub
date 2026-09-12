@@ -7,15 +7,13 @@ export interface TravelServiceOffer {
   type: TravelPaidServiceType;
 }
 
-type TravelServiceEnvironment = Partial<
-  Record<'TRAVEL_IMAGE_SERVICE_PRICE_FEN' | 'TRAVEL_VIDEO_SERVICE_PRICE_FEN', string | undefined>
->;
+type TravelServiceEnvironment = Record<string, string | undefined>;
 
 const MAX_SERVICE_PRICE_FEN = 2_000_000_000;
 
 const SERVICE_CONFIG: Record<
   TravelPaidServiceType,
-  { envKey: keyof TravelServiceEnvironment; title: string }
+  { envKey: 'TRAVEL_IMAGE_SERVICE_PRICE_FEN' | 'TRAVEL_VIDEO_SERVICE_PRICE_FEN'; title: string }
 > = {
   image: { envKey: 'TRAVEL_IMAGE_SERVICE_PRICE_FEN', title: '旅游图片制作' },
   video: { envKey: 'TRAVEL_VIDEO_SERVICE_PRICE_FEN', title: '旅游视频制作' },

@@ -36,7 +36,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     max-height: 240px;
     padding: 4px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};

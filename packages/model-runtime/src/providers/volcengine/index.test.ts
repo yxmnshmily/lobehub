@@ -30,6 +30,64 @@ describe('LobeVolcengineAI - custom features', () => {
   });
 
   describe('handlePayload', () => {
+    it.each(['doubao-seed-2.1-turbo', 'doubao-seed-2.1-pro'])(
+      'routes the saved Seed 2.1 alias through the Responses API: %s',
+      async (model) => {
+        const responses = vi
+          .spyOn(instance['client'].responses, 'create')
+          .mockResolvedValue(new ReadableStream() as any);
+
+        await instance.chat({
+          messages: [{ content: '审核这条旅游文案', role: 'user' }],
+          model,
+        });
+
+        expect(responses).toHaveBeenCalledTimes(1);
+        expect(instance['client'].chat.completions.create).not.toHaveBeenCalled();
+        expect((responses as any).mock.calls[0][0].model).toMatch(
+          /^doubao-seed-2-1-(?:turbo|pro)-260628$/,
+        );
+      },
+    );
+
+    it('does not send OpenAI-only safety_identifier to Ark Responses', async () => {
+      const responses = vi
+        .spyOn(instance['client'].responses, 'create')
+        .mockResolvedValue(new ReadableStream() as any);
+
+      await instance.chat(
+        {
+          messages: [{ content: '审核这条旅游文案', role: 'user' }],
+          model: 'doubao-seed-2.1-turbo',
+        },
+        { user: 'group-member-user' },
+      );
+
+      expect((responses as any).mock.calls[0][0]).not.toHaveProperty('safety_identifier');
+    });
+
+    it('does not force a custom compatible endpoint onto Ark Responses semantics', async () => {
+      const custom = new LobeVolcengineAI({
+        apiKey: 'test_api_key',
+        baseURL: 'https://gateway.example.test/v1',
+      });
+      const chat = vi
+        .spyOn(custom['client'].chat.completions, 'create')
+        .mockResolvedValue(new ReadableStream() as any);
+      const responses = vi
+        .spyOn(custom['client'].responses, 'create')
+        .mockResolvedValue(new ReadableStream() as any);
+
+      await custom.chat({
+        messages: [{ content: 'Hello', role: 'user' }],
+        model: 'doubao-seed-2.1-turbo',
+      });
+
+      expect(chat).toHaveBeenCalledTimes(1);
+      expect(responses).not.toHaveBeenCalled();
+      expect((chat as any).mock.calls[0][0].model).toBe('doubao-seed-2.1-turbo');
+    });
+
     it('should add thinking for thinking-vision-pro model', async () => {
       await instance.chat({
         messages: [{ content: 'Hello', role: 'user' }],
@@ -137,13 +195,18 @@ describe('LobeVolcengineAI - custom features', () => {
     it.each(['doubao-seed-2-1-pro-260628', 'deepseek-v4-pro-260425'])(
       'drops a thinking type Ark does not accept, for %s',
       async (model) => {
+        const responses = vi
+          .spyOn(instance['client'].responses, 'create')
+          .mockResolvedValue(new ReadableStream() as any);
         await instance.chat({
           messages: [{ content: 'Hello', role: 'user' }],
           model,
           thinking: { type: 'adaptive' },
         });
 
-        const calledPayload = (instance['client'].chat.completions.create as any).mock.calls[0][0];
+        const calledPayload = model.startsWith('doubao-seed-2-1')
+          ? (responses as any).mock.calls[0][0]
+          : (instance['client'].chat.completions.create as any).mock.calls[0][0];
         expect(calledPayload).not.toHaveProperty('thinking');
       },
     );

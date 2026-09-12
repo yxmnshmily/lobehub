@@ -6,7 +6,7 @@ import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { MemoryListBoundary, useResetMemoryList } from '@/features/Memory';
-import NavHeader from '@/features/NavHeader';
+import PageHeader from '@/features/NavHeader/PageHeader';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import WideScreenButton from '@/features/WideScreenContainer/WideScreenButton';
 import { useQueryState } from '@/hooks/useQueryParam';
@@ -77,7 +77,9 @@ const ActivitiesArea = memo(() => {
 
   return (
     <Flexbox flex={1} height={'100%'}>
-      <NavHeader
+      <PageHeader
+        showTogglePanelButton={false}
+        title={t('tab.activities')}
         left={
           Boolean(activitiesTotal) && (
             <Tag icon={<Icon icon={CalendarClockIcon} />}>{activitiesTotal}</Tag>
@@ -93,10 +95,10 @@ const ActivitiesArea = memo(() => {
       <Flexbox
         height={'100%'}
         id={SCROLL_PARENT_ID}
-        style={{ overflowY: 'auto', paddingBottom: '16vh' }}
+        style={{ overflowY: 'auto', paddingBottom: 24 }}
         width={'100%'}
       >
-        <WideScreenContainer gap={32} paddingBlock={48}>
+        <WideScreenContainer fullWidth gap={32} paddingBlock={24} style={{ marginInline: 'auto', maxWidth: 1184 }}>
           <FilterBar
             searchValue={searchValue}
             sortOptions={viewMode === 'grid' ? sortOptions : undefined}

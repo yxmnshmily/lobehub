@@ -149,3 +149,21 @@ export const chatGroupUserInvitations = pgTable(
 
 export type ChatGroupUserInvitationItem = typeof chatGroupUserInvitations.$inferSelect;
 export type NewChatGroupUserInvitation = typeof chatGroupUserInvitations.$inferInsert;
+
+/** Transferable, expiring links. Only hashes are persisted; joining still requires authentication. */
+export const chatGroupInvitationLinks = pgTable(
+  'chat_group_invitation_links',
+  {
+    tokenHash: text('token_hash').primaryKey().notNull(),
+    chatGroupId: text('chat_group_id')
+      .references(() => chatGroups.id, { onDelete: 'cascade' })
+      .notNull(),
+    inviterUserId: text('inviter_user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    expiresAt: timestamptz('expires_at').notNull(),
+    revokedAt: timestamptz('revoked_at'),
+    createdAt: createdAt(),
+  },
+  (table) => [index('chat_group_invitation_links_group_idx').on(table.chatGroupId)],
+);

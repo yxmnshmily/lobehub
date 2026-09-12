@@ -1,8 +1,9 @@
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import ChatInputCredits from '@/business/client/features/ChatInputCredits';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
@@ -12,7 +13,6 @@ import { useAgentId } from '../hooks/useAgentId';
 import { useChatInputResourceAccess } from '../hooks/useChatInputResourceAccess';
 import { useEffectiveAgentMode } from '../hooks/useEffectiveAgentMode';
 import { useChatInputStore } from '../store';
-import ApprovalMode from './ApprovalMode';
 import ModeSelector from './ModeSelector';
 import WorkspaceControls from './WorkspaceControls';
 
@@ -39,7 +39,7 @@ const styles = createStaticStyles(({ css }) => ({
       display: none;
     }
   `,
-  // Right cluster (approval mode + context window) stays pinned and intact.
+  // Right cluster (credits + context window) stays pinned and intact.
   rightGroup: css`
     flex: none;
   `,
@@ -48,8 +48,8 @@ const styles = createStaticStyles(({ css }) => ({
 const ControlBar = memo(() => {
   const agentId = useAgentId();
   const { canShowControls } = useChatInputResourceAccess();
-  const showContextWindow = useChatInputStore((s) =>
-    s.rightActions.flat().includes('contextWindow'),
+  const showContextWindow = useChatInputStore(
+    (s) => !s.allowExpand && s.rightActions.flat().includes('contextWindow'),
   );
 
   const isLoading = useAgentStore((s) => agentByIdSelectors.isAgentConfigLoadingById(agentId)(s));
@@ -61,8 +61,8 @@ const ControlBar = memo(() => {
   if (!agentId || isLoading) {
     return (
       <Flexbox horizontal align={'center'} className={styles.bar} gap={4}>
-        <Skeleton style={{ height: 22, minWidth: 64, width: 64 }} />
-        <Skeleton style={{ height: 22, minWidth: 100, width: 100 }} />
+        <SkeletonBar style={{ height: 22, minWidth: 64, width: 64 }} />
+        <SkeletonBar style={{ height: 22, minWidth: 100, width: 100 }} />
       </Flexbox>
     );
   }
@@ -77,7 +77,6 @@ const ControlBar = memo(() => {
 
       <Flexbox horizontal align={'center'} className={styles.rightGroup} gap={4}>
         <ChatInputCredits />
-        {isAgentRuntimeMode && <ApprovalMode />}
         {showContextWindow && <ContextWindow />}
       </Flexbox>
     </Flexbox>

@@ -10,8 +10,7 @@ import type { BetterAuthPlugin } from 'better-auth/types';
 import { jwtVerify } from 'jose';
 
 const IDENTIFIER_PREFIX = 'travel-email-verification';
-const INVALID_TOKEN_RECOVERY_PATH =
-  '/lobehub/verify-email?error=INVALID_VERIFICATION_TOKEN';
+const INVALID_TOKEN_RECOVERY_PATH = '/lobehub/verify-email?error=INVALID_VERIFICATION_TOKEN';
 
 interface VerificationRecord {
   expiresAt: Date;
@@ -82,11 +81,7 @@ const hasAllowedMountedCallback = (callback: unknown, baseURL: string): boolean 
 
 export const prepareEmailVerificationToken = async (
   adapter: VerificationTokenAdapter,
-  {
-    email,
-    expiresInSeconds,
-    token,
-  }: { email: string; expiresInSeconds: number; token: string },
+  { email, expiresInSeconds, token }: { email: string; expiresInSeconds: number; token: string },
 ): Promise<PreparedEmailVerificationToken> => {
   const normalizedEmail = email.toLowerCase();
   const nextFingerprint = fingerprint(token);
@@ -105,7 +100,8 @@ export const prepareEmailVerificationToken = async (
   return {
     commit: async () => {
       if (state === 'committed') return;
-      if (state === 'rolled-back') throw new Error('Verification token preparation was rolled back');
+      if (state === 'rolled-back')
+        throw new Error('Verification token preparation was rolled back');
 
       const current = await adapter.findVerificationValue(pointerIdentifier);
       if (previous) {
@@ -165,10 +161,7 @@ const verificationRecipient = (payload: unknown, reject = rejectVerificationToke
   if (!payload || typeof payload !== 'object') return reject();
   const claims = payload as { email?: unknown; requestType?: unknown; updateTo?: unknown };
   if (typeof claims.email !== 'string') return reject();
-  if (
-    claims.requestType !== 'change-email-confirmation' &&
-    typeof claims.updateTo === 'string'
-  ) {
+  if (claims.requestType !== 'change-email-confirmation' && typeof claims.updateTo === 'string') {
     return claims.updateTo.toLowerCase();
   }
 
@@ -239,9 +232,7 @@ export const oneTimeEmailVerificationToken = (): BetterAuthPlugin => {
     async (context) => {
       const token = context.query?.token;
       const tokenFingerprint = typeof token === 'string' ? fingerprint(token) : undefined;
-      const reservation = tokenFingerprint
-        ? pendingReservations.get(tokenFingerprint)
-        : undefined;
+      const reservation = tokenFingerprint ? pendingReservations.get(tokenFingerprint) : undefined;
       if (!reservation) return rejectVerificationToken();
 
       let settled = false;
@@ -250,23 +241,15 @@ export const oneTimeEmailVerificationToken = (): BetterAuthPlugin => {
           ...context,
           asResponse: false,
           returnHeaders: true,
-          returnStatus: true,
         });
         result.headers?.forEach((value, key) => context.setHeader(key, value));
-        if (result.status) context.setStatus(result.status);
-        await reservation.adapter.deleteVerificationByIdentifier(
-          reservation.reservationIdentifier,
-        );
+        await reservation.adapter.deleteVerificationByIdentifier(reservation.reservationIdentifier);
         settled = true;
         return result.response;
       } catch (error) {
         if (!settled) {
           if (
-            isExpectedCallbackRedirect(
-              error,
-              context.context.baseURL,
-              context.query?.callbackURL,
-            )
+            isExpectedCallbackRedirect(error, context.context.baseURL, context.query?.callbackURL)
           ) {
             await reservation.adapter.deleteVerificationByIdentifier(
               reservation.reservationIdentifier,
@@ -318,24 +301,23 @@ export const oneTimeEmailVerificationToken = (): BetterAuthPlugin => {
             const tokenFingerprint = fingerprint(token);
             const pointerIdentifier = latestIdentifier(recipient);
             const expectedEmailFingerprint = fingerprint(recipient);
-            const latest = await context.context.internalAdapter.findVerificationValue(
-              pointerIdentifier,
-            );
+            const latest =
+              await context.context.internalAdapter.findVerificationValue(pointerIdentifier);
             if (!latest || !matchesFingerprint(latest.value, tokenFingerprint)) {
               return reject();
             }
 
             const currentTokenIdentifier = tokenIdentifier(tokenFingerprint);
-            const consumed = await context.context.internalAdapter.consumeVerificationValue(
-              currentTokenIdentifier,
-            );
+            const consumed =
+              await context.context.internalAdapter.consumeVerificationValue(
+                currentTokenIdentifier,
+              );
             if (!consumed || !matchesFingerprint(consumed.value, expectedEmailFingerprint)) {
               return reject();
             }
 
-            const currentLatest = await context.context.internalAdapter.findVerificationValue(
-              pointerIdentifier,
-            );
+            const currentLatest =
+              await context.context.internalAdapter.findVerificationValue(pointerIdentifier);
             if (!currentLatest || !matchesFingerprint(currentLatest.value, tokenFingerprint)) {
               return reject();
             }

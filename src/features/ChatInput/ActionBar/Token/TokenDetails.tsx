@@ -22,7 +22,7 @@ const TokenDetails = memo<TokenDetailsProps>(({ breakdown }) => {
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
 
   return (
-    <Flexbox gap={12} style={{ minWidth: 200 }}>
+    <Flexbox gap={12} style={{ fontSize: 12, minWidth: 200 }}>
       <Flexbox horizontal align={'center'} gap={4} justify={'space-between'} width={'100%'}>
         <div style={{ color: cssVar.colorTextDescription }}>{t('tokenDetails.title')}</div>
         <Tooltip

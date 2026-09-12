@@ -855,7 +855,7 @@ export const MessageManifest: BuiltinToolManifest = {
     // ==================== System Bot Messenger Management ====================
     {
       description:
-        "List the current user's LobeHub System Bot connections (Slack workspaces, Discord guilds, Telegram, and user-owned WeChat accounts). Each entry returns an `id` to pass back as `installationId` on `getMessengerDetail` / `uninstallMessenger`, or as `messengerInstallationId` on send APIs. Use this when the user asks about connected messengers, or as the fallback when `listBots` has no entry for the target platform.",
+        "List the current user's 旅游群 System Bot connections (Slack workspaces, Discord guilds, Telegram, and user-owned WeChat accounts). Each entry returns an `id` to pass back as `installationId` on `getMessengerDetail` / `uninstallMessenger`, or as `messengerInstallationId` on send APIs. Use this when the user asks about connected messengers, or as the fallback when `listBots` has no entry for the target platform.",
       name: MessageApiName.listMessengers,
       parameters: {
         additionalProperties: false,
@@ -897,7 +897,7 @@ export const MessageManifest: BuiltinToolManifest = {
     },
     {
       description:
-        'List the platforms where the user can connect the LobeHub System Bot. Returns `appId` / `botUsername` when relevant. Use when guiding the user through `Settings → Messenger`; browser OAuth and QR setup flows cannot be initiated from this tool.',
+        'List the platforms where the user can connect the 旅游群 System Bot. Returns `appId` / `botUsername` when relevant. Use when guiding the user through `Settings → Messenger`; browser OAuth and QR setup flows cannot be initiated from this tool.',
       name: MessageApiName.listMessengerPlatforms,
       parameters: {
         additionalProperties: false,
@@ -964,7 +964,7 @@ export const MessageManifest: BuiltinToolManifest = {
     },
     {
       description:
-        'Proactively push a message to the CURRENT USER\'s own DM with the LobeHub System Bot — THE api for "send me a message on <platform>", "DM me", "notify me when done". Unlike `sendDirectMessage` it needs no bot discovery, channel id, or platform user id: the server resolves the user\'s own account link. Availability comes from that account link, NOT from `listBots` / `listMessengers` — a platform missing there can still be pushable, so never refuse based on those lists. Call `listMessengerLinks` when unsure which platforms are linked; when the user named one, just push and let an `unlinked` status tell you. Telegram / Discord deliver immediately. Slack with several linked workspaces returns `needs_workspace_selection` — ask the user to pick, then retry with that `tenantId`. WeChat can only deliver inside the send window opened by the user\'s last inbound message; outside it the push is `queued` and you must tell the user to message the LobeHub WeChat bot first so the queued push gets delivered.',
+        'Proactively push a message to the CURRENT USER\'s own DM with the 旅游群 System Bot — THE api for "send me a message on <platform>", "DM me", "notify me when done". Unlike `sendDirectMessage` it needs no bot discovery, channel id, or platform user id: the server resolves the user\'s own account link. Availability comes from that account link, NOT from `listBots` / `listMessengers` — a platform missing there can still be pushable, so never refuse based on those lists. Call `listMessengerLinks` when unsure which platforms are linked; when the user named one, just push and let an `unlinked` status tell you. Telegram / Discord deliver immediately. Slack with several linked workspaces returns `needs_workspace_selection` — ask the user to pick, then retry with that `tenantId`. WeChat can only deliver inside the send window opened by the user\'s last inbound message; outside it the push is `queued` and you must tell the user to message the 旅游群 WeChat bot first so the queued push gets delivered.',
       name: MessageApiName.sendMessengerPush,
       parameters: {
         additionalProperties: false,

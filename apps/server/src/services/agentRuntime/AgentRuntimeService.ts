@@ -69,6 +69,10 @@ import { FileService } from '@/server/services/file';
 import { mcpService } from '@/server/services/mcp';
 import { MessageService } from '@/server/services/message';
 import { parseHostedGroupRunSnapshot } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
+import {
+  getPlatformUsageSharedBudgetSnapshot,
+  restorePlatformUsageSharedBudgetForOperation,
+} from '@/server/services/platformUsageBilling/sharedBudget';
 import { QueueService } from '@/server/services/queue';
 import { LocalQueueServiceImpl } from '@/server/services/queue/impls';
 import { ToolExecutionService } from '@/server/services/toolExecution';
@@ -149,6 +153,7 @@ const STEP_ABORT_POLL_INTERVAL_MS = 2_000;
 /** Cap on the exponential backoff multiplier after consecutive poll failures. */
 const STEP_ABORT_POLL_MAX_BACKOFF = 8;
 const STEP_LOCK_HEARTBEAT_MS = 30_000;
+const GROUP_REPLY_PREFIX_PATTERN = /^\s*<group_reply ref="[\w%.-]{1,200}"\s*\/>\s*/;
 const DURABLE_LEASE_HEARTBEAT_EVERY_TICKS = 3;
 const EVAL_TOOL_FORWARDING_HOOK_ID = 'eval-tool-forwarding';
 const INTERVENTION_LIFECYCLE_CHECKPOINT_KEY = '_agentInterventionLifecycle';
@@ -897,10 +902,17 @@ export class AgentRuntimeService {
       throw new Error('Invalid server-derived hosted group run binding');
     }
 
+    // Only an already admitted, server-bound handle can supply this locator.
+    // Never copy a locator out of appContext or a queue payload.
+    const platformUsageBudget = getPlatformUsageSharedBudgetSnapshot(operationId, {
+      actorUserId: userId,
+      workspaceId,
+    });
     const operationMetadata = {
       ...(appContext?.agentSignal ? { agentSignal: appContext.agentSignal } : {}),
       ...(interventionResolution ? { agentInterventionContinuation: interventionResolution } : {}),
       ...(hostedGroupRun ? { hostedGroupRun } : {}),
+      ...(platformUsageBudget ? { platformUsageBudget } : {}),
     };
 
     // Persist initial agent_operations row. CompletionLifecycle owns both
@@ -942,6 +954,18 @@ export class AgentRuntimeService {
       throw new Error(
         `Failed to durably persist hosted group run binding ${operationId} before dispatch`,
       );
+    }
+    if (platformUsageBudget && !operationStartPersisted) {
+      throw new Error(`Failed to durably persist platform budget binding ${operationId} before dispatch`);
+    }
+    if (platformUsageBudget) {
+      const durable = await this.agentOperationModel.findById(operationId);
+      const saved = durable?.metadata?.platformUsageBudget as typeof platformUsageBudget | undefined;
+      if (durable?.userId !== this.userId || (durable?.workspaceId ?? null) !== (workspaceId ?? null) ||
+        saved?.version !== platformUsageBudget.version || saved?.actorUserId !== platformUsageBudget.actorUserId ||
+        saved?.budgetId !== platformUsageBudget.budgetId || saved?.leaseVersion !== platformUsageBudget.leaseVersion) {
+        throw new Error(`Platform budget operation identity conflict: ${operationId}`);
+      }
     }
 
     if (interventionResolution) {
@@ -3278,6 +3302,7 @@ export class AgentRuntimeService {
       operationId,
       parentOperationId,
       reason,
+      replyToMessageId,
       threadId,
     } = params;
     const failed = reason === 'error' || reason === 'interrupted' || reason === 'timeout';
@@ -3302,7 +3327,12 @@ export class AgentRuntimeService {
     // Keeping the original row preserves the exact content/metadata pairing
     // that conversation-flow display grouping intentionally aggregates.
     let lastAssistant: unknown;
-    if (!failed && mode !== 'in_group' && finalState && !Array.isArray(finalState.messages)) {
+    if (
+      !failed &&
+      finalState &&
+      !Array.isArray(finalState.messages) &&
+      (mode !== 'in_group' || replyToMessageId)
+    ) {
       try {
         lastAssistant = await this.resolveLastAssistantMessageFromDB(finalState);
       } catch (error) {
@@ -3311,11 +3341,39 @@ export class AgentRuntimeService {
           operationId,
           error,
         );
+        if (mode === 'in_group' && replyToMessageId) throw error;
       }
     }
     const messages = Array.isArray(finalState?.messages) ? finalState.messages : [];
     lastAssistant ??= findLastAssistantMessage(normalizeCompletionMessages(messages));
     let lastAssistantContent = extractTextFromMessage(lastAssistant);
+
+    // A reply target is a supervisor-owned structural decision, not prose the
+    // member model must remember to emit. The runner has already authorized the
+    // source as another assistant in this group/topic. Canonicalize the final
+    // member message before the parent resumes, so every provider renders the
+    // same quote card while ordinary/self-continuation messages remain plain.
+    if (
+      !failed &&
+      mode === 'in_group' &&
+      replyToMessageId &&
+      isRecord(lastAssistant) &&
+      typeof lastAssistant.id === 'string' &&
+      typeof lastAssistant.content === 'string'
+    ) {
+      const encodedReplyId = encodeURIComponent(replyToMessageId).replaceAll('_', '%5F');
+      const canonicalPrefix = `<group_reply ref="${encodedReplyId}" />\n`;
+      const content = `${canonicalPrefix}${lastAssistant.content.replace(GROUP_REPLY_PREFIX_PATTERN, '')}`;
+      if (content !== lastAssistant.content) {
+        const replyBackfill = await this.messageModel.update(lastAssistant.id, { content });
+        if (!replyBackfill.success) {
+          throw new Error(
+            `Group-member bridge: failed to persist reply ${lastAssistant.id} for parent ${parentOperationId}`,
+          );
+        }
+        lastAssistantContent = content;
+      }
+    }
 
     // Gated on `!finalState`, not merely an empty `lastAssistantContent` —
     // see the identical guard (and its full rationale) in
@@ -3740,6 +3798,13 @@ export class AgentRuntimeService {
           billingActorUserId !== metadata?.userId))
     ) {
       throw new Error('Invalid server-derived hosted execution principal');
+    }
+
+    if (billingActorUserId && metadata?.agentConfig?.agencyConfig?.modelRuntimeMode === 'platform-managed') {
+      await restorePlatformUsageSharedBudgetForOperation(this.serverDB, operationId, {
+        actorUserId: billingActorUserId,
+        workspaceId: metadata?.workspaceId,
+      });
     }
 
     // Create streaming executor context

@@ -1,6 +1,6 @@
 'use client';
 
-import { agentSecondaryDisplayName } from '@lobechat/types';
+import { agentDisplayName, agentSecondaryDisplayName } from '@lobechat/types';
 import { Flexbox, Tooltip } from '@lobehub/ui';
 import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
@@ -33,15 +33,16 @@ const AgentHeader = memo(() => {
   const updateMetaById = useAgentStore((s) => s.updateAgentMetaById);
   const { autoName, naming } = useAutoName(agentId);
   const personalName = meta.name?.trim();
+  const displayName = agentDisplayName(meta);
   const role = meta.title?.trim();
   const suppressDuplicateRole =
-    !!config?.agencyConfig?.heterogeneousProvider &&
-    !!personalName &&
-    !!role &&
-    agentSecondaryDisplayName({ name: personalName, title: role }) === undefined;
-  // Without edit rights there is nothing to prompt for, so a nameless agent
-  // falls back to the plain label rather than showing an action nobody can take.
-  const showNamePrompt = !personalName && canEdit;
+    (!personalName && !!role) ||
+    (!!config?.agencyConfig?.heterogeneousProvider &&
+      !!personalName &&
+      !!role &&
+      agentSecondaryDisplayName({ name: personalName, title: role }) === undefined);
+  // Match the home list, including legacy members whose name was stored as title.
+  const showNamePrompt = !displayName && canEdit;
 
   return (
     <Flexbox
@@ -79,12 +80,7 @@ const AgentHeader = memo(() => {
           form modal; inline inputs crowded the header and left no room for a
           per-field label or error. */}
       <Flexbox flex={1} gap={8} paddingInline={24} style={{ minWidth: 0 }}>
-        {/* The headline is the NAME slot. With no name there is nothing to
-            headline, so it carries the action that can fix this instead of a
-            placeholder pretending to be a name. The edit affordance stays hidden
-            until then: naming it IS the
-            next step, and offering the full identity form alongside would split
-            attention between two ways to do the same thing. */}
+        {/* Use the shared name-first identity, with the legacy title fallback. */}
         {showNamePrompt ? (
           <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0 }}>
             <Text ellipsis style={{ color: cssVar.colorTextTertiary, fontSize: 20 }}>
@@ -105,7 +101,7 @@ const AgentHeader = memo(() => {
         ) : (
           <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0 }}>
             <Text ellipsis style={{ fontSize: 36, fontWeight: 600 }}>
-              {personalName || t('settingAgent.identity.untitled', { ns: 'setting' })}
+              {displayName || t('settingAgent.identity.untitled', { ns: 'setting' })}
             </Text>
             {canEdit ? (
               <ActionIcon

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import { agents, messengerAccountLinks, users, workspaces } from '../../schemas';
+import { agents, chatGroups, messengerAccountLinks, users, workspaces } from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import {
   MessengerAccountLinkConflictError,
@@ -44,6 +44,33 @@ afterEach(async () => {
 });
 
 describe('MessengerAccountLinkModel', () => {
+  it('binds only the selected tenant to a group and never falls back to an agent after group deletion', async () => {
+    const model = new MessengerAccountLinkModel(serverDB, userA);
+    await serverDB.insert(chatGroups).values({ id: 'messenger-group', userId: userA });
+    for (const tenantId of ['T_ONE', 'T_TWO']) {
+      await model.upsertForPlatform({
+        platform: 'slack',
+        platformUserId: tenantId,
+        tenantId,
+        activeAgentId: agentA,
+      });
+    }
+    await model.setActiveGroup('slack', 'messenger-group', null, 'T_ONE');
+    expect(await model.findByPlatform('slack', 'T_ONE')).toMatchObject({
+      activeGroupId: 'messenger-group',
+      activeAgentId: null,
+    });
+    expect(await model.findByPlatform('slack', 'T_TWO')).toMatchObject({
+      activeGroupId: null,
+      activeAgentId: agentA,
+    });
+    await serverDB.delete(chatGroups).where(eq(chatGroups.id, 'messenger-group'));
+    expect(await model.findByPlatform('slack', 'T_ONE')).toMatchObject({
+      activeGroupId: null,
+      activeAgentId: null,
+    });
+  });
+
   describe('findByUserIds', () => {
     it('returns only the identities active under the requested scope', async () => {
       await serverDB.insert(messengerAccountLinks).values([

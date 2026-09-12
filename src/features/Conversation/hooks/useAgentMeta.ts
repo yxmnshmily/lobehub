@@ -1,5 +1,5 @@
 import { type MetaData } from '@lobechat/types';
-import { useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors } from '@/store/agent/selectors';
@@ -7,6 +7,8 @@ import { agentSelectors } from '@/store/agent/selectors';
 import { contextSelectors, useConversationStore } from '../store';
 
 const LOBE_AI_TITLE = '旅游群主AI';
+// Display-only metadata supplied by an authorized joined-group participant query.
+export const GroupAgentMetaContext = createContext<Record<string, MetaData>>({});
 
 /**
  * Hook to get agent meta data for a specific agent or the current conversation.
@@ -21,7 +23,9 @@ export const useAgentMeta = (messageAgentId?: string | null): MetaData => {
   const contextAgentId = useConversationStore(contextSelectors.agentId);
   // Use message's agentId if provided, otherwise fallback to context agentId
   const agentId = messageAgentId || contextAgentId;
-  const agentMeta = useAgentStore(agentSelectors.getAgentMetaById(agentId));
+  const storedMeta = useAgentStore(agentSelectors.getAgentMetaById(agentId));
+  const groupAgentMeta = useContext(GroupAgentMetaContext);
+  const agentMeta = groupAgentMeta[agentId] || storedMeta;
   const builtinAgentIdMap = useAgentStore((s) => s.builtinAgentIdMap);
 
   return useMemo(() => {

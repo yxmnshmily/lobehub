@@ -76,6 +76,10 @@ const DateRangeContent = memo(() => {
           format={'YYYY/MM/DD'}
           style={{ width: '100%' }}
           value={[range[0] ? dayjs(range[0]) : null, range[1] ? dayjs(range[1]) : null]}
+          // Stay in the modal's layer, outside its clipped scrolling content.
+          getPopupContainer={(trigger) =>
+            trigger.closest<HTMLElement>('[role="dialog"]') ?? trigger.ownerDocument.body
+          }
           onChange={(values) =>
             setRange([values?.[0]?.toDate() ?? null, values?.[1]?.toDate() ?? null])
           }

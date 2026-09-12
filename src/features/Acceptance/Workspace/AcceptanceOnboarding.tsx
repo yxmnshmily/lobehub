@@ -4,12 +4,13 @@ import { CopyButton, Flexbox, Icon } from '@lobehub/ui';
 import { Button, TabsIndicator, TabsList, TabsRoot, TabsTab } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { ArrowLeft, Bot, ClipboardCheck, Terminal } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, use, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 
 import CommandLine from '@/components/CommandLine';
 import { CLI_INSTALL_COMMAND } from '@/features/Apps/const';
+import { GroupProjectScopeContext } from '@/features/Projects/Layout/GroupProjectScope';
+import { useWorkspaceAwareNavigate as useNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 
 import { acceptanceHomePath } from '../Viewer/routes';
 
@@ -27,14 +28,14 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 100%;
     height: 100%;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
   `,
   content: css`
     width: 100%;
-    max-width: 960px;
+    max-width: 100%;
     margin: auto;
     padding-block: 12px 16px;
     padding-inline: 24px;
@@ -51,7 +52,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 40px;
     height: 40px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     color: ${cssVar.colorTextSecondary};
@@ -61,7 +62,7 @@ const styles = createStaticStyles(({ css }) => ({
   method: css`
     min-width: 0;
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   methodDescription: css`
@@ -84,7 +85,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     min-width: 0;
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   stepIndex: css`
@@ -140,7 +141,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   promptBox: css`
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorFillQuaternary};
   `,
@@ -162,13 +163,18 @@ const styles = createStaticStyles(({ css }) => ({
 const AcceptanceOnboarding = memo(() => {
   const { t } = useTranslation('verify');
   const navigate = useNavigate();
+  const groupScope = use(GroupProjectScopeContext);
   const [mode, setMode] = useState<'agent' | 'manual'>('agent');
 
   return (
     <Flexbox className={styles.page}>
       <Flexbox className={styles.container}>
         <Flexbox horizontal align={'center'} padding={16}>
-          <Button icon={ArrowLeft} type={'text'} onClick={() => navigate(acceptanceHomePath())}>
+          <Button
+            icon={ArrowLeft}
+            type={'text'}
+            onClick={() => navigate(groupScope ? '/tasks' : acceptanceHomePath())}
+          >
             {t('back', { ns: 'common' })}
           </Button>
         </Flexbox>

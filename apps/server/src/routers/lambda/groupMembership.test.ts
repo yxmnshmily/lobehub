@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 
 import type { LobeChatDatabase } from '@lobechat/database';
 import {
+  agents,
+  chatGroupInvitationLinks,
   chatGroups,
+  chatGroupsAgents,
   chatGroupUserInvitations,
   chatGroupUserMemberships,
   messages,
@@ -12,8 +15,9 @@ import {
 } from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AgentService } from '@/server/services/agent';
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
 
 import { groupConversationRouter } from './groupConversation';
@@ -28,10 +32,13 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
 const db: LobeChatDatabase = await getTestDB();
 const ownerId = 'group-membership-router-owner';
 const memberId = 'group-membership-router-member';
+const observerId = 'group-membership-router-observer';
 const ownerEmail = 'owner-membership@example.test';
 const memberEmail = 'member-membership@example.test';
+const observerEmail = 'observer-membership@example.test';
 const groupId = 'group-membership-router-group';
 const otherGroupId = 'group-membership-router-other-group';
+const assistantId = 'group-membership-router-assistant';
 const groupIds = [groupId, otherGroupId];
 
 const callerFor = (userId: string, workspaceId?: string | null) =>
@@ -49,8 +56,65 @@ const cleanup = async () => {
     .delete(chatGroupUserMemberships)
     .where(inArray(chatGroupUserMemberships.chatGroupId, groupIds));
   await db.delete(chatGroups).where(inArray(chatGroups.id, groupIds));
-  await db.delete(users).where(inArray(users.id, [ownerId, memberId]));
+  await db.delete(agents).where(eq(agents.id, assistantId));
+  await db.delete(users).where(inArray(users.id, [ownerId, memberId, observerId]));
 };
+
+it('preserves an occupation separately from the member display name', async () => {
+  await db
+    .update(agents)
+    .set({ name: '小旅', title: '旅行规划师', tags: ['旅行'] })
+    .where(eq(agents.id, assistantId));
+  try {
+    const result = await callerFor(ownerId).listParticipants({ groupId });
+    expect(result.assistants[0]).toMatchObject({ title: '小旅', subtitle: '旅行规划师' });
+    expect(result.assistants[0].tags).toEqual(['旅行']);
+    expect(result.assistants[0].updatedAt).toBeInstanceOf(Date);
+    expect(result.assistants[0]).not.toHaveProperty('systemRole');
+    expect(result.assistants[0]).toHaveProperty('pinned');
+    expect(result.assistants[0]).toHaveProperty('sessionGroupId');
+  } finally {
+    await db
+      .update(agents)
+      .set({ name: null, title: '旅行规划', tags: [] })
+      .where(eq(agents.id, assistantId));
+  }
+});
+
+it('displays the same effective supervisor model used by hosted execution when storage has no override', async () => {
+  await db
+    .update(agents)
+    .set({
+      model: null,
+      provider: null,
+      agencyConfig: { modelRuntimeMode: 'platform-managed', modelSelectionPolicy: 'fixed' },
+    })
+    .where(eq(agents.id, assistantId));
+  await db
+    .update(chatGroupsAgents)
+    .set({ role: 'supervisor' })
+    .where(eq(chatGroupsAgents.agentId, assistantId));
+  try {
+    const runtime = await new AgentService(db, ownerId).getAgentConfig(assistantId);
+    const participants = await callerFor(ownerId).listParticipants({ groupId });
+    expect(runtime?.model).toBeTruthy();
+    expect(participants.assistants[0]).toMatchObject({
+      title: '旅游群',
+      model: runtime?.model,
+      provider: runtime?.provider,
+    });
+    expect(participants.assistants[0]).not.toHaveProperty('systemRole');
+  } finally {
+    await db
+      .update(agents)
+      .set({ model: 'deepseek-v4-flash', provider: 'deepseek', agencyConfig: null })
+      .where(eq(agents.id, assistantId));
+    await db
+      .update(chatGroupsAgents)
+      .set({ role: 'participant' })
+      .where(eq(chatGroupsAgents.agentId, assistantId));
+  }
+});
 
 beforeAll(async () => {
   await db.execute(
@@ -131,6 +195,7 @@ beforeAll(async () => {
   await db.insert(users).values([
     { email: ownerEmail, fullName: '群主', id: ownerId },
     { email: memberEmail, fullName: '成员', id: memberId },
+    { email: observerEmail, fullName: '留群成员', id: observerId },
   ]);
   await db.insert(chatGroups).values([
     {
@@ -150,6 +215,20 @@ beforeAll(async () => {
       workspaceId: null,
     },
   ]);
+  await db.insert(agents).values({
+    id: assistantId,
+    userId: ownerId,
+    title: '旅行规划',
+    description: '帮助规划旅行路线',
+    model: 'deepseek-v4-flash',
+    provider: 'deepseek',
+    systemRole: 'private system instructions must not be exposed',
+  });
+  await db.insert(chatGroupsAgents).values({
+    agentId: assistantId,
+    chatGroupId: groupId,
+    userId: ownerId,
+  });
 });
 
 afterAll(cleanup);
@@ -196,9 +275,11 @@ describe('groupMembershipRouter', () => {
     expect(mine.items).toEqual([
       {
         avatar: null,
+        billingMode: 'automatic_owner',
         expiresAt: created.expiresAt,
         groupId,
         invitationId: created.invitationId,
+        ownerDisplayName: '群主',
         sponsorship: {
           billingResponsibility: null,
           maxCreditsPerPeriod: null,
@@ -207,7 +288,7 @@ describe('groupMembershipRouter', () => {
         title: '默认私人旅游群',
       },
     ]);
-    expect(JSON.stringify(mine)).not.toMatch(/token|hash|owner|model|usage/iu);
+    expect(JSON.stringify(mine)).not.toMatch(/token|hash|ownerUserId|model|usage/iu);
 
     await expect(member.acceptInvitation({ token: created.token })).resolves.toEqual({
       groupId,
@@ -258,6 +339,52 @@ describe('groupMembershipRouter', () => {
         membershipVersion: 1,
       }),
     ]);
+    const participants = await member.listParticipants({ groupId });
+    expect(participants.assistants[0]).not.toHaveProperty('pinned');
+    expect(participants.assistants[0]).not.toHaveProperty('sessionGroupId');
+    expect(participants).toEqual({
+      assistants: [
+        {
+          avatar: null,
+          description: '帮助规划旅行路线',
+          id: assistantId,
+          isSupervisor: false,
+          model: 'deepseek-v4-flash',
+          provider: 'deepseek',
+          title: '旅行规划',
+        },
+      ],
+      items: [
+        {
+          avatar: null,
+          displayName: '群主',
+          memberUserId: ownerId,
+          membershipVersion: 0,
+          role: 'owner',
+        },
+        {
+          avatar: null,
+          displayName: '成员',
+          memberUserId: memberId,
+          membershipVersion: 1,
+          role: 'member',
+        },
+      ],
+      nextOffset: null,
+      viewerMembershipVersion: 1,
+      viewerRole: 'member',
+    });
+    expect(JSON.stringify(participants)).not.toMatch(/email|credit|token|canUsePaidAi/iu);
+    await expect(owner.listParticipants({ groupId, limit: 1 })).resolves.toMatchObject({
+      items: [expect.objectContaining({ memberUserId: ownerId })],
+      nextOffset: 1,
+      viewerMembershipVersion: 0,
+      viewerRole: 'owner',
+    });
+    await expect(member.listParticipants({ groupId, limit: 1, offset: 1 })).resolves.toMatchObject({
+      items: [expect.objectContaining({ memberUserId: memberId })],
+      nextOffset: null,
+    });
     await owner.removeMember({
       expectedMembershipVersion: 1,
       groupId,
@@ -267,9 +394,12 @@ describe('groupMembershipRouter', () => {
       code: 'NOT_FOUND',
       message: 'GROUP_CONVERSATION_ACCESS_UNAVAILABLE',
     });
+    await expect(member.listParticipants({ groupId })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 
-  it('lists only safe owner-sponsored invitation limits and maps snapshot drift to conflict', async () => {
+  it('marks default group invitations as automatic owner billing despite obsolete policy snapshots', async () => {
     const owner = callerFor(ownerId);
     const member = callerFor(memberId);
     const created = await owner.createInvitation({ email: memberEmail, groupId });
@@ -296,10 +426,9 @@ describe('groupMembershipRouter', () => {
       expect(JSON.stringify(result)).not.toMatch(/ownerUser|payer|account|policyVersion/iu);
     }
 
-    await expect(
-      member.acceptMyInvitation({ invitationId: created.invitationId }),
-    ).rejects.toMatchObject({ code: 'CONFLICT', message: 'GROUP_MEMBERSHIP_CONFLICT' });
-    await owner.revokeInvitation({ groupId, invitationId: created.invitationId });
+    expect(mine.items[0].billingMode).toBe('automatic_owner');
+    const accepted = await member.acceptMyInvitation({ invitationId: created.invitationId });
+    await member.leaveGroup({ groupId, expectedMembershipVersion: accepted.membershipVersion });
   });
 
   it('accepts a listed invitation by id once and keeps cross-user, replay and expiry unavailable', async () => {
@@ -359,6 +488,49 @@ describe('groupMembershipRouter', () => {
       code: 'NOT_FOUND',
       message: 'GROUP_MEMBERSHIP_UNAVAILABLE',
     });
+  });
+
+  it('invites by user ID, registered phone or contact email without bypassing owner checks', async () => {
+    await db.update(users).set({ phone: '+8613800138000' }).where(eq(users.id, memberId));
+    const owner = callerFor(ownerId);
+    try {
+      for (const contact of [
+        memberId,
+        '13800138000',
+        '+86 138-0013-8000',
+        memberEmail.toUpperCase(),
+      ]) {
+        const created = await owner.createInvitation({ contact, groupId });
+        expect(created.status).toBe('created');
+        const [row] = await db
+          .select()
+          .from(chatGroupUserInvitations)
+          .where(eq(chatGroupUserInvitations.id, created.invitationId));
+        expect(row.inviteeUserId).toBe(memberId);
+        await owner.revokeInvitation({ groupId, invitationId: created.invitationId });
+      }
+      await expect(
+        callerFor(observerId).createInvitation({ contact: '13800138000', groupId }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(
+        callerFor(observerId).createInvitation({ contact: memberId, groupId }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(
+        owner.createInvitation({ contact: 'user_missing', groupId }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'GROUP_MEMBERSHIP_UNAVAILABLE' });
+      await expect(
+        owner.createInvitation({ contact: 'not a contact', groupId }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      await db.update(users).set({ phone: '13800138000' }).where(eq(users.id, observerId));
+      await expect(
+        owner.createInvitation({ contact: '13800138000', groupId }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    } finally {
+      await db
+        .update(users)
+        .set({ phone: null })
+        .where(inArray(users.id, [memberId, observerId]));
+    }
   });
 
   it('keeps unknown, duplicate, active-member, non-owner and cross-group creation neutral', async () => {
@@ -469,6 +641,136 @@ describe('groupMembershipRouter', () => {
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
+  it.each(['leave', 'kick'] as const)(
+    'keeps prior history inaccessible after %s and reacceptance while preserving both owners history',
+    async (departure) => {
+      const owner = callerFor(ownerId);
+      const member = callerFor(memberId);
+      const ownerChat = conversationCallerFor(ownerId);
+      const memberChat = conversationCallerFor(memberId);
+      const observer = callerFor(observerId);
+      const observerChat = conversationCallerFor(observerId);
+      const observerInvitation = await owner.createInvitation({ email: observerEmail, groupId });
+      const observerJoined = await observer.acceptMyInvitation({
+        invitationId: observerInvitation.invitationId,
+      });
+      const invitation = await owner.createInvitation({ email: memberEmail, groupId });
+      await expect(memberChat.listTopics({ groupId })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const joined = await member.acceptMyInvitation({ invitationId: invitation.invitationId });
+      await expect(
+        observer.removeMember({
+          groupId,
+          memberUserId: memberId,
+          expectedMembershipVersion: joined.membershipVersion,
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const topic = await memberChat.createTopic({
+        groupId,
+        idempotencyKey: `lifecycle-${departure}-old-topic`,
+        title: '入群期间的测试话题',
+      });
+      const message = await memberChat.createTextMessage({
+        content: '退出前成员消息应留给群主',
+        groupId,
+        idempotencyKey: `lifecycle-${departure}-old-message`,
+        topicId: topic.id,
+      });
+      const personalTopic = await memberChat.createTopic({
+        groupId: otherGroupId,
+        idempotencyKey: `lifecycle-${departure}-personal-topic`,
+        title: '自己的永久话题',
+      });
+      await memberChat.createTextMessage({
+        content: '自己群的消息始终保留',
+        groupId: otherGroupId,
+        idempotencyKey: `lifecycle-${departure}-personal-message`,
+        topicId: personalTopic.id,
+      });
+      await expect(
+        member.leaveGroup({
+          groupId: otherGroupId,
+          expectedMembershipVersion: joined.membershipVersion,
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+      if (departure === 'leave') {
+        await member.leaveGroup({ groupId, expectedMembershipVersion: joined.membershipVersion });
+      } else {
+        await owner.removeMember({
+          groupId,
+          memberUserId: memberId,
+          expectedMembershipVersion: joined.membershipVersion,
+        });
+      }
+      expect((await memberChat.listGroups()).map((item) => item.groupId)).not.toContain(groupId);
+      await expect(
+        memberChat.listTextMessages({ groupId, topicId: topic.id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect((await ownerChat.listTextMessages({ groupId, topicId: topic.id })).items).toEqual([
+        expect.objectContaining({ content: message.content }),
+      ]);
+      expect((await observerChat.listTextMessages({ groupId, topicId: topic.id })).items).toEqual([
+        expect.objectContaining({ authorKind: 'member', content: message.content }),
+      ]);
+
+      const reinvitation = await owner.createInvitation({ email: memberEmail, groupId });
+      await expect(member.listParticipants({ groupId })).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+      const rejoined = await member.acceptMyInvitation({ invitationId: reinvitation.invitationId });
+      expect(rejoined.membershipVersion).toBeGreaterThan(joined.membershipVersion);
+      expect(
+        (await memberChat.listTopics({ groupId, recent: true })).items.map((item) => item.id),
+      ).not.toContain(topic.id);
+      await expect(
+        memberChat.listTextMessages({ groupId, topicId: topic.id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(
+        memberChat.createTextMessage({
+          content: '旧链接不能恢复访问',
+          groupId,
+          idempotencyKey: `lifecycle-${departure}-old-link`,
+          topicId: topic.id,
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(
+        member.leaveGroup({
+          groupId,
+          expectedMembershipVersion: joined.membershipVersion,
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect((await ownerChat.listTextMessages({ groupId, topicId: topic.id })).items).toEqual([
+        expect.objectContaining({ content: '退出前成员消息应留给群主' }),
+      ]);
+      expect((await observerChat.listTextMessages({ groupId, topicId: topic.id })).items).toEqual([
+        expect.objectContaining({ authorKind: 'member', content: '退出前成员消息应留给群主' }),
+      ]);
+      expect(
+        (await memberChat.listTextMessages({ groupId: otherGroupId, topicId: personalTopic.id }))
+          .items,
+      ).toEqual([expect.objectContaining({ content: '自己群的消息始终保留' })]);
+      const newTopic = await memberChat.createTopic({
+        groupId,
+        idempotencyKey: `lifecycle-${departure}-new-topic`,
+        title: '重新加入后的话题',
+      });
+      await memberChat.createTextMessage({
+        content: '重新加入后正常交流',
+        groupId,
+        idempotencyKey: `lifecycle-${departure}-new-message`,
+        topicId: newTopic.id,
+      });
+      expect((await memberChat.listTextMessages({ groupId, topicId: newTopic.id })).items).toEqual([
+        expect.objectContaining({ content: '重新加入后正常交流' }),
+      ]);
+      await member.leaveGroup({ groupId, expectedMembershipVersion: rejoined.membershipVersion });
+      await observer.leaveGroup({
+        groupId,
+        expectedMembershipVersion: observerJoined.membershipVersion,
+      });
+    },
+  );
+
   it('does not import or invoke AI, budget, billing, or mail services', async () => {
     const source = await readFile(new URL('./groupMembership.ts', import.meta.url), 'utf8');
     expect(source).not.toMatch(/aiAgent|sharedBudget|platformUsageBilling|sendMail|mailer/iu);
@@ -483,5 +785,84 @@ describe('groupMembershipRouter', () => {
         ),
       );
     expect(entries).toHaveLength(0);
+  });
+});
+
+describe('transferable invitation links', () => {
+  beforeEach(async () => {
+    await db
+      .delete(chatGroupInvitationLinks)
+      .where(eq(chatGroupInvitationLinks.chatGroupId, groupId));
+    await db
+      .delete(chatGroupUserMemberships)
+      .where(eq(chatGroupUserMemberships.chatGroupId, groupId));
+  });
+  it('lets registered users confirm a link without exposing group messages or granting owner rights', async () => {
+    const owner = callerFor(ownerId);
+    const member = callerFor(memberId);
+    const issued = await owner.createInvitationLink({ groupId });
+    expect(issued.token).toHaveLength(43);
+    const anonymous = callerFor(undefined as never);
+    expect(await anonymous.previewInvitationLink({ token: issued.token })).toEqual({
+      title: expect.any(String),
+    });
+    await expect(anonymous.joinInvitationLink({ token: issued.token })).rejects.toBeTruthy();
+    await expect(member.createInvitationLink({ groupId })).rejects.toBeTruthy();
+    await expect(member.revokeInvitationLinks({ groupId })).rejects.toBeTruthy();
+    const results = await Promise.all([
+      member.joinInvitationLink({ token: issued.token }),
+      member.joinInvitationLink({ token: issued.token }),
+    ]);
+    expect(results).toEqual([{ groupId }, { groupId }]);
+    const rows = await db
+      .select()
+      .from(chatGroupUserMemberships)
+      .where(
+        and(
+          eq(chatGroupUserMemberships.chatGroupId, groupId),
+          eq(chatGroupUserMemberships.userId, memberId),
+        ),
+      );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ role: 'member', canUsePaidAi: false });
+    const stored = await db
+      .select()
+      .from(chatGroupInvitationLinks)
+      .where(eq(chatGroupInvitationLinks.chatGroupId, groupId));
+    expect(stored[0].tokenHash).not.toBe(issued.token);
+    await owner.revokeInvitationLinks({ groupId });
+    await expect(anonymous.previewInvitationLink({ token: issued.token })).rejects.toBeTruthy();
+    await expect(
+      callerFor(observerId).joinInvitationLink({ token: issued.token }),
+    ).rejects.toBeTruthy();
+    expect((await member.listParticipants({ groupId })).viewerRole).toBe('member');
+  });
+  it('rejects expired, forged links and prevents removed members from joining again through a link', async () => {
+    const owner = callerFor(ownerId);
+    const issued = await owner.createInvitationLink({ groupId });
+    await callerFor(memberId).joinInvitationLink({ token: issued.token });
+    await db
+      .update(chatGroupUserMemberships)
+      .set({ removedAt: new Date() })
+      .where(
+        and(
+          eq(chatGroupUserMemberships.chatGroupId, groupId),
+          eq(chatGroupUserMemberships.userId, memberId),
+        ),
+      );
+    await expect(
+      callerFor(memberId).joinInvitationLink({ token: issued.token }),
+    ).rejects.toBeTruthy();
+    await expect(
+      callerFor(observerId).joinInvitationLink({ token: 'a'.repeat(43) }),
+    ).rejects.toBeTruthy();
+    await db
+      .update(chatGroupInvitationLinks)
+      .set({ expiresAt: new Date(0) })
+      .where(eq(chatGroupInvitationLinks.chatGroupId, groupId));
+    await expect(
+      callerFor(observerId).joinInvitationLink({ token: issued.token }),
+    ).rejects.toBeTruthy();
+    await expect(owner.previewInvitationLink({ token: issued.token })).rejects.toBeTruthy();
   });
 });

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import type { LobeChatDatabase } from '@lobechat/database';
 import {
+  agentOperations,
   chatGroups,
   chatGroupUserMemberships,
   files,
@@ -13,6 +14,7 @@ import { getTestDB } from '@lobechat/database/test-utils';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { MessageModel } from '@/database/models/message';
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
 
 import {
@@ -375,29 +377,348 @@ beforeAll(async () => {
 afterAll(cleanup);
 
 describe('GroupConversationAccessRepository conversation reads', () => {
+  it('does not let empty or nonmatching topics hide search hits before pagination', async () => {
+    const messageId = 'search-among-empty-topics';
+    await db.insert(messages).values({
+      id: messageId,
+      userId: paginationOwnerId,
+      groupId: paginationGroupId,
+      topicId: paginationTopicIds[0],
+      role: 'user',
+      content: '唯一匹配行程',
+    });
+    try {
+      const repository = new GroupConversationAccessRepository(db);
+      const result = await repository.listAccessibleTextMessages(
+        paginationOwnerId,
+        paginationGroupId,
+        undefined,
+        {
+          direction: 'latest',
+          keywords: '唯一',
+          limit: 1,
+        },
+      );
+      expect(result.items.map((item) => item.content)).toEqual(['唯一匹配行程']);
+    } finally {
+      await db.delete(messages).where(eq(messages.id, messageId));
+    }
+  });
+  it('preserves a named author without exposing their account identity', async () => {
+    await db
+      .update(users)
+      .set({ fullName: '旅行群主', avatar: 'https://example.test/avatar.png' })
+      .where(eq(users.id, ownerId));
+    try {
+      const repository = new GroupConversationAccessRepository(db);
+      const result = await repository.listAccessibleTextMessages(memberId, groupId, undefined);
+      const ownerMessage = result.items.find((item) => item.authorKind === 'owner');
+      expect(ownerMessage?.sender).toEqual({
+        id: expect.stringMatching(/^[a-f\d]{64}$/),
+        fullName: '旅行群主',
+        avatar: 'https://example.test/avatar.png',
+      });
+      expect(JSON.stringify(ownerMessage)).not.toContain(ownerId);
+    } finally {
+      await db.update(users).set({ fullName: null, avatar: null }).where(eq(users.id, ownerId));
+    }
+  });
+  it('searches only matching authorized group text and treats wildcard characters literally', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const result = await repository.listAccessibleTextMessages(memberId, groupId, undefined, {
+      keywords: '群主发布',
+      direction: 'latest',
+    });
+    expect(result.items.map((item) => item.content)).toEqual(['群主发布的文字']);
+    const noMatch = await repository.listAccessibleTextMessages(memberId, groupId, undefined, {
+      keywords: '%',
+    });
+    expect(noMatch.items).toEqual([]);
+    await expect(
+      repository.listAccessibleTextMessages(outsiderId, groupId, undefined, { keywords: '文字' }),
+    ).rejects.toThrow(GROUP_CONVERSATION_ACCESS_UNAVAILABLE);
+  });
+  it('bounds the recent owner window without deleting archived topic messages', async () => {
+    const timeline = await new MessageModel(db, ownerId).query(
+      { groupId, pageSize: 1 },
+      { groupTimeline: true },
+    );
+    const ids = timeline.map((message) => message.id);
+    expect(ids).toHaveLength(1);
+    expect(ids).not.toContain(otherGroupMessageId);
+    expect(ids).not.toContain(memberMessageId);
+    const times = timeline.map((message) => Number(message.createdAt));
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+    const archived = await new MessageModel(db, ownerId).query({
+      groupId,
+      topicId: beforeJoinTopicId,
+    });
+    expect(archived.map((message) => message.id)).toContain(beforeJoinMessageId);
+  });
+
+  it('merges member timeline topics while preserving membership visibility', async () => {
+    const owner = await repository.listAccessibleTextMessages(ownerId, groupId, undefined);
+    expect(owner.items.map((message) => message.topicId)).toContain(beforeJoinTopicId);
+    const member = await repository.listAccessibleTextMessages(memberId, groupId, undefined);
+    expect(member.items.map((message) => message.content)).toEqual([
+      '群主发布的文字',
+      '成员发布的文字',
+    ]);
+  });
+
+  it('refreshes topic activity after a new member message but not an idempotent replay', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const oldActivity = new Date('2026-09-01T00:00:00.000Z');
+    await db
+      .update(topics)
+      .set({ updatedAt: oldActivity })
+      .where(eq(topics.id, writerAccessibleTopicId));
+    const input = {
+      groupId: writerGroupId,
+      topicId: writerAccessibleTopicId,
+      content: '继续讨论，让话题进入最近活跃列表',
+      idempotencyKey: 'refresh-topic-activity',
+    };
+    await repository.createAccessibleTextMessage(writerMemberId, input);
+    const [first] = await db
+      .select({ updatedAt: topics.updatedAt })
+      .from(topics)
+      .where(eq(topics.id, writerAccessibleTopicId));
+    expect(first.updatedAt.getTime()).toBeGreaterThan(oldActivity.getTime());
+    await repository.createAccessibleTextMessage(writerMemberId, input);
+    const [replayed] = await db
+      .select({ updatedAt: topics.updatedAt })
+      .from(topics)
+      .where(eq(topics.id, writerAccessibleTopicId));
+    expect(replayed.updatedAt).toEqual(first.updatedAt);
+  });
+  it('paginates newest topics without truncating history to ten', async () => {
+    const first = await repository.listAccessibleTopics(ownerId, groupId, {
+      direction: 'latest',
+      limit: 2,
+    });
+    expect(first.items.map((item) => item.id)).toEqual([laterTopicId, afterJoinTopicId]);
+    expect(first.nextCursor).not.toBeNull();
+    const second = await repository.listAccessibleTopics(ownerId, groupId, {
+      direction: 'latest',
+      limit: 2,
+      cursor: first.nextCursor!,
+    });
+    expect(second.items.map((item) => item.id)).toEqual([beforeJoinTopicId]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it('does not choose a deleted topic when continuing the group conversation', async () => {
+    await db.update(topics).set({ deletedAt: new Date() }).where(eq(topics.id, laterTopicId));
+    try {
+      const result = await repository.listAccessibleTopics(ownerId, groupId, { recent: true });
+      expect(result.items.map((item) => item.id)).not.toContain(laterTopicId);
+    } finally {
+      await db.update(topics).set({ deletedAt: null }).where(eq(topics.id, laterTopicId));
+    }
+  });
+
+  it('previews the latest visible top-level request and sorts by its activity', async () => {
+    const ids = ['recent-preview-request', 'recent-preview-thread', 'recent-preview-foreign'];
+    try {
+      await db.insert(messages).values([
+        {
+          id: ids[0],
+          groupId,
+          topicId: afterJoinTopicId,
+          userId: ownerId,
+          role: 'user',
+          content: '出个短视频文案吧',
+          createdAt: new Date('2099-01-01'),
+        },
+        {
+          id: ids[1],
+          groupId,
+          topicId: afterJoinTopicId,
+          userId: ownerId,
+          role: 'assistant',
+          content: '内部回复',
+          createdAt: new Date('2099-01-02'),
+        },
+        {
+          id: ids[2],
+          groupId: otherGroupId,
+          topicId: afterJoinTopicId,
+          userId: otherOwnerId,
+          role: 'user',
+          content: '其他群内容',
+          createdAt: new Date('2099-01-03'),
+        },
+      ]);
+      for (const actor of [ownerId, memberId]) {
+        const result = await repository.listAccessibleTopics(actor, groupId, { recent: true });
+        expect(result.items[0]).toMatchObject({
+          id: afterJoinTopicId,
+          title: '入群后话题',
+          latestMessage: '出个短视频文案吧',
+        });
+        const transcript = await repository.listAccessibleTextMessages(
+          actor,
+          groupId,
+          afterJoinTopicId,
+          { direction: 'latest' },
+        );
+        const anchor =
+          actor === ownerId
+            ? ids[0]
+            : transcript.items.find((item) => item.content === '出个短视频文案吧')?.publicMessageId;
+        expect(result.items[0].latestMessageId).toBe(anchor);
+      }
+      const rejoined = await repository.listAccessibleTopics(rejoinedMemberId, groupId, {
+        recent: true,
+      });
+      expect(rejoined.items.map((item) => item.id)).not.toContain(afterJoinTopicId);
+    } finally {
+      await db.delete(messages).where(inArray(messages.id, ids));
+    }
+  });
+
+  it('returns only twenty recent topics and no continuation without deleting earlier history', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const recentIds = Array.from({ length: 25 }, (_, index) => `recent-topic-${index}`);
+    try {
+      await db.insert(topics).values(
+        recentIds.map((id, index) => ({
+          id,
+          groupId,
+          userId: ownerId,
+          createdAt: new Date('2026-09-05T00:00:00.000Z'),
+          updatedAt: new Date(Date.UTC(2099, 8, 6, 0, index)),
+        })),
+      );
+      const recent = await repository.listAccessibleTopics(ownerId, groupId, {
+        limit: 50,
+        recent: true,
+      });
+      expect(recent.items).toHaveLength(20);
+      expect(recent.items[0].id).toBe('recent-topic-24');
+      expect(recent.items.at(-1)?.id).toBe('recent-topic-5');
+      expect(recent.nextCursor).toBeNull();
+      const persisted = await db
+        .select({ id: topics.id })
+        .from(topics)
+        .where(inArray(topics.id, recentIds));
+      expect(persisted).toHaveLength(25);
+    } finally {
+      await db.delete(topics).where(inArray(topics.id, recentIds));
+    }
+  });
   const repository = new GroupConversationAccessRepository(db);
+
+  it('searches topic titles within the current membership visibility boundary', async () => {
+    const owner = await repository.listAccessibleTopics(ownerId, groupId, { keywords: '入群前' });
+    expect(owner.items.map((item) => item.id)).toEqual([beforeJoinTopicId]);
+    const member = await repository.listAccessibleTopics(memberId, groupId, { keywords: '入群前' });
+    expect(member.items).toEqual([]);
+    const recent = await repository.listAccessibleTopics(memberId, groupId, { keywords: '再次' });
+    expect(recent.items.map((item) => item.id)).toEqual([laterTopicId]);
+  });
+
+  it('finds a topic by a visible request even when its title stayed generic', async () => {
+    const result = await repository.listAccessibleTopics(ownerId, groupId, {
+      keywords: '群主发布',
+    });
+    expect(result.items.map((item) => item.id)).toEqual([afterJoinTopicId]);
+    const member = await repository.listAccessibleTopics(memberId, groupId, {
+      keywords: '群主发布',
+    });
+    expect(member.items.map((item) => item.id)).toEqual([afterJoinTopicId]);
+    for (const keywords of ['其他群消息', '附件说明', '内部私聊', '%']) {
+      expect(
+        (await repository.listAccessibleTopics(memberId, groupId, { keywords })).items,
+      ).toEqual([]);
+    }
+    expect(
+      (await repository.listAccessibleTopics(rejoinedMemberId, groupId, { keywords: '群主发布' }))
+        .items,
+    ).toEqual([]);
+  });
 
   it('lets the owner read all owner-owned group topics while returning only safe fields', async () => {
     const result = await repository.listAccessibleTopics(ownerId, groupId);
 
     expect(result.items).toEqual([
-      { createdAt: beforeJoinedAt, id: beforeJoinTopicId, title: '入群前话题' },
-      { createdAt: afterJoinedAt, id: afterJoinTopicId, title: '入群后话题' },
-      { createdAt: laterAt, id: laterTopicId, title: '再次入群后话题' },
+      {
+        createdAt: beforeJoinedAt,
+        id: beforeJoinTopicId,
+        title: '入群前话题',
+        favorite: false,
+        status: null,
+        trigger: null,
+        updatedAt: expect.any(Date),
+      },
+      {
+        createdAt: afterJoinedAt,
+        id: afterJoinTopicId,
+        title: '入群后话题',
+        favorite: false,
+        status: null,
+        trigger: null,
+        updatedAt: expect.any(Date),
+      },
+      {
+        createdAt: laterAt,
+        id: laterTopicId,
+        title: '再次入群后话题',
+        favorite: false,
+        status: null,
+        trigger: null,
+        updatedAt: expect.any(Date),
+      },
     ]);
     expect(result.nextCursor).toBeNull();
+  });
+
+  it('returns favorite topics only to their owner', async () => {
+    await db.update(topics).set({ favorite: true }).where(eq(topics.id, laterTopicId));
+    try {
+      const owner = await repository.listAccessibleTopics(ownerId, groupId);
+      expect(owner.items.find((topic) => topic.id === laterTopicId)?.favorite).toBe(true);
+      const member = await repository.listAccessibleTopics(memberId, groupId);
+      expect(member.items.every((topic) => !('favorite' in topic))).toBe(true);
+    } finally {
+      await db.update(topics).set({ favorite: false }).where(eq(topics.id, laterTopicId));
+    }
   });
 
   it('limits an active member to topics created during the current membership period', async () => {
     await expect(repository.listAccessibleTopics(memberId, groupId)).resolves.toEqual({
       items: [
-        { createdAt: afterJoinedAt, id: afterJoinTopicId, title: '入群后话题' },
-        { createdAt: laterAt, id: laterTopicId, title: '再次入群后话题' },
+        {
+          createdAt: afterJoinedAt,
+          id: afterJoinTopicId,
+          title: '入群后话题',
+          status: null,
+          trigger: null,
+          updatedAt: expect.any(Date),
+        },
+        {
+          createdAt: laterAt,
+          id: laterTopicId,
+          title: '再次入群后话题',
+          status: null,
+          trigger: null,
+          updatedAt: expect.any(Date),
+        },
       ],
       nextCursor: null,
     });
     await expect(repository.listAccessibleTopics(rejoinedMemberId, groupId)).resolves.toEqual({
-      items: [{ createdAt: laterAt, id: laterTopicId, title: '再次入群后话题' }],
+      items: [
+        {
+          createdAt: laterAt,
+          id: laterTopicId,
+          title: '再次入群后话题',
+          status: null,
+          trigger: null,
+          updatedAt: expect.any(Date),
+        },
+      ],
       nextCursor: null,
     });
   });
@@ -469,6 +790,47 @@ describe('GroupConversationAccessRepository conversation reads', () => {
     ).rejects.toMatchObject({ code: GROUP_CONVERSATION_ACCESS_UNAVAILABLE });
   });
 
+  it('preserves a former member transcript for the owner when the author rejoins', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const memberWhere = and(
+      eq(chatGroupUserMemberships.chatGroupId, groupId),
+      eq(chatGroupUserMemberships.userId, memberId),
+    );
+    try {
+      await db
+        .update(chatGroupUserMemberships)
+        .set({
+          joinedAt: new Date('2026-09-05T04:00:00.000Z'),
+          membershipVersion: 4,
+        })
+        .where(memberWhere);
+
+      const ownerTranscript = await repository.listOwnerSupplementalTextMessages(
+        ownerId,
+        groupId,
+        afterJoinTopicId,
+      );
+      expect(ownerTranscript).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: memberMessageId, content: '成员发布的文字' }),
+        ]),
+      );
+      await expect(
+        repository.listAccessibleTextMessages(memberId, groupId, afterJoinTopicId),
+      ).rejects.toMatchObject({ code: GROUP_CONVERSATION_ACCESS_UNAVAILABLE });
+      const [persisted] = await db
+        .select({ content: messages.content })
+        .from(messages)
+        .where(eq(messages.id, memberMessageId));
+      expect(persisted.content).toBe('成员发布的文字');
+    } finally {
+      await db
+        .update(chatGroupUserMemberships)
+        .set({ joinedAt, membershipVersion: 2 })
+        .where(memberWhere);
+    }
+  });
+
   it.each([
     ['outsider', outsiderId, groupId],
     ['removed member', removedMemberId, groupId],
@@ -522,6 +884,38 @@ describe('GroupConversationAccessRepository conversation reads', () => {
         authorKind: 'self',
         content: '成员发布的文字',
         publicMessageId: expect.stringMatching(/^[a-f\d]{64}$/),
+      }),
+    ]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it('loads the newest text page first and paginates backward without gaps', async () => {
+    const first = await repository.listAccessibleTextMessages(memberId, groupId, afterJoinTopicId, {
+      direction: 'latest',
+      limit: 1,
+    });
+
+    expect(first.items).toEqual([
+      expect.objectContaining({
+        authorKind: 'self',
+        content: '成员发布的文字',
+      }),
+    ]);
+    expect(first.nextCursor).toEqual({
+      createdAt: laterAt,
+      id: first.items[0].publicMessageId,
+    });
+
+    const second = await repository.listAccessibleTextMessages(
+      memberId,
+      groupId,
+      afterJoinTopicId,
+      { cursor: first.nextCursor!, direction: 'latest', limit: 1 },
+    );
+    expect(second.items).toEqual([
+      expect.objectContaining({
+        authorKind: 'owner',
+        content: '群主发布的文字',
       }),
     ]);
     expect(second.nextCursor).toBeNull();
@@ -753,5 +1147,183 @@ describe('GroupConversationAccessRepository conversation reads', () => {
     await expect(
       repository.createAccessibleTextMessage(writerMemberId, input),
     ).rejects.toMatchObject({ code: GROUP_CONVERSATION_INVALID_INPUT });
+  });
+});
+
+describe('member message editing', () => {
+  const repository = new GroupConversationAccessRepository(db);
+  it('allows the author to edit and retract but rejects another member', async () => {
+    const created = await repository.createAccessibleTextMessage(writerMemberId, {
+      content: 'editable message',
+      groupId: writerGroupId,
+      idempotencyKey: 'editable-message-test',
+      topicId: writerAccessibleTopicId,
+    });
+    const target = {
+      groupId: writerGroupId,
+      publicMessageId: created.publicMessageId,
+      visibleAt: created.visibleAt,
+    };
+    await expect(
+      repository.updateAccessibleTextMessage(writerOwnerId, { ...target, content: 'forged' }),
+    ).rejects.toThrow();
+    await repository.updateAccessibleTextMessage(writerMemberId, {
+      ...target,
+      content: 'edited message',
+    });
+    const page = await repository.listAccessibleTextMessages(
+      writerMemberId,
+      writerGroupId,
+      undefined,
+    );
+    expect(
+      page.items.find((item) => item.publicMessageId === created.publicMessageId)?.content,
+    ).toBe('edited message');
+    await repository.updateAccessibleTextMessage(writerMemberId, { ...target, content: null });
+    const retracted = await repository.listAccessibleTextMessages(
+      writerMemberId,
+      writerGroupId,
+      undefined,
+    );
+    expect(
+      retracted.items.find((item) => item.publicMessageId === created.publicMessageId)?.content,
+    ).toBe('消息已撤回');
+  });
+});
+
+describe('member attachments', () => {
+  it('rejects another users file and shares the senders selected file', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    await expect(
+      repository.createAccessibleTextMessage(writerMemberId, {
+        content: 'attachment',
+        fileIds: [attachmentId],
+        groupId: writerGroupId,
+        idempotencyKey: 'foreign-file-test',
+        topicId: writerAccessibleTopicId,
+      }),
+    ).rejects.toThrow();
+    const fileId = 'conversation-member-shared-file';
+    await db.insert(files).values({
+      id: fileId,
+      userId: writerMemberId,
+      name: 'test.txt',
+      fileType: 'text/plain',
+      size: 4,
+      url: 'test.txt',
+    });
+    const sent = await repository.createAccessibleTextMessage(writerMemberId, {
+      content: 'attachment',
+      fileIds: [fileId],
+      groupId: writerGroupId,
+      idempotencyKey: 'own-file-test',
+      topicId: writerAccessibleTopicId,
+    });
+    expect(sent.content).toContain('test.txt');
+    const page = await repository.listAccessibleTextMessages(
+      writerMemberId,
+      writerGroupId,
+      undefined,
+    );
+    expect(
+      page.items.find((item) => item.publicMessageId === sent.publicMessageId)?.content,
+    ).toContain(fileId);
+    expect(
+      page.items.find((item) => item.publicMessageId === sent.publicMessageId)?.fileList,
+    ).toEqual([
+      {
+        id: fileId,
+        name: 'test.txt',
+        fileType: 'text/plain',
+        size: 4,
+        url: expect.stringContaining(`/f/${fileId}`),
+        downloadUrl: expect.stringContaining(`/f/${fileId}?download=1`),
+      },
+    ]);
+    const owner = await repository.listOwnerSupplementalTextMessages(
+      writerOwnerId,
+      writerGroupId,
+      undefined,
+    );
+    expect(owner.some((item) => item.content.includes(fileId))).toBe(true);
+    await repository.updateAccessibleTextMessage(writerMemberId, {
+      groupId: writerGroupId,
+      publicMessageId: sent.publicMessageId,
+      visibleAt: sent.visibleAt,
+      content: null,
+    });
+    const retracted = await repository.listAccessibleTextMessages(
+      writerMemberId,
+      writerGroupId,
+      undefined,
+    );
+    expect(
+      retracted.items.find((item) => item.publicMessageId === sent.publicMessageId)?.fileList,
+    ).toBeUndefined();
+  });
+});
+
+describe('group task scope', () => {
+  it('excludes logs older than 30 days for owners and members in every category', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const oldId = 'test-group-task-expired';
+    await db.insert(agentOperations).values({
+      id: oldId,
+      userId: ownerId,
+      chatGroupId: groupId,
+      status: 'error',
+      totalTokens: 10,
+      createdAt: new Date(Date.now() - 31 * 86400000),
+    });
+    try {
+      for (const actor of [ownerId, memberId]) {
+        for (const category of ['all', 'error', 'failed', 'usage'] as const) {
+          expect(
+            (await repository.listAccessibleTasks(actor, groupId, 0, category)).items,
+          ).toHaveLength(0);
+        }
+      }
+    } finally {
+      await db.delete(agentOperations).where(eq(agentOperations.id, oldId));
+    }
+  });
+  it('returns only current-group safe status rows and rejects outsiders', async () => {
+    const repository = new GroupConversationAccessRepository(db);
+    const ids = ['test-group-task-visible', 'test-group-task-foreign'];
+    await db.insert(agentOperations).values([
+      {
+        id: ids[0],
+        userId: ownerId,
+        chatGroupId: groupId,
+        status: 'error',
+        totalCost: 0.25,
+        totalTokens: 12000,
+        model: 'test-model',
+        error: { type: '429', message: 'secret-provider-payload', stack: 'private-stack' },
+      },
+      { id: ids[1], userId: otherOwnerId, chatGroupId: otherGroupId, status: 'done' },
+    ]);
+    try {
+      const page = await repository.listAccessibleTasks(memberId, groupId);
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0].status).toBe('error');
+      expect(page.items[0].id).not.toBe(ids[0]);
+      expect(page.items[0]).toMatchObject({
+        totalCost: 0.25,
+        totalTokens: 12000,
+        model: 'test-model',
+        errorCode: 'rate_limit',
+      });
+      expect(JSON.stringify(page)).not.toMatch(/secret-provider-payload|private-stack/);
+      expect(
+        (await repository.listAccessibleTasks(memberId, groupId, 0, 'success')).items,
+      ).toHaveLength(0);
+      expect(
+        (await repository.listAccessibleTasks(memberId, groupId, 0, 'error')).items,
+      ).toHaveLength(1);
+      await expect(repository.listAccessibleTasks(outsiderId, groupId)).rejects.toThrow();
+    } finally {
+      await db.delete(agentOperations).where(inArray(agentOperations.id, ids));
+    }
   });
 });

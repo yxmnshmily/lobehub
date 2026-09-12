@@ -67,6 +67,33 @@ const genGlobalStyle = ({ token }: { prefixCls: string; token: Theme }) => css`
     -webkit-app-region: no-drag;
   }
 
+  [role='dialog'] img,
+  [role='dialog'] video,
+  .${token.prefixCls}-image-preview-img {
+    border-radius: ${token.borderRadiusLG}px;
+  }
+
+  /* Scope to the shared image viewer's actual-size toolbar control. */
+  [role='dialog'] .lobe-flex:has(> [data-actual-size]) {
+    color: ${token.colorText};
+    background: ${token.colorBgElevated};
+    box-shadow: ${token.boxShadowSecondary};
+    backdrop-filter: none;
+
+    > div {
+      font-weight: 600;
+      color: ${token.colorText};
+    }
+
+    > button:not(:disabled):not([aria-disabled='true']) {
+      color: ${token.colorText};
+
+      &:hover {
+        background: ${token.colorFillSecondary};
+      }
+    }
+  }
+
   .${CLASSNAMES.ContextTrigger}[data-popup-open]:not([data-no-highlight]),
   .${CLASSNAMES.DropdownMenuTrigger}[data-popup-open]:not([data-no-highlight]) {
     background: ${token.colorFillTertiary};
@@ -75,6 +102,34 @@ const genGlobalStyle = ({ token }: { prefixCls: string; token: Theme }) => css`
     .${CLASSNAMES.DropdownMenuTrigger}[data-popup-open]:not([data-no-highlight])
   ) {
     opacity: 1;
+  }
+
+  /*
+   * Hairline controls: buttons, text fields, selects and textareas all draw a
+   * 0.5px border. Component libraries hard-code 1px inside their own hashed
+   * styles, and those rules cannot be reached by class name, so the shared
+   * element-level rule is where "everything is a 0.5px line" is enforced. Only
+   * the width is overridden — colour, style and state borders stay untouched.
+   */
+  button,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='textbox'] {
+    border-width: 0.5px !important;
+  }
+
+  /* @lobehub/ui's Form styles hard-code this one to 1px on an antd class name,
+     so it is reachable precisely instead of by hashed class. */
+  .ant-collapse-header {
+    border-block-end-width: 0.5px !important;
+  }
+
+  /* antd's borderless Collapse hard-codes the row rule to 1px inside its own
+     stylesheet, where the lineWidth token cannot reach it. */
+  .ant-collapse-borderless > .ant-collapse-item {
+    border-block-end-width: 0.5px !important;
   }
 `;
 

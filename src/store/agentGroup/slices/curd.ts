@@ -1,6 +1,5 @@
 import { type LobeChatGroupConfig } from '@lobechat/types';
 
-import { DEFAULT_CHAT_GROUP_CHAT_CONFIG } from '@/const/settings';
 import { type ChatGroupItem } from '@/database/schemas/chatGroup';
 import { chatGroupService } from '@/services/chatGroup';
 import { type ChatGroupStore } from '@/store/agentGroup/store';
@@ -82,8 +81,8 @@ export class ChatGroupCurdAction {
   };
 
   updateGroup = async (id: string, value: Partial<ChatGroupItem>) => {
-    await chatGroupService.updateGroup(id, value);
-    this.#get().internal_dispatchChatGroup({ payload: { id, value }, type: 'updateGroup' });
+    const saved = await chatGroupService.updateGroup(id, value);
+    this.#get().internal_dispatchChatGroup({ payload: { id, value: saved }, type: 'updateGroup' });
     await this.#get().refreshGroupDetail(id);
   };
 
@@ -94,24 +93,7 @@ export class ChatGroupCurdAction {
       : undefined;
     if (!group) return;
 
-    const mergedConfig = {
-      ...DEFAULT_CHAT_GROUP_CHAT_CONFIG,
-      ...group.config,
-      ...config,
-    };
-
-    // Update the database first
-    await chatGroupService.updateGroup(group.id, { config: mergedConfig });
-
-    // Immediately update the local store to ensure configuration is available
-    // Note: reducer expects payload: { id, value }
-    this.#get().internal_dispatchChatGroup({
-      payload: { id: group.id, value: { config: mergedConfig } },
-      type: 'updateGroup',
-    });
-
-    // Refresh groups to ensure consistency
-    await this.#get().refreshGroupDetail(group.id);
+    await s.updateGroup(group.id, { config });
   };
 
   updateGroupMeta = async (meta: Partial<ChatGroupItem>) => {

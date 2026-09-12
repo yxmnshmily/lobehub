@@ -87,6 +87,25 @@ beforeEach(() => {
   });
 });
 
+it('forwards cleaned-message identities separately from the provider payload', async () => {
+  const wireMessages = [{ content: 'task', role: 'user' }];
+  serverMessagesEngineMock.mockImplementationOnce(async (input) => {
+    input.onMessageSources(['source-user']);
+    return wireMessages;
+  });
+  const result = await buildServerCallLlmContext({
+    ctx: createCtx(),
+    llmPayload,
+    model: 'gpt-4',
+    provider: 'openai',
+    state,
+    tooling,
+  });
+  expect(result.messageSourceIds).toEqual(['source-user']);
+  expect(result.processedMessages).toBe(wireMessages);
+  expect(result.processedMessages[0]).not.toHaveProperty('id');
+});
+
 describe('buildServerCallLlmContext - {{username}}/{{language}} placeholder source', () => {
   it('resolves user info from the creator when the run is not a share-visitor run', async () => {
     await buildServerCallLlmContext({

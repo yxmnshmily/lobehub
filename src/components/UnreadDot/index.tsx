@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 6px;
     height: 6px;
     margin: auto;
-    border: 1px solid ${cssVar.colorInfo};
+    border: 0.5px solid ${cssVar.colorInfo};
     border-radius: 50%;
 
     background: transparent;

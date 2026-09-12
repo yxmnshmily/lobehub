@@ -210,10 +210,11 @@ const Header = memo(() => {
     return (
       <Flexbox
         gap={8}
-        padding={8}
-        style={{ borderBottom: `1px solid ${cssVar.colorBorderSecondary}` }}
+        paddingBlock={8}
+        paddingInline={'var(--mobile-page-gutter, 10px)'}
+        style={{ borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}` }}
       >
-        <Flexbox horizontal align="center" minWidth={0}>
+        <Flexbox horizontal align="center" style={{ minWidth: 0 }}>
           {leftContent}
         </Flexbox>
         <Flexbox
@@ -235,7 +236,7 @@ const Header = memo(() => {
       left={leftContent}
       right={rightContent}
       style={{
-        borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
+        borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
       }}
     />
   );

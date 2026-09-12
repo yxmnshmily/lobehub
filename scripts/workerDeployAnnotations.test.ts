@@ -12,12 +12,7 @@ describe('workerDeployAnnotationArgs', () => {
         GITHUB_RUN_ID: '123456',
         GITHUB_SHA: 'abcdef1234567890',
       }),
-    ).toEqual([
-      '--tag',
-      'abcdef1',
-      '--message',
-      'octocat lobehub/lobehub@abcdef1 run 123456',
-    ]);
+    ).toEqual(['--tag', 'abcdef1', '--message', 'octocat lobehub/lobehub@abcdef1 run 123456']);
   });
 
   it('falls back to the local operator and commit outside Actions', () => {

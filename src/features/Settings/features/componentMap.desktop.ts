@@ -1,5 +1,6 @@
 import Billing from '@/business/client/BusinessSettingPages/Billing';
 import Credits from '@/business/client/BusinessSettingPages/Credits';
+import CustomerCenterPage from '@/business/client/BusinessSettingPages/CustomerCenterPage';
 import Notification from '@/business/client/BusinessSettingPages/Notification';
 import Plans from '@/business/client/BusinessSettingPages/Plans';
 import Referral from '@/business/client/BusinessSettingPages/Referral';
@@ -20,7 +21,6 @@ import Labs from '../labs';
 import Memory from '../memory';
 import Messenger from '../messenger';
 import OAuthApps from '../oauth-apps';
-import Profile from '../profile';
 import Provider from '../provider';
 import Proxy from '../proxy';
 import Security from '../security';
@@ -47,7 +47,7 @@ export const componentMap = {
   [SettingsTabs.Devices]: Devices,
   [SettingsTabs.Labels]: Labels,
   // Profile related tabs
-  [SettingsTabs.Profile]: Profile,
+  [SettingsTabs.Profile]: CustomerCenterPage,
   [SettingsTabs.Stats]: Stats,
   [SettingsTabs.Usage]: Usage,
   [SettingsTabs.APIKey]: APIKey,
@@ -55,6 +55,7 @@ export const componentMap = {
   [SettingsTabs.Creds]: Creds,
   [SettingsTabs.Security]: Security,
   [SettingsTabs.ServiceOperations]: ServiceOperations,
+  [SettingsTabs.ContentModeration]: ServiceOperations,
   [SettingsTabs.Skill]: Skill,
   [SettingsTabs.Connector]: Connector,
 

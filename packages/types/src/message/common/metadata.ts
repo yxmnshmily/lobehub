@@ -106,7 +106,14 @@ export interface ModelTokensUsage {
   totalTokens?: number;
 }
 
+export const CostExchangeRateSchema = z.object({
+  rate: z.number().positive().lt(100),
+  rateDate: z.string().date(),
+  updatedAt: z.string().datetime(),
+});
+
 export const ModelUsageSchema = z.object({
+  costExchangeRate: CostExchangeRateSchema.optional(),
   // Input tokens breakdown
   inputCachedTokens: z.number().optional(),
   inputCacheMissTokens: z.number().optional(),
@@ -246,6 +253,8 @@ export interface ModelUsage extends ModelTokensUsage {
    * dollar
    */
   cost?: number;
+  /** Server-frozen USD/CNY quote used for this charge; never reprice historical usage. */
+  costExchangeRate?: z.infer<typeof CostExchangeRateSchema>;
 }
 
 export interface ModelPerformance {

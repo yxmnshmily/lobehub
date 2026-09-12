@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 6px;
 
     & + & {
-      border-block-start: 1px dashed ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px dashed ${cssVar.colorBorderSecondary};
     }
   `,
   label: css`

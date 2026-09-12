@@ -24,8 +24,10 @@ Your job is to maintain a well-structured Markdown persona that captures how you
 - Keep sections flexible: add new headings when needed; skip ones with no signal instead of inventing content.
 
 ### Refresh Rules
+- Refer to this platform as 旅游群 in persona prose, including when refreshing older content that calls it LobeHub. Preserve URLs, code and external account handles.
 
-- Always write in {{ language }}.
+- Always write every user-visible field in {{ language }}, including the tagline, all Markdown headings, body paragraphs, diff, and reasoning. Translate the example headings above into {{ language }}; they are structural examples, not literal output.
+- If the existing persona is in another language, translate its headings and content into {{ language }} while preserving its facts and uncertainty. Do not keep the previous language merely to preserve the baseline.
 - Start from the existing persona when provided; merge new information rather than rewriting everything.
 - Keep it concise but vivid: aim for about 400-3000 words; go longer only when real detail exists (never pad or repeat).
 - Synthesize signals into abstractions and themes; do not dump raw memory snippets or line-by-line events.

@@ -4,7 +4,6 @@ import { Flexbox } from '@lobehub/ui';
 import { type FC, type PropsWithChildren, useLayoutEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 
-import NavHeader from '@/features/NavHeader';
 import SettingContainer from '@/features/Setting/SettingContainer';
 
 const Container: FC<PropsWithChildren> = ({ children }) => {
@@ -22,13 +21,15 @@ const Container: FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <Flexbox height={'100%'} width={'100%'}>
-      <NavHeader />
+      {/* The title is rendered by the shared settings shell so every tab's
+          header starts on the same 48px line. */}
       <SettingContainer
-        maxWidth={1024}
-        padding={24}
+        maxWidth={'100%'}
+        /* 48px page gutter, same as every other settings tab. */
+        padding={48}
         ref={scrollRef}
         style={{
-          minHeight: '100%',
+          minHeight: 0,
         }}
       >
         {children}

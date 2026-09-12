@@ -4,12 +4,13 @@ import { Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, responsive } from 'antd-style';
 import { RefreshCw } from 'lucide-react';
-import { memo } from 'react';
+import { memo, use } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { TaskTemplateCard } from '@/features/RecommendTaskTemplates/TaskTemplateCard';
 import { TaskTemplateCardSkeleton } from '@/features/RecommendTaskTemplates/TaskTemplateCardSkeleton';
 import { useDailyBriefRecommendationsUI } from '@/features/RecommendTaskTemplates/useDailyBriefRecommendationsUI';
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import WideScreenContainer from '@/features/WideScreenContainer';
 
 import CreateTaskInlineEntry from './CreateTaskInlineEntry';
@@ -35,6 +36,7 @@ interface EmptyStateProps {
 }
 
 const EmptyState = memo<EmptyStateProps>(({ agentId, projectId }) => {
+  const groupScope = use(GroupWorkScopeContext);
   const { t } = useTranslation('chat');
   const { t: tCommon } = useTranslation('common');
   const templatesState = useDailyBriefRecommendationsUI({ count: EMPTY_STATE_RECOMMEND_COUNT });
@@ -55,7 +57,7 @@ const EmptyState = memo<EmptyStateProps>(({ agentId, projectId }) => {
 
       <CreateTaskInlineEntry
         agentId={agentId}
-        lockAssignee={!!agentId}
+        lockAssignee={!!agentId && !groupScope}
         projectId={projectId}
         variant={'hero'}
       />
@@ -89,6 +91,7 @@ const EmptyState = memo<EmptyStateProps>(({ agentId, projectId }) => {
                 ))
               : templatesState.templates.map((tmpl) => (
                   <TaskTemplateCard
+                    previewBeforeCreate
                     key={tmpl.id}
                     template={tmpl}
                     onCreated={templatesState.onCreated}

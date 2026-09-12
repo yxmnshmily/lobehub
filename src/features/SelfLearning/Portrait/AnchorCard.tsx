@@ -57,7 +57,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     min-width: 0;
     padding-inline-start: 12px;
-    border-inline-start: 2px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   layerIndex: css`
     font-family: ${cssVar.fontFamilyCode};

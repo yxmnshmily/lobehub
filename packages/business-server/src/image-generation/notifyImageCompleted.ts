@@ -1,3 +1,5 @@
+import { notifyUser } from '@/server/services/notification';
+
 interface NotifyImageCompletedParams {
   duration: number;
   generationBatchId: string;
@@ -9,4 +11,13 @@ interface NotifyImageCompletedParams {
   workspaceId?: string;
 }
 
-export async function notifyImageCompleted(_params: NotifyImageCompletedParams): Promise<void> {}
+export async function notifyImageCompleted(params: NotifyImageCompletedParams): Promise<void> {
+  await notifyUser({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    type: 'image_generation_completed',
+    eventId: params.generationBatchId,
+    content: '您生成的图片已完成，可以查看结果。',
+    actionUrl: '/image' + (params.topicId ? '?topic=' + encodeURIComponent(params.topicId) : ''),
+  });
+}

@@ -7,6 +7,8 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
+import { getRouteById } from '@/config/routes';
+import CompactListPopover from '@/features/NavPanel/components/CompactListPopover';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 import { useUserStore } from '@/store/user';
@@ -27,6 +29,7 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const viewMode = useGlobalStore((s) => systemStatusSelectors[viewModeStatusKey](s));
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
+  const expanded = useGlobalStore(systemStatusSelectors.showLeftPanel);
   const activeWorkspaceId = useActiveWorkspaceId();
 
   const useFetchGenerationTopics = useStore((s: any) => s.useFetchGenerationTopics);
@@ -60,6 +63,16 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
       />
     </Flexbox>
   );
+
+  if (!expanded) {
+    return (
+      <Flexbox paddingInline={4}>
+        <CompactListPopover icon={getRouteById(namespace)!.icon} title={t('topic.title')}>
+          <List namespace={namespace} useStore={useStore} viewModeStatusKey={viewModeStatusKey} />
+        </CompactListPopover>
+      </Flexbox>
+    );
+  }
 
   if (activeWorkspaceId) {
     return (

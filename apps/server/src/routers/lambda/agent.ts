@@ -779,6 +779,7 @@ export const agentRouter = router({
       z
         .object({
           keyword: z.string().optional(),
+          pluginId: z.string().min(1).max(200).optional(),
           limit: z.number().max(100).optional(),
           offset: z.number().optional(),
         })

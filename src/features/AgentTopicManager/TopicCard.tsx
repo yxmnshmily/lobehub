@@ -1,14 +1,15 @@
 'use client';
 
 import { AGENT_CHAT_TOPIC_URL } from '@lobechat/const';
-import { formatPrice, formatTokenNumber } from '@lobechat/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@lobechat/utils/format';
 import { Block, Flexbox, Icon } from '@lobehub/ui';
 import { Checkbox, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { CircleDollarSign, FolderIcon, MessageSquare, Star, Zap } from 'lucide-react';
-import { memo, type MouseEvent, useCallback } from 'react';
+import { Coins, FolderIcon, MessageSquare, Star, Zap } from 'lucide-react';
+import { type KeyboardEvent, memo, type MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { getPlatformIcon } from '@/routes/(main)/agent/channel/const';
@@ -41,6 +42,11 @@ const styles = createStaticStyles(({ css }) => ({
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
     }
+
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: 2px;
+    }
   `,
   cardSelected: css`
     border-color: ${cssVar.colorPrimary};
@@ -65,7 +71,7 @@ const styles = createStaticStyles(({ css }) => ({
     /* push to bottom so cards with short content keep the stats row anchored */
     margin-block-start: auto;
     padding-block-start: 10px;
-    border-block-start: 1px solid ${cssVar.colorSplit};
+    border-block-start: 0.5px solid ${cssVar.colorSplit};
   `,
   title: css`
     overflow: hidden;
@@ -83,11 +89,14 @@ const styles = createStaticStyles(({ css }) => ({
 
 interface TopicCardProps {
   agentId: string;
+  onOpen?: (topicId: string) => void;
+  readOnly?: boolean;
   topic: ChatTopic;
 }
 
-const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
+const TopicCard = memo<TopicCardProps>(({ topic, agentId, onOpen, readOnly = !!onOpen }) => {
   const { t } = useTranslation('topic');
+  const { format: formatPrice } = useMonthlyExchangeRate();
   const navigate = useWorkspaceAwareNavigate();
 
   const selectMode = useTopicsViewStore((s) => s.selectMode);
@@ -97,20 +106,42 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
-      if (selectMode || e.metaKey || e.ctrlKey) {
+      if (!readOnly && (selectMode || e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         toggleSelected(topic.id);
         return;
       }
+      if (onOpen) {
+        onOpen(topic.id);
+        return;
+      }
       navigate(AGENT_CHAT_TOPIC_URL(agentId, topic.id));
     },
-    [selectMode, topic.id, agentId, toggleSelected, navigate],
+    [selectMode, topic.id, agentId, toggleSelected, navigate, onOpen, readOnly],
   );
 
   const handleCheckboxChange = useCallback(() => {
     if (!selectMode) toggleSelectMode();
     toggleSelected(topic.id);
   }, [selectMode, topic.id, toggleSelected, toggleSelectMode]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget || e.key !== 'Enter') return;
+
+      e.preventDefault();
+      if (!readOnly && selectMode) {
+        toggleSelected(topic.id);
+        return;
+      }
+      if (onOpen) {
+        onOpen(topic.id);
+        return;
+      }
+      navigate(AGENT_CHAT_TOPIC_URL(agentId, topic.id));
+    },
+    [agentId, navigate, onOpen, readOnly, selectMode, toggleSelected, topic.id],
+  );
 
   const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
@@ -134,19 +165,26 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
 
   return (
     <Block
+      aria-label={topic.title || t('defaultTitle')}
       className={[styles.card, selected && styles.cardSelected].filter(Boolean).join(' ')}
       gap={8}
+      role="link"
+      tabIndex={0}
       variant={'outlined'}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
-      <div className={styles.checkbox} onClick={stopPropagation}>
-        <Checkbox
-          checked={selected}
-          classNames={{ checkbox: styles.checkboxBox }}
-          size={18}
-          onChange={handleCheckboxChange}
-        />
-      </div>
+      {!readOnly && (
+        <div className={styles.checkbox} onClick={stopPropagation}>
+          <Checkbox
+            aria-label={topic.title || t('defaultTitle')}
+            checked={selected}
+            classNames={{ checkbox: styles.checkboxBox }}
+            size={18}
+            onChange={handleCheckboxChange}
+          />
+        </div>
+      )}
 
       <Flexbox horizontal align={'center'} className={styles.titleRow} gap={6}>
         {topic.favorite && (
@@ -196,8 +234,8 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
             </Flexbox>
           )}
           {cost > 0 && (
-            <Flexbox horizontal align={'center'} gap={3} title={`$${cost.toFixed(4)}`}>
-              <Icon icon={CircleDollarSign} size={11} />
+            <Flexbox horizontal align={'center'} gap={3} title={formatPrice(cost, 6)}>
+              <Icon icon={Coins} size={11} />
               {formatPrice(cost, 2)}
             </Flexbox>
           )}

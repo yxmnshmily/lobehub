@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     inset-block: 0;
     inset-inline-start: 8px;
 
-    width: 1px;
+    width: 0.5px;
     height: 100%;
 
     background: ${cssVar.colorFillSecondary};

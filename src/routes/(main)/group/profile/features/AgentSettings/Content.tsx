@@ -6,6 +6,7 @@ import { useParams } from 'react-router';
 
 import { DEFAULT_AVATAR } from '@/const/meta';
 import { AgentSettings as Settings, SettingsModalLayout } from '@/features/AgentSetting';
+import { GroupDiscussionSettings } from '@/features/SuperGroup/GroupDiscussionSettings';
 import { usePermission } from '@/hooks/usePermission';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
@@ -67,6 +68,7 @@ const Content = memo(() => {
       background={currentGroup?.backgroundColor || undefined}
       title={displayTitle}
     >
+      {gid && <GroupDiscussionSettings disabled={!canEdit} groupId={gid} key={gid} />}
       <Settings
         config={agentConfig}
         disabled={!canEdit}

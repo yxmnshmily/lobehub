@@ -116,6 +116,7 @@ export const virtuaListSlice: StateCreator<State & VirtuaListAction, [], [], Vir
 
   scrollToIndex: (index, options) => {
     const { virtuaScrollMethods } = get();
+    virtuaScrollMethods?.pauseFollowing?.();
     virtuaScrollMethods?.scrollToIndex(index, options);
   },
 

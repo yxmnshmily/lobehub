@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css }) => ({
   composer: css`
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 18px;
 
     background: ${cssVar.colorBgContainer};

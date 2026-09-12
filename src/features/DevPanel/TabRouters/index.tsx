@@ -43,7 +43,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px 12px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 10px;
     line-height: 1.6;
@@ -68,7 +68,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 5px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 11px;
@@ -91,7 +91,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 11px;
@@ -168,27 +168,27 @@ const TabRouters = memo(() => {
   return (
     <Flexbox className={devDockPanelStyles.root}>
       <div className={styles.summary}>
-        scope <b>{scopeKey}</b> · tabs <b>{rows.length}</b> · live routers{' '}
+        范围 <b>{scopeKey}</b> · 标签页 <b>{rows.length}</b> · 活跃路由{' '}
         <b className={liveCount > cap ? styles.drift : undefined}>
           {liveCount}/{cap}
         </b>
         {orphanIds.length > 0 && (
-          <span className={styles.drift}> · orphan routers {orphanIds.join(', ')}</span>
+          <span className={styles.drift}> · 孤立路由 {orphanIds.join(', ')}</span>
         )}
       </div>
       {rows.length === 0 ? (
-        <div className={styles.empty}>No tabs in this scope.</div>
+        <div className={styles.empty}>此范围内没有标签页。</div>
       ) : (
         <div className={styles.rows}>
           <div className={cx(styles.row, styles.head)}>
             <span>#</span>
-            <span>tab id</span>
-            <span>state</span>
-            <span>store url</span>
-            <span>router url</span>
-            <span>hist</span>
-            <span>visited</span>
-            <span>lru</span>
+            <span>标签页 ID</span>
+            <span>状态</span>
+            <span>存储地址</span>
+            <span>路由地址</span>
+            <span>历史</span>
+            <span>已访问</span>
+            <span>最近使用顺序</span>
           </div>
           {rows.map((row, index) => (
             <Row index={index} key={row.id} nextEvicted={row.id === nextEvictedId} row={row} />
@@ -196,10 +196,10 @@ const TabRouters = memo(() => {
         </div>
       )}
       <div className={styles.legend}>
-        ACTIVE / LIVE = keep-alive router in memory, COLD = disposed (next activation cold-starts).
-        `!` marks a router whose liveness disagrees with the LRU plan. Router url shows `=` when it
-        matches the store url, or the diverging location when a hidden tab navigated. `lru` is the
-        recency rank; `↓` marks the router evicted next. Click a row to activate that tab.
+        ACTIVE / LIVE 表示路由仍保留在内存中，COLD 表示已释放，下次激活时重新加载。 `!`
+        表示路由存活状态与最近使用计划不一致。路由地址与存储地址一致时显示 `=`，
+        隐藏标签页跳转后则显示不同的地址。`lru` 表示最近使用排序，`↓` 标记下一个将被释放的路由。
+        点击行可激活对应标签页。
       </div>
     </Flexbox>
   );

@@ -17,11 +17,20 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   wrapper: css`
     width: 100%;
-    padding: 8px;
-    border: 1px solid ${cssVar.colorBorder};
-    border-radius: calc(${cssVar.borderRadiusLG} - 1px);
+    padding: 12px;
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
+    border-radius: ${cssVar.borderRadiusLG};
 
-    background: ${cssVar.colorBgContainer};
+    background: ${cssVar.colorBgContainerSecondary};
+
+    transition:
+      border-color 160ms ${cssVar.motionEaseOut},
+      background 160ms ${cssVar.motionEaseOut};
+
+    &:focus-within {
+      border-color: ${cssVar.colorBorder};
+      background: ${cssVar.colorBgContainer};
+    }
   `,
 }));
 

@@ -24,12 +24,14 @@ const {
   mockBuildRuntimeInterventionNotification,
   mockNotifyAgentInterventionRequired,
   mockNotifyAgentRunCompleted,
+  mockNotifyAgentRunFailed,
 } = vi.hoisted(() => ({
   mockBuildRuntimeInterventionNotification: vi.fn<
     () => Promise<NotifyAgentInterventionRequiredParams | undefined>
   >(async () => undefined),
   mockNotifyAgentInterventionRequired: vi.fn(async () => {}),
   mockNotifyAgentRunCompleted: vi.fn(async () => {}),
+  mockNotifyAgentRunFailed: vi.fn(async () => {}),
 }));
 
 vi.mock('@/business/server/agent-run/agentInterventionReview', () => ({
@@ -38,6 +40,7 @@ vi.mock('@/business/server/agent-run/agentInterventionReview', () => ({
 
 vi.mock('@/business/server/agent-run/notifyAgentRunCompleted', () => ({
   notifyAgentRunCompleted: mockNotifyAgentRunCompleted,
+  notifyAgentRunFailed: mockNotifyAgentRunFailed,
 }));
 
 vi.mock('../agentInterventionNotification', () => ({
@@ -50,7 +53,55 @@ vi.mock('@/server/services/workRegistration', () => ({
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const { completeBudget } = vi.hoisted(() => ({ completeBudget: vi.fn(async () => false) }));
+vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
+  completePlatformUsageSharedBudgetForOperation: completeBudget,
+}));
+
 const buildLifecycle = () => new CompletionLifecycle({} as any, 'user-1');
+
+describe('durable budget completion ordering', () => {
+  it.each(['done', 'error', 'interrupted', 'waiting_for_async_tool'])(
+    'only retries budget cleanup after durable terminal state (%s)',
+    async (reason) => {
+      const lifecycle = buildLifecycle();
+      const order: string[] = [];
+      completeBudget.mockImplementationOnce(async () => {
+        order.push('budget');
+        return false;
+      });
+      (lifecycle as any).agentOperationModel = {
+        recordCompletion: vi.fn(async () => {
+          order.push('persist');
+          return true;
+        }),
+      };
+      await (lifecycle as any).persistCompletion(
+        'budget-order',
+        { metadata: { isSubAgent: true } },
+        reason,
+      );
+      expect(order).toEqual(
+        reason === 'waiting_for_async_tool' ? ['persist'] : ['persist', 'budget'],
+      );
+      completeBudget.mockReset();
+    },
+  );
+
+  it('retains the budget when durable terminal persistence fails', async () => {
+    const lifecycle = buildLifecycle();
+    completeBudget.mockClear();
+    (lifecycle as any).agentOperationModel = {
+      recordCompletion: vi.fn().mockRejectedValue(new Error('db unavailable')),
+    };
+    await (lifecycle as any).persistCompletion(
+      'budget-db-failed',
+      { metadata: { isSubAgent: true } },
+      'done',
+    );
+    expect(completeBudget).not.toHaveBeenCalled();
+  });
+});
 
 describe('buildHostedGroupMemberFinalMarker', () => {
   const hostedState = {
@@ -106,6 +157,27 @@ describe('buildHostedGroupMemberFinalMarker', () => {
     expect(buildHostedGroupMemberFinalMarker('operation-1', state, 'done')).toMatchObject({
       contentHash: '82d86b15f474d891e6687517585f5e9f61100761d4376645829329c8b00a1102',
     });
+  });
+
+  it('binds the execution chain after the exact source request, excluding earlier history', () => {
+    const marker = buildHostedGroupMemberFinalMarker(
+      'operation-1',
+      {
+        ...hostedState,
+        messages: [
+          { id: 'old-answer', role: 'assistant', content: '历史' },
+          ...hostedState.messages.slice(0, -1),
+          { id: 'message-task', role: 'task', content: '子任务' },
+          ...hostedState.messages.slice(-1),
+        ],
+        metadata: { ...hostedState.metadata, sourceMessageId: 'message-user' },
+      },
+      'done',
+    );
+    expect(marker?.executionMessageIds).toEqual(['message-tool', 'message-task', 'message-final']);
+    expect(
+      buildHostedGroupMemberFinalMarker('operation-1', hostedState, 'done'),
+    ).not.toHaveProperty('executionMessageIds');
   });
 
   it('persists the hosted final marker with the terminal operation update', async () => {
@@ -980,7 +1052,7 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
     },
   );
 
-  it('does not notify on error / aborted terminals', async () => {
+  it('reports an error as failed, never as a completed task', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
 
@@ -990,6 +1062,8 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
       'error',
     );
 
+    await flushMicrotasks();
+    expect(mockNotifyAgentRunFailed).toHaveBeenCalledOnce();
     expect(mockNotifyAgentRunCompleted).not.toHaveBeenCalled();
   });
 

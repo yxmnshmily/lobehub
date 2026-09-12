@@ -15,6 +15,7 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { DocumentService } from '@/server/services/document';
 import { FileService } from '@/server/services/file';
+import { GroupConversationAccessRepository } from '@/server/services/groupConversationAccess/conversationRepository';
 import {
   assertCanPerformResourceAction,
   buildResourcePermissionState,
@@ -248,7 +249,19 @@ export const documentRouter = router({
       // KB-scoped documents inherit the KB's public visibility, so direct
       // reads must honor the restricted-KB (member No-access) policy too.
       await assertContentsNotInRestrictedKnowledgeBase(ctx, [input.id]);
-      const doc = await ctx.documentService.getDocumentById(input.id);
+      let doc = await ctx.documentService.getDocumentById(input.id);
+      if (!doc && !ctx.workspaceId) {
+        const access = await new GroupConversationAccessRepository(
+          ctx.serverDB,
+        ).resolvePublishedResource(ctx.userId, 'document', input.id);
+        if (access) {
+          const shared = await new DocumentService(ctx.serverDB, access.ownerId).getDocumentById(
+            input.id,
+          );
+          // A later, unpublished edit is not implicitly shared with the group.
+          if (shared && shared.updatedAt <= access.publishedAt) doc = shared;
+        }
+      }
       // `source` is a storage key for file-backed documents; sign it so PDF viewers
       // and downloads receive a usable URL. Absolute URLs (web sources) pass through.
       if (!doc?.source || /^https?:\/\//i.test(doc.source)) return doc;

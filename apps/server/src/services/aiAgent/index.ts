@@ -16,7 +16,6 @@ import type {
 import { getWorkingDirEffectivePath, RequestTrigger } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
 import { TRPCError } from '@trpc/server';
-import debug from 'debug';
 
 import {
   deriveAgentInterventionContinuationMessageId,
@@ -80,13 +79,13 @@ import {
   grantPlatformManagedExecution,
   type PlatformManagedExecutionContext,
 } from './platformManagedExecution';
+import { aiAgentDebug as log } from './safeDebug';
 import { applyShareGateToAgentConfig } from './shareGate';
 import type { SubAgentRunDeps } from './subAgentRuns';
 import { execAgentMember, execAgentThreadRun } from './subAgentRuns';
 import { acquireTopicStartReservation } from './topicStartReservation';
 import type { ExecRunContext, InternalExecAgentParams } from './types';
-
-const log = debug('lobe-server:ai-agent-service');
+import { assertGroupAiPhoneVerified } from './verifiedPhone';
 
 /**
  * AI Agent Service
@@ -381,6 +380,12 @@ export class AiAgentService {
       throw new TRPCError({ code: 'NOT_FOUND', message: `Agent not found: ${identifier}` });
     }
 
+    if (agentConfig.agencyConfig?.publicationBlockedReason) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: `该成员已加入默认群，运行配置待管理员完成：${agentConfig.agencyConfig.publicationBlockedReason}`,
+      });
+    }
     return agentConfig;
   }
 
@@ -392,6 +397,7 @@ export class AiAgentService {
   private async authorizePlatformManagedExecution(
     agentConfig: { agencyConfig?: { modelRuntimeMode?: string | null } | null },
     capabilityHolder: unknown,
+    requestedMaxCredits?: number,
   ): Promise<Readonly<PlatformManagedExecutionContext> | undefined> {
     if (agentConfig.agencyConfig?.modelRuntimeMode !== 'platform-managed') return undefined;
 
@@ -414,7 +420,17 @@ export class AiAgentService {
     const isSuperAdmin = await new RbacModel(this.db, this.actorUserId).hasGlobalRole(
       'super_admin',
     );
-    if (isSuperAdmin) return {};
+    if (isSuperAdmin) {
+      if (
+        requestedMaxCredits !== undefined &&
+        (!Number.isSafeInteger(requestedMaxCredits) || requestedMaxCredits <= 0)
+      ) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid task spending ceiling' });
+      }
+      // Legacy callers may still send a ceiling, but administrator execution no longer
+      // converts it into a Credits hold. The per-round account gate is authoritative.
+      return {};
+    }
 
     throw new TRPCError({
       code: 'FORBIDDEN',
@@ -512,6 +528,7 @@ export class AiAgentService {
    *   → AgentRuntimeService.createOperation(...)
    */
   async execAgent(inputParams: InternalExecAgentParams): Promise<ExecAgentResult> {
+    await assertGroupAiPhoneVerified(this.db, this.actorUserId, inputParams.appContext ?? {});
     // Creating the thread here (rather than inside the turn) means a run that
     // asked for one is already a thread run by the time the reservation check
     // below reads `appContext.threadId` — same isolation as a follow-up inside
@@ -864,6 +881,7 @@ export class AiAgentService {
     const platformManagedExecutionAuthorized = await this.authorizePlatformManagedExecution(
       agentConfig,
       params,
+      params.platformManagedMaxCredits,
     );
 
     // Share-visitor runs must never see the creator's files/knowledge bases.
@@ -1142,13 +1160,14 @@ export class AiAgentService {
     try {
       const preference = await new UserModel(this.db, this.userId).getUserPreference();
       enableExpertise = preference?.lab?.enableSelfLearning === true;
-    } catch (error) {
-      console.error('Failed to resolve expertise injection Lab preference:', error);
+    } catch {
+      log('execAgent: failed to resolve expertise preference');
     }
     // Share visitors only get the creator's memory (persona + learned
     // expertise) when the share explicitly allows it — both surfaces would
     // otherwise leak the creator's personal context into visitor turns.
-    if (shareGate && !shareGate.shareConfig.allowReadMemory) {
+    // Group resource access does not grant the actor access to the owner's personal memory.
+    if (this.actorUserId !== this.userId || (shareGate && !shareGate.shareConfig.allowReadMemory)) {
       globalMemoryEnabled = false;
       enableExpertise = false;
     }
@@ -1164,6 +1183,12 @@ export class AiAgentService {
       {
         db: this.db,
         isShareVisitorRun: !!shareGate,
+        groupTimeline:
+          !!platformManagedExecutionAuthorized &&
+          !!appContext?.groupId &&
+          !appContext?.threadId &&
+          !appContext?.viewedGoal &&
+          !operationTaskId,
         messageModel: this.messageModel,
         userId: this.userId,
         workspaceId: this.workspaceId,
@@ -1231,31 +1256,6 @@ export class AiAgentService {
     const timestamp = Date.now();
     const operationId =
       continuationOperationId ?? `op_${timestamp}_${resolvedAgentId}_${topicId}_${nanoid(8)}`;
-
-    let platformUsageSharedBudget = platformManagedExecutionAuthorized?.sharedBudget;
-    if (
-      platformManagedExecutionAuthorized &&
-      agentConfig.agencyConfig?.modelRuntimeMode === 'platform-managed'
-    ) {
-      if (!platformUsageSharedBudget && platformManagedExecutionAuthorized.maxCredits) {
-        platformUsageSharedBudget = await createPlatformUsageSharedBudget(
-          this.db,
-          this.actorUserId,
-          {
-            expiresAt: new Date(Date.now() + 15 * 60_000),
-            maxCredits: platformManagedExecutionAuthorized.maxCredits,
-            requestIdentity: `platform-usage-request:${nanoid()}`,
-            workspaceId: this.workspaceId,
-          },
-        );
-      }
-      if (platformUsageSharedBudget) {
-        bindPlatformUsageSharedBudget(operationId, platformUsageSharedBudget, {
-          actorUserId: this.actorUserId,
-          workspaceId: this.workspaceId,
-        });
-      }
-    }
 
     // Stages 9.4–18 — device system info, agent-management context, persona
     // memory, history + message assembly, the base initial runtime context,
@@ -1355,6 +1355,34 @@ export class AiAgentService {
       }
     }
 
+    // Create a server-only execution handle after preparation. When no explicit ceiling is
+    // supplied, the handle performs a 50k balance check before each round and charges only
+    // authoritative post-call usage; it does not reserve Credits.
+    let platformUsageSharedBudget = platformManagedExecutionAuthorized?.sharedBudget;
+    if (
+      platformManagedExecutionAuthorized &&
+      agentConfig.agencyConfig?.modelRuntimeMode === 'platform-managed'
+    ) {
+      if (!platformUsageSharedBudget) {
+        platformUsageSharedBudget = await createPlatformUsageSharedBudget(
+          this.db,
+          this.actorUserId,
+          {
+            expiresAt: new Date(Date.now() + 15 * 60_000),
+            maxCredits: platformManagedExecutionAuthorized.maxCredits,
+            requestIdentity: `platform-usage-request:${nanoid()}`,
+            workspaceId: this.workspaceId,
+          },
+        );
+      }
+      if (platformUsageSharedBudget) {
+        bindPlatformUsageSharedBudget(operationId, platformUsageSharedBudget, {
+          actorUserId: this.actorUserId,
+          workspaceId: this.workspaceId,
+        });
+      }
+    }
+
     // 19. Create the operation via AgentRuntimeService, persist the reconnect
     // marker, and mint the gateway token (see `pipeline/startOperation`).
     return startOperation(
@@ -1430,7 +1458,7 @@ export class AiAgentService {
   /** Server-only hosted entry for the current execAgent route. */
   async execPlatformManagedAgent(
     params: InternalExecAgentParams,
-    context: PlatformManagedExecutionContext & { maxCredits: number },
+    context: PlatformManagedExecutionContext,
   ): Promise<ExecAgentResult> {
     return this.execAgent(grantPlatformManagedExecution({ ...params }, context));
   }
@@ -1438,7 +1466,7 @@ export class AiAgentService {
   /** Server-only hosted-product entry point. Its Symbol capability cannot cross tRPC/JSON. */
   async execPlatformManagedGroupAgent(
     params: ExecGroupAgentParams,
-    context: PlatformManagedExecutionContext & { maxCredits: number },
+    context: PlatformManagedExecutionContext,
   ): Promise<ExecGroupAgentResult> {
     return this.execGroupAgentInternal(grantPlatformManagedExecution({ ...params }, context));
   }
@@ -1446,15 +1474,21 @@ export class AiAgentService {
   private async execGroupAgentInternal(
     params: ExecGroupAgentParams,
   ): Promise<ExecGroupAgentResult> {
+    await assertGroupAiPhoneVerified(this.db, this.actorUserId, params);
     const {
       agentId,
       groupId,
       message,
+      parentMessageId,
       topicId: inputTopicId,
       newTopic,
       suppressSignal,
       toolDispatchPolicy,
     } = params;
+
+    if (parentMessageId && !inputTopicId) {
+      throw new Error('topicId is required when regenerating a group message');
+    }
 
     // Fail before topic/message creation: a stored credential mode is not an
     // execution grant, and direct browser calls must not leave side effects.
@@ -1509,7 +1543,9 @@ export class AiAgentService {
         topicId,
       },
       autoStart: true,
+      parentMessageId,
       prompt: message,
+      resume: !!parentMessageId,
       trigger: RequestTrigger.Chat,
     };
     const result = await this.execAgent(

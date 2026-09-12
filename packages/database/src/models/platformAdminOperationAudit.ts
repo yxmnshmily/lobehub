@@ -196,9 +196,10 @@ export class PlatformAdminOperationAuditModel {
       .limit(limit + 1);
     const hasMore = rows.length > limit;
     const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items.at(-1);
     return {
       items,
-      nextCursor: hasMore && items.length > 0 ? encodeCursor(items.at(-1)) : null,
+      nextCursor: hasMore && lastItem ? encodeCursor(lastItem) : null,
     };
   }
 

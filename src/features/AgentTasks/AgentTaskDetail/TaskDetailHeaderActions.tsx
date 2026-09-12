@@ -1,12 +1,13 @@
 import { copyToClipboard, type DropdownItem, DropdownMenu, Icon } from '@lobehub/ui';
 import { ActionIcon, confirmModal, toast } from '@lobehub/ui/base-ui';
 import { CopyIcon, EyeOffIcon, LinkIcon, MoreHorizontal, Trash, UsersIcon } from 'lucide-react';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, use, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { useTaskTransferMenuItem } from '@/business/client/hooks/useTaskTransferMenuItem';
+import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
 import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
@@ -24,6 +25,7 @@ const TaskDetailHeaderActions = memo(() => {
 
   const navigate = useWorkspaceAwareNavigate();
   const appOrigin = useAppOrigin();
+  const groupScope = use(GroupWorkScopeContext);
   const activeWorkspaceId = useActiveWorkspaceId();
   const activeWorkspaceSlug = useActiveWorkspaceSlug();
   const { allowed: canEditTask } = usePermission('create_content');
@@ -102,7 +104,7 @@ const TaskDetailHeaderActions = memo(() => {
     if (!taskId) return [];
 
     const taskUrl = `${appOrigin}${buildWorkspaceAwarePath(
-      taskDetailPath(taskId, taskAgentId ?? undefined),
+      scopeGroupWorkPath(taskDetailPath(taskId, taskAgentId ?? undefined), groupScope),
       activeWorkspaceSlug,
     )}`;
 
@@ -182,6 +184,7 @@ const TaskDetailHeaderActions = memo(() => {
     taskId,
     taskAgentId,
     appOrigin,
+    groupScope,
     activeWorkspaceSlug,
     activeWorkspaceId,
     visibility,

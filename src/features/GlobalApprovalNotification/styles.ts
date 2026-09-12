@@ -6,7 +6,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   actions: css`
     padding-block: 8px 12px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     background: color-mix(in srgb, ${cssVar.colorBgElevated} 92%, ${cssVar.colorFillSecondary});
 
     &:empty {
@@ -21,7 +21,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     flex-direction: column;
 
     width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};
@@ -95,7 +95,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: 36px;
     padding-inline: 14px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 999px;
 
     font-size: 13px;
@@ -130,7 +130,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 4px 12px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   userRequestBody: css`
     overflow-y: auto;

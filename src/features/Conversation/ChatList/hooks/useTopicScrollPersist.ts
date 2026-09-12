@@ -35,6 +35,7 @@ interface UseTopicScrollPersistOptions {
    * scrollToIndex lands on the right virtua row.
    */
   headerOffset?: number;
+  initialPosition?: 'start' | 'restore';
   messageDeepLink?: ResolvedMessageDeepLink;
   virtuaRef: RefObject<VListHandle | null>;
 }
@@ -92,6 +93,7 @@ export const useTopicScrollPersist = ({
   contextKey,
   dataSourceLength,
   headerOffset = 0,
+  initialPosition = 'restore',
   messageDeepLink,
   virtuaRef,
 }: UseTopicScrollPersistOptions) => {
@@ -300,6 +302,12 @@ export const useTopicScrollPersist = ({
       return;
     }
 
+    if (initialPosition === 'start') {
+      virtuaRef.current.scrollTo(0);
+      finalize(false);
+      return;
+    }
+
     const snapshot = loadScrollSnapshot(contextKey);
     const targetOffset = snapshot && !snapshot.atBottom ? snapshot.offset : null;
 
@@ -340,6 +348,7 @@ export const useTopicScrollPersist = ({
     dataSourceLength,
     flushNow,
     headerOffset,
+    initialPosition,
     messageDeepLink,
     virtuaRef,
   ]);
@@ -362,5 +371,13 @@ export const useTopicScrollPersist = ({
     };
   }, [persistFresh]);
 
-  return { recordScroll };
+  const cancelRestore = useCallback(() => {
+    restoreSequenceRef.current += 1;
+    needsRestoreRef.current = false;
+    restoringRef.current = false;
+    if (messageDeepLink)
+      handledDeepLinkRef.current = `${contextKey}:${messageDeepLink.navigationKey}`;
+  }, [contextKey, messageDeepLink]);
+
+  return { cancelRestore, recordScroll };
 };

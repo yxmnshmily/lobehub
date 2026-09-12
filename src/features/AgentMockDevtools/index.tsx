@@ -12,7 +12,7 @@ const styles = createStaticStyles(({ css }) => ({
     display: block;
     flex-shrink: 0;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 

@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
 
     width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: ${cssVar.colorBgContainer};
@@ -40,11 +40,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   header: css`
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   section: css`
     padding: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   stepContent: css`
     font-size: 13px;
@@ -79,7 +79,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   tags: css`
     padding-block-start: 8px;
-    border-block-start: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px dashed ${cssVar.colorBorderSecondary};
   `,
   title: css`
     overflow: hidden;
@@ -217,7 +217,7 @@ export const PreferenceMemoryCard = memo<PreferenceMemoryCardProps>(({ data, loa
                           shape={'square'}
                           size={20}
                           style={{
-                            border: `1px solid ${cssVar.colorBorderSecondary}`,
+                            border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                             fontSize: 11,
                           }}
                         />
@@ -262,7 +262,7 @@ export const PreferenceMemoryCard = memo<PreferenceMemoryCardProps>(({ data, loa
                           shape={'square'}
                           size={20}
                           style={{
-                            border: `1px solid ${cssVar.colorBorderSecondary}`,
+                            border: `0.5px solid ${cssVar.colorBorderSecondary}`,
                             fontSize: 11,
                           }}
                         />

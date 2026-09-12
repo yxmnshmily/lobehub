@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   header: css`
     gap: 8px;
     padding: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   modeBar: css`
     position: sticky;
@@ -83,7 +83,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-height: 44px;
     padding-block: 6px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,

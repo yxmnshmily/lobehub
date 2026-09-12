@@ -253,7 +253,10 @@ describe('platform settings route authorization', () => {
         .createCaller(ctx)
         .getAiModelReasoningConfig({ id: 'platform-model', providerId: 'openai' }),
     ).resolves.toBeUndefined();
-    await expect(agentSkillsRouter.createCaller(ctx).list()).resolves.toEqual({ data: [], total: 0 });
+    await expect(agentSkillsRouter.createCaller(ctx).list()).resolves.toEqual({
+      data: [],
+      total: 0,
+    });
     await expect(pluginRouter.createCaller(ctx).getPlugins()).resolves.toEqual([
       { identifier: 'plugin-1' },
     ]);

@@ -37,6 +37,23 @@ beforeEach(() => {
 });
 
 describe('goalRuntime.createGoal', () => {
+  it('keeps a group-created goal in that group when execution moves to the coordinator', async () => {
+    mocks.advanceGoal.mockResolvedValue({ result: { message: 'Started', taskId: 't1' } });
+    const grouped = goalRuntime.factory({
+      agentId: 'agt_1',
+      groupId: 'group-1',
+      serverDB: {},
+      toolManifestMap: {},
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+    } as never);
+    await grouped.createGoal(args);
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ groupId: 'group-1' }),
+      }),
+    );
+  });
   it('queues the advance so a failed kickoff is genuinely recoverable', async () => {
     // This path calls GoalService directly, so nothing else schedules the goal.
     // Without the queued advance the "the server will pick it up" message below

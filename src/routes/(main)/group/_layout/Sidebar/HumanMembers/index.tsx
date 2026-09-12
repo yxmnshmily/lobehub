@@ -1,11 +1,13 @@
 'use client';
 
-import { AccordionItem, Flexbox, Skeleton } from '@lobehub/ui';
+import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
+import { AccordionItem, Flexbox } from '@lobehub/ui';
 import { Avatar, Button, confirmModal, Input, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import type { FormEvent } from 'react';
 import { memo, useEffect, useRef, useState } from 'react';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
@@ -28,11 +30,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   list: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     & > * + * {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   row: css`
@@ -45,11 +47,14 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
-
 const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
   const activeGroupId = useAgentGroupStore(agentGroupSelectors.activeGroupId);
-  const [email, setEmail] = useState('');
+  const group = useAgentGroupStore((state) =>
+    activeGroupId ? state.groupMap[activeGroupId] : undefined,
+  );
+  const isSupergroup =
+    group?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID && !group.workspaceId;
+  const [contact, setContact] = useState('');
   const [feedback, setFeedback] = useState<string>();
   const [busyAction, setBusyAction] = useState<string>();
   const actionInFlight = useRef(false);
@@ -67,7 +72,7 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
   const removeMember = lambdaQuery.groupMembership.removeMember.useMutation();
 
   useEffect(() => {
-    setEmail('');
+    setContact('');
     setFeedback(undefined);
     setBusyAction(undefined);
     actionInFlight.current = false;
@@ -101,21 +106,21 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
     event.preventDefault();
     if (!activeGroupId) return;
 
-    const normalizedEmail = email.trim();
-    if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      setFeedback('请输入有效的注册邮箱');
+    const normalizedContact = contact.trim();
+    if (!normalizedContact) {
+      setFeedback('请输入用户 ID、手机号或邮箱');
       return;
     }
 
     const created = await runAction(
       'invite',
-      () => createInvitation.mutateAsync({ email: normalizedEmail, groupId: activeGroupId }),
+      () => createInvitation.mutateAsync({ contact: normalizedContact, groupId: activeGroupId }),
       '邀请已创建',
     );
-    if (created) setEmail('');
+    if (created) setContact('');
   };
 
-  const confirmRevoke = (invitationId: string, maskedEmail: string) => {
+  const confirmRevoke = (invitationId: string, maskedEmail: string | null) => {
     if (!activeGroupId || actionInFlight.current) return;
     confirmModal({
       content: '撤销后，该邀请将无法继续接受。',
@@ -159,8 +164,7 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
     });
   };
 
-  const isLoading =
-    Boolean(activeGroupId) && (membersQuery.isLoading || pendingQuery.isLoading);
+  const isLoading = Boolean(activeGroupId) && (membersQuery.isLoading || pendingQuery.isLoading);
   const isAvailable =
     Boolean(activeGroupId) &&
     !membersQuery.isError &&
@@ -182,7 +186,7 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
       }
     >
       {isLoading ? (
-        <Skeleton active paragraph={{ rows: 3 }} title={false} />
+        <SkeletonBar height={72} />
       ) : !isAvailable ? (
         <Text fontSize={12} type="secondary">
           真人成员管理暂不可用
@@ -191,22 +195,24 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
         <Flexbox gap={8} paddingBlock={1}>
           <form className={styles.form} onSubmit={handleInvite}>
             <Input
-              aria-label="注册邮箱"
-              autoComplete="email"
+              required
+              aria-label="用户 ID / 手机号 / 邮箱"
+              autoCapitalize="none"
+              autoComplete="off"
               className={styles.input}
               disabled={Boolean(busyAction)}
-              inputMode="email"
               maxLength={320}
-              placeholder="输入注册邮箱"
-              type="email"
-              value={email}
+              placeholder="用户 ID / 手机号 / 邮箱"
+              spellCheck={false}
+              type="text"
+              value={contact}
               onChange={(event) => {
-                setEmail(event.target.value);
+                setContact(event.target.value);
                 if (feedback) setFeedback(undefined);
               }}
             />
             <Button
-              disabled={Boolean(busyAction) || !email.trim()}
+              disabled={Boolean(busyAction) || !contact.trim()}
               htmlType="submit"
               loading={busyAction === 'invite'}
               size="small"
@@ -217,7 +223,13 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
           </form>
 
           {feedback && (
-            <Text aria-live="polite" fontSize={12} type={feedback.includes('未完成') || feedback.includes('有效') ? 'danger' : 'secondary'}>
+            <Text
+              aria-live="polite"
+              fontSize={12}
+              type={
+                feedback.includes('未完成') || feedback.includes('有效') ? 'danger' : 'secondary'
+              }
+            >
               {feedback}
             </Text>
           )}
@@ -250,9 +262,7 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
                     loading={busyAction === `invite:${invitation.invitationId}`}
                     size="small"
                     type="text"
-                    onClick={() =>
-                      confirmRevoke(invitation.invitationId, invitation.maskedEmail)
-                    }
+                    onClick={() => confirmRevoke(invitation.invitationId, invitation.maskedEmail)}
                   >
                     撤销
                   </Button>
@@ -303,11 +313,13 @@ const HumanMembers = memo<HumanMembersProps>(({ itemKey }) => {
               })}
             </Flexbox>
           )}
-          <SponsoredPolicyPanel
-            groupId={activeGroupId!}
-            members={members}
-            onMembersChanged={membersQuery.refetch}
-          />
+          {!isSupergroup && (
+            <SponsoredPolicyPanel
+              groupId={activeGroupId!}
+              members={members}
+              onMembersChanged={membersQuery.refetch}
+            />
+          )}
         </Flexbox>
       )}
     </AccordionItem>

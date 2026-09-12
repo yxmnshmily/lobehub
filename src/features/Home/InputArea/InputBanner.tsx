@@ -1,5 +1,5 @@
 import { ActionIcon } from '@lobehub/ui/base-ui';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, cx } from 'antd-style';
 import { X } from 'lucide-react';
 import type { MouseEvent, MouseEventHandler, ReactNode } from 'react';
 import { useCallback } from 'react';
@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-block: -44px -6px;
     padding-block: 42px 10px;
     padding-inline: 16px 12px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-radius: 20px;
 
     background: color-mix(in srgb, ${cssVar.colorFillQuaternary} 50%, ${cssVar.colorBgContainer});
@@ -41,14 +41,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 interface InputBannerProps {
   children: ReactNode;
-  dismissId: string;
-  dismissTitle: string;
+  className?: string;
+  dismissId?: string;
+  dismissTitle?: string;
   onClick?: MouseEventHandler<HTMLDivElement>;
   testId: string;
 }
 
 export const InputBanner = ({
   children,
+  className,
   dismissId,
   dismissTitle,
   onClick,
@@ -59,6 +61,7 @@ export const InputBanner = ({
   const handleDismiss = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
+      if (!dismissId) return;
       const current = useGlobalStore.getState().status.dismissedBannerIds || [];
       if (current.includes(dismissId)) return;
       updateSystemStatus({ dismissedBannerIds: [...current, dismissId] });
@@ -69,13 +72,15 @@ export const InputBanner = ({
   return (
     <div
       data-home-input-banner
-      className={styles.banner}
+      className={cx(styles.banner, className)}
       data-clickable={Boolean(onClick)}
       data-testid={testId}
       onClick={onClick}
     >
       {children}
-      <ActionIcon icon={X} size={'small'} title={dismissTitle} onClick={handleDismiss} />
+      {dismissId && (
+        <ActionIcon icon={X} size={'small'} title={dismissTitle} onClick={handleDismiss} />
+      )}
     </div>
   );
 };

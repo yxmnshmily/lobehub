@@ -21,7 +21,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { type AiProviderSourceType } from '@/types/aiProvider';
-import { formatTokenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@/utils/format';
 
 import NewModelBadgeI18n, { NewModelBadge as NewModelBadgeCore } from './NewModelBadge';
 

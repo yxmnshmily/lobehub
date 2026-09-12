@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_CHAT_GROUP_CHAT_CONFIG } from '@/const/settings';
@@ -24,6 +25,18 @@ import {
   getWorkspaceGroupVirtualAgentIds,
 } from '../_helpers/workspaceAgentGuard';
 import { agentGroupRouter } from '../agentGroup';
+
+const profileBackfill = vi.hoisted(() => vi.fn().mockResolvedValue(false));
+const defaultTravelServiceMutationGuard = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const reservedTravelServiceIdentityGuard = vi.hoisted(() => vi.fn());
+vi.mock('@/server/services/user/travelServiceGroup', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  backfillDefaultTravelGroupSupervisorProfile: profileBackfill,
+}));
+vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
+  assertDefaultTravelServiceMutationAllowed: defaultTravelServiceMutationGuard,
+  assertNoReservedTravelServiceIdentity: reservedTravelServiceIdentityGuard,
+}));
 
 vi.mock('@/server/services/resourceEvents', () => ({ publishResourceEvent: vi.fn() }));
 // Both read the DB directly; `mockCtx.serverDB` is a bare object.
@@ -76,6 +89,9 @@ describe('agentGroupRouter', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    profileBackfill.mockReset().mockResolvedValue(false);
+    defaultTravelServiceMutationGuard.mockReset().mockResolvedValue(undefined);
+    reservedTravelServiceIdentityGuard.mockReset();
     vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(true);
     vi.mocked(getWorkspaceAgentParentGroupIds).mockResolvedValue([]);
     vi.mocked(getWorkspaceGroupVirtualAgentIds).mockResolvedValue([]);
@@ -93,14 +109,17 @@ describe('agentGroupRouter', () => {
       delete: vi.fn(),
       findById: vi.fn(),
       getGroupAgents: vi.fn(),
+      publishToWorkspace: vi.fn(),
       queryWithMemberDetails: vi.fn(),
       removeAgentFromGroup: vi.fn(),
+      setVisibility: vi.fn(),
       update: vi.fn(),
       updateAgentInGroup: vi.fn(),
     };
 
     agentGroupRepoMock = {
       createGroupWithSupervisor: vi.fn(),
+      duplicate: vi.fn(),
       findByIdWithAgents: vi.fn(),
       removeAgentsFromGroup: vi.fn(),
       transferHasForeignRows: vi.fn().mockResolvedValue(false),
@@ -373,6 +392,58 @@ describe('agentGroupRouter', () => {
   });
 
   describe('getGroupDetail', () => {
+    it('backfills a regular owner while keeping administrator configuration redacted', async () => {
+      vi.mocked(hasActivePlatformAdminAccess).mockResolvedValue(false);
+      const detail = {
+        id: 'group-1',
+        clientId: 'default-travel-service-group',
+        userId,
+        workspaceId: null,
+        visibility: 'private',
+        content: 'private group duties',
+        agents: [
+          {
+            id: 'host',
+            title: '旅游群主AI',
+            description: null as string | null,
+            systemRole: 'private agent prompt',
+            userId,
+            workspaceId: null,
+          },
+        ],
+      };
+      chatGroupServiceMock.getGroupDetail.mockImplementation(async () => structuredClone(detail));
+      profileBackfill.mockImplementationOnce(async () => {
+        detail.agents[0].description = 'Coordinates the work group';
+        return true;
+      });
+
+      const result = await agentGroupRouter.createCaller(mockCtx).getGroupDetail({ id: 'group-1' });
+      expect(result?.agents[0].description).toBe('Coordinates the work group');
+      expect(result).not.toHaveProperty('content');
+      expect(result?.agents[0]).not.toHaveProperty('systemRole');
+      expect(chatGroupServiceMock.mergeAgentsDefaultConfig).not.toHaveBeenCalled();
+    });
+
+    it('returns the backfilled supervisor introduction on the first direct owner visit', async () => {
+      const detail = {
+        id: 'group-1',
+        clientId: 'default-travel-service-group',
+        userId,
+        workspaceId: null,
+        visibility: 'private',
+        agents: [{ id: 'host', title: '旅游群主AI', description: null, userId, workspaceId: null }],
+      };
+      chatGroupServiceMock.getGroupDetail.mockImplementation(async () => structuredClone(detail));
+      profileBackfill.mockImplementationOnce(async () => {
+        detail.agents[0].description = 'Coordinates the work group' as any;
+        return true;
+      });
+
+      const result = await agentGroupRouter.createCaller(mockCtx).getGroupDetail({ id: 'group-1' });
+      expect(result?.agents[0].description).toBe('Coordinates the work group');
+    });
+
     it('should get group detail with agents', async () => {
       const mockGroupDetail = {
         id: 'group-1',
@@ -668,7 +739,16 @@ describe('agentGroupRouter', () => {
   });
 
   describe('updateGroup', () => {
-    it('should update a group with normalized config', async () => {
+    it('should treat null config as no config change', async () => {
+      const caller = agentGroupRouter.createCaller(mockCtx);
+      await caller.updateGroup({ id: 'group-1', value: { config: null, title: 'Keep config' } });
+      expect(chatGroupModelMock.update).toHaveBeenCalledWith('group-1', {
+        config: undefined,
+        title: 'Keep config',
+      });
+    });
+
+    it('should request an atomic config patch with defaults', async () => {
       const mockInput = {
         id: 'group-1',
         value: {
@@ -688,11 +768,27 @@ describe('agentGroupRouter', () => {
       const caller = agentGroupRouter.createCaller(mockCtx);
       const result = await caller.updateGroup(mockInput);
 
-      expect(chatGroupModelMock.update).toHaveBeenCalledWith('group-1', {
-        title: 'Updated Title',
-        config: { ...DEFAULT_CHAT_GROUP_CHAT_CONFIG, allowDM: false },
-      });
+      expect(chatGroupModelMock.update).toHaveBeenCalledWith(
+        'group-1',
+        { title: 'Updated Title', config: { allowDM: false } },
+        { configDefaults: DEFAULT_CHAT_GROUP_CHAT_CONFIG },
+      );
       expect(result).toEqual(mockUpdatedGroup);
+    });
+
+    it('should strip server-managed config fields before applying the patch', async () => {
+      const caller = agentGroupRouter.createCaller(mockCtx);
+      const config = {
+        maxDiscussionRounds: 3,
+        memberSlots: [{ agentId: 'forged-agent' }],
+        superGroupTemplate: { identifier: 'forged-template' },
+      };
+      await caller.updateGroup({ id: 'group-1', value: { config } });
+      expect(chatGroupModelMock.update).toHaveBeenCalledWith(
+        'group-1',
+        { config: { maxDiscussionRounds: 3 } },
+        { configDefaults: DEFAULT_CHAT_GROUP_CHAT_CONFIG },
+      );
     });
 
     it('should update a group without config changes', async () => {
@@ -721,6 +817,178 @@ describe('agentGroupRouter', () => {
         config: undefined,
       });
       expect(result).toEqual(mockUpdatedGroup);
+    });
+  });
+
+  describe('platform-managed default travel group write guard', () => {
+    const managedGroupError = () =>
+      new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'This platform-managed travel resource cannot be changed',
+      });
+
+    const writeCases: Array<
+      [string, (caller: ReturnType<typeof agentGroupRouter.createCaller>) => Promise<unknown>]
+    > = [
+      [
+        'adding existing members',
+        (caller) => caller.addAgentsToGroup({ agentIds: ['agent-1'], groupId: 'managed-group' }),
+      ],
+      [
+        'batch-creating virtual members',
+        (caller) =>
+          caller.batchCreateAgentsInGroup({
+            agents: [{ title: 'New virtual member' }],
+            groupId: 'managed-group',
+          }),
+      ],
+      [
+        'removing a member without deleting its agent',
+        (caller) =>
+          caller.removeAgentsFromGroup({
+            agentIds: ['agent-1'],
+            deleteVirtualAgents: false,
+            groupId: 'managed-group',
+          }),
+      ],
+      [
+        'removing and deleting a virtual member',
+        (caller) =>
+          caller.removeAgentsFromGroup({
+            agentIds: ['agent-1'],
+            deleteVirtualAgents: true,
+            groupId: 'managed-group',
+          }),
+      ],
+      [
+        'disabling a member',
+        (caller) =>
+          caller.updateAgentInGroup({
+            agentId: 'agent-1',
+            groupId: 'managed-group',
+            updates: { enabled: false },
+          }),
+      ],
+      [
+        'reordering a member',
+        (caller) =>
+          caller.updateAgentInGroup({
+            agentId: 'agent-1',
+            groupId: 'managed-group',
+            updates: { order: 2 },
+          }),
+      ],
+      [
+        'changing a member role',
+        (caller) =>
+          caller.updateAgentInGroup({
+            agentId: 'agent-1',
+            groupId: 'managed-group',
+            updates: { role: 'participant' },
+          }),
+      ],
+      [
+        'deleting the group and its virtual members',
+        (caller) => caller.deleteGroup({ id: 'managed-group' }),
+      ],
+      [
+        'updating group configuration',
+        (caller) =>
+          caller.updateGroup({
+            id: 'managed-group',
+            value: { config: { systemPrompt: 'replacement prompt' } },
+          }),
+      ],
+      [
+        'updating group content',
+        (caller) =>
+          caller.updateGroup({ id: 'managed-group', value: { content: 'replacement content' } }),
+      ],
+    ];
+
+    it.each(writeCases)('rejects %s before a model write', async (_name, mutate) => {
+      defaultTravelServiceMutationGuard.mockRejectedValueOnce(managedGroupError());
+
+      await expect(mutate(agentGroupRouter.createCaller(mockCtx))).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'This platform-managed travel resource cannot be changed',
+      });
+
+      expect(agentModelMock.batchCreate).not.toHaveBeenCalled();
+      expect(chatGroupModelMock.addAgentsToGroup).not.toHaveBeenCalled();
+      expect(chatGroupModelMock.updateAgentInGroup).not.toHaveBeenCalled();
+      expect(chatGroupModelMock.update).not.toHaveBeenCalled();
+      expect(agentGroupRepoMock.removeAgentsFromGroup).not.toHaveBeenCalled();
+      expect(chatGroupServiceMock.deleteGroup).not.toHaveBeenCalled();
+    });
+
+    const guardedGroupCases: Array<
+      [string, (caller: ReturnType<typeof agentGroupRouter.createCaller>) => Promise<unknown>]
+    > = [
+      ['duplicating it', (caller) => caller.duplicateGroup({ groupId: 'managed-group' })],
+      [
+        'transferring it',
+        (caller) =>
+          caller.transferGroup({
+            groupId: 'managed-group',
+            targetWorkspaceId: 'target-workspace',
+          }),
+      ],
+      ['publishing it', (caller) => caller.publishGroupToWorkspace({ id: 'managed-group' })],
+      [
+        'changing its visibility',
+        (caller) => caller.setGroupVisibility({ id: 'managed-group', visibility: 'public' }),
+      ],
+    ];
+
+    it.each(guardedGroupCases)(
+      'rejects %s before reading or writing the target',
+      async (_name, mutate) => {
+        defaultTravelServiceMutationGuard.mockRejectedValueOnce(managedGroupError());
+
+        await expect(mutate(agentGroupRouter.createCaller(mockCtx))).rejects.toMatchObject({
+          code: 'FORBIDDEN',
+          message: 'This platform-managed travel resource cannot be changed',
+        });
+
+        expect(agentGroupRepoMock.duplicate).not.toHaveBeenCalled();
+        expect(agentGroupRepoMock.transferToWorkspace).not.toHaveBeenCalled();
+        expect(chatGroupModelMock.publishToWorkspace).not.toHaveBeenCalled();
+        expect(chatGroupModelMock.setVisibility).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects a reserved group identity before creating a group', async () => {
+      reservedTravelServiceIdentityGuard.mockImplementationOnce(() => {
+        throw managedGroupError();
+      });
+
+      await expect(
+        agentGroupRouter.createCaller(mockCtx).createGroup({
+          clientId: 'default-travel-service-group',
+          title: 'Forged default group',
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+      expect(agentGroupRepoMock.createGroupWithSupervisor).not.toHaveBeenCalled();
+    });
+
+    it('rejects a reserved member identity before batch creating agents', async () => {
+      reservedTravelServiceIdentityGuard
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => {
+          throw managedGroupError();
+        });
+
+      await expect(
+        agentGroupRouter.createCaller(mockCtx).createGroupWithMembers({
+          groupConfig: { title: 'Regular group' },
+          members: [{ clientId: 'default-travel-copywriter', title: 'Forged member' }],
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+      expect(agentModelMock.batchCreate).not.toHaveBeenCalled();
+      expect(agentGroupRepoMock.createGroupWithSupervisor).not.toHaveBeenCalled();
     });
   });
 

@@ -2,12 +2,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import {
-  agentOperations,
-  chatGroups,
-  chatGroupUserMemberships,
-  users,
-} from '../../schemas';
+import { agentOperations, chatGroups, chatGroupUserMemberships, users } from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import { HostedGroupArtifactAccessModel } from '../hostedGroupArtifactAccess';
 
@@ -46,7 +41,9 @@ const cleanup = async () => {
 beforeEach(async () => {
   await cleanup();
   await db.insert(users).values(userIds.map((id) => ({ id })));
-  await db.insert(chatGroups).values({ id: groupId, title: 'Hosted artifact group', userId: ownerUserId });
+  await db
+    .insert(chatGroups)
+    .values({ id: groupId, title: 'Hosted artifact group', userId: ownerUserId });
   await db.insert(chatGroupUserMemberships).values([
     {
       chatGroupId: groupId,
@@ -125,7 +122,9 @@ describe('HostedGroupArtifactAccessModel', () => {
     await expect(
       model.record({ ...marker, artifactInternalId: 'other-internal-id' }),
     ).resolves.toBe(false);
-    await expect(model.record({ ...marker, ownerUserIdSnapshot: readerUserId })).resolves.toBe(false);
+    await expect(model.record({ ...marker, ownerUserIdSnapshot: readerUserId })).resolves.toBe(
+      false,
+    );
     await expect(model.record({ ...marker, membershipVersion: 5 })).resolves.toBe(false);
 
     const [operation] = await db
@@ -162,9 +161,7 @@ describe('HostedGroupArtifactAccessModel', () => {
     await db
       .update(chatGroupUserMemberships)
       .set({ removedAt: new Date('2026-09-03T20:12:00.000Z') })
-      .where(
-        inArray(chatGroupUserMemberships.userId, [actorUserId, readerUserId]),
-      );
+      .where(inArray(chatGroupUserMemberships.userId, [actorUserId, readerUserId]));
 
     await expect(
       model.findAuthorizedCandidate({ groupId, handleHash, readerUserId }),

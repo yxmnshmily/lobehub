@@ -58,6 +58,7 @@ interface MessageReadQueryContext {
   /** Agent-share visitor surface — routes the read through `shareChat.getMessages`. */
   agentShareId?: string;
   groupId?: string | null;
+  isolatedTopic?: boolean;
   /**
    * Skip the Work-summary assembly on the server — set by mid-stream
    * refetches (tool_end / step_complete) so each tool round doesn't re-run
@@ -66,6 +67,7 @@ interface MessageReadQueryContext {
   skipWorks?: boolean;
   threadId?: string | null;
   topicId?: string | null;
+  topicOnly?: boolean;
   topicShareId?: string;
 }
 
@@ -191,6 +193,7 @@ export class MessageService {
     // legacy set. See resolveAllowedWorkTypes.
     const data = await lambdaClient.message.getMessages.query({
       ...params,
+      ...(params.groupId && params.topicId && params.isolatedTopic ? { topicOnly: true } : {}),
       includeFileWorks: true,
     });
 

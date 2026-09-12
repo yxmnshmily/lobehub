@@ -1,9 +1,14 @@
 'use client';
 
-import { type AnchorHTMLAttributes, type Ref } from 'react';
+import { type AnchorHTMLAttributes, type Ref, use } from 'react';
 import { Link, type LinkProps } from 'react-router';
 
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
+import {
+  GroupProjectScopeContext,
+  scopeProjectPath,
+} from '@/features/Projects/Layout/GroupProjectScope';
+import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
 
 import { buildWorkspaceAwarePath } from './workspaceAwarePath';
 
@@ -21,7 +26,15 @@ export interface WorkspaceLinkProps extends Omit<LinkProps, 'to' | 'ref'> {
 
 const WorkspaceLink = ({ ref, to, escape, ...rest }: WorkspaceLinkProps) => {
   const activeSlug = useActiveWorkspaceSlug();
-  const target = buildWorkspaceAwarePath(to, activeSlug, { escape });
+  const projectScope = use(GroupProjectScopeContext);
+  const groupScope = use(GroupWorkScopeContext);
+  const target = buildWorkspaceAwarePath(
+    scopeGroupWorkPath(scopeProjectPath(to, projectScope), groupScope),
+    activeSlug,
+    {
+      escape,
+    },
+  );
   return (
     <Link
       ref={ref as Ref<HTMLAnchorElement>}

@@ -215,11 +215,19 @@ vi.mock('@/server/services/heterogeneousAgent/remoteDeviceHeteroContext', () => 
 describe('AiAgentService.execAgent - hetero early-exit file attachments', () => {
   let service: AiAgentService;
   let recordStartSpy: MockInstance<CompletionLifecycle['recordStart']>;
-  const mockDb = {} as any;
+  // Keep the real phone admission guard; only its persisted data reads are stubbed.
+  const mockDb = {
+    query: {
+      topics: { findFirst: vi.fn() },
+      users: { findFirst: vi.fn() },
+    },
+  } as any;
   const userId = 'test-user-id';
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDb.query.topics.findFirst.mockResolvedValue({ groupId: null });
+    mockDb.query.users.findFirst.mockResolvedValue(undefined);
     recordStartSpy = vi.spyOn(CompletionLifecycle.prototype, 'recordStart').mockResolvedValue(true);
     topicMock.appendRunningOperationChild.mockResolvedValue(true);
     topicMock.create.mockResolvedValue({ id: 'topic-1', metadata: undefined });
@@ -297,12 +305,19 @@ describe('AiAgentService.execAgent - hetero early-exit file attachments', () => 
       prompt: 'replacement turn',
       replacesOperationId: 'op-old',
     } as any);
-    await vi.waitFor(() => expect(interruptSpy).toHaveBeenCalledOnce());
-
-    expect(topicMock.tryReserveTaskCallback).not.toHaveBeenCalled();
-
-    releaseInterrupt?.();
-    await replacement;
+    // Observe early admission failures immediately instead of leaking an unhandled rejection.
+    const settled = replacement.then(
+      () => ({ status: 'fulfilled' }),
+      (error) => ({ error, status: 'rejected' }),
+    );
+    try {
+      await vi.waitFor(() => expect(interruptSpy).toHaveBeenCalledOnce());
+      expect(topicMock.tryReserveTaskCallback).not.toHaveBeenCalled();
+    } finally {
+      releaseInterrupt?.();
+      await settled;
+    }
+    expect(await settled).toEqual({ status: 'fulfilled' });
 
     expect(topicMock.tryReserveTaskCallback).toHaveBeenCalledWith('topic-1', expect.any(String), {
       allowRunningOperationId: undefined,
@@ -341,6 +356,28 @@ describe('AiAgentService.execAgent - hetero early-exit file attachments', () => 
 
     expect(topicMock.tryReserveTaskCallback).not.toHaveBeenCalled();
   });
+
+  it.each([{ groupId: 'group-1', topicId: 'topic-1' }, { topicId: 'topic-1' }])(
+    'rejects an unverified group replacement before stopping the old run: %j',
+    async (appContext) => {
+      mockDb.query.topics.findFirst.mockResolvedValue({ groupId: 'group-1' });
+      const interruptSpy = vi.spyOn(service, 'interruptTask');
+
+      await expect(
+        service.execAgent({
+          agentId: 'agent-1',
+          appContext,
+          prompt: 'replacement turn',
+          replacesOperationId: 'op-old',
+        } as any),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+      expect(interruptSpy).not.toHaveBeenCalled();
+      expect(topicMock.tryReserveTaskCallback).not.toHaveBeenCalled();
+      expect(mockDispatchAgentRun).not.toHaveBeenCalled();
+      expect(mockSpawnHeteroSandbox).not.toHaveBeenCalled();
+    },
+  );
 
   it('should attach fileIds to the user message (SPA gateway device/sandbox mode)', async () => {
     // regression: the hetero early exit used to create the user message

@@ -15,7 +15,7 @@ import {
 import MessageBranch from '../../components/MessageBranch';
 import { shouldShowUserActions } from './visibility';
 
-const DEFAULT_BAR: MessageActionSlot[] = ['regenerate', 'edit', 'copy'];
+const DEFAULT_BAR: MessageActionSlot[] = ['regenerate', 'edit', 'copy', 'download'];
 const DEFAULT_MENU: MessageActionSlot[] = [
   'edit',
   'copy',

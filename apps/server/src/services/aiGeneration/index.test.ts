@@ -33,23 +33,21 @@ describe('AiGenerationService.generateObject', () => {
     expect(initSpy).toHaveBeenCalledWith({}, 'user-1', 'openai');
   });
 
-  it('uses platform credentials while preserving the customer as execution actor', async () => {
+  it('rejects platform generation without a bounded prepaid execution before loading credentials', async () => {
     generateObject.mockResolvedValue({ ok: true });
     const ai = new AiGenerationService({} as any, 'customer', 'workspace-1', {
       modelRuntimeMode: 'platform-managed',
     });
 
-    await ai.generateObject({
-      messages: [{ content: 'hi', role: 'user' }],
-      model: 'group-model',
-      provider: 'deepseek',
-    });
-
-    expect(initPlatformRuntime).toHaveBeenCalledWith({
-      actorUserId: 'customer',
-      provider: 'deepseek',
-      workspaceId: 'workspace-1',
-    });
+    await expect(
+      ai.generateObject({
+        messages: [{ content: 'hi', role: 'user' }],
+        model: 'group-model',
+        provider: 'deepseek',
+      }),
+    ).rejects.toThrow('PREPAID_RESERVATION_REQUIRED');
+    expect(initPlatformRuntime).not.toHaveBeenCalled();
+    expect(generateObject).not.toHaveBeenCalled();
     expect(initSpy).not.toHaveBeenCalled();
   });
 

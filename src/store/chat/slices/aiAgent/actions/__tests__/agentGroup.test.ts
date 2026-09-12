@@ -180,6 +180,24 @@ describe('agentGroup actions', () => {
         expect(lambdaClient.aiAgent.execGroupAgent.mutate).not.toHaveBeenCalled();
       });
 
+      it('allows an empty prompt when continuing from an existing message', async () => {
+        const { result } = renderHook(() => useChatStore());
+        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
+          createMockExecGroupAgentResponse(),
+        );
+        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+
+        await act(async () => {
+          await result.current.sendGroupMessage({
+            context: createTestContext(),
+            message: '',
+            parentMessageId: 'cut-off-assistant-message',
+          });
+        });
+
+        expect(lambdaClient.aiAgent.execGroupAgent.mutate).toHaveBeenCalledOnce();
+      });
+
       it('should not send when agentId is missing', async () => {
         const { result } = renderHook(() => useChatStore());
 
@@ -208,6 +226,50 @@ describe('agentGroup actions', () => {
     });
 
     describe('optimistic update', () => {
+      it('forwards hosted group billing to the server SSE transport', async () => {
+        const { result } = renderHook(() => useChatStore());
+        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
+          createMockExecGroupAgentResponse(),
+        );
+        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+
+        await act(async () => {
+          await result.current.sendGroupMessage({
+            billing: { idempotencyKey: 'hosted-request-1', maxCredits: 40 },
+            context: createTestContext(),
+            message: TEST_CONTENT.GROUP_MESSAGE,
+          });
+        });
+
+        expect(lambdaClient.aiAgent.execGroupAgent.mutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billing: { idempotencyKey: 'hosted-request-1', maxCredits: 40 },
+          }),
+          expect.anything(),
+        );
+      });
+
+      it('forwards retry ancestry to the server transport', async () => {
+        const { result } = renderHook(() => useChatStore());
+        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
+          createMockExecGroupAgentResponse(),
+        );
+        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+
+        await act(async () => {
+          await result.current.sendGroupMessage({
+            context: createTestContext(),
+            message: TEST_CONTENT.GROUP_MESSAGE,
+            parentMessageId: 'original-user-message',
+          });
+        });
+
+        expect(lambdaClient.aiAgent.execGroupAgent.mutate).toHaveBeenCalledWith(
+          expect.objectContaining({ parentMessageId: 'original-user-message' }),
+          expect.anything(),
+        );
+      });
+
       it('should create execServerAgentRuntime operation first for loading state', async () => {
         const { result } = renderHook(() => useChatStore());
 
@@ -499,6 +561,85 @@ describe('agentGroup actions', () => {
         // Should complete both the stream operation and the main execServerAgentRuntime operation
         expect(result.current.completeOperation).toHaveBeenCalledWith(TEST_IDS.OPERATION_ID);
         expect(result.current.completeOperation).toHaveBeenCalledWith('op-exec');
+      });
+
+      it('hands a retry wrapper to the SSE run and completes its hook once', async () => {
+        const { result } = renderHook(() => useChatStore());
+        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
+          createMockExecGroupAgentResponse(),
+        );
+
+        let streamOptions: Parameters<typeof agentRuntimeClient.createStreamConnection>[1];
+        vi.mocked(agentRuntimeClient.createStreamConnection).mockImplementation(
+          (_operationId, options) => {
+            streamOptions = options;
+            return {} as any;
+          },
+        );
+        const onComplete = vi.fn();
+
+        await act(async () => {
+          await result.current.sendGroupMessage({
+            context: createTestContext(),
+            message: TEST_CONTENT.GROUP_MESSAGE,
+            onComplete,
+            parentMessageId: 'original-user-message',
+            parentOperationId: 'retry-wrapper',
+          });
+        });
+
+        expect(result.current.startOperation).toHaveBeenNthCalledWith(
+          1,
+          expect.objectContaining({ parentOperationId: 'retry-wrapper' }),
+        );
+        expect(result.current.completeOperation).toHaveBeenCalledWith('retry-wrapper');
+
+        await act(async () => {
+          await streamOptions?.onEvent?.({
+            data: { reason: 'done' },
+            operationId: TEST_IDS.OPERATION_ID,
+            timestamp: Date.now(),
+            type: 'agent_runtime_end',
+          });
+          streamOptions?.onDisconnect?.();
+        });
+
+        expect(onComplete).toHaveBeenCalledOnce();
+      });
+
+      it('does not overwrite a terminal server result with a late stream abort', async () => {
+        const { result } = renderHook(() => useChatStore());
+        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
+          createMockExecGroupAgentResponse(),
+        );
+
+        let streamOptions: Parameters<typeof agentRuntimeClient.createStreamConnection>[1];
+        vi.mocked(agentRuntimeClient.createStreamConnection).mockImplementation(
+          (_operationId, options) => {
+            streamOptions = options;
+            return {} as any;
+          },
+        );
+
+        await act(async () => {
+          await result.current.sendGroupMessage({
+            context: createTestContext(),
+            message: TEST_CONTENT.GROUP_MESSAGE,
+          });
+        });
+
+        await act(async () => {
+          await streamOptions?.onEvent?.({
+            data: { reason: 'error' },
+            operationId: TEST_IDS.OPERATION_ID,
+            timestamp: Date.now(),
+            type: 'agent_runtime_end',
+          });
+          streamOptions?.onError?.(new Error('BodyStreamBuffer was aborted'));
+        });
+
+        expect(result.current.internal_handleAgentStreamEvent).toHaveBeenCalledTimes(1);
+        expect(result.current.internal_handleAgentError).not.toHaveBeenCalled();
       });
 
       it('should update topics when new topic is created', async () => {

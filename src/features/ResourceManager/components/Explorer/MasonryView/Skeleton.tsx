@@ -18,11 +18,27 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorFillQuaternary};
     animation: ${pulse} 1.5s ease-in-out infinite;
   `,
+  /* Matches the real toolbar row (12px padding + 20px content + 0.5px border
+     and the 8px gap below it) so loading does not shift the grid. */
+  toolbar: css`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-block-end: 8px;
+    padding-block: 12px;
+    padding-inline: 4px;
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+  `,
   grid: css`
     display: grid;
     gap: 16px;
-    padding-block: 12px;
+    padding-block: 12px 24px;
     padding-inline: 24px;
+
+    @media (width <= 767px) {
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    }
   `,
 }));
 
@@ -41,12 +57,17 @@ const MasonryViewSkeleton = memo<MasonrySkeletonProps>(({ columnCount }) => {
   const getOpacity = (index: number) => 1 - (index / (itemCount - 1)) * 0.8;
 
   return (
-    <div
-      className={styles.grid}
-      style={{
-        gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
-      }}
-    >
+    <>
+      <div className={styles.toolbar}>
+        <div className={styles.card} style={{ height: 20, width: 96 }} />
+        <div className={styles.card} style={{ height: 20, width: 120 }} />
+      </div>
+      <div
+        className={styles.grid}
+        style={{
+          gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
+        }}
+      >
       {Array.from({ length: itemCount }).map((_, index) => (
         <div
           className={styles.card}
@@ -56,8 +77,9 @@ const MasonryViewSkeleton = memo<MasonrySkeletonProps>(({ columnCount }) => {
             opacity: getOpacity(index),
           }}
         />
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   );
 });
 

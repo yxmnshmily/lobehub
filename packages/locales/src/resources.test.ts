@@ -1,63 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { matchLocale, normalizeLocale } from './resources';
+import { localeOptions, locales, matchLocale, normalizeLocale } from './resources';
 
-describe('normalizeLocale', () => {
-  it('should return "en-US" when locale is undefined', () => {
-    expect(normalizeLocale()).toBe('en-US');
+describe('supported languages', () => {
+  it('only offers Simplified Chinese and English', () => {
+    expect([...locales]).toEqual(['en-US', 'zh-CN']);
+    expect(localeOptions.map((item) => item.value).sort()).toEqual([...locales]);
   });
-
-  it('should return "zh-CN" when locale is "zh-CN"', () => {
-    expect(normalizeLocale('zh-CN')).toBe('zh-CN');
+  it.each(['zh', 'zh-CN', 'zh-TW', 'zh-Hant', 'ZH-hans', 'cn'])(
+    'maps %s to Simplified Chinese',
+    (locale) => {
+      expect(normalizeLocale(locale)).toBe('zh-CN');
+    },
+  );
+  it.each(['en', 'en-US', 'en-GB', 'EN-us'])('maps %s to English', (locale) => {
+    expect(normalizeLocale(locale)).toBe('en-US');
   });
-
-  it('should return "zh-CN" when locale is "zh"', () => {
-    expect(normalizeLocale('zh')).toBe('zh-CN');
-  });
-
-  it('should return "de-DE" when locale is "de"', () => {
-    expect(normalizeLocale('de')).toBe('de-DE');
-  });
-
-  it('should return "ru-RU" when locale is "ru"', () => {
-    expect(normalizeLocale('ru')).toBe('ru-RU');
-  });
-
-  it('should return "ar" when locale is "ar-EG"', () => {
-    expect(normalizeLocale('ar')).toBe('ar');
-    expect(normalizeLocale('ar-EG')).toBe('ar');
-  });
-
-  it('should return "en-US" when locale is "en"', () => {
-    expect(normalizeLocale('en')).toBe('en-US');
-  });
-
-  it('should return the input locale for other valid locales', () => {
-    expect(normalizeLocale('fr-FR')).toBe('fr-FR');
-    expect(normalizeLocale('ja-JP')).toBe('ja-JP');
-    expect(normalizeLocale('ko-KR')).toBe('ko-KR');
-    expect(normalizeLocale('pt-BR')).toBe('pt-BR');
-    expect(normalizeLocale('tr-TR')).toBe('tr-TR');
-    expect(normalizeLocale('vi-VN')).toBe('vi-VN');
-    expect(normalizeLocale('zh-TW')).toBe('zh-TW');
-  });
-
-  it('should return the input locale for unknown locales', () => {
-    expect(normalizeLocale('unknown')).toBe('en-US');
-    expect(normalizeLocale('fr')).toBe('fr-FR');
-  });
-});
-
-describe('matchLocale', () => {
-  it('should return undefined when nothing is supported', () => {
-    expect(matchLocale()).toBeUndefined();
-    expect(matchLocale('unknown')).toBeUndefined();
-    expect(matchLocale('en-GB')).toBeUndefined();
-  });
-
-  it('should return the matched locale', () => {
-    expect(matchLocale('en')).toBe('en-US');
-    expect(matchLocale('zh-Hant')).toBe('zh-TW');
-    expect(matchLocale('ar-EG')).toBe('ar');
-  });
+  it.each([undefined, 'ar', 'ja-JP', 'de-DE', 'unknown'])(
+    'falls back for retired or missing language %s',
+    (locale) => {
+      expect(matchLocale(locale)).toBeUndefined();
+      expect(normalizeLocale(locale)).toBe('en-US');
+    },
+  );
 });

@@ -71,9 +71,11 @@ import {
   topicsRouteMeta,
 } from '@/routes/(main)/agent/features/routeMeta';
 import {
+  groupMembersRouteMeta,
   groupPermissionRouteMeta,
   groupProfileRouteMeta,
   groupRouteMeta,
+  groupTopicsRouteMeta,
 } from '@/routes/(main)/group/features/routeMeta';
 import AppShellSkeleton, { APP_SHELL_FALLBACK_ID } from '@/spa/BootShell/AppShellSkeleton';
 import { loadRouteWithBuiltinToolSurfaces } from '@/spa/initialize/toolSurfaces';
@@ -136,6 +138,158 @@ const deferPlatformElement = (factory?: () => ReactElement) =>
  * Index redirects inside this list use **relative paths** so they resolve
  * correctly under both `/` (→ `/`) and `/:workspaceSlug` (→ `/:workspaceSlug`).
  */
+export const projectWorkspaceRoute: RouteObject = {
+  children: [
+    {
+      element: redirectElement('conversation'),
+      index: true,
+    },
+    {
+      path: 'conversation',
+      children: [
+        {
+          index: true,
+          element: dynamicElement(
+            () =>
+              loadRouteWithBuiltinToolSurfaces(() => import('@/features/Projects/Conversation')),
+            'Project > Conversation',
+          ),
+        },
+        {
+          path: ':topicId',
+          element: dynamicElement(
+            () =>
+              loadRouteWithBuiltinToolSurfaces(() => import('@/features/Projects/Conversation')),
+            'Project > Conversation Topic',
+          ),
+        },
+      ],
+    },
+    {
+      element: dynamicElement(
+        () => import('@/routes/(main)/project/[projectId]/tasks'),
+        'Desktop > Project Tasks',
+      ),
+      handle: { meta: tasksRouteMeta },
+      path: 'tasks',
+    },
+    {
+      element: dynamicElement(
+        () => import('@/routes/(main)/project/[projectId]/goals'),
+        'Desktop > Project Goals',
+      ),
+      handle: { meta: goalsRouteMeta },
+      path: 'goals',
+    },
+    {
+      children: [
+        {
+          element: dynamicElement(
+            () => import('@/routes/(main)/acceptance/empty'),
+            'Desktop > Project Acceptance > Empty',
+          ),
+          index: true,
+        },
+      ],
+      element: dynamicLayout(
+        () => import('@/routes/(main)/project/[projectId]/acceptance'),
+        'Desktop > Project Acceptance',
+      ),
+      handle: { meta: acceptanceRouteMeta },
+      path: 'acceptance',
+    },
+  ],
+  element: dynamicLayout(
+    () => import('@/routes/(main)/project/_layout'),
+    'Desktop > Project Workspace > Layout',
+    { preloadId: 'project' },
+  ),
+  errorElement: <ErrorBoundary resetPath=".." />,
+  path: 'project/:projectId',
+};
+
+export const groupWorkRoutes: RouteObject[] = [
+  {
+    path: 'goals',
+    handle: { meta: goalsRouteMeta },
+    element: dynamicElement(() => import('@/routes/(main)/group/goals'), 'Group > Goals'),
+  },
+  {
+    path: 'goal/:goalId',
+    handle: { meta: goalDetailRouteMeta },
+    element: dynamicElement(() => import('@/routes/(main)/group/goals'), 'Group > Goal'),
+  },
+  {
+    path: 'tasks',
+    handle: { meta: tasksRouteMeta },
+    element: dynamicElement(() => import('@/routes/(main)/group/tasks'), 'Group > Tasks'),
+  },
+  {
+    path: 'task/:taskId',
+    handle: { meta: taskRouteMeta },
+    element: dynamicElement(() => import('@/routes/(main)/group/tasks'), 'Group > Task'),
+  },
+];
+
+export const groupProjectRoutes: RouteObject = {
+  element: dynamicLayout(
+    () => import('@/routes/(main)/group/projects/_layout'),
+    'Group > Projects > Layout',
+  ),
+  handle: { meta: projectsRouteMeta },
+  children: [
+    {
+      path: 'projects',
+      element: dynamicElement(() => import('@/routes/(main)/group/projects'), 'Group > Projects'),
+    },
+    {
+      ...projectWorkspaceRoute,
+      children: [
+        ...projectWorkspaceRoute.children!.map((route) =>
+          !route.index && route.path === 'acceptance'
+            ? {
+                ...route,
+                children: [
+                  ...route.children!,
+                  {
+                    path: ':acceptanceId',
+                    element: dynamicElement(
+                      () => import('@/routes/acceptance/[acceptanceId]'),
+                      'Group > Project > Acceptance Detail',
+                    ),
+                  },
+                  {
+                    path: ':acceptanceId/check/:checkId',
+                    element: dynamicElement(
+                      () => import('@/routes/acceptance/[acceptanceId]'),
+                      'Group > Project > Acceptance Check',
+                    ),
+                  },
+                ],
+              }
+            : route,
+        ),
+        {
+          path: 'task/:taskId',
+          handle: { meta: taskRouteMeta },
+          element: dynamicElement(
+            () => import('@/routes/(main)/task/[taskId]'),
+            'Group > Project > Task',
+          ),
+        },
+        {
+          path: 'goal/:goalId',
+          handle: { meta: goalDetailRouteMeta },
+          element: dynamicElement(
+            () => import('@/routes/(main)/goal/[goalId]'),
+            'Group > Project > Goal',
+          ),
+        },
+      ],
+    },
+  ],
+};
+
 export const sharedMainAreaChildren: RouteObject[] = [
   // Chat routes (agent)
   {
@@ -382,6 +536,13 @@ export const sharedMainAreaChildren: RouteObject[] = [
   {
     children: [
       {
+        element: dynamicElement(
+          () => import('@/features/SuperGroup/DefaultGroupEntry'),
+          'Default Work Group',
+        ),
+        path: 'default',
+      },
+      {
         element: redirectElement('..'),
         index: true,
       },
@@ -408,6 +569,24 @@ export const sharedMainAreaChildren: RouteObject[] = [
             handle: { meta: groupPermissionRouteMeta },
             path: 'permission',
           },
+          {
+            element: dynamicElement(
+              () => import('@/features/SuperGroup/GroupMembersPage'),
+              'Desktop > Agent Group > Members',
+            ),
+            handle: { meta: groupMembersRouteMeta },
+            path: 'members',
+          },
+          {
+            element: dynamicElement(
+              () => import('@/features/SuperGroup/GroupTopicsPage'),
+              'Desktop > Agent Group > Topics',
+            ),
+            handle: { meta: groupTopicsRouteMeta },
+            path: 'topics',
+          },
+          groupProjectRoutes,
+          ...groupWorkRoutes,
           {
             element: groupChatElement,
             handle: { meta: groupRouteMeta },
@@ -618,7 +797,11 @@ export const sharedMainAreaChildren: RouteObject[] = [
           () => import('@/routes/(main)/community/(detail)/_layout'),
           'Desktop > Discover > Detail > Layout',
         ),
-        handle: { meta: routeMeta({ Skeleton: createSurfaceSkeleton('detail') }) },
+        handle: {
+          // The community detail header renders at 64px; the skeleton must match
+          // it or the first paint jumps by the difference.
+          meta: routeMeta({ Skeleton: createSurfaceSkeleton('detail', true, 64) }),
+        },
       },
     ],
     element: dynamicElement(
@@ -1000,55 +1183,7 @@ export const sharedMainAreaChildren: RouteObject[] = [
     path: 'projects',
   },
 
-  // Task workspace routes (cross-agent)
-  {
-    children: [
-      {
-        element: redirectElement('tasks'),
-        index: true,
-      },
-      {
-        element: dynamicElement(
-          () => import('@/routes/(main)/project/[projectId]/tasks'),
-          'Desktop > Project Tasks',
-        ),
-        handle: { meta: tasksRouteMeta },
-        path: 'tasks',
-      },
-      {
-        element: dynamicElement(
-          () => import('@/routes/(main)/project/[projectId]/goals'),
-          'Desktop > Project Goals',
-        ),
-        handle: { meta: goalsRouteMeta },
-        path: 'goals',
-      },
-      {
-        children: [
-          {
-            element: dynamicElement(
-              () => import('@/routes/(main)/acceptance/empty'),
-              'Desktop > Project Acceptance > Empty',
-            ),
-            index: true,
-          },
-        ],
-        element: dynamicLayout(
-          () => import('@/routes/(main)/project/[projectId]/acceptance'),
-          'Desktop > Project Acceptance',
-        ),
-        handle: { meta: acceptanceRouteMeta },
-        path: 'acceptance',
-      },
-    ],
-    element: dynamicLayout(
-      () => import('@/routes/(main)/project/_layout'),
-      'Desktop > Project Workspace > Layout',
-      { preloadId: 'project' },
-    ),
-    errorElement: <ErrorBoundary resetPath=".." />,
-    path: 'project/:projectId',
-  },
+  projectWorkspaceRoute,
 
   {
     children: [

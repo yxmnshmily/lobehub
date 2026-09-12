@@ -3,6 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { messageMapKey } from './messageMapKey';
 
 describe('messageMapKey', () => {
+  it('isolates a single group run from the live group timeline', () => {
+    const timeline = { agentId: 'a', groupId: 'g', topicId: 't', scope: 'group' as const };
+    expect(messageMapKey({ ...timeline, isolatedTopic: true })).not.toBe(messageMapKey(timeline));
+  });
+  it('isolates group work conversations from the main group and one another', () => {
+    const base = { agentId: 'coordinator', groupId: 'travel', scope: 'group' as const };
+    const keys = [
+      messageMapKey(base),
+      messageMapKey({ ...base, viewedGoal: { goalId: 'one' } }),
+      messageMapKey({ ...base, viewedGoal: { goalId: 'two' } }),
+      messageMapKey({ ...base, viewedTask: { type: 'detail', taskId: 'one' } }),
+    ];
+    expect(new Set(keys).size).toBe(4);
+  });
   describe('Main mode (default scope)', () => {
     it('should use main as default scope when no threadId', () => {
       const result = messageMapKey({ agentId: 'agt_xxx' });

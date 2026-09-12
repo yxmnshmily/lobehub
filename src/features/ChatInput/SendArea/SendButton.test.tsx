@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
     handleStop: vi.fn(),
     mobile: true,
     sendButtonProps: { disabled: false, size: 32 as number | undefined },
-    sendMenu: { items: [{ key: 'send-all', label: '发送全部' }] },
+    sendMenu: { items: [{ key: 'send-all', label: '发送全部', onClick: vi.fn() }] },
   },
 }));
 
@@ -48,7 +48,8 @@ vi.mock('@lobehub/ui', () => ({
   Tooltip: ({ children }: { children: ReactNode }) => children,
 }));
 
-vi.mock('@lobehub/ui/base-ui', () => ({
+vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   ActionIcon: ({
     icon: _icon,
     size,
@@ -65,10 +66,6 @@ vi.mock('@lobehub/ui/base-ui', () => ({
   ),
 }));
 
-vi.mock('antd', () => ({
-  Dropdown: ({ children }: { children: ReactNode }) => children,
-}));
-
 vi.mock('@/hooks/usePermission', () => ({
   usePermission: () => ({ allowed: true }),
 }));
@@ -83,6 +80,13 @@ vi.mock('../store', () => ({
 }));
 
 describe('SendButton accessibility', () => {
+  it('opens the send options and runs the selected action', async () => {
+    render(<SendButton />);
+    fireEvent.click(screen.getByRole('button', { name: '更多' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '发送全部' }));
+    expect(mocks.state.sendMenu.items[0].onClick).toHaveBeenCalledOnce();
+  });
+
   it('gives both the send action and its options trigger an accessible name', () => {
     render(<SendButton />);
 

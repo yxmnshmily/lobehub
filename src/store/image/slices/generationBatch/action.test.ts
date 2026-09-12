@@ -405,6 +405,7 @@ describe('GenerationBatchAction', () => {
       });
 
       expect(mutate).toHaveBeenCalledWith(['image:generationBatches', topicId]);
+      expect(mutate).toHaveBeenCalledWith(['image:generationTopics']);
     });
 
     it('should not call mutate when no active topic', async () => {

@@ -2,13 +2,14 @@
 
 import { Block, Center, stopPropagation } from '@lobehub/ui';
 import type { DropdownItem } from '@lobehub/ui/base-ui';
-import { ActionIcon, DropdownMenu, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, DropdownMenu, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cx } from 'antd-style';
 import { ChevronsUpDownIcon } from 'lucide-react';
 import type { DragEvent } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import BusinessKnowledgeBaseImportAction from '@/business/client/BusinessKnowledgeBaseImportAction';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import LibraryStatusIcon from '@/components/LibIcon/StatusIcon';
@@ -143,7 +144,7 @@ const Head = memo<{ id: string }>(({ id }) => {
         />
       </Center>
       {!name ? (
-        <Skeleton.Text width={80} />
+        <SkeletonText width={80} />
       ) : (
         <DropdownMenu items={menuItems} placement="bottomRight">
           <Center

@@ -15,7 +15,7 @@ const GoalDetailContentSkeleton = () => (
       <SkeletonBar height={28} width={'52%'} />
       <SkeletonBar height={14} width={'78%'} />
     </Flexbox>
-    <Flexbox horizontal gap={18}>
+    <Flexbox horizontal gap={18} wrap={'wrap'}>
       {Array.from({ length: 4 }).map((_, index) => (
         <Flexbox gap={6} key={index} width={112}>
           <SkeletonBar height={22} width={index === 0 ? 68 : 52} />

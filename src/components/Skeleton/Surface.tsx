@@ -4,6 +4,7 @@ import { Flexbox, FormGroup, Grid } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import type { ComponentType } from 'react';
 
+import NavHeader from '@/features/NavHeader';
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
 import SkeletonBar from './Bar';
@@ -12,6 +13,8 @@ export type SurfaceSkeletonVariant = 'detail' | 'editor' | 'form' | 'grid' | 'li
 
 interface SurfaceSkeletonProps {
   header?: boolean;
+  /** Match the real page header height so the first paint does not jump. */
+  headerHeight?: number;
   variant?: SurfaceSkeletonVariant;
 }
 
@@ -22,11 +25,11 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   divider: css`
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   editor: css`
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -36,18 +39,12 @@ const styles = createStaticStyles(({ css }) => ({
   `,
 }));
 
-const HeaderSkeleton = () => (
-  <Flexbox
-    horizontal
-    align={'center'}
-    flex={'none'}
-    height={44}
-    justify={'space-between'}
-    paddingInline={16}
-  >
-    <SkeletonBar height={20} width={144} />
-    <SkeletonBar height={28} width={72} />
-  </Flexbox>
+const HeaderSkeleton = ({ height }: { height?: number }) => (
+  <NavHeader
+    height={height}
+    left={<SkeletonBar height={20} width={144} />}
+    right={<SkeletonBar height={28} width={72} />}
+  />
 );
 
 const ListSkeleton = () => (
@@ -83,6 +80,7 @@ const FormSkeleton = () => (
               className={styles.row}
               gap={24}
               justify={'space-between'}
+              wrap={'wrap'}
             >
               <Flexbox gap={8}>
                 <SkeletonBar height={16} width={112 + index * 24} />
@@ -112,7 +110,7 @@ const GridSkeleton = () => (
 const DetailSkeleton = () => (
   <Flexbox align={'center'} padding={'32px 24px'}>
     <Flexbox gap={24} width={'min(960px, 100%)'}>
-      <Flexbox horizontal align={'center'} gap={16}>
+      <Flexbox horizontal align={'center'} gap={16} wrap={'wrap'}>
         <SkeletonBar height={64} radius={'50%'} width={64} />
         <Flexbox flex={1} gap={8}>
           <SkeletonBar height={22} width={'32%'} />
@@ -140,7 +138,7 @@ const EditorSkeleton = () => (
     <Flexbox
       className={styles.editor}
       gap={20}
-      padding={'32px 40px 96px'}
+      padding={'32px clamp(16px, 4vw, 40px) 96px'}
       width={'min(760px, 100%)'}
     >
       <SkeletonBar height={28} width={'54%'} />
@@ -152,9 +150,13 @@ const EditorSkeleton = () => (
   </Flexbox>
 );
 
-const SurfaceSkeleton = ({ header = true, variant = 'list' }: SurfaceSkeletonProps) => (
+const SurfaceSkeleton = ({
+  header = true,
+  headerHeight,
+  variant = 'list',
+}: SurfaceSkeletonProps) => (
   <Flexbox aria-busy flex={1} height={'100%'} style={{ minHeight: 0, overflow: 'hidden' }}>
-    {header && <HeaderSkeleton />}
+    {header && <HeaderSkeleton height={headerHeight} />}
     <Flexbox flex={1} style={{ minHeight: 0, overflow: 'hidden' }}>
       {variant === 'list' && <ListSkeleton />}
       {variant === 'form' && <FormSkeleton />}
@@ -167,13 +169,21 @@ const SurfaceSkeleton = ({ header = true, variant = 'list' }: SurfaceSkeletonPro
 
 const surfaceSkeletonCache = new Map<string, ComponentType<RouteSkeletonProps>>();
 
-export const createSurfaceSkeleton = (variant: SurfaceSkeletonVariant, header = true) => {
-  const key = `${variant}:${header}`;
+export const createSurfaceSkeleton = (
+  variant: SurfaceSkeletonVariant,
+  header = true,
+  headerHeight?: number,
+) => {
+  const key = `${variant}:${header}:${headerHeight ?? 'auto'}`;
   const cached = surfaceSkeletonCache.get(key);
   if (cached) return cached;
 
   const Component = ({ chrome = 'page' }: RouteSkeletonProps) => (
-    <SurfaceSkeleton header={header && chrome !== 'body'} variant={variant} />
+    <SurfaceSkeleton
+      header={header && chrome !== 'body'}
+      headerHeight={headerHeight}
+      variant={variant}
+    />
   );
   Component.displayName = `SurfaceSkeleton(${key})`;
   surfaceSkeletonCache.set(key, Component);

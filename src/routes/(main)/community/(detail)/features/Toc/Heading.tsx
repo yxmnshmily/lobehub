@@ -7,6 +7,8 @@ import { Heading2, Heading3, Heading4, Heading5 } from 'lucide-react';
 import { type ComponentProps, type FC, type ReactNode } from 'react';
 import { Children, isValidElement, useEffect, useMemo } from 'react';
 
+import { translateTravel } from '@/utils/i18n/travel';
+
 import { useToc } from './useToc';
 
 const extractTextChildren = (children: ReactNode) => {
@@ -85,7 +87,7 @@ const createHeading = (Tag: `h${1 | 2 | 3 | 4 | 5 | 6}`) => {
       >
         {children}
         <a
-          aria-label="Permalink for this section"
+          aria-label={translateTravel('此章节的固定链接')}
           className={styles.anchor}
           href={`#${id}`}
           style={{ scrollMarginTop: 96 }}

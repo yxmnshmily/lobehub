@@ -30,13 +30,71 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
     css`
       opacity: 0;
       transition: opacity 0.1s ${cssVar.motionEaseInOut};
+
+      @media (width <= 767px), (hover: none) {
+        opacity: 1;
+
+        button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+      }
     `,
   ),
   container: css`
-    &:hover {
+    &:hover,
+    &:focus-within {
       .batch-actions {
         opacity: 1;
       }
+    }
+  `,
+  createdAt: css`
+    white-space: nowrap;
+  `,
+  metadata: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      align-items: flex-start;
+    }
+  `,
+  metadataEnd: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+  `,
+  metadataMain: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+    }
+  `,
+  prompt: css`
+    min-width: 0;
+    overflow-wrap: anywhere;
+
+    pre {
+      overflow: hidden !important;
+      padding-block: 4px;
+      font-size: 13px;
+    }
+  `,
+  promptRow: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
     }
   `,
 }));
@@ -94,8 +152,9 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
       await removeGeneration(generation.id);
     } catch (error) {
       console.error('Failed to delete generation:', error);
+      toast.error(t('operationFailed', { ns: 'common' }));
     }
-  }, [removeGeneration, generation?.id]);
+  }, [removeGeneration, generation?.id, t]);
 
   const handleCopyPrompt = useCallback(async () => {
     try {
@@ -126,8 +185,9 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
       await removeGenerationBatch(batch.id, activeTopicId);
     } catch (error) {
       console.error('Failed to delete batch:', error);
+      toast.error(t('operationFailed', { ns: 'common' }));
     }
-  }, [activeTopicId, batch.id, removeGenerationBatch]);
+  }, [activeTopicId, batch.id, removeGenerationBatch, t]);
 
   const handleDownload = useCallback(async () => {
     if (!generation?.asset?.url) return;
@@ -142,8 +202,9 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
       await downloadFile(generation.asset.url, fileName, false);
     } catch (error) {
       console.error('Failed to download video:', error);
+      toast.error(t('generation.actions.downloadFailed', { ns: 'image' }));
     }
-  }, [generation?.asset?.url, generation?.createdAt, batch.prompt]);
+  }, [generation?.asset?.url, generation?.createdAt, batch.prompt, t]);
 
   const handleCopyError = useCallback(async () => {
     if (!generation?.task.error) return;
@@ -236,7 +297,7 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
 
   return (
     <Block className={styles.container} gap={8} variant={'borderless'}>
-      <Flexbox horizontal align={'flex-start'} gap={16}>
+      <Flexbox horizontal align={'flex-start'} className={styles.promptRow} gap={16}>
         {hasReferenceFrames && (
           <VideoReferenceFrames
             endImageUrl={batch.config?.endImageUrl}
@@ -244,23 +305,26 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
             imageUrls={batch.config?.imageUrls}
           />
         )}
-        <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+        <Markdown className={styles.prompt} variant={'chat'}>
+          {batch.prompt}
+        </Markdown>
       </Flexbox>
       {renderContent()}
       <Flexbox
         horizontal
         align={'center'}
+        className={styles.metadata}
         gap={4}
         justify={'space-between'}
         style={{ opacity: 0.66 }}
       >
-        <Flexbox horizontal align={'center'} gap={4}>
+        <Flexbox horizontal align={'center'} className={styles.metadataMain} gap={4}>
           <Tag icon={<ModelIcon model={batch.model} />} variant={'borderless'}>
             {modelDisplayName}
           </Tag>
           {batch.config?.resolution && <Tag variant={'borderless'}>{batch.config.resolution}</Tag>}
         </Flexbox>
-        <Flexbox horizontal align={'center'} gap={6}>
+        <Flexbox horizontal align={'center'} className={styles.metadataEnd} gap={6}>
           {showCreator && (
             <>
               <Text fontSize={12} type={'secondary'}>
@@ -271,7 +335,7 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
               </Text>
             </>
           )}
-          <Text as={'time'} fontSize={12} type={'secondary'}>
+          <Text as={'time'} className={styles.createdAt} fontSize={12} type={'secondary'}>
             {t('generation.metadata.createdAt', { ns: 'image', time })}
           </Text>
         </Flexbox>

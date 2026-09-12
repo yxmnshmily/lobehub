@@ -1155,6 +1155,20 @@
       "when": 1788573107512,
       "tag": "0164_upstream_v2_2_16_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1788683486024,
+      "tag": "0165_group_invitation_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1788850269000,
+      "tag": "0166_messenger_workgroup",
+      "breakpoints": true
     }
   ],
   "version": "6"

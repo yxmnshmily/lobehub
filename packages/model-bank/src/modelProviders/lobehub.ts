@@ -16,7 +16,7 @@ const LobeHub: ModelProviderCard = {
     ? {}
     : {
         description:
-          'LobeHub Cloud uses official APIs to access AI models and measures usage with Credits tied to model tokens.',
+          '旅游群 Cloud uses official APIs to access AI models and measures usage with Credits tied to model tokens.',
         modelsUrl: 'https://lobehub.com/zh/docs/usage/subscription/model-pricing',
       }),
   enabled: true,

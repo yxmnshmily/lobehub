@@ -263,4 +263,33 @@ describe('parseToolCalls', () => {
       ]);
     }
   });
+
+  // Some providers open a tool_call delta with only id/name/type and stream
+  // `arguments` in a later delta (or omit it for zero-arg calls). A missing
+  // `arguments` must be coerced to '' instead of aborting the whole run with
+  // ZodError; the merge logic concatenates once the real delta arrives.
+  it('should coerce a missing function.arguments on the first delta and patch it from a later delta', () => {
+    const chunk1 = [
+      {
+        index: 0,
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'search' } as any,
+      },
+    ];
+    const result1 = parseToolCalls([], chunk1);
+    expect(result1).toEqual([
+      { id: 'call_1', type: 'function', function: { name: 'search', arguments: '' } },
+    ]);
+
+    const chunk2 = [{ index: 0, function: { arguments: '{"query":"test"}' } }];
+    const result2 = parseToolCalls(result1, chunk2);
+    expect(result2).toEqual([
+      {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'search', arguments: '{"query":"test"}' },
+      },
+    ]);
+  });
 });

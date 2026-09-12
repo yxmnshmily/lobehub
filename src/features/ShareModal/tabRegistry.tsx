@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 
+import type { ContentFilter } from './ShareFiles/collectContent';
+
 export const ShareTab = {
+  Files: 'files',
   JSON: 'json',
   PDF: 'pdf',
   Screenshot: 'screenshot',
@@ -10,12 +13,17 @@ export const ShareTab = {
 export type ShareTab = (typeof ShareTab)[keyof typeof ShareTab];
 
 interface ShareTabRenderOptions {
+  category?: ContentFilter;
   mobile: boolean;
 }
 
 export type ShareTabRenderer = (options: ShareTabRenderOptions) => ReactNode;
 
 const rendererLoaders: Record<ShareTab, () => Promise<ShareTabRenderer>> = {
+  [ShareTab.Files]: async () => {
+    const { default: ShareFiles } = await import('./ShareFiles');
+    return ({ category }) => <ShareFiles category={category} />;
+  },
   [ShareTab.JSON]: async () => {
     const { default: ShareJSON } = await import('./ShareJSON');
     return () => <ShareJSON />;

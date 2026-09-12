@@ -23,17 +23,17 @@ const Agent = memo<PropsWithChildren>(() => {
     agentSelectors.currentAgentBackgroundColor(s),
   ]);
 
-  const displayTitle = isInbox
-    ? title || '旅游群主AI'
-    : title || t('defaultSession', { ns: 'common' });
+  const displayTitle = title || (isInbox ? '旅游群主AI' : t('defaultSession', { ns: 'common' }));
 
   if (isLoading) return <SkeletonItem height={32} padding={0} />;
 
   return (
     <SwitchPanel>
       <SidebarHeaderSelectTrigger
+        aria-label={displayTitle}
         avatar={isInbox ? avatar || DEFAULT_INBOX_AVATAR : avatar || DEFAULT_AVATAR}
         background={backgroundColor || undefined}
+        data-agent-switcher=""
         name={displayTitle}
         title={displayTitle}
       />

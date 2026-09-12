@@ -4,6 +4,7 @@ import { MarketSDK, type OrgRef, orgRefToPathSegment } from '@lobehub/market-sdk
 import debug from 'debug';
 import { type NextRequest } from 'next/server';
 
+import { appEnv } from '@/envs/app';
 import { type TrustedClientUserInfo } from '@/libs/trusted-client';
 import { generateTrustedClientToken, getTrustedClientTokenForSession } from '@/libs/trusted-client';
 
@@ -452,6 +453,7 @@ export class MarketService {
    * Report plugin installation
    */
   async reportPluginInstallation(params: any) {
+    if (appEnv.TELEMETRY_DISABLED) return;
     return this.market.plugins.reportInstallation(params);
   }
 
@@ -459,6 +461,7 @@ export class MarketService {
    * Report plugin call
    */
   async reportPluginCall(params: any) {
+    if (appEnv.TELEMETRY_DISABLED) return;
     return this.market.plugins.reportCall(params);
   }
 
@@ -466,6 +469,7 @@ export class MarketService {
    * Create plugin event
    */
   async createPluginEvent(params: any) {
+    if (appEnv.TELEMETRY_DISABLED) return;
     return this.market.plugins.createEvent(params);
   }
 
@@ -489,6 +493,7 @@ export class MarketService {
    * Increase agent install count
    */
   async increaseAgentInstallCount(identifier: string) {
+    if (appEnv.TELEMETRY_DISABLED) return;
     return this.market.agents.increaseInstallCount(identifier);
   }
 
@@ -496,6 +501,7 @@ export class MarketService {
    * Create agent event
    */
   async createAgentEvent(params: any) {
+    if (appEnv.TELEMETRY_DISABLED) return;
     return this.market.agents.createEvent(params);
   }
 
@@ -654,7 +660,7 @@ export class MarketService {
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeout = setTimeout(() => {
-          const error = new Error(`LobeHub Skill execution timed out after ${timeoutMs}ms`);
+          const error = new Error(`旅游群 Skill execution timed out after ${timeoutMs}ms`);
           error.name = 'TimeoutError';
           reject(error);
           abortController.abort(error);
@@ -686,7 +692,7 @@ export class MarketService {
           dataMessage = JSON.stringify(response.data);
         }
 
-        const message = responseError?.message || dataMessage || 'LobeHub Skill call failed';
+        const message = responseError?.message || dataMessage || '旅游群 Skill call failed';
 
         return {
           content: message,
@@ -794,7 +800,7 @@ export class MarketService {
             identifier: providerId,
             meta: {
               avatar: icon || '🔗',
-              description: `LobeHub Skill: ${providerLabel}`,
+              description: `旅游群 Skill: ${providerLabel}`,
               tags: ['lobehub-skill', providerId],
               title: providerLabel,
             },

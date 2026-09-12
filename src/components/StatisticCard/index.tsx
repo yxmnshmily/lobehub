@@ -73,7 +73,7 @@ const StatisticCard = memo<StatisticCardProps>(
     loading,
     extra,
     style,
-    padding,
+    padding = 16,
     paddingBlock,
     paddingInline,
     statistic,
@@ -82,6 +82,7 @@ const StatisticCard = memo<StatisticCardProps>(
       <Block
         className={className}
         flex={1}
+        gap={24}
         padding={padding}
         paddingBlock={paddingBlock}
         paddingInline={paddingInline}

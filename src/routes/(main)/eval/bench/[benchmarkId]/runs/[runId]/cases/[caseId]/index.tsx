@@ -114,7 +114,7 @@ const CaseDetail = memo(() => {
           {hasMultipleThreads && (
             <Flexbox
               paddingInline={16}
-              style={{ borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`, flex: 'none' }}
+              style={{ borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}`, flex: 'none' }}
             >
               <Tabs
                 activeKey={activeThreadId!}

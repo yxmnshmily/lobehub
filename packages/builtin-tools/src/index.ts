@@ -143,7 +143,11 @@ export const chatModeAllowedToolIds = [
  * implemented` the moment the model called it. Add it back here once a server
  * runtime exists.
  */
-export const groupSupervisorToolIds = [GroupManagementManifest.identifier];
+export const groupSupervisorToolIds = [
+  GroupManagementManifest.identifier,
+  GoalManifest.identifier,
+  TaskManifest.identifier,
+];
 
 /**
  * Tool IDs whose enabled state is decided by runtime / system conditions

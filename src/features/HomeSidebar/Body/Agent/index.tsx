@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
+import WorkGroupSessions from '@/features/SuperGroup/WorkGroupSessions';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useFetchAgentLabels } from '@/hooks/useFetchAgentLabels';
 import { useFetchAgentList } from '@/hooks/useFetchAgentList';
@@ -61,6 +62,8 @@ const Agent = memo<AgentProps>(({ itemKey }) => {
     },
     [navigate],
   );
+
+  if (!activeWorkspaceId) return <WorkGroupSessions />;
 
   return (
     <AccordionItem

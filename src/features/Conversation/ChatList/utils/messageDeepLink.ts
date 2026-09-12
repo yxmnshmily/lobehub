@@ -25,6 +25,7 @@ function assistantBlockContainsMessage(block: AssistantContentBlock, messageId: 
 function messageContainsMessage(message: UIChatMessage, messageId: string): boolean {
   return (
     message.id === messageId ||
+    (messageId.startsWith('topic:') && message.topicId === messageId.slice(6)) ||
     toolsContainMessage(message.tools, messageId) ||
     message.children?.some((block) => assistantBlockContainsMessage(block, messageId)) === true ||
     message.taskCompletions?.some((block) => assistantBlockContainsMessage(block, messageId)) ===
@@ -54,6 +55,7 @@ export const resolveMessageDeepLink = (
 
   return {
     ...deepLink,
+    id: deepLink.id.startsWith('topic:') ? messages[index].id : deepLink.id,
     displayMessageId: messages[index].id,
     index,
   };

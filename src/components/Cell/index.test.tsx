@@ -16,7 +16,9 @@ vi.mock('@lobehub/ui', () => ({
     justify: _justify,
     padding: _padding,
     ...props
-  }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
+  }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => (
+    <div {...props}>{children}</div>
+  ),
   Icon: () => null,
 }));
 

@@ -1,5 +1,5 @@
 import { type ModelPerformance, type ModelUsage } from '@lobechat/types';
-import { formatUsageValue } from '@lobechat/utils';
+import { formatLocalizedTokens } from '@lobechat/utils';
 import { Center, Flexbox, Icon, Popover } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { cssVar } from 'antd-style';
@@ -11,7 +11,7 @@ import InfoTooltip from '@/components/InfoTooltip';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
-import { formatNumber, formatShortenNumber } from '@/utils/format';
+import { formatNumber } from '@/utils/format';
 
 import AnimatedNumber from './AnimatedNumber';
 import ModelCard from './ModelCard';
@@ -27,7 +27,7 @@ interface TokenDetailProps {
 }
 
 const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provider }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
 
   // Use systemStatus to manage short-format display state
   const isShortFormat = useGlobalStore(systemStatusSelectors.tokenDisplayFormatShort);
@@ -128,7 +128,7 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
       ? detailTokens.totalTokens.credit
       : detailTokens.totalTokens!.token;
 
-  const detailTotal = formatUsageValue(totalCount);
+  const detailTotal = formatLocalizedTokens(totalCount, i18n.language);
   const cacheRate =
     typeof detailTokens.inputCacheRate === 'number'
       ? `${formatNumber(detailTokens.inputCacheRate * 100, 1)}%`
@@ -150,7 +150,7 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
         <Flexbox gap={8} style={{ minWidth: 200 }}>
           {modelCard && <ModelCard {...modelCard} provider={provider} />}
 
-          <Flexbox gap={20}>
+          <Flexbox gap={20} style={{ fontSize: 12 }}>
             {inputDetails.length > 1 && (
               <Flexbox gap={4}>
                 <Flexbox
@@ -164,7 +164,7 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                     {t('messages.tokenDetails.inputTitle')}
                   </div>
                 </Flexbox>
-                <TokenProgress showIcon data={inputDetails} />
+                <TokenProgress showIcon data={inputDetails} isCredit={isShowCredit} />
               </Flexbox>
             )}
             {outputDetails.length > 1 && (
@@ -180,11 +180,11 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
                     {t('messages.tokenDetails.outputTitle')}
                   </div>
                 </Flexbox>
-                <TokenProgress showIcon data={outputDetails} />
+                <TokenProgress showIcon data={outputDetails} isCredit={isShowCredit} />
               </Flexbox>
             )}
             <Flexbox>
-              <TokenProgress showIcon data={totalDetail} />
+              <TokenProgress showIcon data={totalDetail} isCredit={isShowCredit} />
               <Divider style={{ marginBlock: 8 }} />
               {cacheRate && (
                 <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
@@ -255,10 +255,8 @@ const TokenDetail = memo<TokenDetailProps>(({ usage, performance, model, provide
           value={totalCount}
           formatter={(value) => {
             const roundedValue = Math.round(value);
-            if (isShortFormat) {
-              return (formatShortenNumber(roundedValue) as string).toLowerCase?.();
-            }
-            return new Intl.NumberFormat('en-US').format(roundedValue);
+            if (isShortFormat) return formatLocalizedTokens(roundedValue, i18n.language);
+            return new Intl.NumberFormat(i18n.language).format(roundedValue);
           }}
         />
       </Center>

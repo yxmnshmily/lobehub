@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { useSyncExternalStore } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NavPanel from './index';
@@ -8,6 +9,19 @@ import { clearNavPanelRegistry } from './registry';
 import NavPanelShell from './Shell';
 
 let pathname = '/lobe-team/settings/general';
+let narrowViewport = false;
+const viewportListeners = new Set<() => void>();
+
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () =>
+    useSyncExternalStore(
+      (listener) => {
+        viewportListeners.add(listener);
+        return () => viewportListeners.delete(listener);
+      },
+      () => narrowViewport,
+    ),
+}));
 
 interface WorkspaceMock {
   activeWorkspaceId: string;
@@ -19,6 +33,7 @@ interface NavPanelDraggableMockProps {
     key: string;
     node: ReactNode;
   };
+  navKey: string;
 }
 
 const workspaceState: WorkspaceMock = {
@@ -37,8 +52,8 @@ vi.mock('@/business/client/hooks/useActiveWorkspaceSlug', () => ({
 }));
 
 vi.mock('./components/NavPanelDraggable', () => ({
-  NavPanelDraggable: ({ activeContent }: NavPanelDraggableMockProps) => (
-    <div data-nav-key={activeContent.key} data-testid="nav-panel">
+  NavPanelDraggable: ({ activeContent, navKey }: NavPanelDraggableMockProps) => (
+    <div data-layout-key={navKey} data-nav-key={activeContent.key} data-testid="nav-panel">
       {activeContent.node}
     </div>
   ),
@@ -48,10 +63,53 @@ vi.mock('@/features/HomeSidebar/Content', () => ({
   default: () => <div>Home sidebar</div>,
 }));
 
+vi.mock('@/features/HomeSidebar/TaskSidebarContent', () => ({
+  default: () => <div>Group task sidebar</div>,
+}));
+
 describe('NavPanel', () => {
   beforeEach(() => {
+    narrowViewport = false;
     pathname = '/lobe-team/settings/general';
     clearNavPanelRegistry();
+  });
+
+  it('releases group sidebar space on narrow screens and restores it on wide screens', () => {
+    pathname = '/group/group-1';
+    render(<NavPanel />);
+    expect(screen.getByTestId('nav-panel')).toBeInTheDocument();
+    act(() => {
+      narrowViewport = true;
+      viewportListeners.forEach((listener) => listener());
+    });
+    expect(screen.queryByTestId('nav-panel')).not.toBeInTheDocument();
+    act(() => {
+      narrowViewport = false;
+      viewportListeners.forEach((listener) => listener());
+    });
+    expect(screen.getByTestId('nav-panel')).toBeInTheDocument();
+  });
+
+  it('keeps other route navigation unchanged in a narrow window', () => {
+    narrowViewport = true;
+    render(<NavPanel />);
+    expect(screen.getByTestId('nav-panel')).toBeInTheDocument();
+  });
+
+  it('suppresses a route panel without leaving its fallback skeleton behind', async () => {
+    pathname = '/group/member-group';
+
+    render(
+      <>
+        <NavPanelPortal hidden navKey="group" />
+        <NavPanel />
+      </>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('nav-panel')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('nav-sidebar-skeleton')).not.toBeInTheDocument();
   });
 
   it('selects the route-owned entry instead of a concurrently registered Home entry', async () => {
@@ -183,7 +241,7 @@ describe('NavPanelShell', () => {
   });
 
   it('provides the Home entry on routes that never mount the Home layout', async () => {
-    pathname = '/tasks';
+    pathname = '/agents';
 
     render(<NavPanelShell />);
 
@@ -191,6 +249,17 @@ describe('NavPanelShell', () => {
       expect(screen.getByText('Home sidebar')).toBeInTheDocument();
     });
     expect(screen.getByTestId('nav-panel')).toHaveAttribute('data-nav-key', 'home');
+    expect(screen.queryByTestId('nav-sidebar-skeleton')).not.toBeInTheDocument();
+  });
+
+  it.each(['/tasks', '/task/task-1'])('selects the group task panel for %s', async (route) => {
+    pathname = route;
+    render(<NavPanelShell />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-panel')).toHaveAttribute('data-nav-key', 'tasks');
+    });
+    expect(screen.queryByText('Home sidebar')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nav-sidebar-skeleton')).not.toBeInTheDocument();
   });
 
@@ -204,4 +273,11 @@ describe('NavPanelShell', () => {
     });
     expect(screen.queryByText('Home sidebar')).not.toBeInTheDocument();
   });
+});
+
+it('keeps group layout while the group sidebar is still loading', () => {
+  pathname = '/group/group-loading';
+  render(<NavPanel />);
+  expect(screen.getByTestId('nav-panel')).toHaveAttribute('data-layout-key', 'group');
+  expect(screen.getByTestId('nav-panel')).toHaveAttribute('data-nav-key', 'pending:group');
 });

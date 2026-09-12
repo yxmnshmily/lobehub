@@ -26,8 +26,8 @@ const styles = createStaticStyles(({ css, cssVar }) => {
         inset-inline-start: 0;
 
         inline-size: 8px;
-        border-block-end: 1px solid ${cssVar.colorBorder};
-        border-inline-start: 1px solid ${cssVar.colorBorder};
+        border-block-end: 0.5px solid ${cssVar.colorBorder};
+        border-inline-start: 0.5px solid ${cssVar.colorBorder};
         border-end-start-radius: 4px;
       }
     `,

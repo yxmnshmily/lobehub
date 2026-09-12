@@ -19,12 +19,12 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 6px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorFill};
+    border-block-start: 0.5px solid ${cssVar.colorFill};
   `,
   header: css`
     padding-block: 8px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorFill};
+    border-block-end: 0.5px solid ${cssVar.colorFill};
   `,
   iconButton: css`
     cursor: pointer;

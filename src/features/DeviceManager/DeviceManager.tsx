@@ -3,7 +3,7 @@
 import { isDesktop } from '@lobechat/const';
 import type { DeviceScope, DeviceVisibility } from '@lobechat/types';
 import { Flexbox, Icon } from '@lobehub/ui';
-import { ActionIcon, Button, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import {
   ChevronRightIcon,
@@ -19,6 +19,7 @@ import {
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SharedListSkeleton from '@/components/ListSkeleton';
 import { useElectronStore } from '@/store/electron';
@@ -42,9 +43,19 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   capabilityCard: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
+  `,
+  capabilityGrid: css`
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+
+    @media (width <= 600px) {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
   `,
   capabilityIcon: css`
     display: flex;
@@ -61,7 +72,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   emptyCard: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -108,9 +119,13 @@ const styles = createStaticStyles(({ css }) => ({
     grid-template-columns: 1fr 1fr;
     gap: 1px;
 
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBorderSecondary};
+
+    @media (width <= 520px) {
+      grid-template-columns: 1fr;
+    }
   `,
   optionIcon: css`
     display: flex;
@@ -131,7 +146,7 @@ const styles = createStaticStyles(({ css }) => ({
     align-self: stretch;
 
     min-width: 0;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -140,16 +155,29 @@ const styles = createStaticStyles(({ css }) => ({
     overflow: hidden;
 
     min-width: 0;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
   `,
   listHeader: css`
+    gap: 12px;
     min-height: 44px;
     padding-block: 8px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+  `,
+  manager: css`
+    width: 100%;
+    min-width: 0;
+
+    @media (width <= 720px) {
+      flex-direction: column;
+
+      > * {
+        width: 100%;
+      }
+    }
   `,
   listScroll: css`
     overflow-y: auto;
@@ -224,7 +252,7 @@ const Capabilities = memo(() => {
       <Text fontSize={12} type={'secondary'} weight={500}>
         {t('devices.capabilities.title')}
       </Text>
-      <Flexbox horizontal gap={16}>
+      <div className={styles.capabilityGrid}>
         {items.map((cap) => (
           <Flexbox className={styles.capabilityCard} flex={1} gap={12} key={cap.title}>
             <span className={styles.capabilityIcon}>
@@ -238,7 +266,7 @@ const Capabilities = memo(() => {
             </Flexbox>
           </Flexbox>
         ))}
-      </Flexbox>
+      </div>
     </Flexbox>
   );
 });
@@ -251,7 +279,7 @@ const ListSkeleton = memo<{ withHeader?: boolean }>(({ withHeader }) => (
   <Flexbox className={styles.listCol} flex={1}>
     {withHeader && (
       <Flexbox horizontal align={'center'} className={styles.listHeader}>
-        <Skeleton style={{ height: 16, minWidth: 80, width: 80 }} />
+        <SkeletonBar style={{ height: 16, minWidth: 80, width: 80 }} />
       </Flexbox>
     )}
     <Flexbox padding={4}>
@@ -375,7 +403,7 @@ const DeviceManager = memo<DeviceManagerProps>(({ onConnect, scope, visibility }
       loading={<ListSkeleton withHeader={!isWorkspace} />}
       onRetry={() => mutate()}
     >
-      <Flexbox horizontal align={'flex-start'} gap={16}>
+      <Flexbox horizontal align={'flex-start'} className={styles.manager} gap={16}>
         <Flexbox className={styles.listCol} flex={1}>
           {/* Workspace scope has no list header — its connect + refresh actions
               live in the page's tab row (beside the visibility tabs). */}
@@ -389,7 +417,7 @@ const DeviceManager = memo<DeviceManagerProps>(({ onConnect, scope, visibility }
               <Text fontSize={12} type={'secondary'} weight={500}>
                 {t('devices.selection.total', { count: devices.length })}
               </Text>
-              <Flexbox horizontal align={'center'} gap={8}>
+              <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
                 <Button
                   icon={<Icon icon={MonitorUpIcon} />}
                   size={'small'}

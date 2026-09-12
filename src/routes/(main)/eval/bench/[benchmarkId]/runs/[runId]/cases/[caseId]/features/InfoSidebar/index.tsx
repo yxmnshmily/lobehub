@@ -1,7 +1,7 @@
 'use client';
 
 import type { EvalRubricScore } from '@lobechat/types';
-import { formatCost, formatShortenNumber } from '@lobechat/utils';
+import { formatLocalizedTokens as formatShortenNumber } from '@lobechat/utils';
 import { Flexbox, Highlighter } from '@lobehub/ui';
 import { Tag, Text } from '@lobehub/ui/base-ui';
 import { Collapse } from 'antd';
@@ -9,11 +9,13 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+
 import SegmentBar from '../../../../../../../../features/SegmentBar';
 
 const styles = createStaticStyles(({ css }) => ({
   container: css`
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgContainer};
   `,
   // Reading block for free-text values (input / expected).
@@ -55,7 +57,7 @@ const styles = createStaticStyles(({ css }) => ({
   // Divider between titled sections — tonal hairline, not a heavy rule.
   section: css`
     padding-block-end: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   rubricName: css`
     font-size: ${cssVar.fontSize};
@@ -127,6 +129,7 @@ const isDeterministicMode = (rubricId: string): boolean => {
 
 const InfoSidebar = memo<InfoSidebarProps>(({ testCase, evalResult, passed, score }) => {
   const { t } = useTranslation('eval');
+  const { formatOptional: formatCost } = useMonthlyExchangeRate();
   const rubricScores = evalResult?.rubricScores;
   const hasRubricScores = rubricScores && rubricScores.length > 0;
 
@@ -275,7 +278,7 @@ const InfoSidebar = memo<InfoSidebarProps>(({ testCase, evalResult, passed, scor
         {evalResult?.cost !== undefined && evalResult.cost !== null && (
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>{t('caseDetail.cost')}</span>
-            <span className={styles.infoValue}>${formatCost(evalResult.cost)}</span>
+            <span className={styles.infoValue}>{formatCost(evalResult.cost)}</span>
           </div>
         )}
 

@@ -19,7 +19,7 @@ interface ErrorCaptureProps {
   resetPath?: string;
 }
 
-const ErrorCapture = ({ error, resetPath = '/' }: ErrorCaptureProps) => {
+const ErrorCapture = ({ error, resetPath = '/group/default' }: ErrorCaptureProps) => {
   const { t } = useTranslation('error');
   const navigate = useNavigate();
   const hasStack = !!error?.stack;

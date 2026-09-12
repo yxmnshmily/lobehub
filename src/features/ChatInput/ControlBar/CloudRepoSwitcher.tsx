@@ -51,7 +51,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 20px;
     height: 20px;
-    border: 1.5px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 4px;
   `,
   checkIndicatorChecked: css`

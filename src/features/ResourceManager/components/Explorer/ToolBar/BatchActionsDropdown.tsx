@@ -232,15 +232,19 @@ const BatchActionsDropdown = memo<BatchActionsDropdownProps>(({ selectCount, onA
     isWorkspaceDeleteAll,
   ]);
 
+  const trigger = (
+    <ActionIconWithChevron
+      disabled={!canEditResources}
+      icon={CircleEllipsisIcon}
+      title={t('FileManager.actions.batchActions', 'Batch actions')}
+    />
+  );
+
+  if (!canEditResources) return <Tooltip title={reason}>{trigger}</Tooltip>;
+
   return (
-    <DropdownMenu items={menuItems} placement="bottomLeft">
-      <Tooltip title={canEditResources ? undefined : reason}>
-        <ActionIconWithChevron
-          disabled={!canEditResources}
-          icon={CircleEllipsisIcon}
-          title={t('FileManager.actions.batchActions', 'Batch actions')}
-        />
-      </Tooltip>
+    <DropdownMenu nativeButton items={menuItems} placement="bottomLeft">
+      {trigger}
     </DropdownMenu>
   );
 });

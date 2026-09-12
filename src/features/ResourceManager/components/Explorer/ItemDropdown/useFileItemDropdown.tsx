@@ -6,6 +6,7 @@ import { type ItemType } from 'antd/es/menu/interface';
 import {
   BookMinusIcon,
   BookPlusIcon,
+  CopyIcon,
   DownloadIcon,
   EyeOffIcon,
   FolderInputIcon,
@@ -25,7 +26,10 @@ import { PAGE_FILE_TYPE } from '@/features/ResourceManager/constants';
 import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
 import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { usePermission } from '@/hooks/usePermission';
+import { mutate } from '@/libs/swr';
+import { resourceKeys } from '@/libs/swr/keys';
 import { documentService } from '@/services/document';
+import { workService } from '@/services/work';
 import { useFileStore } from '@/store/file';
 import { useKnowledgeBaseStore } from '@/store/library';
 import { useTreeStore } from '@/store/tree';
@@ -34,6 +38,7 @@ import { userProfileSelectors } from '@/store/user/selectors';
 import { downloadFile } from '@/utils/client/downloadFile';
 
 import { openMoveToFolderModal } from '../MoveToFolderModal';
+import { canCopyResourceContent, copyResourceContent } from './copyResourceContent';
 
 interface UseFileItemDropdownParams {
   enabled?: boolean;
@@ -48,6 +53,7 @@ interface UseFileItemDropdownParams {
   fileType: string;
   id: string;
   libraryId?: string;
+  onDeleted?: () => void;
   onRenameStart?: () => void;
   /** Byte size when available — powers the push modal's oversize pre-warning. */
   size?: number;
@@ -76,6 +82,7 @@ export const useFileItemDropdown = ({
   size,
   sourceType,
   onRenameStart,
+  onDeleted,
   userId,
   visibility,
 }: UseFileItemDropdownParams): UseFileItemDropdownReturn => {
@@ -328,6 +335,36 @@ export const useFileItemDropdown = ({
             },
           },
         canEditResources && isOwnPublicFile && { type: 'divider' },
+        !isFolder && {
+          disabled: !isPage && !canCopyResourceContent({ filename, fileType, url }),
+          icon: <Icon icon={CopyIcon} />,
+          key: 'copyContent',
+          label:
+            isPage || canCopyResourceContent({ filename, fileType, url })
+              ? t('copy', { ns: 'common' })
+              : '浏览器不支持复制此类文件内容，请下载文件',
+          onClick: async ({ domEvent }) => {
+            domEvent.stopPropagation();
+            try {
+              await copyResourceContent({
+                filename,
+                fileType,
+                url,
+                loadText: isPage
+                  ? async () => {
+                      const doc = await documentService.getDocumentById(id);
+                      if (doc?.content == null) throw new Error('Document content unavailable');
+                      return doc.content;
+                    }
+                  : undefined,
+              });
+              toast.success(t('copySuccess', { ns: 'common' }));
+            } catch (error) {
+              console.error('Resource content copy failed', error);
+              toast.error('复制失败，请检查剪贴板权限或下载文件后复制');
+            }
+          },
+        },
         {
           icon: <Icon icon={LinkIcon} />,
           key: 'copyUrl',
@@ -445,6 +482,19 @@ export const useFileItemDropdown = ({
                 void (async () => {
                   try {
                     await deleteResource(id);
+                    onDeleted?.();
+                    void workService
+                      .refreshAll()
+                      .catch((error) => console.error('Failed to refresh works:', error));
+                    void mutate(
+                      (key) =>
+                        Array.isArray(key) &&
+                        (key[0] === resourceKeys.recentFiles.root ||
+                          key[0] === resourceKeys.recentPages.root),
+                      (data: unknown) =>
+                        Array.isArray(data) ? data.filter((item) => item.id !== id) : data,
+                      { revalidate: true },
+                    ).catch((error) => console.error('Failed to refresh recent materials:', error));
 
                     // Revalidate tree for the parent folder
                     const { queryParams } = useFileStore.getState();
@@ -466,6 +516,8 @@ export const useFileItemDropdown = ({
       ] as FileMenuItem[]
     ).filter(Boolean);
   }, [
+    fileType,
+    onDeleted,
     addFilesToKnowledgeBase,
     appOrigin,
     canEditResources,

@@ -5,12 +5,13 @@ import { memo, useCallback, useMemo } from 'react';
 
 import { usePermission } from '@/hooks/usePermission';
 
+import { useConversationStore } from '../../../store';
 import { type MessageActionItem, type MessageActionItemOrDivider } from '../../../types';
 import { resolveSlots } from './resolveSlots';
 import { type MessageActionContext, type MessageActionSlot } from './types';
 import { useBuildActions } from './useBuildActions';
 
-const VIEWER_BAR: MessageActionSlot[] = ['copy', 'comments'];
+const VIEWER_BAR: MessageActionSlot[] = ['copy', 'download', 'comments'];
 
 /**
  * Prepares an item for `ActionIconGroup`, which owns dispatch for the items it
@@ -67,6 +68,7 @@ interface MessageActionBarProps {
 export const MessageActionBar = memo<MessageActionBarProps>(({ ctx, bar, leading, menu }) => {
   const built = useBuildActions(ctx);
   const { allowed: canEdit } = usePermission('edit_own_content');
+  const authorize = useConversationStore((s) => s.hooks.canPerformMessageAction);
 
   const effectiveBar = canEdit ? bar : VIEWER_BAR;
   const effectiveMenu = canEdit ? menu : undefined;
@@ -118,7 +120,7 @@ export const MessageActionBar = memo<MessageActionBarProps>(({ ctx, bar, leading
     <ActionIconGroup items={items} menu={menuStripped} onActionClick={handleAction} />
   );
 
-  if (!leading) return actionGroup;
+  if (!leading || (authorize && !authorize('reaction', ctx.id))) return actionGroup;
 
   return (
     <Block horizontal align={'center'} padding={2}>

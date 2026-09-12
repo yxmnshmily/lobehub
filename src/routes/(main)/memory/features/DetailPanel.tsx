@@ -16,6 +16,7 @@ const DetailPanel = memo<DetailPanelProps>(({ children, style, header, ...rest }
     <RightPanel defaultWidth={480} maxWidth={640} minWidth={300}>
       <NavHeader
         {...header}
+        showTogglePanelButton={false}
         left={
           <>
             <ToggleRightPanelButton />

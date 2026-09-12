@@ -52,9 +52,7 @@ describe('loadLocalSnapshot', () => {
     await write(cliHome, 'trace_hetero_new', 9_000);
     await write(cwd, 'trace_server_old', 1_000);
 
-    expect((await loadLocalSnapshot('latest', { cliHome, cwd }))?.traceId).toBe(
-      'trace_hetero_new',
-    );
+    expect((await loadLocalSnapshot('latest', { cliHome, cwd }))?.traceId).toBe('trace_hetero_new');
   });
 
   it('falls back to whichever store has anything at all', async () => {

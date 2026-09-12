@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 12px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorWarningBorder};
+    border: 0.5px solid ${cssVar.colorWarningBorder};
     border-radius: ${cssVar.borderRadius};
 
     font-size: ${cssVar.fontSize};

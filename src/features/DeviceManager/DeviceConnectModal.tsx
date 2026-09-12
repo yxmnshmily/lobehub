@@ -17,7 +17,7 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     margin-block-start: 4px;
     padding-block-start: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   index: css`
     display: flex;
@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   line: css`
     flex: 1;
-    width: 1px;
+    width: 0.5px;
     margin-block-start: 4px;
     background: ${cssVar.colorBorderSecondary};
   `,

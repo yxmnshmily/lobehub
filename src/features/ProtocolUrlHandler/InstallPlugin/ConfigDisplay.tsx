@@ -43,7 +43,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 0;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
 
@@ -80,7 +80,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     max-width: 300px;
     padding-block: ${cssVar.paddingXS};
     padding-inline: ${cssVar.paddingSM};
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     font-family: ${cssVar.fontFamilyCode};

@@ -11,6 +11,7 @@ import {
   type GoalGraphView,
 } from '@/features/AgentGoals/ProcessControl/goalGraphViewModel';
 import { KindDot } from '@/features/AgentGoals/ProcessControl/shared';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/selectors';
 import { goalSelectors, useGoalStore } from '@/store/goal';
@@ -191,6 +192,7 @@ const Findings = memo<{ goalId: string; graph: GoalGraphView }>(({ goalId, graph
 Findings.displayName = 'GoalMetricFindings';
 
 const Budget = memo<{ graph: GoalGraphView }>(({ graph }) => {
+  const { format } = useMonthlyExchangeRate();
   const { t } = useTranslation('chat');
   const { maxRounds, maxTotalCost } = graph.goal;
 
@@ -201,7 +203,7 @@ const Budget = memo<{ graph: GoalGraphView }>(({ graph }) => {
         <Text className={styles.mono} style={{ fontSize: 20 }} weight={600}>
           {maxTotalCost === null
             ? t('goalProcess.metricDetail.budget.uncapped')
-            : `$${maxTotalCost}`}
+            : format(maxTotalCost)}
         </Text>
       </Flexbox>
       <Flexbox gap={2}>

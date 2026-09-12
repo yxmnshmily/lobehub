@@ -9,13 +9,31 @@ import type { LobeChatDatabase } from '@/database/type';
 import type { AgentHook } from '@/server/services/agentRuntime/hooks/types';
 import { AiAgentService } from '@/server/services/aiAgent';
 
-const buildEvidencePrompt = (
-  items: VerifyCheckItem[],
-): string => `The task execution is complete. Submit the evidence you produced for every Acceptance criterion below.
+import { readRequiredEvidence } from './evidenceCoverage';
 
-${items.map((item) => `- ${item.id}: ${item.title}${item.description ? ` — ${item.description}` : ''}`).join('\n')}
+const buildEvidencePrompt = (items: VerifyCheckItem[], deliverable: string): string => {
+  const criteria = items
+    .map((item) => {
+      const required = readRequiredEvidence(item.verifierConfig)?.filter(
+        (spec) => !spec.scope || spec.scope === 'run_evidence',
+      );
+      const types = [...new Set((required ?? []).map((spec) => spec.type))];
+      const typeHint = types.length > 0 ? ` [submit as evidence type: ${types.join(', ')}]` : '';
+      return `- ${item.id}: ${item.title}${item.description ? ` — ${item.description}` : ''}${typeHint}`;
+    })
+    .join('\n');
 
-Call submitEvidence once for each criterion. This is evidence collection only: do not assign verdicts and do not redo the implementation.`;
+  return `The task execution is complete. Submit the evidence you produced for every Acceptance criterion below.
+
+Your final deliverable reported by this task (use its exact contents as the evidence body — do not restate it from memory or claim it is unavailable):
+<deliverable>
+${deliverable}
+</deliverable>
+
+${criteria}
+
+Call submitEvidence once for each criterion. When a criterion declares a required evidence type, submit that exact type (e.g. a plain-text deliverable must be submitted as type "text", formatted rich text as "markdown"). This is evidence collection only: do not assign verdicts and do not redo the implementation.`;
+};
 
 /**
  * External CLI agents cannot call server builtin tools. Preserve their final
@@ -74,7 +92,7 @@ export const startEvidenceSubmission = async (params: {
   }
 
   const parentOperationId = operation.id;
-  const evidencePrompt = buildEvidencePrompt(plan);
+  const evidencePrompt = buildEvidencePrompt(plan, deliverable);
   const hooks: AgentHook[] = [
     {
       handler: async () => {

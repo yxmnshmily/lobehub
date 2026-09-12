@@ -26,6 +26,7 @@ import { TaskService } from '@/server/services/task';
 import { TaskIntentService } from '@/server/services/task/intent';
 import { TaskLifecycleService } from '@/server/services/taskLifecycle';
 import { TaskRunnerService } from '@/server/services/taskRunner';
+import { getTaskExecutionContext } from '@/server/services/taskRunner/hostedExecution';
 import { AcceptanceService } from '@/server/services/verify/acceptanceService';
 import { resolveTaskAcceptance } from '@/server/services/verify/taskAcceptance';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
@@ -134,6 +135,7 @@ const updateSchema = z.object({
 });
 
 const listSchema = z.object({
+  groupId: z.string().min(1).optional(),
   // Keyset cursor — rows strictly after this `(orderBy timestamp, seq)` position
   // in newest-first order. Stable under concurrent inserts/deletes, unlike `offset`.
   after: z.object({ at: z.coerce.date(), seq: z.number().int() }).optional(),
@@ -163,6 +165,7 @@ const listSchema = z.object({
 
 const groupListSchema = z
   .object({
+    groupId: z.string().min(1).optional(),
     assigneeAgentId: z.string().optional(),
     automated: z.boolean().optional(),
     excludeStatuses: z.array(z.enum(TASK_STATUSES)).max(10).optional(),
@@ -294,6 +297,7 @@ function notifyAssignedBestEffort(
     id: string;
     identifier: string;
     name: string | null;
+    updatedAt?: Date;
   },
 ) {
   const { assigneeUserId } = task;
@@ -303,6 +307,7 @@ function notifyAssignedBestEffort(
     actorUserId: ctx.userId,
     assigneeUserId,
     taskId: task.id,
+    eventId: task.updatedAt ? `${task.id}:${task.updatedAt.getTime()}` : undefined,
     taskIdentifier: task.identifier,
     taskName: task.name,
     workspaceId: ctx.workspaceId ?? undefined,
@@ -1078,6 +1083,7 @@ export const taskRouter = router({
       idInput.merge(
         z.object({
           continueTopicId: z.string().optional(),
+          maxCredits: z.number().int().positive().safe().optional(),
           prompt: z.string().optional(),
         }),
       ),
@@ -1094,6 +1100,8 @@ export const taskRouter = router({
         return await runner.runTask({
           continueTopicId: input.continueTopicId,
           extraPrompt: input.prompt,
+          executionContext: getTaskExecutionContext(ctx),
+          maxCredits: input.maxCredits,
           taskId: task.id,
         });
       } catch (error) {

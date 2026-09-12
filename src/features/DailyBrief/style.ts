@@ -12,7 +12,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px !important;
   `,
   expandLink: css`
-    border: 1px solid ${cssVar.colorFillTertiary} !important;
+    border: 0.5px solid ${cssVar.colorFillTertiary} !important;
     font-size: 12px;
     color: ${cssVar.colorTextDescription};
   `,

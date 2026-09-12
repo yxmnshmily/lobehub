@@ -20,7 +20,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow: hidden;
 
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};
@@ -56,7 +56,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     color: ${cssVar.colorPrimary};
   `,
   iconCenter: css`
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgElevated};
   `,

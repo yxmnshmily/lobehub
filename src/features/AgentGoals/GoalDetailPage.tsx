@@ -1,20 +1,23 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { PauseIcon, PlayIcon } from 'lucide-react';
-import { memo, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { PanelRightOpenIcon, PauseIcon, PlayIcon } from 'lucide-react';
+import { memo, type ReactNode, use, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import NotFound from '@/components/404';
 import AsyncError from '@/components/AsyncError';
 import GoalDetailSkeleton from '@/components/Skeleton/GoalDetail';
 import AgentBreadcrumb from '@/features/AgentBreadcrumb';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import NavHeader from '@/features/NavHeader';
 import { PortalContent } from '@/features/Portal/router';
 import { usePortalPanelWidth } from '@/features/Portal/usePortalPanelWidth';
 import RightPanel from '@/features/RightPanel';
+import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { usePermission } from '@/hooks/usePermission';
@@ -103,7 +106,9 @@ interface GoalDetailPageProps {
 }
 
 const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
+  const groupScope = use(GroupWorkScopeContext);
   const { t } = useTranslation('chat');
+  const { format } = useMonthlyExchangeRate();
   const { allowed: canEdit } = usePermission('create_content');
   const useFetchGoalGraph = useGoalStore((s) => s.useFetchGoalGraph);
   const { error, isLoading, mutate } = useFetchGoalGraph(goalId);
@@ -168,7 +173,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
       ? goal.maxRounds === null
         ? t('goalProcess.metrics.uncapped')
         : t('goalProcess.metrics.roundsValue', { count: goal.maxRounds })
-      : `$${goal.maxTotalCost}`;
+      : format(goal.maxTotalCost);
 
   return (
     <Flexbox horizontal flex={1} height={'100%'} style={{ overflow: 'hidden' }}>
@@ -176,7 +181,13 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
         <NavHeader
           left={
             <Flexbox horizontal align={'center'} gap={4}>
-              {agentId ? (
+              {groupScope ? (
+                <GroupPageBreadcrumb
+                  groupId={groupScope.groupId}
+                  title="目标"
+                  detailTitle={goal.title}
+                />
+              ) : agentId ? (
                 <AgentBreadcrumb
                   agentId={agentId}
                   extraItems={[goal.title]}
@@ -191,6 +202,17 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   be deletable, and this menu is the only place that can do it. */}
               <GoalDetailActions agentId={agentId} goalId={goal.id} projectId={goal.projectId} />
             </Flexbox>
+          }
+          right={
+            agentId && !chatOpen && !showPortal && !graphFullscreen ? (
+              <ActionIcon
+                aria-label="展开对话"
+                icon={PanelRightOpenIcon}
+                size="small"
+                title="展开对话"
+                onClick={() => setChatOpen(true)}
+              />
+            ) : undefined
           }
         />
         <Flexbox flex={1} style={{ overflowY: 'auto' }}>

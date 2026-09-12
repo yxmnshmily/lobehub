@@ -208,6 +208,10 @@ describe('AiAgentService.execSubAgent', () => {
           metadata: expect.objectContaining({ error: { kind: 'runtime' } }),
         }),
       );
+      expect(mockDebugLog).toHaveBeenCalledWith('ai_agent.execution.error');
+      expect(
+        mockDebugLog.mock.calls.some(([event]) => event === 'ai_agent.execution.completed'),
+      ).toBe(false);
     } finally {
       consoleError.mockRestore();
       consoleWarn.mockRestore();

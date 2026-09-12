@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorFillQuaternary};
   `,
@@ -58,7 +58,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 100%;
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: none;

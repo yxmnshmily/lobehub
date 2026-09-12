@@ -418,9 +418,11 @@ export class FlatListBuilder {
               allMessages,
             );
           } else {
-            // Regular assistant message (not assistantGroup) - add branch info
+            // Content-only supervisors need child blocks on retry branches too.
             const activeBranchWithBranches = this.createMessageWithBranches(
-              activeBranchMsg,
+              isSupervisorMessage(activeBranchMsg)
+                ? this.createSupervisorContentMessage(activeBranchMsg)
+                : activeBranchMsg,
               nonToolChildMessages.length,
               activeBranchIndex,
             );

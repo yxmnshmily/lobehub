@@ -79,6 +79,8 @@ export interface ServerUserMemoryConfig {
  * instead of fetching from stores
  */
 export interface ServerMessagesEngineParams {
+  /** Non-wire message identity map after final context transformations and cleanup. */
+  onMessageSources?: (sourceMessageIds: (string | undefined)[]) => void;
   /** Agent-materialized presentation contexts for this LLM call */
   additionalContexts?: readonly RuntimeAdditionalContextFragment[];
   /** Additional variable values to merge with defaults (e.g. device paths) */

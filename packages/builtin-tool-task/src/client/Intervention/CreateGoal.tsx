@@ -79,7 +79,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 8px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   sectionHeader: css`

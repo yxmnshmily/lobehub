@@ -1,8 +1,11 @@
 import { GROUP_SUPERVISOR, INBOX } from '@lobechat/builtin-agents';
 import { TravelProductionIdentifier } from '@lobechat/builtin-tool-travel-production';
+import { DEFAULT_INBOX_AVATAR } from '@lobechat/const';
 import type { LobeChatDatabase } from '@lobechat/database';
 import { agents, chatGroups, chatGroupsAgents, users } from '@lobechat/database/schemas';
-import { and, eq, inArray, isNull, ne, or } from 'drizzle-orm';
+import { AgentPluginEntrySchema, parsePluginEntry } from '@lobechat/types';
+import { and, eq, inArray, isNull, like, ne, or, sql } from 'drizzle-orm';
+import isEqual from 'fast-deep-equal';
 
 import { AgentModel } from '@/database/models/agent';
 import { AgentSkillModel } from '@/database/models/agentSkill';
@@ -10,14 +13,29 @@ import { ChatGroupModel } from '@/database/models/chatGroup';
 import type { ChatGroupConfig } from '@/database/types/chatGroup';
 import { authEnv } from '@/envs/auth';
 
+import {
+  applySuperGroupTemplate,
+  getSuperGroupTemplate,
+  lockSuperGroupTemplate,
+} from './travelServiceGroupTemplate';
+
 export const DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID = 'default-travel-service-group';
 export const DEFAULT_TRAVEL_GROUP_SUPERVISOR_TITLE = '旅游群主AI';
-export const DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT = `你在这个群组中的用户可见身份是“旅游群主AI”，负责统筹旅游服务内容与制作任务。
+const LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT = `你在这个群组中的用户可见身份是“旅游群主AI”，负责统筹旅游服务内容与制作任务。
 
 - 根据用户需求，将文案、图片封面、视频、行程文档交给群内对应的制作助理，然后向用户汇总最终结果。
 - 不向用户暴露内部 Agent ID、平台密钥、调度标记或系统实现细节。
 - 未实际生成的图片、视频或文档不得宣称已完成；信息不足时先请用户补充。
 - 默认使用用户的语言回复，旅游地名、行程、价格和时刻等不得虚构。`;
+
+export const DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT = `${LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT}
+
+- 你的首要职责是整个超级工作群的协作架构与讨论秩序：明确各助理的职责、任务分工、协作顺序和交付标准，避免重复工作和互相干扰。
+- 遇到意见冲突时，先澄清各方依据与共同目标，协调分歧、汇总可执行结论；不要参与争吵，不要让助理反复互相争论。需要人作决定时，请真人群主确认。
+- 群架构建议不等于管理权限：你不能擅自添加或删除助理、改变成员权限、踢出真人成员或删除话题和聊天记录。助理结构由平台管理员统一维护，真人成员管理遵守群主权限。`;
+
+const TRAVEL_GROUP_SUPERVISOR_DESCRIPTION =
+  '负责超级工作群的协作架构、任务分工与讨论秩序，协调分歧，避免争吵，并汇总群内助理的工作成果。';
 
 export const TRAVEL_SPECIALIST_TEMPLATES = [
   {
@@ -125,6 +143,8 @@ export const DEFAULT_TRAVEL_SERVICE_GROUP_HEALTH_ISSUE_CODES = [
   'DOCUMENT_ASSISTANT_SKILL_BINDING_MISSING',
   'DOCUMENT_ASSISTANT_TOOL_BINDING_MISSING',
   'DOCUMENT_ASSISTANT_TEMPLATE_MISMATCH',
+  'PUBLISHED_TEMPLATE_MEMBERS_OUT_OF_SYNC',
+  'PUBLISHED_TEMPLATE_MEMBERS_REVIEW_REQUIRED',
 ] as const;
 
 export type DefaultTravelServiceGroupHealthIssueCode =
@@ -157,6 +177,7 @@ export const DEFAULT_TRAVEL_SERVICE_GROUP_REPAIR_ACTION_CODES = [
   'MARK_PLATFORM_MANAGED',
   'ENSURE_REQUIRED_MEMBER',
   'ENABLE_REQUIRED_MEMBER',
+  'APPLY_PUBLISHED_TEMPLATE',
   'REMOVE_DUPLICATE_REVIEW_REQUIRED',
   'SUPERVISOR_REVIEW_REQUIRED',
   'UNKNOWN_ISSUE_REVIEW_REQUIRED',
@@ -189,6 +210,7 @@ export const SAFE_DEFAULT_TRAVEL_SERVICE_GROUP_REPAIR_ACTION_CODES = [
   'MARK_PLATFORM_MANAGED',
   'ENSURE_REQUIRED_MEMBER',
   'ENABLE_REQUIRED_MEMBER',
+  'APPLY_PUBLISHED_TEMPLATE',
 ] as const;
 
 export type SafeDefaultTravelServiceGroupRepairActionCode =
@@ -375,6 +397,12 @@ const repairActionForIssue = (
         target: 'document-assistant',
       };
     }
+    case 'PUBLISHED_TEMPLATE_MEMBERS_OUT_OF_SYNC': {
+      return { code: 'APPLY_PUBLISHED_TEMPLATE', reviewRequired: false, target: 'group' };
+    }
+    case 'PUBLISHED_TEMPLATE_MEMBERS_REVIEW_REQUIRED': {
+      return { code: 'UNKNOWN_ISSUE_REVIEW_REQUIRED', reviewRequired: true, target: 'group' };
+    }
   }
 };
 
@@ -423,21 +451,87 @@ export const isRequiredTravelServiceAgentIdentity = ({
 }: {
   clientId?: string | null;
   slug?: string | null;
-}) => slug === GROUP_SUPERVISOR.slug || REQUIRED_TRAVEL_SPECIALIST_CLIENT_IDS.has(clientId ?? '');
+}) =>
+  slug === GROUP_SUPERVISOR.slug ||
+  REQUIRED_TRAVEL_SPECIALIST_CLIENT_IDS.has(clientId ?? '') ||
+  clientId?.startsWith('supergroup-template-') === true;
 
 const isPlatformManagedAgent = (agencyConfig: (typeof agents.$inferSelect)['agencyConfig']) =>
   agencyConfig?.modelRuntimeMode === 'platform-managed' &&
   agencyConfig.modelSelectionPolicy === 'fixed';
 
+export const getSuperGroupTemplateMemberClientId = (key: string) =>
+  TRAVEL_SPECIALIST_TEMPLATES.find((item) => item.key === key)?.clientId ??
+  `supergroup-template-${key}`;
+
+type PublishedTemplateMemberCandidate = {
+  agencyConfig: (typeof agents.$inferSelect)['agencyConfig'];
+  avatar: string | null;
+  backgroundColor: string | null;
+  description: string | null;
+  model: string | null;
+  name: string | null;
+  params: (typeof agents.$inferSelect)['params'];
+  plugins: (typeof agents.$inferSelect)['plugins'];
+  provider: string | null;
+  systemRole: string | null;
+  title: string | null;
+};
+
+const normalizedPluginBindings = (plugins: unknown) => {
+  const parsed = AgentPluginEntrySchema.array().safeParse(plugins ?? []);
+  return parsed.success
+    ? parsed.data
+        .map(parsePluginEntry)
+        .sort((a, b) => a.identifier.localeCompare(b.identifier) || a.mode.localeCompare(b.mode))
+    : null;
+};
+
+const matchesPublishedTemplateMember = (
+  candidate: PublishedTemplateMemberCandidate,
+  member: Awaited<ReturnType<typeof getSuperGroupTemplate>>['members'][number],
+) => {
+  const actualPlugins = normalizedPluginBindings(candidate.plugins);
+  const builtin = TRAVEL_SPECIALIST_TEMPLATES.find(({ key }) => key === member.key);
+  const expectedPlugins = normalizedPluginBindings(
+    member.pluginBindings ?? [
+      ...new Set([...member.plugins, ...(member.sourceAgentId ? [] : (builtin?.skillSlots ?? []))]),
+    ],
+  );
+  return (
+    isPlatformManagedAgent(candidate.agencyConfig) &&
+    (!member.model || candidate.model === member.model) &&
+    (!member.provider || candidate.provider === member.provider) &&
+    (!member.params || isEqual(candidate.params ?? {}, member.params)) &&
+    candidate.avatar === member.avatar &&
+    (member.backgroundColor === undefined ||
+      candidate.backgroundColor === member.backgroundColor) &&
+    candidate.description ===
+      (member.pendingReason ? `【加入】\n${member.description}` : member.description) &&
+    candidate.agencyConfig?.publicationBlockedReason === member.pendingReason &&
+    candidate.systemRole === member.systemRole &&
+    candidate.title === member.title &&
+    (member.name === undefined || candidate.name === (member.name || null)) &&
+    actualPlugins !== null &&
+    expectedPlugins !== null &&
+    isEqual(actualPlugins, expectedPlugins)
+  );
+};
+
 const getRequiredMemberBindingDiagnostic = (
   template: (typeof TRAVEL_SPECIALIST_TEMPLATES)[number],
-  plugins: string[],
+  plugins: unknown,
   skillExists: boolean,
-) => ({
-  missingSkillBinding: !plugins.includes(template.skillSlots[0]),
-  missingSkillIdentifier: !skillExists,
-  missingTools: template.plugins.filter((identifier) => !plugins.includes(identifier)),
-});
+) => {
+  const activePlugins = (normalizedPluginBindings(plugins) ?? [])
+    .filter(({ mode }) => mode === 'pinned')
+    .map(({ identifier }) => identifier);
+  return {
+    missingSkillBinding: !activePlugins.includes(template.skillSlots[0]),
+    missingSkillIdentifier: !skillExists,
+    missingTools: template.plugins.filter((identifier) => !activePlugins.includes(identifier)),
+  };
+};
 
 type TravelGroupSupervisorDiagnosticCandidate = {
   agencyConfig: (typeof agents.$inferSelect)['agencyConfig'];
@@ -448,6 +542,7 @@ type TravelGroupSupervisorDiagnosticCandidate = {
 
 const getTravelGroupSupervisorDiagnostic = (
   supervisors: TravelGroupSupervisorDiagnosticCandidate[],
+  expectedTitle = DEFAULT_TRAVEL_GROUP_SUPERVISOR_TITLE,
 ): {
   issueCodes: DefaultTravelServiceGroupHealthIssueCode[];
   supervisor: DefaultTravelServiceGroupHealthSummary['supervisor'];
@@ -457,7 +552,7 @@ const getTravelGroupSupervisorDiagnostic = (
   const supervisor = {
     count: supervisors.length,
     platformManaged: identityMatches && isPlatformManagedAgent(supervisors[0].agencyConfig),
-    titleMatches: identityMatches && supervisors[0].title === DEFAULT_TRAVEL_GROUP_SUPERVISOR_TITLE,
+    titleMatches: identityMatches && supervisors[0].title === expectedTitle,
   };
   const issueCodes: DefaultTravelServiceGroupHealthIssueCode[] = [];
 
@@ -519,6 +614,7 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
         eq(agents.userId, targetUserId),
         or(
           eq(agents.slug, GROUP_SUPERVISOR.slug),
+          like(agents.clientId, 'supergroup-template-%'),
           inArray(
             agents.clientId,
             TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId }) => clientId),
@@ -559,17 +655,24 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
   const roster = await db
     .select({
       agencyConfig: agents.agencyConfig,
+      avatar: agents.avatar,
+      backgroundColor: agents.backgroundColor,
       agentUserId: agents.userId,
       agentWorkspaceId: agents.workspaceId,
       clientId: agents.clientId,
+      description: agents.description,
       enabled: chatGroupsAgents.enabled,
+      model: agents.model,
+      params: agents.params,
       plugins: agents.plugins,
+      provider: agents.provider,
       relationUserId: chatGroupsAgents.userId,
       relationWorkspaceId: chatGroupsAgents.workspaceId,
       role: chatGroupsAgents.role,
       slug: agents.slug,
       systemRole: agents.systemRole,
       title: agents.title,
+      name: agents.name,
     })
     .from(chatGroupsAgents)
     .innerJoin(agents, eq(agents.id, chatGroupsAgents.agentId))
@@ -589,7 +692,11 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
   );
 
   const supervisors = roster.filter(({ role }) => role === 'supervisor');
-  const supervisorDiagnostic = getTravelGroupSupervisorDiagnostic(supervisors);
+  const publishedTemplate = await getSuperGroupTemplate(db);
+  const supervisorDiagnostic = getTravelGroupSupervisorDiagnostic(
+    supervisors,
+    publishedTemplate.supervisor?.title,
+  );
 
   for (const template of TRAVEL_SPECIALIST_TEMPLATES) {
     const members = roster.filter(
@@ -606,7 +713,9 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
   if (groups.length > 1) issueCodes.push('DEFAULT_GROUP_DUPLICATED');
   const isPrivate = groups.every(({ visibility }) => visibility === 'private');
   if (!isPrivate) issueCodes.push('DEFAULT_GROUP_NOT_PRIVATE');
-  if (groups.some(({ content }) => !content?.trim())) {
+  if (
+    groups.some(({ content }) => !content?.trim() || content === LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT)
+  ) {
     issueCodes.push('DEFAULT_GROUP_INSTRUCTIONS_MISSING');
   }
   if (scopeInvalid) issueCodes.push('DEFAULT_GROUP_SCOPE_INVALID');
@@ -680,6 +789,7 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
     'video-producer': 'VIDEO_PRODUCER_TEMPLATE_MISMATCH',
   };
   for (const [index, template] of TRAVEL_SPECIALIST_TEMPLATES.entries()) {
+    if (publishedTemplate.revision > 0) continue;
     const status = requiredMembers[template.key];
     const codes = memberIssueCodes[template.key];
     const members = roster.filter(
@@ -696,7 +806,11 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
     }
     if (!status.enabled) issueCodes.push(codes.disabled);
     if (!status.platformManaged) issueCodes.push(codes.notPlatformManaged);
-    if (members[0].title !== template.label || members[0].systemRole !== template.systemRole) {
+    const publishedMember = publishedTemplate.members.find(({ key }) => key === template.key);
+    if (
+      members[0].title !== (publishedMember?.title ?? template.label) ||
+      members[0].systemRole !== (publishedMember?.systemRole ?? template.systemRole)
+    ) {
       issueCodes.push(memberTemplateIssueCodes[template.key]);
     }
     const plugins = Array.isArray(members[0].plugins) ? members[0].plugins : [];
@@ -710,6 +824,46 @@ export const getDefaultTravelServiceGroupHealthSummary = async (
       issueCodes.push(bindingCodes.skill);
     }
     if (bindingDiagnostic.missingTools.length > 0) issueCodes.push(bindingCodes.tool);
+  }
+
+  const builtinKeys = new Set<string>(TRAVEL_SPECIALIST_TEMPLATES.map(({ key }) => key));
+  const customTemplateMembers = publishedTemplate.members.filter(
+    ({ key }) => publishedTemplate.revision > 0 || !builtinKeys.has(key),
+  );
+  const expectedCustomClientIds = new Set<string>(
+    customTemplateMembers.map(({ key }) => getSuperGroupTemplateMemberClientId(key)),
+  );
+  let publishedTemplateOutOfSync = false;
+  let publishedTemplateNeedsReview = false;
+  for (const member of customTemplateMembers) {
+    const memberClientId = getSuperGroupTemplateMemberClientId(member.key);
+    const matchingMembers = roster.filter(
+      ({ clientId, role }) => clientId === memberClientId && role !== 'supervisor',
+    );
+    if (matchingMembers.length > 1) {
+      publishedTemplateNeedsReview = true;
+      continue;
+    }
+    if (
+      matchingMembers.length === 0 ||
+      matchingMembers[0].enabled !== true ||
+      !matchesPublishedTemplateMember(matchingMembers[0], member)
+    ) {
+      publishedTemplateOutOfSync = true;
+    }
+  }
+  if (
+    roster.some(
+      ({ clientId }) =>
+        clientId?.startsWith('supergroup-template-') && !expectedCustomClientIds.has(clientId),
+    )
+  ) {
+    publishedTemplateNeedsReview = true;
+  }
+  if (publishedTemplateNeedsReview) {
+    issueCodes.push('PUBLISHED_TEMPLATE_MEMBERS_REVIEW_REQUIRED');
+  } else if (publishedTemplateOutOfSync) {
+    issueCodes.push('PUBLISHED_TEMPLATE_MEMBERS_OUT_OF_SYNC');
   }
 
   return {
@@ -776,6 +930,10 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
   const agentModel = new AgentModel(db, userId);
   const skillModel = new AgentSkillModel(db, userId);
 
+  // A published roster replaces the bootstrap defaults, including an empty roster.
+  const publishedTemplate = await getSuperGroupTemplate(db);
+  const bootstrapTemplates = publishedTemplate.revision > 0 ? [] : TRAVEL_SPECIALIST_TEMPLATES;
+
   const [supervisor, legacyInbox] = await Promise.all([
     agentModel.getBuiltinAgent(GROUP_SUPERVISOR.slug),
     agentModel.getBuiltinAgent(INBOX.slug),
@@ -783,11 +941,17 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
   if (!supervisor) {
     throw new Error('Travel service group built-in supervisor agent is unavailable');
   }
-  await agentModel.updateConfig(supervisor.id, { title: DEFAULT_TRAVEL_GROUP_SUPERVISOR_TITLE });
+  await agentModel.updateConfig(supervisor.id, {
+    avatar: DEFAULT_INBOX_AVATAR,
+    title: DEFAULT_TRAVEL_GROUP_SUPERVISOR_TITLE,
+    ...(!supervisor.description?.trim()
+      ? { description: TRAVEL_GROUP_SUPERVISOR_DESCRIPTION }
+      : {}),
+  });
   await agentModel.ensurePlatformManagedModelRuntime(supervisor.id);
 
   const skills = await Promise.all(
-    TRAVEL_SPECIALIST_TEMPLATES.map(({ description, label, skillContent, skillSlots }) =>
+    bootstrapTemplates.map(({ description, label, skillContent, skillSlots }) =>
       skillModel.ensureByIdentifier({
         content: skillContent,
         description,
@@ -799,12 +963,13 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
     ),
   );
   const specialists = await Promise.all(
-    TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId, label, plugins, systemRole }, index) =>
+    bootstrapTemplates.map(({ clientId, description, label, plugins, systemRole }, index) =>
       agentModel.ensureByClientId(clientId, {
         agencyConfig: {
           modelRuntimeMode: 'platform-managed',
           modelSelectionPolicy: 'fixed',
         },
+        description,
         plugins: [...(plugins ? [...plugins] : []), skills[index].identifier],
         systemRole,
         title: label,
@@ -814,7 +979,7 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
   );
   await Promise.all(
     specialists.map((specialist, index) => {
-      const clientId = TRAVEL_SPECIALIST_TEMPLATES[index].clientId;
+      const clientId = bootstrapTemplates[index].clientId;
       const plugins = Array.isArray(specialist.plugins) ? specialist.plugins : [];
       const obsoletePlugin =
         clientId === 'default-travel-image-designer'
@@ -822,11 +987,16 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
           : clientId === 'default-travel-document-assistant'
             ? 'lobe-artifacts'
             : undefined;
-      if (!obsoletePlugin || !plugins.includes(obsoletePlugin)) return;
-
-      return agentModel.updateConfig(specialist.id, {
-        plugins: plugins.filter((identifier) => identifier !== obsoletePlugin),
-      });
+      const patch = {
+        ...(!specialist.description?.trim()
+          ? { description: bootstrapTemplates[index].description }
+          : {}),
+        ...(obsoletePlugin && plugins.includes(obsoletePlugin)
+          ? { plugins: plugins.filter((identifier) => identifier !== obsoletePlugin) }
+          : {}),
+      };
+      if (Object.keys(patch).length === 0) return;
+      return agentModel.updateConfig(specialist.id, patch);
     }),
   );
   // updateConfig deliberately strips the server-only runtime marker from any
@@ -844,7 +1014,7 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
       skillSlots: ['tourism-service-orchestration'],
       status: 'configured',
     },
-    ...TRAVEL_SPECIALIST_TEMPLATES.map((slot, index) => ({
+    ...bootstrapTemplates.map((slot, index) => ({
       agentId: specialists[index].id,
       configurable: false,
       key: slot.key,
@@ -871,6 +1041,8 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
   });
   if (!group.content?.trim())
     await groupModel.ensureContentIfBlank(group.id, DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT);
+  else if (group.content === LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT)
+    await groupModel.update(group.id, { content: DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT });
   if (group.visibility !== 'private') await groupModel.setVisibility(group.id, 'private');
 
   const legacySupervisors = (await groupModel.getGroupAgents(group.id)).filter(
@@ -906,7 +1078,7 @@ const initDefaultTravelServiceGroupInTransaction = async (db: LobeChatDatabase, 
     specialists.map(({ id }) => id),
   );
 
-  return group;
+  return (await applySuperGroupTemplate(db, group.id, userId)) ?? group;
 };
 
 const sameRepairPlan = (
@@ -950,6 +1122,7 @@ const assertDefaultTravelServiceGroupRepairScope = async (
         eq(agents.userId, targetUserId),
         or(
           eq(agents.slug, GROUP_SUPERVISOR.slug),
+          like(agents.clientId, 'supergroup-template-%'),
           inArray(
             agents.clientId,
             TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId }) => clientId),
@@ -1066,6 +1239,7 @@ const ensureRequiredTravelServiceMember = async (
   });
   await agentModel.ensurePlatformManagedModelRuntime(specialist.id);
   await groupModel.ensureParticipantAgents(groupId, [specialist.id]);
+  if (!workspaceId) await applySuperGroupTemplate(db, groupId, targetUserId);
 };
 
 const applyDefaultTravelServiceGroupRepairAction = async (
@@ -1094,9 +1268,37 @@ const applyDefaultTravelServiceGroupRepairAction = async (
       return;
     }
     case 'ENSURE_GROUP_INSTRUCTIONS': {
-      const group = await groupModel.ensureContentIfBlank(
+      let group = await groupModel.ensureContentIfBlank(
         groupId,
         DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT,
+      );
+      if (group.content === LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT)
+        group = await groupModel.update(groupId, { content: DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT });
+      // The readiness repair path does not run onboarding. Backfill only blank,
+      // public introductions; never replace an administrator's published profile.
+      await Promise.all(
+        [
+          {
+            condition: eq(agents.slug, GROUP_SUPERVISOR.slug),
+            description: TRAVEL_GROUP_SUPERVISOR_DESCRIPTION,
+          },
+          ...TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId, description }) => ({
+            condition: eq(agents.clientId, clientId),
+            description,
+          })),
+        ].map(({ condition, description }) =>
+          db
+            .update(agents)
+            .set({ description })
+            .where(
+              and(
+                eq(agents.userId, target.targetUserId),
+                isNull(agents.workspaceId),
+                condition,
+                sql`nullif(trim(${agents.description}), '') IS NULL`,
+              ),
+            ),
+        ),
       );
       if (!group.content?.trim()) throw new Error(TRAVEL_GROUP_REPAIR_EXECUTION_FAILED);
       return;
@@ -1165,6 +1367,11 @@ const applyDefaultTravelServiceGroupRepairAction = async (
     case 'ENABLE_REQUIRED_MEMBER': {
       const agentId = await getRepairTargetAgentId(db, groupId, action.target);
       await groupModel.ensureParticipantAgents(groupId, [agentId]);
+      return;
+    }
+    case 'APPLY_PUBLISHED_TEMPLATE': {
+      if (workspaceId) throw new Error(TRAVEL_GROUP_REPAIR_SCOPE_INVALID);
+      await applySuperGroupTemplate(db, groupId, target.targetUserId);
       return;
     }
     default: {
@@ -1261,9 +1468,78 @@ export const executeDefaultTravelServiceGroupRepairPlan = async (
 };
 
 export const initDefaultTravelServiceGroup = async (db: LobeChatDatabase, userId: string) =>
-  db.transaction((tx) =>
-    initDefaultTravelServiceGroupInTransaction(tx as LobeChatDatabase, userId),
-  );
+  db.transaction(async (tx) => {
+    await lockSuperGroupTemplate(tx as LobeChatDatabase);
+    return initDefaultTravelServiceGroupInTransaction(tx as LobeChatDatabase, userId);
+  });
+
+/** Upgrade only missing/default metadata on an existing owned group; never run onboarding. */
+export const backfillDefaultTravelGroupSupervisorProfile = async (
+  db: LobeChatDatabase,
+  userId: string,
+  groupId: string,
+): Promise<boolean> => {
+  if ((await getTravelServiceGroupAccessState(db, userId)) !== 'active') return false;
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        agentId: agents.id,
+        content: chatGroups.content,
+        description: agents.description,
+      })
+      .from(chatGroups)
+      .innerJoin(chatGroupsAgents, eq(chatGroupsAgents.chatGroupId, chatGroups.id))
+      .innerJoin(agents, eq(agents.id, chatGroupsAgents.agentId))
+      .where(
+        and(
+          eq(chatGroups.id, groupId),
+          eq(chatGroups.clientId, DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID),
+          eq(chatGroups.userId, userId),
+          isNull(chatGroups.workspaceId),
+          eq(chatGroupsAgents.role, 'supervisor'),
+          eq(chatGroupsAgents.enabled, true),
+          eq(chatGroupsAgents.userId, userId),
+          isNull(chatGroupsAgents.workspaceId),
+          eq(agents.userId, userId),
+          isNull(agents.workspaceId),
+          eq(agents.slug, GROUP_SUPERVISOR.slug),
+          or(
+            sql`nullif(trim(${agents.description}), '') IS NULL`,
+            sql`nullif(trim(${chatGroups.content}), '') IS NULL`,
+            eq(chatGroups.content, LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT),
+          ),
+        ),
+      )
+      .limit(2)
+      .for('update');
+    if (rows.length !== 1) return false;
+    const row = rows[0];
+    let changed = false;
+    if (!row.description?.trim()) {
+      await tx
+        .update(agents)
+        .set({
+          description: TRAVEL_GROUP_SUPERVISOR_DESCRIPTION,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(agents.id, row.agentId), sql`nullif(trim(${agents.description}), '') IS NULL`),
+        );
+      changed = true;
+    }
+    if (!row.content?.trim() || row.content === LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT) {
+      await tx
+        .update(chatGroups)
+        .set({
+          content: DEFAULT_TRAVEL_GROUP_SYSTEM_PROMPT,
+          updatedAt: new Date(),
+        })
+        .where(eq(chatGroups.id, groupId));
+      changed = true;
+    }
+    return changed;
+  });
+};
 
 export const checkDefaultTravelServiceGroup = async (db: LobeChatDatabase, userId: string) => {
   const accessState = await getTravelServiceGroupAccessState(db, userId);
@@ -1271,11 +1547,13 @@ export const checkDefaultTravelServiceGroup = async (db: LobeChatDatabase, userI
   const agentModel = new AgentModel(db, userId);
   const skillModel = new AgentSkillModel(db, userId);
   const group = await groupModel.findByClientId(DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID);
+  const publishedTemplate = await getSuperGroupTemplate(db);
+  const requiredTemplates = publishedTemplate.revision > 0 ? [] : TRAVEL_SPECIALIST_TEMPLATES;
   const specialists = await Promise.all(
-    TRAVEL_SPECIALIST_TEMPLATES.map(({ clientId }) => agentModel.findByClientId(clientId)),
+    requiredTemplates.map(({ clientId }) => agentModel.findByClientId(clientId)),
   );
   const skills = await Promise.all(
-    TRAVEL_SPECIALIST_TEMPLATES.map(({ skillSlots }) => skillModel.findByIdentifier(skillSlots[0])),
+    requiredTemplates.map(({ skillSlots }) => skillModel.findByIdentifier(skillSlots[0])),
   );
   const supervisorAgentId = group ? await groupModel.getSupervisorAgentId(group.id) : null;
   const supervisor = supervisorAgentId
@@ -1291,36 +1569,83 @@ export const checkDefaultTravelServiceGroup = async (db: LobeChatDatabase, userI
       slug: membership.agentId === supervisorAgentId ? (supervisor?.slug ?? null) : null,
       title: membership.agentId === supervisorAgentId ? (supervisor?.title ?? null) : null,
     })),
+    publishedTemplate.supervisor?.title,
   );
   const members = group ? await groupModel.getEnabledGroupAgents(group.id) : [];
-  const supervisorInstructionsConfigured = Boolean(group?.content?.trim());
+  const supervisorInstructionsConfigured =
+    Boolean(group?.content?.trim()) && group?.content !== LEGACY_TRAVEL_GROUP_SYSTEM_PROMPT;
   const expectedAgentIds = specialists.flatMap((agent) => (agent ? [agent.id] : []));
-  const bindingDiagnostics = TRAVEL_SPECIALIST_TEMPLATES.map((template, index) =>
+  const bindingDiagnostics = requiredTemplates.map((template, index) =>
     getRequiredMemberBindingDiagnostic(
       template,
       Array.isArray(specialists[index]?.plugins) ? specialists[index].plugins : [],
       Boolean(skills[index]),
     ),
   );
-  const missingSkillIdentifiers = TRAVEL_SPECIALIST_TEMPLATES.flatMap(({ skillSlots }, index) =>
+  const missingSkillIdentifiers = requiredTemplates.flatMap(({ skillSlots }, index) =>
     bindingDiagnostics[index].missingSkillIdentifier ? [skillSlots[0]] : [],
   );
-  const missingSkillBindings = TRAVEL_SPECIALIST_TEMPLATES.flatMap(({ skillSlots }, index) =>
+  const missingSkillBindings = requiredTemplates.flatMap(({ skillSlots }, index) =>
     bindingDiagnostics[index].missingSkillBinding ? [skillSlots[0]] : [],
   );
   const missingToolBindings = bindingDiagnostics.flatMap(({ missingTools }) => missingTools);
-  const missingPlatformManagedRuntimeClientIds = TRAVEL_SPECIALIST_TEMPLATES.flatMap(
-    ({ clientId }, index) =>
-      specialists[index]?.agencyConfig?.modelRuntimeMode === 'platform-managed' ? [] : [clientId],
+  const missingPlatformManagedRuntimeClientIds = requiredTemplates.flatMap(({ clientId }, index) =>
+    specialists[index]?.agencyConfig?.modelRuntimeMode === 'platform-managed' ? [] : [clientId],
   );
-  const missingFixedModelSelectionClientIds = TRAVEL_SPECIALIST_TEMPLATES.flatMap(
-    ({ clientId }, index) =>
-      specialists[index]?.agencyConfig?.modelSelectionPolicy === 'fixed' ? [] : [clientId],
+  const missingFixedModelSelectionClientIds = requiredTemplates.flatMap(({ clientId }, index) =>
+    specialists[index]?.agencyConfig?.modelSelectionPolicy === 'fixed' ? [] : [clientId],
   );
-  const specialistTemplatesMatch = TRAVEL_SPECIALIST_TEMPLATES.every(
-    ({ label, systemRole }, index) =>
-      specialists[index]?.title === label && specialists[index]?.systemRole === systemRole,
+  const builtinKeys = new Set<string>(TRAVEL_SPECIALIST_TEMPLATES.map(({ key }) => key));
+  const customTemplateMembers = publishedTemplate.members.filter(
+    ({ key }) => publishedTemplate.revision > 0 || !builtinKeys.has(key),
   );
+  const customClientIds = customTemplateMembers.map(({ key }) =>
+    getSuperGroupTemplateMemberClientId(key),
+  );
+  const customAgents =
+    customClientIds.length === 0
+      ? []
+      : await db
+          .select({
+            agencyConfig: agents.agencyConfig,
+            avatar: agents.avatar,
+            backgroundColor: agents.backgroundColor,
+            clientId: agents.clientId,
+            description: agents.description,
+            id: agents.id,
+            model: agents.model,
+            params: agents.params,
+            plugins: agents.plugins,
+            provider: agents.provider,
+            systemRole: agents.systemRole,
+            title: agents.title,
+            name: agents.name,
+          })
+          .from(agents)
+          .where(
+            and(
+              eq(agents.userId, userId),
+              isNull(agents.workspaceId),
+              inArray(agents.clientId, customClientIds),
+            ),
+          );
+  const publishedTemplateMembersReady = customTemplateMembers.every((member) => {
+    const candidates = customAgents.filter(
+      ({ clientId }) => clientId === getSuperGroupTemplateMemberClientId(member.key),
+    );
+    return (
+      candidates.length === 1 &&
+      members.some(({ agentId }) => agentId === candidates[0].id) &&
+      matchesPublishedTemplateMember(candidates[0], member)
+    );
+  });
+  const specialistTemplatesMatch = requiredTemplates.every(({ key, label, systemRole }, index) => {
+    const member = publishedTemplate.members.find((item) => item.key === key);
+    return (
+      specialists[index]?.title === (member?.title ?? label) &&
+      specialists[index]?.systemRole === (member?.systemRole ?? systemRole)
+    );
+  });
 
   return {
     accessState,
@@ -1329,7 +1654,7 @@ export const checkDefaultTravelServiceGroup = async (db: LobeChatDatabase, userI
     memberCount: members.length,
     missingFixedModelSelectionClientIds,
     missingPlatformManagedRuntimeClientIds,
-    missingSpecialistClientIds: TRAVEL_SPECIALIST_TEMPLATES.flatMap(({ clientId }, index) =>
+    missingSpecialistClientIds: requiredTemplates.flatMap(({ clientId }, index) =>
       specialists[index] ? [] : [clientId],
     ),
     missingSkillBindings,
@@ -1345,6 +1670,7 @@ export const checkDefaultTravelServiceGroup = async (db: LobeChatDatabase, userI
       missingPlatformManagedRuntimeClientIds.length === 0 &&
       missingFixedModelSelectionClientIds.length === 0 &&
       specialistTemplatesMatch &&
+      publishedTemplateMembersReady &&
       skills.every(Boolean) &&
       missingSkillBindings.length === 0 &&
       missingToolBindings.length === 0 &&

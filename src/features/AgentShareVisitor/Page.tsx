@@ -79,7 +79,7 @@ const AgentShareVisitorPage = memo(() => {
           // below is the visitor's only way out of the dead end.
           action={
             state === 'generic' ? undefined : (
-              <Button size={'small'} onClick={() => navigate('/')}>
+              <Button size={'small'} onClick={() => navigate('/group/default')}>
                 {t('share.visitor.access.backHome')}
               </Button>
             )
@@ -96,7 +96,7 @@ const AgentShareVisitorPage = memo(() => {
     <Flexbox horizontal flex={1} height={'100%'} style={{ overflow: 'hidden' }} width={'100%'}>
       {!isMobile && (
         <Flexbox
-          style={{ borderInlineEnd: `1px solid ${cssVar.colorBorderSecondary}` }}
+          style={{ borderInlineEnd: `0.5px solid ${cssVar.colorBorderSecondary}` }}
           width={SIDEBAR_WIDTH}
         >
           <TopicPanel enabled={interactive} shareId={data.shareId} />
@@ -108,7 +108,7 @@ const AgentShareVisitorPage = memo(() => {
           align={'center'}
           gap={8}
           padding={12}
-          style={{ borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}` }}
+          style={{ borderBlockEnd: `0.5px solid ${cssVar.colorBorderSecondary}` }}
         >
           {isMobile && (
             <ActionIcon

@@ -1,7 +1,7 @@
 'use client';
 
 import type { WorkSummaryItem } from '@lobechat/types';
-import { formatUsageValue } from '@lobechat/utils';
+import { formatLocalizedTokens as formatUsageValue } from '@lobechat/utils';
 import { Center, Flexbox, Icon as LobeIcon } from '@lobehub/ui';
 import { Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cx } from 'antd-style';
@@ -9,9 +9,9 @@ import { CircleDollarSignIcon, CoinsIcon, Trash2Icon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useChatStore } from '@/store/chat';
 import { getWorkVersionTotalTokens } from '@/utils/workCumulativeUsage';
-import { formatWorkVersionCost } from '@/utils/workVersionCost';
 
 import { getWorkTypeDescriptor, isSafeExternalUrl } from './descriptors';
 
@@ -22,7 +22,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 100%;
     padding-block: 12px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgElevated};
@@ -132,6 +132,7 @@ interface WorkSummaryCardProps {
 const WorkSummaryCard = memo<WorkSummaryCardProps>(
   ({ className, item, onOpen, variant = 'card' }) => {
     const { t } = useTranslation('chat');
+    const { formatOptional: formatWorkVersionCost } = useMonthlyExchangeRate();
     const openDocument = useChatStore((s) => s.openDocument);
     const openFilePreview = useChatStore((s) => s.openFilePreview);
     const openTaskDetail = useChatStore((s) => s.openTaskDetail);

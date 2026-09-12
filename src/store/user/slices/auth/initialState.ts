@@ -4,6 +4,7 @@ import { type LobeUser } from '@/types/user';
 
 export interface UserAuthState {
   authProviders?: SSOProvider[];
+  authProvidersError?: boolean;
   /**
    * Whether user registered with email/password (credential login)
    */
@@ -11,8 +12,9 @@ export interface UserAuthState {
   /** Whether the current local cache identity has been authoritatively selected. */
   isIdentityResolved?: boolean;
   isLoaded?: boolean;
-
   isLoadedAuthProviders?: boolean;
+
+  isLoadingAuthProviders?: boolean;
 
   isSignedIn?: boolean;
   oAuthSSOProviders?: string[];

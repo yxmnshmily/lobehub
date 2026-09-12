@@ -26,6 +26,10 @@ vi.mock('@/routes/(main)/community/features/Search', () => ({
   default: () => <div data-testid="community-search" />,
 }));
 
+vi.mock('@/routes/(main)/community/_layout/Sidebar/Header/Nav', () => ({
+  default: () => <nav aria-label="社区栏目" />,
+}));
+
 vi.mock('@/routes/(main)/community/features/UserAvatar', () => ({
   default: ({ avatarOverride }: { avatarOverride?: string | null }) => (
     <div data-avatar={avatarOverride ?? ''} data-testid="community-user-avatar" />
@@ -55,6 +59,9 @@ describe('Community detail Header', () => {
     );
 
     expect(mocks.useUserProfile).toHaveBeenCalledWith({ username: 'sad' });
+    expect(screen.getByTestId('community-search').parentElement).toBe(
+      screen.getByTestId('community-user-avatar').parentElement,
+    );
     expect(screen.getByTestId('community-user-avatar')).toHaveAttribute(
       'data-avatar',
       'sad-avatar',

@@ -5,7 +5,12 @@ import { LOADING_FLAT } from '@lobechat/const';
 import { isFullAccessApiKey } from '@lobechat/const/apiKeyScope';
 import { parse } from '@lobechat/conversation-flow';
 import { getServerDefaultHeterogeneousAgentConfig } from '@lobechat/heterogeneous-agents';
-import type { ExecAgentResult, TaskCurrentActivity, TaskStatusResult } from '@lobechat/types';
+import type {
+  ExecAgentResult,
+  OperationToolDispatchPolicy,
+  TaskCurrentActivity,
+  TaskStatusResult,
+} from '@lobechat/types';
 import {
   CreateThreadWithMessageSchema,
   entityIdPattern,
@@ -50,6 +55,7 @@ import {
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AgentOperationModel } from '@/database/models/agentOperation';
+import { FileModel } from '@/database/models/file';
 import { HumanApprovalAlreadyResolvedError, MessageModel } from '@/database/models/message';
 import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
@@ -85,6 +91,8 @@ import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { AiAgentService } from '@/server/services/aiAgent';
 import { AiChatService } from '@/server/services/aiChat';
 import { getFileProxyUrl } from '@/server/services/file';
+import { GroupConversationAccessRepository as ConversationRepository } from '@/server/services/groupConversationAccess/conversationRepository';
+import { isIndependentGroupRequest } from '@/server/services/groupConversationAccess/independentRequest';
 import { HeterogeneousAgentService } from '@/server/services/heterogeneousAgent';
 import {
   HeteroOperationPrincipalError,
@@ -99,8 +107,11 @@ import {
   authorizeHostedGroupRun,
   createHostedGroupRunBinding,
   projectHostedGroupRunStatus,
+  resolveHostedGroupResultTopicId,
 } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
 import { createTravelToolDispatchPolicy } from '@/server/services/travelOrchestration';
+
+import { createGroupMentionPolicy } from './_helpers/groupMentionPolicy';
 
 const log = debug('lobe-server:ai-agent-router');
 
@@ -949,17 +960,34 @@ const HostedGroupChatBillingSchema = z
       .min(1)
       .max(128)
       .regex(/^[\x20-\x7E]+$/),
-    maxCredits: z.number().int().positive().safe(),
+    maxCredits: z.number().int().positive().safe().optional(),
   })
   .strict();
 
 const StartHostedTravelGroupTaskSchema = z
   .object({
+    fileIds: z.array(z.string().min(1).max(255)).max(20).optional(),
     billing: HostedGroupChatBillingSchema,
     groupId: z.string().min(1),
-    prompt: z.string().min(1).max(4000),
+    mentionedAgentId: z.string().min(1).max(255).optional(),
+    mentionedAgentIds: z.array(z.string().min(1).max(255)).max(100).optional(),
+    prompt: z.string().min(1).max(4000).optional(),
+    regenerateMessageId: z
+      .string()
+      .regex(/^[a-f\d]{64}$/)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (input) =>
+      input.regenerateMessageId
+        ? input.prompt === undefined &&
+          input.fileIds === undefined &&
+          input.mentionedAgentId === undefined &&
+          input.mentionedAgentIds === undefined
+        : input.prompt !== undefined,
+    { message: 'Provide an original request or a message to regenerate' },
+  );
 
 const HostedTravelGroupRunSchema = z
   .object({
@@ -1237,6 +1265,8 @@ const ExecGroupAgentSchema = z
         topicMessageIds: z.array(z.string()).optional(),
       })
       .optional(),
+    /** Existing user message to branch from when regenerating a reply. */
+    parentMessageId: z.string().optional(),
     /** Existing topic ID */
     topicId: z.string().nullish(),
   })
@@ -2172,6 +2202,56 @@ export const aiAgentRouter = router({
         throw hostedGroupChatBillingUnavailable();
       }
 
+      const originalRequest = input.regenerateMessageId
+        ? await new ConversationRepository(ctx.serverDB)
+            .getAccessiblePublishedAssistantRequest(
+              ctx.userId,
+              input.groupId,
+              input.regenerateMessageId,
+            )
+            .catch(() => {
+              throw new TRPCError({
+                code: 'PRECONDITION_FAILED',
+                message: '[ORIGINAL_GROUP_REQUEST_UNAVAILABLE] 原始请求不可用，无法完整重新生成。',
+              });
+            })
+        : undefined;
+      const fileIds = [...new Set(input.fileIds ?? [])];
+      const attachments = fileIds.length
+        ? await new FileModel(ctx.serverDB, ctx.userId).findByIds(fileIds)
+        : [];
+      if (attachments.length !== fileIds.length)
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Attachment unavailable' });
+      attachments.sort((a, b) => a.id.localeCompare(b.id));
+      const prompt =
+        originalRequest?.prompt ??
+        [
+          input.prompt!,
+          ...attachments.map((file) => {
+            const name = file.name.replaceAll(/[[\]\\\r\n]/g, '_');
+            return `${file.fileType.startsWith('image/') ? '!' : ''}[${name}](<${getFileProxyUrl(file.id)}>)`;
+          }),
+        ].join('\n\n');
+      const mentionedAgentIds = originalRequest?.mentionedAgentIds ?? [
+        ...new Set([
+          ...(input.mentionedAgentId ? [input.mentionedAgentId] : []),
+          ...(input.mentionedAgentIds ?? []),
+        ]),
+      ];
+      if (
+        mentionedAgentIds.length > 100 ||
+        mentionedAgentIds.some(
+          (agentId) =>
+            agentId === hostedTarget.supervisorId ||
+            !hostedTarget.routingMembers.some(({ id }) => id === agentId),
+        )
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'The mentioned assistant is not available in this group',
+        });
+      }
+
       const runBinding = createHostedGroupRunBinding({
         actorUserId: hostedTarget.principal.actorUserId,
         groupId: hostedTarget.groupId,
@@ -2181,7 +2261,7 @@ export const aiAgentRouter = router({
 
       const hostedDispatch = createTravelToolDispatchPolicy({
         members: hostedTarget.routingMembers,
-        message: input.prompt,
+        message: prompt,
       });
       const hostedCopyPolicy =
         hostedDispatch.mode === 'delegate' &&
@@ -2189,6 +2269,24 @@ export const aiAgentRouter = router({
         hostedDispatch.route.intents[0] === 'copy'
           ? hostedDispatch.policy
           : undefined;
+      const mentionPolicy: OperationToolDispatchPolicy | undefined = mentionedAgentIds.length
+        ? {
+            cursor: 0,
+            finishAfterSteps: true,
+            steps: mentionedAgentIds.map((agentId) => ({
+              apiName: 'speak',
+              arguments: JSON.stringify({
+                agentId,
+                instruction: prompt,
+                skipCallSupervisor: false,
+              }),
+              identifier: 'lobe-group-management',
+              toolName: 'lobe-group-management____speak',
+            })),
+            version: 1,
+          }
+        : undefined;
+      const hostedPolicy = mentionPolicy ?? hostedCopyPolicy;
       const service =
         hostedTarget.principal.resourceOwnerUserId === ctx.userId
           ? ctx.aiAgentService
@@ -2199,36 +2297,71 @@ export const aiAgentRouter = router({
       const result = await runHostedGroupChatWithBudget({
         billing: input.billing,
         db: ctx.serverDB,
-        fingerprint: { groupId: input.groupId, prompt: input.prompt },
+        fingerprint: {
+          groupId: input.groupId,
+          prompt,
+          ...(input.regenerateMessageId ? { regenerateMessageId: input.regenerateMessageId } : {}),
+          ...(mentionedAgentIds.length === 1
+            ? { mentionedAgentId: mentionedAgentIds[0] }
+            : mentionedAgentIds.length
+              ? { mentionedAgentIds }
+              : {}),
+        },
         principal: hostedTarget.principal,
         secret: authEnv.AUTH_SECRET,
-        start: async (context) => ({
-          internalResult: await service.execPlatformManagedAgent(
-            {
-              agentId: hostedTarget.supervisorId,
-              appContext: {
-                groupId: hostedTarget.groupId,
-                hostedGroupRun: runBinding.snapshot,
-                orchestrationRole: 'supervisor',
-                ...(hostedCopyPolicy ? { toolDispatchPolicy: hostedCopyPolicy } : {}),
+        start: async (context) => {
+          // Resolve archive boundaries inside the idempotent start. Regeneration
+          // always keeps its original topic; a new request starts a new archive.
+          const currentTopics = await new ConversationRepository(ctx.serverDB).listAccessibleTopics(
+            ctx.userId,
+            hostedTarget.groupId,
+            { recent: true, limit: 1 },
+          );
+          return {
+            internalResult: await service.execPlatformManagedAgent(
+              {
+                agentId: hostedTarget.supervisorId,
+                appContext: {
+                  groupId: hostedTarget.groupId,
+                  topicId:
+                    originalRequest?.topicId ??
+                    (isIndependentGroupRequest(input.prompt ?? '')
+                      ? undefined
+                      : currentTopics.items[0]?.id),
+                  hostedGroupRun: {
+                    ...runBinding.snapshot,
+                    originalRequest: { prompt, mentionedAgentIds },
+                  },
+                  orchestrationRole: 'supervisor',
+                  ...(hostedPolicy ? { toolDispatchPolicy: hostedPolicy } : {}),
+                },
+                clientIp: ctx.clientIp ?? undefined,
+                interactiveStart: true,
+                prompt,
+                trigger: RequestTrigger.Chat,
+                userAgent: ctx.userAgent ?? undefined,
               },
-              clientIp: ctx.clientIp ?? undefined,
-              interactiveStart: true,
-              prompt: input.prompt,
-              trigger: RequestTrigger.Chat,
-              userAgent: ctx.userAgent ?? undefined,
-            },
-            {
-              ...context,
-              actorUserId: hostedTarget.principal.actorUserId,
-              resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
-            },
-          ),
-          runHandle: runBinding.runHandle,
-        }),
+              {
+                ...context,
+                actorUserId: hostedTarget.principal.actorUserId,
+                resourceOwnerUserId: hostedTarget.principal.resourceOwnerUserId,
+              },
+            ),
+            runHandle: runBinding.runHandle,
+          };
+        },
       });
       if (!result.internalResult?.operationId) throw hostedGroupChatBillingUnavailable();
-      return { accepted: true as const, runHandle: result.runHandle };
+      const resultTopicId = await resolveHostedGroupResultTopicId(ctx.serverDB, {
+        groupId: hostedTarget.groupId,
+        ownerUserId: hostedTarget.principal.resourceOwnerUserId,
+        topicId: result.internalResult.topicId,
+      });
+      return {
+        accepted: true as const,
+        ...(resultTopicId ? { resultTopicId } : {}),
+        runHandle: result.runHandle,
+      };
     }),
 
   getHostedTravelGroupRunStatus: aiAgentProcedure
@@ -2327,7 +2460,8 @@ export const aiAgentRouter = router({
         // context from crossing the principal boundary.
         throw hostedGroupChatBillingUnavailable();
       }
-      if (Boolean(hostedTarget) !== Boolean(billing)) {
+      const hostedBilling = billing;
+      if (Boolean(hostedTarget) !== Boolean(hostedBilling)) {
         throw hostedGroupChatBillingUnavailable();
       }
       if (
@@ -2485,14 +2619,27 @@ export const aiAgentRouter = router({
         hostedDispatch.route.intents[0] === 'copy'
           ? hostedDispatch.policy
           : undefined;
+      const hostedMentionPolicy = hostedTarget
+        ? createGroupMentionPolicy(prompt, hostedTarget.routingMembers, hostedTarget.supervisorId)
+        : undefined;
+      const hostedPolicy = hostedMentionPolicy ?? hostedCopyPolicy;
       const executeParams = {
         agentId,
         appContext: hostedTarget
           ? {
               ...appContext,
               groupId: hostedTarget.groupId,
+              topicId:
+                !parentMessageId &&
+                !appContext?.threadId &&
+                !appContext?.newThread &&
+                !existingMessageIds?.length &&
+                (!trigger || trigger === RequestTrigger.Chat) &&
+                isIndependentGroupRequest(prompt)
+                  ? undefined
+                  : appContext?.topicId,
               orchestrationRole: 'supervisor' as const,
-              ...(hostedCopyPolicy ? { toolDispatchPolicy: hostedCopyPolicy } : {}),
+              ...(hostedPolicy ? { toolDispatchPolicy: hostedPolicy } : {}),
             }
           : appContext,
         autoStart,
@@ -2526,7 +2673,7 @@ export const aiAgentRouter = router({
         userInterventionConfig,
       };
       if (!hostedTarget) return await ctx.aiAgentService.execAgent(executeParams);
-      if (!billing || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
+      if (!hostedBilling || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
       const hostedAiAgentService =
         hostedTarget.principal.resourceOwnerUserId === ctx.userId
           ? ctx.aiAgentService
@@ -2537,7 +2684,7 @@ export const aiAgentRouter = router({
             });
 
       return await runHostedGroupChatWithBudget({
-        billing,
+        billing: hostedBilling,
         db: ctx.serverDB,
         fingerprint: executeParams,
         principal: hostedTarget.principal,
@@ -2739,7 +2886,8 @@ export const aiAgentRouter = router({
   execGroupAgent: aiAgentWriteProcedure
     .input(ExecGroupAgentSchema)
     .mutation(async ({ input, ctx }) => {
-      const { agentId, billing, groupId, message, files, topicId, newTopic } = input;
+      const { agentId, billing, groupId, message, files, topicId, newTopic, parentMessageId } =
+        input;
 
       log('execGroupAgent: agentId=%s, groupId=%s', agentId, groupId);
 
@@ -2753,7 +2901,7 @@ export const aiAgentRouter = router({
         });
         await assertCanUseAgentRunConversation({
           db: ctx.serverDB,
-          messageIds: newTopic?.topicMessageIds,
+          messageIds: [...(newTopic?.topicMessageIds ?? []), parentMessageId],
           topicId,
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
@@ -2774,14 +2922,26 @@ export const aiAgentRouter = router({
           // narrow server-owned startHostedTravelGroupTask entry instead.
           throw hostedGroupChatBillingUnavailable();
         }
-        if (Boolean(hostedTarget) !== Boolean(billing)) {
+        const hostedBilling = billing;
+        if (Boolean(hostedTarget) !== Boolean(hostedBilling)) {
           throw hostedGroupChatBillingUnavailable();
         }
 
-        const executeParams = { agentId, files, groupId, message, newTopic, topicId };
+        const executeParams = {
+          agentId,
+          files,
+          groupId,
+          message,
+          newTopic,
+          parentMessageId,
+          topicId:
+            hostedTarget && !newTopic && !parentMessageId && isIndependentGroupRequest(message)
+              ? undefined
+              : topicId,
+        };
         const result = hostedTarget
           ? await (async () => {
-              if (!billing || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
+              if (!hostedBilling || !authEnv.AUTH_SECRET) throw hostedGroupChatBillingUnavailable();
               const hostedAiAgentService =
                 hostedTarget.principal.resourceOwnerUserId === ctx.userId
                   ? ctx.aiAgentService
@@ -2791,7 +2951,7 @@ export const aiAgentRouter = router({
                         ctx.apiKeyScopes !== undefined && !isFullAccessApiKey(ctx.apiKeyScopes),
                     });
               return runHostedGroupChatWithBudget({
-                billing,
+                billing: hostedBilling,
                 db: ctx.serverDB,
                 fingerprint: executeParams,
                 principal: hostedTarget.principal,

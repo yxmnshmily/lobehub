@@ -32,14 +32,14 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   body: css`
     padding-block: 4px 8px;
     padding-inline: 8px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   bareBody: css`
     padding-inline: 0;
   `,
   card: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,

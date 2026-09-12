@@ -70,7 +70,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   itemRow: css`
     padding-block: 6px;
     padding-inline: 4px;
-    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
     font-size: 13px;
 
     &:last-child {

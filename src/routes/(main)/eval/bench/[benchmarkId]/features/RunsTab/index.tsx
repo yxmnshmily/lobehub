@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 48px;
     padding-inline: 24px;
-    border: 1px dashed ${cssVar.colorBorderSecondary};
+    border: 0.5px dashed ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};

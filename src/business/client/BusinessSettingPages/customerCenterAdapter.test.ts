@@ -96,7 +96,7 @@ describe('customer center adapter', () => {
     });
   });
 
-  it('does not revive artifact links while Credits settlement is pending', () => {
+  it('does not revive artifact links while 积分 settlement is pending', () => {
     const detail = buildCustomerGenerationDetail({
       artifacts: [{ id: 'must-stay-hidden', type: 'image', url: '/f/unsettled.png' }],
       code: undefined,

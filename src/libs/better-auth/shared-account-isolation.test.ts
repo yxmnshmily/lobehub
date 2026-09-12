@@ -72,7 +72,7 @@ describe('shared website and LobeHub account isolation', () => {
         const token = verificationUrl.searchParams.get('token');
         expect(token).toBeTruthy();
         const verification = await instance.auth.api.verifyEmail({ query: { token: token! } });
-        expect(verification.status).toBe(true);
+        expect(verification).toMatchObject({ status: true });
       }
 
       const sessions = await Promise.all(

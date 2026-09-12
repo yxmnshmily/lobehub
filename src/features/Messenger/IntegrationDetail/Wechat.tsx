@@ -43,7 +43,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: ${QR_SLOT_SIZE}px;
     height: ${QR_SLOT_SIZE}px;
     padding: 9px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillQuaternary};
@@ -53,7 +53,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 32px;
     padding-inline: 20px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
   `,
   status: css`
@@ -322,7 +322,9 @@ const WechatDetail = memo<WechatDetailProps>(({ access, name, onBack }) => {
             <UserAgentConnection
               extraLabel={t('messenger.wechat.accountLabel')}
               link={link}
-              onSetActive={(agentId) => handleSetActive(link.tenantId, agentId)}
+              onSetActive={(groupId, workspaceId) =>
+                handleSetActive(link.tenantId, groupId, workspaceId)
+              }
               onUnlink={() => handleUnlink(link.tenantId)}
             />
           )}
@@ -355,7 +357,7 @@ const WechatDetail = memo<WechatDetailProps>(({ access, name, onBack }) => {
             />
           )}
 
-          {link && !link.activeAgentId && (
+          {link && !link.activeGroupId && (
             <Alert showIcon message={t('messenger.wechat.selectAgentHint')} type="info" />
           )}
 
@@ -363,7 +365,9 @@ const WechatDetail = memo<WechatDetailProps>(({ access, name, onBack }) => {
             <UserAgentConnection
               extraLabel={t('messenger.wechat.accountLabel')}
               link={link}
-              onSetActive={(agentId) => handleSetActive(link.tenantId, agentId)}
+              onSetActive={(groupId, workspaceId) =>
+                handleSetActive(link.tenantId, groupId, workspaceId)
+              }
               onUnlink={() => handleUnlink(link.tenantId)}
             />
           )}

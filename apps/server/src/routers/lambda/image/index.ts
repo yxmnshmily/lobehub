@@ -35,6 +35,7 @@ import {
 } from '@/types/asyncTask';
 import { generateUniqueSeeds } from '@/utils/number';
 
+import { resolveLocalReference } from './localReference';
 import { validateNoUrlsInConfig } from './utils';
 
 const log = debug('lobe-image:lambda');
@@ -105,28 +106,20 @@ export const imageRouter = router({
       const platformCapability = getPlatformAiRuntimeCapability(ctx);
       const { generationTopicId, provider, model, imageNum, params } = input;
 
-      if (isPlatformManaged) {
-        if (
-          !Number.isSafeInteger(platformCapability?.maxCredits) ||
-          Number(platformCapability?.maxCredits) <= 0
-        ) {
-          throw new TRPCError({
-            code: 'PRECONDITION_FAILED',
-            message:
-              'A trusted positive Credits maximum is required for platform image generation.',
-          });
-        }
-        if (imageNum !== 1) {
-          throw new TRPCError({
-            code: 'PRECONDITION_FAILED',
-            message: 'Platform image generation currently requires exactly one image.',
-          });
-        }
+      if (isPlatformManaged && imageNum !== 1) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
-          message: '[IMAGE_BILLING_UNAVAILABLE] 平台图片权威计价与费用上限尚不可用。',
+          message: 'Platform image generation currently requires exactly one image.',
         });
       }
+      // Platform image billing mirrors the platform text contract: admission
+      // does not require an upfront maxCredits hold. Owner/self-paid group
+      // runs deliberately leave maxCredits undefined so usage is settled from
+      // authoritative provider usage after the call (completeAndSettle), the
+      // same no-reserve model as PlatformManagedTextUsageSettlement. When a
+      // trusted maxCredits is present (sponsored/metered runs) the reservation
+      // service still records it as the ceiling; when absent, the worker
+      // performs the per-call balance gate and post-call settlement instead.
 
       log('Image creation requested: %O', {
         height: params.height,
@@ -199,7 +192,14 @@ export const imageRouter = router({
 
         // Handle single imageUrl: localhost/f/{id} -> S3 URL
         if (typeof params.imageUrl === 'string' && params.imageUrl) {
-          const s3Url = await fileService.getFullFileUrl(configForDatabase.imageUrl as string);
+          const s3Url =
+            provider === 'volcengine'
+              ? await resolveLocalReference(
+                  fileService,
+                  configForDatabase.imageUrl as string,
+                  params.imageUrl,
+                )
+              : await fileService.getFullFileUrl(configForDatabase.imageUrl as string);
           if (s3Url) {
             updates.imageUrl = s3Url;
           }
@@ -208,7 +208,14 @@ export const imageRouter = router({
         // Handle multiple imageUrls
         if (Array.isArray(params.imageUrls) && params.imageUrls.length > 0) {
           const s3Urls = await Promise.all(
-            (configForDatabase.imageUrls as string[]).map((key) => fileService.getFullFileUrl(key)),
+            provider === 'volcengine'
+              ? params.imageUrls.map(async (source) => {
+                  const key = await fileService.getKeyFromFullUrl(source);
+                  return key ? resolveLocalReference(fileService, key, source) : source;
+                })
+              : (configForDatabase.imageUrls as string[]).map((key) =>
+                  fileService.getFullFileUrl(key),
+                ),
           );
           updates.imageUrls = s3Urls;
         }
@@ -339,6 +346,25 @@ export const imageRouter = router({
           );
 
           if (isPlatformManaged) {
+            // Owner/self-paid platform runs deliberately leave maxCredits
+            // undefined (no upfront hold; usage is settled from authoritative
+            // provider usage after the call, like the platform text path). Only
+            // a trusted positive maxCredits (sponsored/metered requests)
+            // creates a reservation window here; otherwise the async worker
+            // runs the per-call balance gate and settles actual usage directly.
+            if (
+              platformCapability?.maxCredits === undefined ||
+              !Number.isSafeInteger(platformCapability?.maxCredits) ||
+              Number(platformCapability?.maxCredits) <= 0
+            ) {
+              for (const item of generationsWithTasks) {
+                await tx
+                  .update(asyncTasks)
+                  .set({ metadata: { platformAiRuntime: true } })
+                  .where(and(eq(asyncTasks.id, item.asyncTaskId), eq(asyncTasks.userId, userId)));
+              }
+              return { batch, generationsWithTasks };
+            }
             const reservations = new PlatformUsageReservationService(tx as typeof serverDB, userId);
             const limit = {
               maxCredits: platformCapability!.maxCredits as number,

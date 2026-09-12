@@ -2,13 +2,15 @@
 
 import { BarChart, ChartTooltipFrame, ChartTooltipRow } from '@lobehub/charts';
 import { Block, Flexbox } from '@lobehub/ui';
-import { Segmented, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Segmented, Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { type AgentUsageBucket } from '@/types/usage/usageRecord';
-import { formatNumber, formatTokenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@/utils/format';
 
 enum ShowType {
   Spend = 'spend',
@@ -25,6 +27,7 @@ interface UsageTrendChartProps {
 
 const UsageTrendChart = memo<UsageTrendChartProps>(({ buckets, isLoading }) => {
   const { t } = useTranslation('spend');
+  const { format } = useMonthlyExchangeRate();
   const [type, setType] = useState<ShowType>(ShowType.Spend);
 
   const inputKey = t('usageStats.chart.input');
@@ -68,7 +71,7 @@ const UsageTrendChart = memo<UsageTrendChartProps>(({ buckets, isLoading }) => {
         />
       </Flexbox>
       {isLoading ? (
-        <Skeleton height={320} />
+        <SkeletonBar height={320} />
       ) : (
         <BarChart
           showLegend
@@ -103,7 +106,7 @@ const UsageTrendChart = memo<UsageTrendChartProps>(({ buckets, isLoading }) => {
                           name={String(name ?? '')}
                           value={
                             type === ShowType.Spend
-                              ? `$${formatNumber(value as number, 2)}`
+                              ? format(value as number, 6)
                               : formatTokenNumber(value as number)
                           }
                         />
@@ -115,7 +118,7 @@ const UsageTrendChart = memo<UsageTrendChartProps>(({ buckets, isLoading }) => {
             );
           }}
           valueFormatter={(num: number) =>
-            type === ShowType.Spend ? `$${formatNumber(num, 2)}` : formatTokenNumber(num)
+            type === ShowType.Spend ? format(num) : formatTokenNumber(num)
           }
         />
       )}

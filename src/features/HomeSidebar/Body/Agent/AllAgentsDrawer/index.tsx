@@ -45,7 +45,7 @@ const AllAgentsDrawer = memo<AllAgentsDrawerProps>(({ open, onClose }) => {
       }
       onClose={onClose}
     >
-      <Content open={open} searchKeyword={searchKeyword} />
+      <Content open={open} searchKeyword={searchKeyword} onNavigate={onClose} />
     </SideBarDrawer>
   );
 });

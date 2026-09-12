@@ -1,14 +1,14 @@
 import { Outlet } from 'react-router';
 
-import MobileContentLayout from '@/components/server/MobileNavLayout';
+import PersonalSettingsScaffold from '@/routes/(mobile)/settings/_layout/PersonalSettingsScaffold';
 
 import Header from './features/Header';
 
 const Layout = () => {
   return (
-    <MobileContentLayout withNav header={<Header />}>
+    <PersonalSettingsScaffold header={<Header />}>
       <Outlet />
-    </MobileContentLayout>
+    </PersonalSettingsScaffold>
   );
 };
 

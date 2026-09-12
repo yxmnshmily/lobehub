@@ -15,7 +15,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex-shrink: 0;
     height: 40px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   controls: css`
     display: flex;
@@ -37,7 +37,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     height: 28px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:hover .agent-mock-progress-track {
       background: ${cssVar.colorFillTertiary};
@@ -75,7 +75,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex-shrink: 0;
     height: 44px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 

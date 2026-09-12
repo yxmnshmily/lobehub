@@ -4,7 +4,7 @@ import { auth } from '@/auth';
 import { getServerDB } from '@/database/core/db-adaptor';
 import { assertOIDCUserActive } from '@/libs/oidc-provider/access-control';
 
-type SessionHeaders = Parameters<typeof auth.api.getSession>[0]['headers'];
+type SessionHeaders = NonNullable<Parameters<typeof auth.api.getSession>[0]>['headers'];
 
 /**
  * Resolves a Better Auth session and verifies the account against the current

@@ -154,7 +154,14 @@ vi.mock('model-bank', async (importOriginal) => {
 
 describe('AiAgentService.execAgent - topic history loading', () => {
   let service: AiAgentService;
-  const mockDb = {} as any;
+  // The phone guard queries persisted topic metadata before the history loader.
+  // Do not mock the guard itself: group admission must still fail closed.
+  const mockDb = {
+    query: {
+      topics: { findFirst: vi.fn() },
+      users: { findFirst: vi.fn() },
+    },
+  } as any;
   const userId = 'test-user-id';
 
   beforeEach(() => {
@@ -172,6 +179,8 @@ describe('AiAgentService.execAgent - topic history loading', () => {
       success: true,
     });
     mockTopicFindById.mockResolvedValue(undefined);
+    mockDb.query.topics.findFirst.mockResolvedValue({ groupId: null });
+    mockDb.query.users.findFirst.mockResolvedValue(undefined);
 
     service = new AiAgentService(mockDb, userId);
   });
@@ -182,6 +191,21 @@ describe('AiAgentService.execAgent - topic history loading', () => {
     mockCreateOperation.mockClear();
     mockTopicFindById.mockClear();
   });
+
+  it.each([{ groupId: 'group-1', topicId: 'topic-group' }, { topicId: 'topic-group' }])(
+    'blocks an unverified group actor before reading history: %j',
+    async (appContext) => {
+      mockDb.query.topics.findFirst.mockResolvedValue({ groupId: 'group-1' });
+
+      await expect(
+        service.execAgent({ agentId: 'agent-1', appContext, prompt: 'Do not execute' }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+      expect(mockMessageQuery).not.toHaveBeenCalled();
+      expect(mockMessageCreate).not.toHaveBeenCalled();
+      expect(mockCreateOperation).not.toHaveBeenCalled();
+    },
+  );
 
   describe('when topicId is provided (follow-up message in existing thread)', () => {
     it('should load history messages from the topic and include them in initialMessages', async () => {

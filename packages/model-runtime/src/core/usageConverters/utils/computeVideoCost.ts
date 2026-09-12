@@ -1,20 +1,26 @@
-import { CREDITS_PER_DOLLAR, USD_TO_CNY } from '@lobechat/const/currency';
+import { USD_TO_CNY } from '@lobechat/const/currency';
 import debug from 'debug';
 import type { FixedPricingUnit, LookupPricingUnit, Pricing } from 'model-bank';
+
+import { computeUsagePrice } from './computeUsagePrice';
 
 const log = debug('lobe-cost:computeVideoCost');
 
 export interface VideoGenerationParams {
   [key: string]: unknown;
+  /** Actual billable output duration in seconds, not request latency. */
+  duration?: number;
   generateAudio?: boolean;
   resolution?: string;
 }
 
 export interface VideoCostResult {
   breakdown?: {
-    completionTokens: number;
+    completionTokens?: number;
+    duration?: number;
     lookupKey?: string;
-    pricePerMillionTokens: number;
+    pricePerMillionTokens?: number;
+    pricePerSecond?: number;
   };
   totalCost: number; // Total cost in USD
   totalCredits: number; // Total credits (USD * CREDITS_PER_DOLLAR)
@@ -37,18 +43,19 @@ export const computeVideoCost = (
   }
 
   const currency = pricing.currency || 'USD';
+  if (currency !== 'USD' && currency !== 'CNY') return undefined;
+  const perSecond = videoGenUnit.unit === 'second';
+  if (!perSecond && videoGenUnit.unit !== 'millionTokens') return undefined;
+  const quantity = perSecond ? params.duration : completionTokens;
+  if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity < 0) return undefined;
   let pricePerMillionTokens: number;
   let lookupKey: string | undefined;
 
   switch (videoGenUnit.strategy) {
     case 'fixed': {
       const fixedUnit = videoGenUnit as FixedPricingUnit;
-      if (fixedUnit.unit !== 'millionTokens') {
-        log(`Unsupported unit type for fixed pricing: ${fixedUnit.unit}`);
-        return undefined;
-      }
       pricePerMillionTokens = fixedUnit.rate;
-      log(`Fixed pricing: ${pricePerMillionTokens} per million tokens (${currency})`);
+      log(`Fixed pricing: ${pricePerMillionTokens} per ${videoGenUnit.unit} (${currency})`);
       break;
     }
     case 'lookup': {
@@ -78,7 +85,7 @@ export const computeVideoCost = (
 
       pricePerMillionTokens = lookupPrice;
       log(
-        `Lookup pricing for key "${lookupKey}": ${pricePerMillionTokens} per million tokens (${currency})`,
+        `Lookup pricing for key "${lookupKey}": ${pricePerMillionTokens} per ${videoGenUnit.unit} (${currency})`,
       );
       break;
     }
@@ -89,18 +96,20 @@ export const computeVideoCost = (
   }
 
   // Calculate cost in original currency
-  const costInCurrency = (pricePerMillionTokens * completionTokens) / 1_000_000;
-
-  // Convert to USD if needed
-  const costInUSD = currency === 'CNY' ? costInCurrency / USD_TO_CNY : costInCurrency;
-  const totalCredits = Math.ceil(costInUSD * CREDITS_PER_DOLLAR);
+  if (!Number.isFinite(pricePerMillionTokens) || pricePerMillionTokens < 0) return undefined;
+  const cost = computeUsagePrice(
+    pricePerMillionTokens,
+    quantity,
+    perSecond ? 1 : 1_000_000,
+    currency === 'CNY' ? USD_TO_CNY : 1,
+  );
+  if (!cost) return undefined;
+  const { totalCost: costInUSD, totalCredits } = cost;
 
   log(
-    `Video cost: %d tokens × %d/%s per million = %d %s = $%d USD (%d credits)`,
-    completionTokens,
+    `Video cost: quantity %d × rate %d %s = $%d USD (%d credits)`,
+    quantity / (perSecond ? 1 : 1_000_000),
     pricePerMillionTokens,
-    currency,
-    costInCurrency,
     currency,
     costInUSD,
     totalCredits,
@@ -108,9 +117,10 @@ export const computeVideoCost = (
 
   return {
     breakdown: {
-      completionTokens,
       lookupKey,
-      pricePerMillionTokens,
+      ...(perSecond
+        ? { duration: quantity, pricePerSecond: pricePerMillionTokens }
+        : { completionTokens, pricePerMillionTokens }),
     },
     totalCost: costInUSD,
     totalCredits,

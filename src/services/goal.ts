@@ -5,6 +5,7 @@ import { lambdaClient } from '@/libs/trpc/client';
 
 export interface GoalListParams {
   agentId?: string;
+  groupId?: string;
   limit?: number;
   offset?: number;
   projectId?: string;

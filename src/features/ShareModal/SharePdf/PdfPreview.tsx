@@ -51,7 +51,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-inline: 0;
 
     padding: 12px;
-    border-block-start: 1px solid color-mix(in srgb, black 10%, transparent);
+    border-block-start: 0.5px solid color-mix(in srgb, black 10%, transparent);
 
     background: color-mix(in srgb, white 90%, transparent);
     backdrop-filter: blur(8px);

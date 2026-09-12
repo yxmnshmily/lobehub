@@ -62,7 +62,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
     `,
     footer: css`
       margin-block-start: 16px;
-      border-block-start: 1px dashed ${cssVar.colorBorder};
+      border-block-start: 0.5px dashed ${cssVar.colorBorder};
       background: ${cssVar.colorBgContainer};
     `,
     moreButton: css`

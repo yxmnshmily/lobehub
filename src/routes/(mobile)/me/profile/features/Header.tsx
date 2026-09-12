@@ -8,6 +8,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
+import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import { mobileHeaderSticky } from '@/styles/mobileHeader';
 
 const Header = memo(() => {
@@ -30,6 +31,7 @@ const Header = memo(() => {
         <ActionIcon
           aria-label={t('back')}
           icon={ChevronLeft}
+          size={MOBILE_HEADER_ICON_SIZE}
           title={t('back')}
           onClick={() => navigate('/me')}
         />

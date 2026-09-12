@@ -1,10 +1,11 @@
 'use client';
 
 import { Center, Flexbox, Tooltip } from '@lobehub/ui';
-import { Avatar, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { Avatar, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { memo, type ReactNode } from 'react';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import { DEFAULT_AVATAR } from '@/const/meta';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
@@ -111,7 +112,7 @@ const AgentProfileCard = memo<AgentProfileCardProps>(
             className={onHeaderClick ? styles.clickableAvatar : undefined}
             shape={'square'}
             size={48}
-            style={{ border: `2px solid ${cssVar.colorBgElevated}` }}
+            style={{ border: `0.5px solid ${cssVar.colorBgElevated}` }}
             onClick={onHeaderClick}
           />
           <Flexbox gap={2}>
@@ -132,7 +133,7 @@ const AgentProfileCard = memo<AgentProfileCardProps>(
                 </Text>
               </Tooltip>
             ) : loading ? (
-              <Skeleton.Text
+              <SkeletonText
                 className={styles.descriptionSkeleton}
                 rows={2}
                 width={['100%', '60%']}

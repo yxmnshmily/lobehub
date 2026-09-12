@@ -1,13 +1,14 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { SkeletonText, Text } from '@lobehub/ui/base-ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { Progress } from 'antd';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
-import { formatPrice } from '@/utils/format';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 
 import { Section } from './SectionLayout';
 import { useShareUsage } from './useShareUsage';
@@ -47,6 +48,7 @@ interface UsageSectionProps {
  */
 const UsageSection = memo<UsageSectionProps>(({ agentId, monthlySpendLimit }) => {
   const { t } = useTranslation('agent');
+  const { format: formatPrice } = useMonthlyExchangeRate();
 
   const { data, error, hasLoadError, isLoading, isValidating, limit, mutate, spend } =
     useShareUsage(agentId, monthlySpendLimit);

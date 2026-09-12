@@ -92,7 +92,7 @@ export const windowHighlight = style([
   overlayInsetFrame,
   {
     background: `linear-gradient(180deg, rgba(99, 138, 255, 0.16), ${vars.color.highlightFill})`,
-    border: `1.5px solid ${vars.color.highlightBorder}`,
+    border: `0.5px solid ${vars.color.highlightBorder}`,
     borderRadius: vars.radius.highlight,
     boxShadow: vars.shadow.highlight,
   },
@@ -102,7 +102,7 @@ export const windowTag = style({
   alignItems: 'center',
   backdropFilter: 'blur(12px)',
   background: vars.color.tagBackground,
-  border: `1px solid ${vars.color.tagBorder}`,
+  border: `0.5px solid ${vars.color.tagBorder}`,
   borderRadius: vars.radius.tag,
   boxShadow: vars.shadow.tag,
   display: 'flex',
@@ -154,7 +154,7 @@ export const selection = style([
   overlayInsetFrame,
   {
     background: `linear-gradient(180deg, rgba(99, 138, 255, 0.18), ${vars.color.selectionFill})`,
-    border: `1px solid ${vars.color.selectionBorder}`,
+    border: `0.5px solid ${vars.color.selectionBorder}`,
     borderRadius: vars.radius.selection,
     boxShadow: vars.shadow.selection,
   },

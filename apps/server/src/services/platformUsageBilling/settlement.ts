@@ -1,10 +1,12 @@
 import { type LobeChatDatabase, PlatformCreditModel } from '@lobechat/database';
 
+import { notifyCreditEntry } from '@/server/services/notification/credit';
 import type { ModelUsage } from '@/types/message';
 
 import { preparePlatformUsageCharge } from './index';
 
 const AGENT_RUNTIME_TEXT_STEP = 'agent-runtime-text-step';
+export const PLATFORM_MANAGED_MINIMUM_BALANCE_CREDITS = 50_000;
 
 type PlatformCreditLedger = Pick<PlatformCreditModel, 'chargeUsage' | 'getAccount'>;
 
@@ -27,16 +29,16 @@ const assertCanCallProvider = async (ledger: PlatformCreditLedger): Promise<void
       'Platform-managed billing preflight found an invalid Credits balance.',
     );
   }
-  if (balanceCredits <= 0) {
+  if (balanceCredits < PLATFORM_MANAGED_MINIMUM_BALANCE_CREDITS) {
     throw new PlatformManagedTextUsageSettlementError(
-      'BALANCE_EMPTY',
-      'Platform-managed billing requires a positive Credits balance before the provider call.',
+      'BALANCE_FLOOR_REACHED',
+      '积分预算不足：当前可用积分低于 5 万，AI 任务已停止。',
     );
   }
 };
 
 export type PlatformManagedTextUsageSettlementErrorCode =
-  | 'BALANCE_EMPTY'
+  | 'BALANCE_FLOOR_REACHED'
   | 'BALANCE_INVALID'
   | 'BALANCE_LOOKUP_FAILED'
   | 'INVALID_STEP_IDENTITY'
@@ -67,12 +69,8 @@ export interface SettlePlatformManagedTextStepInput {
 }
 
 /**
- * Credits gate and post-call settlement for trusted platform-managed text runs.
- *
- * `assertCanCallProvider` is intentionally only a positive-balance gate. It does
- * not reserve an estimated amount, so the actual post-call cost can still exceed
- * the remaining balance. `chargeUsage` is the atomic, row-locked debit and the
- * operation/step/call-kind idempotency key prevents a replay from charging twice.
+ * Per-round balance gate plus post-call settlement for trusted platform-managed text runs.
+ * No estimated amount is held: every completed round is charged from authoritative usage.
  */
 export class PlatformManagedTextUsageSettlement {
   private readonly ledger: PlatformCreditLedger;
@@ -117,7 +115,7 @@ export class PlatformManagedTextUsageSettlement {
         workspaceId: input.workspaceId,
       });
 
-      return await this.ledger.chargeUsage({
+      const entry = await this.ledger.chargeUsage({
         actorUserId: this.actorUserId,
         costUsd: charge.costUsd,
         credits: charge.credits,
@@ -129,6 +127,8 @@ export class PlatformManagedTextUsageSettlement {
         tokenUsage: charge.tokens,
         workspaceId: input.workspaceId,
       });
+      await notifyCreditEntry(entry);
+      return entry;
     } catch (cause) {
       if (cause instanceof PlatformManagedTextUsageSettlementError) throw cause;
       throw new PlatformManagedTextUsageSettlementError(
@@ -149,9 +149,17 @@ export interface SettlePlatformManagedImageInput {
   workspaceId?: string | null;
 }
 
+export interface SettlePlatformManagedVideoInput {
+  asyncTaskId: string;
+  generationId: string;
+  model: string;
+  provider: string;
+  usage?: ModelUsage;
+  workspaceId?: string | null;
+}
+
 /**
- * Positive-balance gate plus post-provider atomic debit for platform-managed images.
- * The gate does not reserve an estimate; settlement is based only on response.modelUsage.
+ * Per-call balance gate plus post-provider actual-usage settlement for images.
  */
 export class PlatformManagedImageUsageSettlement {
   private readonly ledger: PlatformCreditLedger;
@@ -192,7 +200,7 @@ export class PlatformManagedImageUsageSettlement {
         workspaceId: input.workspaceId,
       });
 
-      return await this.ledger.chargeUsage({
+      const entry = await this.ledger.chargeUsage({
         actorUserId: this.actorUserId,
         costUsd: charge.costUsd,
         credits: charge.credits,
@@ -204,11 +212,84 @@ export class PlatformManagedImageUsageSettlement {
         tokenUsage: charge.tokens,
         workspaceId: input.workspaceId,
       });
+      await notifyCreditEntry(entry);
+      return entry;
     } catch (cause) {
       if (cause instanceof PlatformManagedTextUsageSettlementError) throw cause;
       throw new PlatformManagedTextUsageSettlementError(
         'SETTLEMENT_FAILED',
         'Platform-managed image billing settlement failed; the image is not settled.',
+        { cause },
+      );
+    }
+  }
+}
+
+/**
+ * Per-call balance gate plus post-provider actual-usage settlement for videos.
+ *
+ * Videos are never pre-charged: a completed generation reports its tokens only on
+ * the provider callback, so the charge is written from that usage afterwards —
+ * the same no-hold model as the platform text and image paths.
+ */
+export class PlatformManagedVideoUsageSettlement {
+  private readonly ledger: PlatformCreditLedger;
+
+  constructor(
+    db: LobeChatDatabase,
+    private readonly actorUserId: string,
+    ledger?: PlatformCreditLedger,
+  ) {
+    this.ledger = ledger ?? new PlatformCreditModel(db, actorUserId);
+  }
+
+  async assertCanCallProvider(): Promise<void> {
+    await assertCanCallProvider(this.ledger);
+  }
+
+  async settleVideo(input: SettlePlatformManagedVideoInput) {
+    const asyncTaskId = input.asyncTaskId.trim();
+    const sourceGenerationId = input.generationId.trim();
+    if (!asyncTaskId || !sourceGenerationId) {
+      throw new PlatformManagedTextUsageSettlementError(
+        'INVALID_STEP_IDENTITY',
+        'Platform-managed video billing requires an async task id and generation id.',
+      );
+    }
+
+    const generationId = `${sourceGenerationId}:async-task:${asyncTaskId}:video`;
+    const generationType = 'platform-managed-video';
+
+    try {
+      const charge = preparePlatformUsageCharge({
+        actorUserId: this.actorUserId,
+        generationId,
+        generationType,
+        model: input.model,
+        provider: input.provider,
+        usage: input.usage,
+        workspaceId: input.workspaceId,
+      });
+
+      const entry = await this.ledger.chargeUsage({
+        actorUserId: this.actorUserId,
+        costUsd: charge.costUsd,
+        credits: charge.credits,
+        generationId,
+        generationType,
+        idempotencyKey: charge.idempotency.key,
+        model: input.model,
+        provider: input.provider,
+        tokenUsage: charge.tokens,
+        workspaceId: input.workspaceId,
+      });
+      await notifyCreditEntry(entry);
+      return entry;
+    } catch (cause) {
+      if (cause instanceof PlatformManagedTextUsageSettlementError) throw cause;
+      throw new PlatformManagedTextUsageSettlementError(
+        'SETTLEMENT_FAILED',
+        'Platform-managed video billing settlement failed; the video is not settled.',
         { cause },
       );
     }

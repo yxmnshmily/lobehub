@@ -36,6 +36,7 @@ import type {
 } from '../types/video';
 import { AgentRuntimeError } from '../utils/createError';
 import type { LobeRuntimeAI } from './BaseAI';
+import type { BoundedChatModelLimits, PreparedBoundedChat } from './boundedChat';
 
 const { logger: timing } = createTimingHelpers('lobe-server:chat:lobehub:timing');
 
@@ -406,6 +407,24 @@ export class ModelRuntime {
       });
       throw error;
     }
+  }
+
+  async prepareChatBounded(
+    payload: ChatStreamPayload,
+    maxOutputTokens: number,
+    limits: BoundedChatModelLimits,
+  ): Promise<PreparedBoundedChat> {
+    const runtime = this._runtime as LobeRuntimeAI & {
+      prepareChatBounded?: (
+        input: ChatStreamPayload,
+        limit: number,
+        modelLimits: BoundedChatModelLimits,
+      ) => Promise<PreparedBoundedChat>;
+    };
+    if (!runtime.prepareChatBounded) throw new Error('该模型渠道尚未支持自动积分预算。');
+    const prepared = await runtime.prepareChatBounded(payload, maxOutputTokens, limits);
+    const boundedRuntime = new ModelRuntime({ chat: prepared.chat } as LobeRuntimeAI, this._hooks);
+    return Object.freeze({ ...prepared, chat: boundedRuntime.chat.bind(boundedRuntime) });
   }
 
   async prepareGenerateObjectBounded(

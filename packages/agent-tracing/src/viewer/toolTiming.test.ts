@@ -88,9 +88,7 @@ describe('tool timing in the trace viewer', () => {
 
   it('omits timing entirely for a step that recorded none', () => {
     const out = plain(
-      renderSnapshot(
-        snapshotWith(toolStep([{ apiName: 'x', identifier: 'y', isSuccess: true }])),
-      ),
+      renderSnapshot(snapshotWith(toolStep([{ apiName: 'x', identifier: 'y', isSuccess: true }]))),
     );
 
     expect(out).toContain('Tool  y  ');

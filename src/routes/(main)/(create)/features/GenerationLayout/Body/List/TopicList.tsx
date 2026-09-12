@@ -5,6 +5,8 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import EmptyNavItem from '@/features/NavPanel/components/EmptyNavItem';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/slices/auth/selectors';
 
@@ -19,6 +21,8 @@ interface TopicListProps {
 const TopicsList = memo<TopicListProps>(({ viewMode = 'auto', visibility }) => {
   const { useStore, namespace } = useGenerationTopicContext();
   const { t } = useTranslation(namespace);
+  const navigate = useWorkspaceAwareNavigate();
+  const { pathname } = useActiveLocation();
   const openNewGenerationTopic = useStore((s: any) => s.openNewGenerationTopic);
   const setNewGenerationTopicVisibility = useStore((s: any) => s.setNewGenerationTopicVisibility);
   const isLogin = useUserStore(authSelectors.isLogin);
@@ -39,6 +43,7 @@ const TopicsList = memo<TopicListProps>(({ viewMode = 'auto', visibility }) => {
   const handleCreate = () => {
     if (visibility) setNewGenerationTopicVisibility(visibility);
     openNewGenerationTopic();
+    if (!pathname.endsWith(`/${namespace}`)) navigate(`/${namespace}`);
   };
 
   if (isEmpty) {

@@ -2,7 +2,7 @@
 import type { LobeChatDatabase } from '@lobechat/database';
 import { chatGroups, chatGroupUserMemberships, users } from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
@@ -93,6 +93,7 @@ beforeAll(async () => {
   );
   await cleanup();
   await db.insert(users).values(userIds.map((id) => ({ email: `${id}@example.test`, id })));
+  await db.update(users).set({ fullName: '旅游策划师' }).where(eq(users.id, ownerId));
   await db.insert(chatGroups).values([
     {
       avatar: 'owner-avatar',
@@ -157,6 +158,37 @@ afterAll(cleanup);
 describe('GroupConversationAccessRepository', () => {
   const repository = new GroupConversationAccessRepository(db);
 
+  it.each([
+    [
+      '昵称优先（含微信昵称）',
+      ' 微信昵称 ',
+      'account',
+      'name@example.test',
+      '13800000000',
+      '微信昵称',
+    ],
+    ['用户名优先', ' ', ' account ', 'name@example.test', '13800000000', 'account'],
+    ['邮箱兜底', null, ' ', ' name@example.test ', '13800000000', 'name@example.test'],
+    ['手机号兜底', null, null, ' ', ' 13800000000 ', '13800000000'],
+    ['忽略手机占位邮箱', null, null, 'account@phone.invalid', '13800000000', '13800000000'],
+    ['忽略微信占位邮箱', null, null, 'openid@wechat.lobehub', null, null],
+    ['全部未设置', null, null, null, null, null],
+  ])('%s', async (_label, fullName, username, email, phone, expected) => {
+    try {
+      await db
+        .update(users)
+        .set({ fullName, username, email, phone })
+        .where(eq(users.id, memberId));
+      const summary = await repository.getAccessibleGroupSummary(memberId, memberOwnGroupId);
+      expect(summary.ownerDisplayName).toBe(expected);
+    } finally {
+      await db
+        .update(users)
+        .set({ fullName: null, username: null, email: null, phone: null })
+        .where(eq(users.id, memberId));
+    }
+  });
+
   it('lists only safe summaries for groups the actor owns or actively joined', async () => {
     await expect(repository.listAccessibleGroupSummaries(memberId)).resolves.toEqual([
       {
@@ -165,6 +197,7 @@ describe('GroupConversationAccessRepository', () => {
         joinedAt: null,
         kind: 'owner',
         membershipVersion: 0,
+        ownerDisplayName: null,
         resourceOwnerUserId: memberId,
         title: '成员自己的旅游群',
       },
@@ -174,6 +207,7 @@ describe('GroupConversationAccessRepository', () => {
         joinedAt,
         kind: 'member',
         membershipVersion: 5,
+        ownerDisplayName: '旅游策划师',
         resourceOwnerUserId: ownerId,
         title: '群主的旅游群',
       },
@@ -192,6 +226,7 @@ describe('GroupConversationAccessRepository', () => {
       joinedAt: null,
       kind: 'owner',
       membershipVersion: 0,
+      ownerDisplayName: '旅游策划师',
       resourceOwnerUserId: ownerId,
       title: '群主的旅游群',
     });
@@ -201,6 +236,7 @@ describe('GroupConversationAccessRepository', () => {
       joinedAt,
       kind: 'member',
       membershipVersion: 5,
+      ownerDisplayName: '旅游策划师',
       resourceOwnerUserId: ownerId,
       title: '群主的旅游群',
     });

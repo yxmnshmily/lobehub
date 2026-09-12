@@ -72,6 +72,7 @@ const decompositionSchema = z.object({
   tasks: z
     .array(
       z.object({
+        assigneeAgentId: z.string().nullable().optional(),
         /** 0-based indices of earlier tasks this one consumes; drives `depends_on` edges. */
         dependsOn: z.array(z.number().int().nonnegative()).optional(),
         instruction: z.string().min(1),
@@ -145,7 +146,10 @@ export class GoalCriteriaGeneratorService {
    * any model/schema failure so the coordinator can fall back to a single
    * task seeded from the raw requirement instead of stalling the goal.
    */
-  async decompose(params: { requirement: string }): Promise<GoalDecompositionDraft | undefined> {
+  async decompose(params: {
+    members?: Array<{ agentId: string; description?: string; title?: string }>;
+    requirement: string;
+  }): Promise<GoalDecompositionDraft | undefined> {
     const modelConfig = await resolveGoalModelConfig(this.db, this.userId);
     const ai = new AiGenerationService(this.db, this.userId, this.workspaceId);
     const raw = await ai.generateObject(
@@ -170,6 +174,15 @@ export class GoalCriteriaGeneratorService {
       log('goal decomposition did not match schema: %O', parsed.error.flatten());
       return undefined;
     }
+    if (
+      params.members &&
+      parsed.data.tasks.some(
+        (task) =>
+          !task.assigneeAgentId ||
+          !params.members!.some((member) => member.agentId === task.assigneeAgentId),
+      )
+    )
+      return undefined;
     return parsed.data;
   }
 }

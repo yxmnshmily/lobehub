@@ -22,6 +22,7 @@ export interface SupervisorInstructionCallAgent {
   payload: {
     agentId: string;
     instruction?: string;
+    replyToMessageId?: string;
   };
   type: 'call_agent';
 }

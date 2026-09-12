@@ -13,6 +13,7 @@ import { getBotFeatureAccessState } from '@/business/server/bot/featureAccess';
 import type { MessengerPlatform } from '@/config/messenger';
 import { getServerDB } from '@/database/core/db-adaptor';
 import { AgentModel } from '@/database/models/agent';
+import { ChatGroupModel } from '@/database/models/chatGroup';
 import type { SafeMessengerAccountLink } from '@/database/models/messengerAccountLink';
 import { MessengerAccountLinkModel } from '@/database/models/messengerAccountLink';
 import { WorkspaceModel } from '@/database/models/workspace';
@@ -553,7 +554,7 @@ export class MessengerRouter {
         // Bound but no active agent → prompt the user to pick one via /agents.
         // In a channel, route the prompt ephemerally so the entire channel
         // doesn't see the system message.
-        if (!link.activeAgentId) {
+        if (!link.activeAgentId && !link.activeGroupId) {
           await replyToSender(systemStrings.noActiveAgent);
           return;
         }
@@ -575,9 +576,25 @@ export class MessengerRouter {
         // agent runtime, `resolveAgentConfigOrThrow` throws `Agent not found`,
         // and the user gets a bare "Agent Execution Failed" with no operation
         // id and no way to recover — on every single message.
+        let activeAgentId = link.activeAgentId;
+        if (link.activeGroupId) {
+          const groupModel = new ChatGroupModel(
+            serverDB,
+            link.userId,
+            link.workspaceId ?? undefined,
+          );
+          const group = await groupModel.findById(link.activeGroupId);
+          activeAgentId = group ? await groupModel.getSupervisorAgentId(group.id) : null;
+          if (!activeAgentId) {
+            await replyToSender(
+              '工作群或主管已不可用，请到聊天平台设置中重新选择工作群，或发送 /groups。',
+            );
+            return;
+          }
+        }
         if (
           !(await new AgentModel(serverDB, link.userId, link.workspaceId ?? undefined).existsById(
-            link.activeAgentId,
+            activeAgentId!,
           ))
         ) {
           log(
@@ -599,7 +616,7 @@ export class MessengerRouter {
         if (!featureAccess.allowed) {
           await replyToSender(
             featureAccess.blockedMessage ??
-              'This messenger connection requires a paid plan. Upgrade in LobeHub Settings to continue.',
+              'This messenger connection requires a paid plan. Upgrade in 旅游群 Settings to continue.',
           );
           return;
         }
@@ -609,7 +626,7 @@ export class MessengerRouter {
           message,
           client,
           link,
-          link.activeAgentId,
+          activeAgentId!,
           platform,
           bridgeMethod,
         );
@@ -821,7 +838,7 @@ export class MessengerRouter {
   private buildCommands(): MessengerCommand[] {
     return [
       {
-        description: 'Bind your account to LobeHub',
+        description: 'Bind your account to 旅游群',
         handler: async (ctx) => {
           const strings = getMessengerSystemStrings(ctx.platform);
           // Already-linked short-circuit: re-running `/start` while bound
@@ -869,6 +886,51 @@ export class MessengerRouter {
           }
         },
         name: 'start',
+      },
+      {
+        description: 'List workgroups and select one to receive messages',
+        name: 'groups',
+        options: [{ name: 'number', description: 'Workgroup number', required: false }],
+        handler: async (ctx) => {
+          if (!ctx.link) {
+            await ctx.reply(getMessengerSystemStrings(ctx.platform).needLink);
+            return;
+          }
+          const model = new ChatGroupModel(
+            ctx.serverDB,
+            ctx.link.userId,
+            ctx.link.workspaceId ?? undefined,
+          );
+          if (
+            ctx.link.workspaceId &&
+            !(await userIsWorkspaceMember(ctx.serverDB, ctx.link.userId, ctx.link.workspaceId))
+          ) {
+            await ctx.reply(getMessengerSystemStrings(ctx.platform).staleScope);
+            return;
+          }
+          const groups = await model.query();
+          const index = /^\d+$/.test(ctx.args.trim()) ? Number(ctx.args.trim()) - 1 : -1;
+          if (ctx.args.trim()) {
+            const group = groups[index];
+            if (!group || !(await model.getSupervisorAgentId(group.id))) {
+              await ctx.reply('请选择有效的工作群序号。');
+              return;
+            }
+            await new MessengerAccountLinkModel(ctx.serverDB, ctx.link.userId).setActiveGroup(
+              ctx.platform,
+              group.id,
+              ctx.link.workspaceId ?? null,
+              ctx.tenantId,
+            );
+            await ctx.reply(`已切换到工作群：${group.title || '未命名工作群'}。`);
+            return;
+          }
+          await ctx.reply(
+            groups.length
+              ? `${groups.map((group, index) => `${index + 1}. ${group.title || '未命名工作群'}${group.id === ctx.link?.activeGroupId ? '（当前）' : ''}`).join('\n')}\n发送 /groups 序号 选择工作群。`
+              : '暂无可用工作群，请先在网页中创建工作群。',
+          );
+        },
       },
       {
         description: 'List agents and switch the active one',
@@ -1055,7 +1117,7 @@ export class MessengerRouter {
         name: 'stop',
       },
       {
-        description: 'Send feedback directly to the LobeHub team (no AI reply)',
+        description: 'Send feedback directly to the 旅游群 team (no AI reply)',
         // Declaring the argument so Discord/Slack surface a `/feedback <message>`
         // prompt; without it the slash picker registers the command as zero-arg
         // and the user can't enter feedback text from the picker UI.
@@ -1518,14 +1580,31 @@ export class MessengerRouter {
       }
 
       let activeAgentName: string | undefined;
-      if (link.activeAgentId) {
+      if (link.activeGroupId) {
+        if (
+          link.workspaceId &&
+          !(await userIsWorkspaceMember(serverDB, link.userId, link.workspaceId))
+        ) {
+          await bot.binder.sendDmText(
+            event.channelId,
+            getMessengerSystemStrings(creds.platform).staleScope,
+          );
+          return;
+        }
+        const group = await new ChatGroupModel(
+          serverDB,
+          link.userId,
+          link.workspaceId ?? undefined,
+        ).findById(link.activeGroupId);
+        activeAgentName = group?.title ?? undefined;
+      } else if (link.activeAgentId) {
         const userAgents = await this.fetchUserAgents(serverDB, link.userId, link.workspaceId);
         activeAgentName = userAgents.find((a) => a.id === link.activeAgentId)?.title;
       }
 
       const text = activeAgentName
-        ? `Welcome to LobeHub! Your active agent is *${activeAgentName}*. Send a message to chat, or use \`/agents\` to switch.`
-        : 'Welcome to LobeHub! Send `/agents` to pick an active agent and start chatting.';
+        ? `Welcome to 旅游群! Connected to *${activeAgentName}*. Send a message to chat, or use \`/groups\` to choose a workgroup.`
+        : 'Welcome to 旅游群! Send `/groups` to choose a workgroup and start chatting.';
       await bot.binder.sendDmText(event.channelId, text);
     } catch (error) {
       log('handleAppHomeOpened: dispatch failed: %O', error);
@@ -1560,11 +1639,11 @@ export class MessengerRouter {
     }
 
     const text = [
-      ":wave: Hi, I'm *LobeHub* — your AI agent on Slack.",
+      ":wave: Hi, I'm *旅游群* — your AI agent on Slack.",
       '',
       '• Mention me with `@LobeHub <your question>` to chat in this channel.',
-      '• First time? Send me a *direct message* to link your LobeHub account.',
-      '• Use `/agents` in DM to switch the active agent.',
+      '• First time? Send me a *direct message* to link your 旅游群 account.',
+      '• Use `/groups` in DM to choose a workgroup.',
     ].join('\n');
 
     try {
@@ -1940,6 +2019,7 @@ export class MessengerRouter {
     //                               if no topicId is cached (defensive).
     const bridgeOpts = {
       agentId,
+      ...(link.activeGroupId ? { groupId: link.activeGroupId } : {}),
       botContext: {
         ...buildBotContext({
           // Per-install applicationId so the agent runtime can distinguish

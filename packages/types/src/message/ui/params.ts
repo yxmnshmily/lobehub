@@ -118,8 +118,8 @@ export { PageSelectionSchema } from '../common/pageSelection';
 export interface HostedGroupChatBilling {
   /** Stable retry identity for one logical user send. */
   idempotencyKey: string;
-  /** User-approved maximum Credits for this send. */
-  maxCredits: number;
+  /** Optional explicit ceiling for legacy clients; omitted sends have no per-request cap. */
+  maxCredits?: number;
 }
 
 export interface SendMessageParams {
@@ -211,6 +211,8 @@ export interface SendMessageParams {
 }
 
 export interface SendGroupMessageParams {
+  /** Platform billing contract for the managed default travel group only. */
+  billing?: HostedGroupChatBilling;
   context: ConversationContext;
   files?: UploadFileItem[];
   message: string;
@@ -218,6 +220,12 @@ export interface SendGroupMessageParams {
    * Additional metadata for the message (e.g., mentioned users)
    */
   metadata?: Record<string, any>;
+  /** Called once the server run reaches a terminal state or disconnects. */
+  onComplete?: () => void;
+  /** Existing user message to branch from when regenerating a reply. */
+  parentMessageId?: string;
+  /** Interim UI operation handed off to the server-side group run. */
+  parentOperationId?: string;
   /**
    * for group chat
    */

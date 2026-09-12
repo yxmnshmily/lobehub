@@ -1,3 +1,4 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
@@ -30,8 +31,8 @@ const ListSkeleton = memo<ListSkeletonProps>(({ paddingInline = 12, rows = 4 }) 
       >
         <Skeleton.Avatar shape={'square'} size={48} />
         <Flexbox flex={1} gap={8}>
-          <Skeleton height={14} width={140} />
-          <Skeleton height={12} width={200} />
+          <SkeletonBar height={14} width={140} />
+          <SkeletonBar height={12} width={200} />
         </Flexbox>
       </Flexbox>
     ))}

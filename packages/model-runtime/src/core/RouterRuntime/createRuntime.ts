@@ -50,6 +50,7 @@ import { postProcessModelList } from '../../utils/postProcessModelList';
 import { safeParseJSON } from '../../utils/safeParseJSON';
 import { setRuntimeSignatureScopeSource } from '../../utils/signatureScope';
 import type { LobeRuntimeAI } from '../BaseAI';
+import type { BoundedChatModelLimits, PreparedBoundedChat } from '../boundedChat';
 import type {
   CreateImageOptions,
   CreateVideoOptions,
@@ -970,6 +971,29 @@ export const createRouterRuntime = ({
           user: options?.user,
         },
       );
+    }
+
+    async prepareChatBounded(
+      payload: ChatStreamPayload,
+      maxOutputTokens: number,
+      limits: BoundedChatModelLimits,
+    ): Promise<PreparedBoundedChat> {
+      const router = await this.resolveMatchedRouter(payload.model);
+      const candidates = this.normalizeRouterOptions(router);
+      if (!candidates.length) throw new Error('所选模型没有可用渠道。');
+      // Use the configured primary channel. Do not retry paid execution on a different
+      // channel after an uncertain result; a later run may select a new channel normally.
+      const { runtime } = await this.createRuntimeFromOption(router, candidates[0]);
+      const bounded = runtime as LobeRuntimeAI & {
+        prepareChatBounded?: (
+          input: ChatStreamPayload,
+          limit: number,
+          modelLimits: BoundedChatModelLimits,
+        ) => Promise<PreparedBoundedChat>;
+      };
+      if (!bounded.prepareChatBounded) throw new Error('Bounded chat is unavailable on this route');
+      // Return the selected leaf: no fallback route or second paid request after an uncertain result.
+      return bounded.prepareChatBounded(payload, maxOutputTokens, limits);
     }
 
     async prepareGenerateObjectBounded(

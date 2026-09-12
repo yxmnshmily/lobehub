@@ -1,11 +1,11 @@
 'use client';
 
 import { Flexbox, FormGroup, Grid, Icon } from '@lobehub/ui';
-import { Tabs } from '@lobehub/ui/base-ui';
+import { Tabs, Text } from '@lobehub/ui/base-ui';
 import { ProviderIcon } from '@lobehub/ui/icons';
 import { type DatePickerProps } from 'antd';
 import { DatePicker, Divider } from 'antd';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import dayjs from 'dayjs';
 import { Brain, UserIcon } from 'lucide-react';
 import { memo, type ReactNode, useEffect, useState } from 'react';
@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { SWRConfig } from 'swr';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import SettingHeader from '@/features/Settings/features/SettingHeader';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
@@ -40,13 +41,19 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   mobileUsageGroup: css`
     & > div:first-child {
-      align-items: stretch !important;
       flex-direction: column !important;
       gap: 12px;
+      align-items: stretch !important;
     }
 
     & > div:first-child > div {
       width: 100%;
+    }
+  `,
+  statsUsageGroup: css`
+    & .ant-collapse .ant-collapse-header,
+    span.ant-collapse .ant-collapse-header {
+      align-items: center !important;
     }
   `,
 }));
@@ -75,6 +82,7 @@ interface StatsSettingProps {
 const StatsContent = memo<StatsSettingProps>(
   ({ mobile, headerNode, enableUserDimension, resolveUser, showSettingHeader = true }) => {
     const { t, i18n } = useTranslation('auth');
+    const { notice } = useMonthlyExchangeRate();
     dayjs.locale(i18n.language);
 
     const [groupBy, setGroupBy] = useState<GroupBy>(GroupBy.Model);
@@ -102,101 +110,148 @@ const StatsContent = memo<StatsSettingProps>(
       }
     };
 
+    const usageFilters = (
+      <Flexbox
+        horizontal
+        align={'center'}
+        gap={8}
+        justify={'space-between'}
+        style={{ alignSelf: 'center', flex: 1, minWidth: 0 }}
+      >
+        <Tabs
+          activeKey={groupBy}
+          style={{ maxWidth: '100%' }}
+          items={[
+            {
+              icon: <Icon icon={Brain} />,
+              key: GroupBy.Model,
+              label: t('usage.welcome.model'),
+            },
+            {
+              icon: <Icon icon={ProviderIcon} />,
+              key: GroupBy.Provider,
+              label: t('usage.welcome.provider'),
+            },
+            ...(enableUserDimension
+              ? [
+                  {
+                    icon: <Icon icon={UserIcon} />,
+                    key: GroupBy.User,
+                    label: t('usage.welcome.user'),
+                  },
+                ]
+              : []),
+          ]}
+          onChange={(key) => setGroupBy(key as GroupBy)}
+        />
+        <DatePicker picker="month" value={dateRange} onChange={handleDateChange} />
+      </Flexbox>
+    );
+
     return (
       <div className={mobile ? styles.mobile : undefined}>
         {showSettingHeader && <SettingHeader title={t('tab.stats')} />}
         {/* ========== Header Section ========== */}
         <FormGroup
           collapsible={false}
-          extra={headerNode === undefined ? <ShareButton mobile={mobile} /> : undefined}
+          extra={headerNode === undefined && !mobile ? <ShareButton mobile={mobile} /> : undefined}
           gap={16}
           variant={'filled'}
           title={
             headerNode === undefined ? (
-              <Welcome mobile={mobile} />
+              mobile ? (
+                <div
+                  data-testid="mobile-stats-welcome-header"
+                  style={{
+                    alignItems: 'start',
+                    display: 'grid',
+                    gap: 8,
+                    gridTemplateColumns: 'minmax(0, 1fr) 44px',
+                    minWidth: 0,
+                    width: '100%',
+                  }}
+                >
+                  <Welcome mobile />
+                  <ShareButton mobile />
+                </div>
+              ) : (
+                <Welcome />
+              )
             ) : headerNode === false ? undefined : (
               headerNode
             )
           }
         >
-          <Grid gap={8} maxItemWidth={150} rows={4}>
-            <TotalAssistants mobile={mobile} />
-            <TotalTopics mobile={mobile} />
-            <TotalMessages mobile={mobile} />
-            <TotalTokens />
-          </Grid>
-          <Divider dashed />
-          <AiHeatmaps mobile={mobile} />
-          <Divider dashed />
-          <Grid gap={16} rows={3} style={{ paddingBottom: 12 }}>
-            <ModelsRank />
-            <AssistantsRank mobile={mobile} />
-            <TopicsRank mobile={mobile} />
-          </Grid>
+          <Flexbox data-testid="overview-sections" gap={mobile ? 16 : 24}>
+            <div
+              data-testid="overview-metrics"
+              style={{
+                alignItems: 'stretch',
+                display: 'grid',
+                gap: 8,
+                gridTemplateColumns: mobile
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : 'repeat(4, minmax(0, 1fr))',
+                minWidth: 0,
+              }}
+            >
+              <TotalAssistants mobile={mobile} />
+              <TotalTopics mobile={mobile} />
+              <TotalMessages mobile={mobile} />
+              <TotalTokens mobile={mobile} />
+            </div>
+            <Divider dashed style={{ margin: 0 }} />
+            <AiHeatmaps mobile={mobile} />
+            <Divider dashed style={{ margin: 0 }} />
+            <Grid gap={16} rows={3} style={{ paddingBottom: 12 }}>
+              <ModelsRank />
+              <AssistantsRank mobile={mobile} />
+              <TopicsRank mobile={mobile} />
+            </Grid>
+          </Flexbox>
         </FormGroup>
         <FormGroup
-          className={mobile ? styles.mobileUsageGroup : undefined}
+          className={`${styles.statsUsageGroup}${mobile ? ` ${styles.mobileUsageGroup}` : ''}`}
           collapsible={false}
+          extra={usageFilters}
           gap={16}
           title={t('tab.usage')}
           variant={'filled'}
-          extra={
-            <Flexbox horizontal align={'center'} gap={8} wrap={'wrap'}>
-              <DatePicker
-                picker="month"
-                style={mobile ? { width: '100%' } : undefined}
-                value={dateRange}
-                onChange={handleDateChange}
-              />
-              <Tabs
-                activeKey={groupBy}
-                style={{ maxWidth: '100%' }}
-                items={[
-                  {
-                    icon: <Icon icon={Brain} />,
-                    key: GroupBy.Model,
-                    label: t('usage.welcome.model'),
-                  },
-                  {
-                    icon: <Icon icon={ProviderIcon} />,
-                    key: GroupBy.Provider,
-                    label: t('usage.welcome.provider'),
-                  },
-                  ...(enableUserDimension
-                    ? [
-                        {
-                          icon: <Icon icon={UserIcon} />,
-                          key: GroupBy.User,
-                          label: t('usage.welcome.user'),
-                        },
-                      ]
-                    : []),
-                ]}
-                onChange={(key) => setGroupBy(key as GroupBy)}
-              />
-            </Flexbox>
-          }
           styles={{
             title: { lineHeight: '35px' },
           }}
         >
-          <AsyncBoundary data={data} error={error} errorVariant={'block'} onRetry={() => mutate()}>
-            <UsageCards
-              data={data}
-              groupBy={groupBy}
-              isLoading={isLoading}
-              resolveUser={resolveUser}
-            />
-            <Divider />
-            <UsageTrends
-              data={data}
-              groupBy={groupBy}
-              isLoading={isLoading}
-              resolveUser={resolveUser}
-            />
-          </AsyncBoundary>
-          <div style={{ height: 24 }} />
-          <UsageTable dateStrings={dateStrings} />
+          <Flexbox data-testid="usage-sections" gap={mobile ? 16 : 24}>
+            <Flexbox data-testid="usage-summary-sections" gap={mobile ? 16 : 24}>
+              <AsyncBoundary
+                data={data}
+                error={error}
+                errorVariant={'block'}
+                onRetry={() => mutate()}
+              >
+                <UsageCards
+                  data={data}
+                  groupBy={groupBy}
+                  isLoading={isLoading}
+                  mobile={mobile}
+                  resolveUser={resolveUser}
+                />
+                <Divider style={{ margin: 0 }} />
+                <UsageTrends
+                  data={data}
+                  groupBy={groupBy}
+                  isLoading={isLoading}
+                  resolveUser={resolveUser}
+                />
+              </AsyncBoundary>
+            </Flexbox>
+            <div data-testid="usage-table-section">
+              <UsageTable dateStrings={dateStrings} />
+            </div>
+            <Text fontSize={12} type="secondary">
+              {notice}
+            </Text>
+          </Flexbox>
         </FormGroup>
       </div>
     );
@@ -212,10 +267,15 @@ const StatsContent = memo<StatsSettingProps>(
  * out. The opt-out has to sit *above* the hooks it covers, hence the wrapper
  * rather than an `SWRConfig` inside `StatsContent`.
  */
-const StatsSetting = memo<StatsSettingProps>((props) => (
-  <SWRConfig value={{ suspense: false }}>
-    <StatsContent {...props} />
-  </SWRConfig>
-));
+const StatsSetting = memo<StatsSettingProps>((props) => {
+  const { mobile: responsiveMobile = false } = useResponsive();
+  const mobile = props.mobile ?? responsiveMobile;
+
+  return (
+    <SWRConfig value={{ suspense: false }}>
+      <StatsContent {...props} mobile={mobile} />
+    </SWRConfig>
+  );
+});
 
 export default StatsSetting;

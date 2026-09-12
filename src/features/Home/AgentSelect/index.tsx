@@ -63,7 +63,7 @@ const AgentSelect = memo(() => {
   const travelGroupReadiness = useMyTravelGroupReadiness({ manageLifecycle: false });
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
-  const { agentId: resolvedAgentId, isInbox } = useResolvedHomeAgentId();
+  const { agentId: resolvedAgentId, agentRow, isInbox } = useResolvedHomeAgentId();
   const displayAgentId = resolvedAgentId ?? '';
   const inboxMeta = useAgentStore(agentSelectors.getAgentMetaById(inboxAgentId ?? ''));
   const sidebarItem = useHomeStore(homeAgentListSelectors.getAgentById(displayAgentId));
@@ -72,12 +72,12 @@ const AgentSelect = memo(() => {
   const displayMeta = showInboxFallback ? inboxMeta : (sidebarItem ?? agentMapMeta);
   const defaultTitle = t('defaultSession', { ns: 'common' });
   const displayTitle =
-    showInboxFallback &&
-    travelGroupReadiness.isEnabled &&
-    travelGroupReadiness.status !== 'ready'
+    showInboxFallback && travelGroupReadiness.isEnabled
       ? defaultTitle
-      : agentDisplayName(displayMeta, showInboxFallback ? '旅游群主AI' : defaultTitle);
+      : (agentRow?.title ??
+        agentDisplayName(displayMeta, showInboxFallback ? '旅游群主AI' : defaultTitle));
   const displayAvatar =
+    agentRow?.avatar ||
     (typeof displayMeta?.avatar === 'string' ? displayMeta.avatar : undefined) ||
     (showInboxFallback ? DEFAULT_INBOX_AVATAR : DEFAULT_AVATAR);
 

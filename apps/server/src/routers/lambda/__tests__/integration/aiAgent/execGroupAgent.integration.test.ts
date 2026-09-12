@@ -353,7 +353,10 @@ describe('execGroupAgent', () => {
           .mockResolvedValueOnce(createMockResponsesAPIStream('成员制作结果') as any)
           .mockResolvedValueOnce(createMockResponsesAPIStream('群主汇总结果') as any);
 
-        const result = await new WebsiteAiService(serverDB, userId).start({ message: request });
+        const result = await new WebsiteAiService(serverDB, userId).start({
+          message: request,
+          requestIdentity: crypto.randomUUID(),
+        });
 
         await waitForOperationComplete(inMemoryAgentStateManager, result.operationId, {
           maxWaitTime: 10_000,
@@ -366,6 +369,7 @@ describe('execGroupAgent', () => {
         );
         expect(
           websiteEvents
+            .filter((item) => item.type === 'status')
             .filter((item) => 'phase' in item)
             .map(({ member, phase }) => [member, phase]),
         ).toEqual([
@@ -478,6 +482,7 @@ describe('execGroupAgent', () => {
 
       const result = await new WebsiteAiService(serverDB, userId).start({
         message: '写一段桂林旅游文案',
+        requestIdentity: crypto.randomUUID(),
       });
 
       const finalState = await waitForOperationComplete(
@@ -494,7 +499,10 @@ describe('execGroupAgent', () => {
         normalizeWebsiteAiStreamEvent(streamEvent, progress),
       );
       expect(
-        websiteEvents.filter((item) => 'phase' in item).map(({ member, phase }) => [member, phase]),
+        websiteEvents
+          .filter((item) => item.type === 'status')
+          .filter((item) => 'phase' in item)
+          .map(({ member, phase }) => [member, phase]),
       ).toEqual([['旅游文案助理', 'failed']]);
       expect(websiteEvents).toContainEqual({
         text: '助理启动失败，已由旅游群主AI回退处理。',
@@ -582,6 +590,7 @@ describe('execGroupAgent', () => {
 
       const result = await new WebsiteAiService(serverDB, userId).start({
         message: '先写桂林旅游文案，再整理一份行程文档',
+        requestIdentity: crypto.randomUUID(),
       });
       await waitForOperationComplete(inMemoryAgentStateManager, result.operationId, {
         maxWaitTime: 10_000,
@@ -593,7 +602,10 @@ describe('execGroupAgent', () => {
         (streamEvent) => normalizeWebsiteAiStreamEvent(streamEvent, progress),
       );
       expect(
-        websiteEvents.filter((item) => 'phase' in item).map(({ member, phase }) => [member, phase]),
+        websiteEvents
+          .filter((item) => item.type === 'status')
+          .filter((item) => 'phase' in item)
+          .map(({ member, phase }) => [member, phase]),
       ).toEqual([
         ['旅游文案助理', 'started'],
         ['旅游文案助理', 'completed'],
@@ -696,6 +708,7 @@ describe('execGroupAgent', () => {
         await expect(
           new WebsiteAiService(serverDB, otherUserId).start({
             message: '试图调用其他用户的旅游群',
+            requestIdentity: crypto.randomUUID(),
           }),
         ).rejects.toThrow();
       } finally {

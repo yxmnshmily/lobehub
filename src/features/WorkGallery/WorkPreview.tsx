@@ -58,7 +58,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 34px;
     height: 34px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 10px;
 
     color: ${cssVar.colorText};
@@ -103,7 +103,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 9px;
 
     background: ${cssVar.colorBgContainer};

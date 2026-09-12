@@ -4,15 +4,21 @@ import { UserService } from './index';
 
 const mocks = vi.hoisted(() => ({
   buildPlan: vi.fn(),
+  backfillProfile: vi.fn(),
   checkGroup: vi.fn(),
   executePlan: vi.fn(),
   getHealth: vi.fn(),
   initAccount: vi.fn(),
   initGroup: vi.fn(),
+  grantRegistrationCredits: vi.fn(),
 }));
 
+vi.mock('./registrationCredits', () => ({
+  grantRegistrationCredits: mocks.grantRegistrationCredits,
+}));
 vi.mock('./travelServiceAccount', () => ({ initTravelServiceAccount: mocks.initAccount }));
 vi.mock('./travelServiceGroup', () => ({
+  backfillDefaultTravelGroupSupervisorProfile: mocks.backfillProfile,
   SAFE_DEFAULT_TRAVEL_SERVICE_GROUP_REPAIR_ACTION_CODES: ['CREATE_DEFAULT_GROUP', 'SET_PRIVATE'],
   buildDefaultTravelServiceGroupRepairPlan: mocks.buildPlan,
   checkDefaultTravelServiceGroup: mocks.checkGroup,
@@ -35,6 +41,15 @@ describe('UserService travel service recovery', () => {
     mocks.initAccount.mockResolvedValue({ balanceFen: 0 });
   });
 
+  it('surfaces a failed signup grant and retries it at the login recovery boundary', async () => {
+    mocks.grantRegistrationCredits.mockRejectedValueOnce(new Error('credit storage unavailable'));
+    const service = new UserService({} as any);
+    await expect(service.initUser({ id: 'user-1' })).rejects.toThrow('credit storage unavailable');
+    mocks.checkGroup.mockResolvedValue({ groupId: 'travel-group', ready: true });
+    await service.ensureTravelServiceReady('user-1');
+    expect(mocks.grantRegistrationCredits).toHaveBeenCalledTimes(2);
+  });
+
   it('repairs a missing group once and verifies the recovered state', async () => {
     mocks.checkGroup
       .mockResolvedValueOnce({ ready: false })
@@ -43,6 +58,7 @@ describe('UserService travel service recovery', () => {
     const result = await new UserService({} as any).ensureTravelServiceReady('user-1');
 
     expect(mocks.initAccount).toHaveBeenCalledOnce();
+    expect(mocks.grantRegistrationCredits).toHaveBeenCalledWith({}, 'user-1');
     expect(mocks.initAccount).toHaveBeenCalledWith({}, 'user-1');
     expect(mocks.executePlan).toHaveBeenCalledOnce();
     expect(mocks.executePlan).toHaveBeenCalledWith(
@@ -78,6 +94,7 @@ describe('UserService travel service recovery', () => {
     ).resolves.toBeUndefined();
     expect(mocks.initAccount).toHaveBeenCalledOnce();
     expect(mocks.initGroup).toHaveBeenCalledOnce();
+    expect(mocks.grantRegistrationCredits).toHaveBeenCalledWith({}, 'user-1');
     expect(consoleError).toHaveBeenCalledWith('Failed to init travel service group');
   });
 

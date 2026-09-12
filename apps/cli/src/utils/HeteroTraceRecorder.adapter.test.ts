@@ -66,7 +66,12 @@ const RAW_SESSION: unknown[] = [
   {
     message: {
       content: [
-        { content: 'export const a = 1;', is_error: false, tool_use_id: 'toolu_1', type: 'tool_result' },
+        {
+          content: 'export const a = 1;',
+          is_error: false,
+          tool_use_id: 'toolu_1',
+          type: 'tool_result',
+        },
       ],
     },
     type: 'user',
@@ -113,9 +118,7 @@ const SUBAGENT_SESSION: unknown[] = [
   { model: 'claude-opus-4-8', session_id: 'sess_2', subtype: 'init', type: 'system' },
   {
     message: {
-      content: [
-        { id: 'toolu_task', input: { prompt: 'go look' }, name: 'Task', type: 'tool_use' },
-      ],
+      content: [{ id: 'toolu_task', input: { prompt: 'go look' }, name: 'Task', type: 'tool_use' }],
       id: 'msg_main_1',
       model: 'claude-opus-4-8',
       usage: { input_tokens: 100, output_tokens: 20 },
@@ -148,7 +151,12 @@ const SUBAGENT_SESSION: unknown[] = [
   {
     message: {
       content: [
-        { content: 'inner file body', is_error: false, tool_use_id: 'toolu_sub', type: 'tool_result' },
+        {
+          content: 'inner file body',
+          is_error: false,
+          tool_use_id: 'toolu_sub',
+          type: 'tool_result',
+        },
       ],
     },
     parent_tool_use_id: 'toolu_task',
@@ -158,7 +166,12 @@ const SUBAGENT_SESSION: unknown[] = [
   {
     message: {
       content: [
-        { content: 'subagent report', is_error: false, tool_use_id: 'toolu_task', type: 'tool_result' },
+        {
+          content: 'subagent report',
+          is_error: false,
+          tool_use_id: 'toolu_task',
+          type: 'tool_result',
+        },
       ],
     },
     type: 'user',

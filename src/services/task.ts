@@ -20,6 +20,7 @@ class TaskService {
     after?: { at: Date | string; seq: number };
     assigneeAgentId?: string;
     automated?: boolean;
+    groupId?: string;
     orderBy?: 'createdAt' | 'updatedAt';
     limit?: number;
     offset?: number;
@@ -35,6 +36,7 @@ class TaskService {
 
   groupList = async (params: {
     assigneeAgentId?: string;
+    groupId?: string;
     automated?: boolean;
     excludeStatuses?: TaskStatus[];
     groupBy?: 'assignee' | 'member' | 'priority';

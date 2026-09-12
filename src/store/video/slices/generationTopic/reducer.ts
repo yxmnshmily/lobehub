@@ -20,9 +20,7 @@ interface DeleteGenerationTopicAction {
 }
 
 export type GenerationTopicDispatch =
-  | AddGenerationTopicAction
-  | UpdateGenerationTopicAction
-  | DeleteGenerationTopicAction;
+  AddGenerationTopicAction | UpdateGenerationTopicAction | DeleteGenerationTopicAction;
 
 export const generationTopicReducer = (
   state: ImageGenerationTopic[] = [],

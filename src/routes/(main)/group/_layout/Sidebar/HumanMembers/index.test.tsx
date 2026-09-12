@@ -9,6 +9,7 @@ import HumanMembers from './index';
 
 const mocks = vi.hoisted(() => ({
   activeGroupId: 'group-1' as string | undefined,
+  group: { clientId: 'default-travel-service-group', workspaceId: null as string | null },
   confirmModal: vi.fn(({ onOk }: { onOk: () => Promise<void> }) => onOk()),
   createInvitation: vi.fn(),
   listMembers: {
@@ -71,16 +72,26 @@ vi.mock('@lobehub/ui/base-ui', () => ({
   Button: ({ children, htmlType, loading, ...props }: Record<string, unknown>) => {
     const { danger: _danger, type: _type, ...buttonProps } = props;
     return (
-    <button
-      disabled={Boolean(loading) || Boolean(buttonProps.disabled)}
-      type={(htmlType as 'button' | 'submit' | 'reset') || 'button'}
-      {...buttonProps}
-    >
-      {children as ReactNode}
-    </button>
+      <button
+        disabled={Boolean(loading) || Boolean(buttonProps.disabled)}
+        type={(htmlType as 'button' | 'submit' | 'reset') || 'button'}
+        {...buttonProps}
+      >
+        {children as ReactNode}
+      </button>
     );
   },
   Input: (props: Record<string, unknown>) => <input {...props} />,
+  Skeleton: () => <div data-testid="loading" />,
+  Switch: ({ checked, onChange, ...props }: Record<string, unknown>) => (
+    <input
+      checked={Boolean(checked)}
+      role="switch"
+      type="checkbox"
+      {...props}
+      onChange={(event) => (onChange as (value: boolean) => void)(event.target.checked)}
+    />
+  ),
   Text: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   confirmModal: mocks.confirmModal,
 }));
@@ -113,8 +124,21 @@ vi.mock('@/libs/trpc/client', () => ({
       },
       getOwnerPolicy: {
         useQuery: () => ({
-          data: undefined,
-          isError: true,
+          data: {
+            enabled: false,
+            defaultMemberTemplate: {
+              billingResponsibility: null,
+              enabled: false,
+              maxCreditsPerRequest: null,
+              maxCreditsPerPeriod: null,
+            },
+            groupPeriodLimitCredits: null,
+            periodDurationSeconds: null,
+            periodEndsAt: null,
+            periodStartedAt: null,
+            policyVersion: 0,
+          },
+          isError: false,
           isLoading: false,
           refetch: mocks.refetchPolicy,
         }),
@@ -128,13 +152,16 @@ vi.mock('@/libs/trpc/client', () => ({
       updatePolicyLimit: {
         useMutation: () => ({ mutateAsync: mocks.sponsoredMutation }),
       },
+      updateDefaultMemberTemplate: {
+        useMutation: () => ({ mutateAsync: mocks.sponsoredMutation }),
+      },
     },
   },
 }));
 
 vi.mock('@/store/agentGroup', () => ({
-  useAgentGroupStore: (selector: (state: { activeGroupId?: string }) => unknown) =>
-    selector({ activeGroupId: mocks.activeGroupId }),
+  useAgentGroupStore: (selector: (state: unknown) => unknown) =>
+    selector({ activeGroupId: mocks.activeGroupId, groupMap: { 'group-1': mocks.group } }),
 }));
 
 vi.mock('@/store/agentGroup/selectors', () => ({
@@ -147,6 +174,7 @@ describe('HumanMembers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.activeGroupId = 'group-1';
+    mocks.group = { clientId: 'default-travel-service-group', workspaceId: null };
     mocks.listMembers.data = {
       items: [
         {
@@ -154,6 +182,8 @@ describe('HumanMembers', () => {
           canUsePaidAi: false,
           displayName: '锦绣',
           joinedAt: new Date('2026-09-04T00:00:00.000Z'),
+          maxCreditsPerPeriod: null,
+          maxCreditsPerRequest: null,
           memberUserId: 'member-1',
           membershipVersion: 3,
         },
@@ -177,34 +207,54 @@ describe('HumanMembers', () => {
     mocks.listPendingInvitations.isLoading = false;
   });
 
-  it('lets the owner invite by email and only renders safe member fields', async () => {
-    mocks.createInvitation.mockResolvedValue({
-      expiresAt: new Date(),
-      invitationId: 'invite-new',
-      status: 'created',
-      token: 'must-never-render',
-    });
+  it('keeps invitations and members available without manual sponsorship settings in the default group', () => {
     render(<HumanMembers itemKey="human-members" />);
 
-    expect(screen.getByText('真人成员 1')).toBeInTheDocument();
-    expect(screen.getByText('锦绣')).toBeInTheDocument();
-    expect(screen.getByText('j***@qq.com')).toBeInTheDocument();
-    expect(screen.queryByText('member-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('invite-1')).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('注册邮箱'), { target: { value: ' User@QQ.com ' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送邀请' }));
-
-    await waitFor(() =>
-      expect(mocks.createInvitation).toHaveBeenCalledWith({
-        email: 'User@QQ.com',
-        groupId: 'group-1',
-      }),
-    );
-    expect(screen.queryByText('must-never-render')).not.toBeInTheDocument();
-    expect(mocks.refetchMembers).toHaveBeenCalledTimes(1);
-    expect(mocks.refetchPending).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('用户 ID / 手机号 / 邮箱')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '移除 锦绣' })).toBeInTheDocument();
+    expect(screen.queryByText('群代付设置')).not.toBeInTheDocument();
   });
+
+  it('preserves existing sponsorship controls outside the personal default group', () => {
+    mocks.group.clientId = 'ordinary-group';
+    render(<HumanMembers itemKey="human-members" />);
+
+    expect(screen.getByText('群代付设置')).toBeInTheDocument();
+  });
+
+  it.each(['User@QQ.com', '13800138000', 'user_invitation_test'])(
+    'lets the owner invite by %s and only renders safe member fields',
+    async (contact) => {
+      mocks.createInvitation.mockResolvedValue({
+        expiresAt: new Date(),
+        invitationId: 'invite-new',
+        status: 'created',
+        token: 'must-never-render',
+      });
+      render(<HumanMembers itemKey="human-members" />);
+
+      expect(screen.getByText('真人成员 1')).toBeInTheDocument();
+      expect(screen.getByText('锦绣')).toBeInTheDocument();
+      expect(screen.getByText('j***@qq.com')).toBeInTheDocument();
+      expect(screen.queryByText('member-1')).not.toBeInTheDocument();
+      expect(screen.queryByText('invite-1')).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText('用户 ID / 手机号 / 邮箱'), {
+        target: { value: ` ${contact} ` },
+      });
+      fireEvent.click(screen.getByRole('button', { name: '发送邀请' }));
+
+      await waitFor(() =>
+        expect(mocks.createInvitation).toHaveBeenCalledWith({
+          contact,
+          groupId: 'group-1',
+        }),
+      );
+      expect(screen.queryByText('must-never-render')).not.toBeInTheDocument();
+      expect(mocks.refetchMembers).toHaveBeenCalledTimes(1);
+      expect(mocks.refetchPending).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('revokes pending invitations and removes members with server-bound identifiers', async () => {
     mocks.revokeInvitation.mockResolvedValue({ status: 'revoked' });
@@ -239,7 +289,7 @@ describe('HumanMembers', () => {
     render(<HumanMembers itemKey="human-members" />);
 
     expect(screen.getByText('真人成员管理暂不可用')).toBeInTheDocument();
-    expect(screen.queryByLabelText('注册邮箱')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('用户 ID / 手机号 / 邮箱')).not.toBeInTheDocument();
     expect(screen.queryByText(/群主|权限|成员身份/)).not.toBeInTheDocument();
   });
 });

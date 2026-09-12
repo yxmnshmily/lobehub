@@ -1,16 +1,35 @@
+import { GROUP_CHAT_URL } from '@lobechat/const';
 import { Flexbox } from '@lobehub/ui';
 import { type FC } from 'react';
+import { Navigate } from 'react-router';
 
 import HomePageTracker from '@/components/Analytics/HomePageTracker';
 import HomeContent from '@/features/Home';
 import { useHomeMinimalLayout } from '@/features/Home/CustomizeModal/useHomeCustomization';
 import HomeNavHeader from '@/features/Home/HomeNavHeader';
+import TravelGroupReadiness from '@/features/HomeSidebar/Body/Agent/TravelGroupReadiness';
 import WideScreenContainer from '@/features/WideScreenContainer';
+import { useMyTravelGroupReadiness } from '@/hooks/useMyTravelGroupReadiness';
 
 const Home: FC = () => {
   // Auto margins are what center a flex item inside the scroll lane, and they
   // have to sit on the item itself — the dashboard never wants them.
   const minimal = useHomeMinimalLayout();
+  const readiness = useMyTravelGroupReadiness();
+
+  if (readiness.isEnabled) {
+    if (readiness.groupId) return <Navigate replace to={GROUP_CHAT_URL(readiness.groupId)} />;
+
+    return (
+      <Flexbox align="center" height="100%" justify="center" padding={24}>
+        <TravelGroupReadiness
+          isRetrying={readiness.isRetrying}
+          status={readiness.status ?? 'preparing'}
+          onRetry={readiness.retry}
+        />
+      </Flexbox>
+    );
+  }
 
   return (
     <>

@@ -7,6 +7,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSWRConfig } from 'swr';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { shareKeys } from '@/libs/swr/keys';
 import { agentShareService } from '@/services/agentShare';
 
@@ -33,6 +34,8 @@ interface LimitsSectionProps {
  */
 const LimitsSection = memo<LimitsSectionProps>(({ agentId, onChange, shareConfig }) => {
   const { t } = useTranslation('agent');
+  const { convert, toUsd, symbol, isCny, quote, stale } = useMonthlyExchangeRate();
+  const exchangeUnavailable = isCny && (stale || !quote.updatedAt);
   const { mutate } = useSWRConfig();
   // Read at flush time, never closed over: `useDebouncedLimitPatch` keeps the
   // PREVIOUS render's `commit` in a ref while it drains the identity-change
@@ -104,7 +107,9 @@ const LimitsSection = memo<LimitsSectionProps>(({ agentId, onChange, shareConfig
     }
   };
 
-  const handleSpendChange = (value: number | null) => {
+  const handleSpendChange = (displayValue: number | null) => {
+    if (exchangeUnavailable) return;
+    const value = displayValue == null ? null : toUsd(displayValue);
     // `null` is an empty/half-typed field, NOT "no cap": the cap is mandatory,
     // so hold the (empty) draft and commit nothing until a number comes back.
     setSpendDraft(value);
@@ -152,10 +157,20 @@ const LimitsSection = memo<LimitsSectionProps>(({ agentId, onChange, shareConfig
           label={t('share.settings.limits.monthlySpendLimit')}
         >
           <InputNumber
+            disabled={exchangeUnavailable}
             min={0}
+            prefix={symbol}
             step={1}
             style={{ width: 160 }}
-            value={spendDraft !== undefined ? spendDraft : (shareConfig.monthlySpendLimit ?? null)}
+            value={
+              exchangeUnavailable || spendDraft === null
+                ? null
+                : spendDraft !== undefined
+                  ? convert(spendDraft)
+                  : shareConfig.monthlySpendLimit == null
+                    ? null
+                    : convert(shareConfig.monthlySpendLimit)
+            }
             onChange={handleSpendChange}
           />
         </SettingRow>

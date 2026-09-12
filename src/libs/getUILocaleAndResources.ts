@@ -7,7 +7,10 @@ import {
 
 const loadBusinessResources = async (locale: string): Promise<UILocaleResources | null> => {
   try {
-    const resourcesModule = await import(`@/../locales/${locale}/ui.json`);
+    const resourcesModule =
+      locale === 'zh-CN'
+        ? await import('@/../locales/zh-CN/ui.json')
+        : await import('@/../locales/en-US/ui.json');
     const resources = resourcesModule.default as UILocaleResourceInput | null;
 
     return resources ? normalizeUILocaleResources(resources) : null;

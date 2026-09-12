@@ -13,7 +13,6 @@ import { type GenerationBatch } from '@/types/generation';
 import { setNamespace } from '@/utils/storeDebug';
 
 import { type ImageStore } from '../../store';
-import { generationTopicSelectors } from '../generationTopic/selectors';
 import { type GenerationBatchDispatch } from './reducer';
 import { generationBatchReducer } from './reducer';
 
@@ -159,6 +158,7 @@ export class GenerationBatchActionImpl {
     const { activeGenerationTopicId } = this.#get();
     if (activeGenerationTopicId) {
       await mutate(imageKeys.generationBatches(activeGenerationTopicId));
+      await this.#get().refreshGenerationTopics();
     }
   };
 
@@ -275,21 +275,6 @@ export class GenerationBatchActionImpl {
                   `useCheckGenerationStatus/${data.status === AsyncTaskStatus.Success ? 'success' : 'error'}`,
                 ),
               );
-
-              // If generation succeeds and has a thumbnail, check if the current topic has an imageUrl
-              if (data.status === AsyncTaskStatus.Success && data.generation.asset?.thumbnailUrl) {
-                const currentTopic = generationTopicSelectors.getGenerationTopicById(topicId)(
-                  this.#get(),
-                );
-
-                // If the current topic doesn't have an imageUrl, update it with this generation's thumbnailUrl
-                if (currentTopic && !currentTopic.coverUrl) {
-                  await this.#get().updateGenerationTopicCover(
-                    topicId,
-                    data.generation.asset.thumbnailUrl,
-                  );
-                }
-              }
             }
 
             // Refresh generation batches after success or failure

@@ -17,7 +17,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 10px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 11px;
@@ -40,7 +40,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 8px 12px;
     padding-inline: 12px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-size: 10px;
     line-height: 1.6;
@@ -65,7 +65,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 5px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     font-family: ${cssVar.fontFamilyCode};
     font-size: 11px;
@@ -116,7 +116,7 @@ const GpuStatusPanel = memo(() => {
   if (failed)
     return (
       <div className={devDockPanelStyles.root}>
-        <div className={styles.empty}>GPU status unavailable over ipc.</div>
+        <div className={styles.empty}>无法通过进程通信读取 GPU 状态。</div>
       </div>
     );
   if (!status) return null;
@@ -144,9 +144,8 @@ const GpuStatusPanel = memo(() => {
         ))}
       </div>
       <div className={styles.legend}>
-        `enabled_*` runs on the GPU, `*_software` fell back to the CPU renderer, `*_off_ok` is
-        switched off by design, and anything else is a hard disable worth investigating on
-        chrome://gpu. Read once when the panel opens — reopen it to re-sample.
+        `enabled_*` 表示使用 GPU，`*_software` 表示回退到 CPU 渲染，`*_off_ok` 表示按设计关闭。
+        其他状态表示被强制禁用，可在 chrome://gpu 查看原因。面板打开时读取一次，重新打开可刷新。
       </div>
     </Flexbox>
   );

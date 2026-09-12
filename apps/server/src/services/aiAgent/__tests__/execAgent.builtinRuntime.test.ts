@@ -16,6 +16,10 @@ import {
   hasPlatformManagedExecutionCapability,
 } from '../platformManagedExecution';
 
+// Phone verification is covered by verifiedPhone tests; this runtime fixture
+// exercises already-authorized runs without a live account database.
+vi.mock('../verifiedPhone', () => ({ assertGroupAiPhoneVerified: vi.fn() }));
+
 const {
   mockDebugLog,
   mockBindSharedBudget,
@@ -31,6 +35,9 @@ const {
   mockMessageCreate,
   mockMessageQuery,
   mockMessageUpdate,
+  mockGetUserSettings,
+  mockGetUserPreference,
+  mockGetPersona,
   mockResolveTask,
   mockToolsEnv,
 } = vi.hoisted(() => ({
@@ -48,6 +55,9 @@ const {
   mockMessageCreate: vi.fn(),
   mockMessageQuery: vi.fn(),
   mockMessageUpdate: vi.fn(),
+  mockGetUserSettings: vi.fn(),
+  mockGetUserPreference: vi.fn(),
+  mockGetPersona: vi.fn(),
   mockResolveTask: vi.fn(),
   mockToolsEnv: {
     MULTIMODAL_UNDERSTANDING_MODEL: undefined as string | undefined,
@@ -74,6 +84,15 @@ vi.mock('@/database/models/message', () => ({
     getLatestSpineMessageId: vi.fn().mockResolvedValue(undefined),
     query: mockMessageQuery,
     update: mockMessageUpdate,
+  })),
+}));
+
+vi.mock('@/database/models/chatGroup', () => ({
+  ChatGroupModel: vi.fn().mockImplementation(() => ({
+    findById: vi.fn().mockResolvedValue({ title: 'Group', content: 'Group work' }),
+    getGroupAgentsWithMeta: vi
+      .fn()
+      .mockResolvedValue([{ agentId: 'supervisor', role: 'supervisor', title: 'Supervisor' }]),
   })),
 }));
 
@@ -154,9 +173,21 @@ vi.mock('@/database/models/thread', () => ({
 }));
 
 vi.mock('@/database/models/user', () => ({
-  UserModel: {
-    getInfoForAIGeneration: mockGetInfoForAIGeneration,
-  },
+  UserModel: Object.assign(
+    vi.fn().mockImplementation(() => ({
+      getUserSettings: mockGetUserSettings,
+      getUserPreference: mockGetUserPreference,
+    })),
+    {
+      getInfoForAIGeneration: mockGetInfoForAIGeneration,
+    },
+  ),
+}));
+
+vi.mock('@/database/models/userMemory/persona', () => ({
+  UserPersonaModel: vi.fn().mockImplementation(() => ({
+    getLatestPersonaDocument: mockGetPersona,
+  })),
 }));
 
 vi.mock('@/database/models/task', () => ({
@@ -253,6 +284,9 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     mockMessageCreate.mockResolvedValue({ id: 'msg-1' });
     mockMessageQuery.mockResolvedValue([]);
     mockMessageUpdate.mockResolvedValue({});
+    mockGetUserSettings.mockResolvedValue({ memory: { enabled: false } });
+    mockGetUserPreference.mockResolvedValue({});
+    mockGetPersona.mockResolvedValue(null);
     mockIsAgentSignalEnabledForUser.mockResolvedValue(true);
     mockResolveTask.mockResolvedValue(null);
     mockGetInfoForAIGeneration.mockResolvedValue({
@@ -641,7 +675,7 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     expect(JSON.stringify(childParams)).not.toContain('platformManagedMaxCredits');
   });
 
-  it('allows a server-authorized super_admin to execute a platform-managed agent', async () => {
+  it('starts an authorized admin run without creating an automatic Credits reservation', async () => {
     mockHasGlobalRole.mockResolvedValue(true);
     mockGetAgentConfig.mockResolvedValue({
       agencyConfig: { modelRuntimeMode: 'platform-managed' },
@@ -657,16 +691,70 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     await service.execAgent({ agentId: 'agent-travel-supervisor', prompt: 'inspect the setup' });
 
     expect(mockHasGlobalRole).toHaveBeenCalledWith('super_admin', userId);
-    expect(mockCreateOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appContext: expect.not.objectContaining({
-          platformManagedExecutionAuthorized: expect.anything(),
-          platformManagedMaxCredits: expect.anything(),
-        }),
-      }),
+    expect(mockCreateOperation).toHaveBeenCalled();
+    expect(mockCreateSharedBudget).toHaveBeenCalledWith(
+      mockDb,
+      userId,
+      expect.objectContaining({ maxCredits: undefined }),
     );
-    expect(mockCreateSharedBudget).not.toHaveBeenCalled();
   });
+
+  it.each([true, false])(
+    'ignores a legacy task ceiling for admin metering without granting authorization (admin=%s)',
+    async (isAdmin) => {
+      mockHasGlobalRole.mockResolvedValue(isAdmin);
+      mockGetAgentConfig.mockResolvedValue({
+        agencyConfig: { modelRuntimeMode: 'platform-managed' },
+        chatConfig: {},
+        id: 'agent-travel-supervisor',
+        model: 'deepseek-chat',
+        plugins: [],
+        provider: 'deepseek',
+        systemRole: 'Coordinate travel work.',
+        userId,
+      });
+      const execution = service.execAgent({
+        agentId: 'agent-travel-supervisor',
+        platformManagedMaxCredits: 650_000,
+        prompt: 'inspect the setup',
+      });
+      if (!isAdmin) {
+        await expect(execution).rejects.toMatchObject({ code: 'FORBIDDEN' });
+        expect(mockCreateSharedBudget).not.toHaveBeenCalled();
+        return;
+      }
+      await execution;
+      expect(mockCreateSharedBudget).toHaveBeenCalledWith(
+        mockDb,
+        userId,
+        expect.objectContaining({ maxCredits: undefined }),
+      );
+    },
+  );
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid task ceiling %s before reservation',
+    async (maxCredits) => {
+      mockHasGlobalRole.mockResolvedValue(true);
+      mockGetAgentConfig.mockResolvedValue({
+        agencyConfig: { modelRuntimeMode: 'platform-managed' },
+        chatConfig: {},
+        id: 'agent-travel-supervisor',
+        model: 'deepseek-chat',
+        plugins: [],
+        provider: 'deepseek',
+        userId,
+      });
+      await expect(
+        service.execAgent({
+          agentId: 'agent-travel-supervisor',
+          platformManagedMaxCredits: maxCredits,
+          prompt: 'test',
+        }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      expect(mockCreateSharedBudget).not.toHaveBeenCalled();
+    },
+  );
 
   it('creates and binds the hosted limit as an opaque root budget without operation metadata', async () => {
     mockGetAgentConfig.mockResolvedValue({
@@ -758,6 +846,95 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     expect(result.token).toBeUndefined();
   });
 
+  it.each(['owner', 'member'] as const)(
+    'preserves hosted group history for a new %s turn',
+    async (actor) => {
+      const owner = 'group-owner';
+      const actorUserId = actor === 'owner' ? owner : 'invited-member';
+      mockGetAgentConfig.mockResolvedValue({
+        agencyConfig: { modelRuntimeMode: 'platform-managed' },
+        chatConfig: {},
+        id: 'supervisor',
+        model: 'deepseek-chat',
+        provider: 'deepseek',
+        plugins: [],
+        systemRole: 'Coordinate group work.',
+        userId: owner,
+      });
+      const previousReply = {
+        id: 'previous-reply',
+        role: 'assistant',
+        content: 'Previous itinerary',
+      };
+      mockMessageQuery.mockResolvedValue([
+        previousReply,
+        { id: 'msg-1', role: 'user', content: 'current' },
+      ]);
+      service = new AiAgentService(mockDb, actorUserId, { resourceOwnerUserId: owner });
+      await service.execPlatformManagedAgent(
+        {
+          agentId: 'supervisor',
+          appContext: { groupId: 'group-a' },
+          prompt: 'Revise the previous itinerary',
+        },
+        { actorUserId, resourceOwnerUserId: owner, sharedBudget: {} as any },
+      );
+      expect(mockMessageQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: 'group-a' }),
+        expect.objectContaining({ groupTimeline: true, allowShareVisitor: false }),
+      );
+      expect(mockCreateOperation.mock.calls[0][0].initialMessages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'previous-reply', content: 'Previous itinerary' }),
+        ]),
+      );
+      expect(
+        mockCreateOperation.mock.calls[0][0].initialMessages.filter(
+          (message: any) => message.content === 'current',
+        ),
+      ).toHaveLength(0);
+    },
+  );
+
+  it.each(['owner', 'member'] as const)(
+    'isolates personal memory in hosted %s runs',
+    async (actor) => {
+      const owner = 'group-owner';
+      const actorUserId = actor === 'owner' ? owner : 'invited-member';
+      mockGetUserSettings.mockResolvedValue({ memory: { enabled: true } });
+      mockGetUserPreference.mockResolvedValue({ lab: { enableSelfLearning: true } });
+      mockGetPersona.mockResolvedValue({
+        persona: 'Owner private persona',
+        tagline: 'private',
+        version: 1,
+      });
+      mockGetAgentConfig.mockResolvedValue({
+        agencyConfig: { modelRuntimeMode: 'platform-managed' },
+        chatConfig: { memory: { enabled: true } },
+        id: 'supervisor',
+        model: 'deepseek-chat',
+        provider: 'deepseek',
+        plugins: [],
+        systemRole: 'Coordinate group work.',
+        userId: owner,
+      });
+      service = new AiAgentService(mockDb, actorUserId, { resourceOwnerUserId: owner });
+      await service.execPlatformManagedAgent(
+        { agentId: 'supervisor', prompt: 'Hello' },
+        { actorUserId, resourceOwnerUserId: owner, sharedBudget: {} as any },
+      );
+      const operation = mockCreateOperation.mock.calls[0][0];
+      if (actor === 'member') {
+        expect(mockGetPersona).not.toHaveBeenCalled();
+        expect(operation.userMemory).toBeUndefined();
+        expect(operation.enableExpertise).toBe(false);
+      } else {
+        expect(operation.userMemory?.memories.persona.narrative).toBe('Owner private persona');
+        expect(operation.enableExpertise).toBe(true);
+      }
+    },
+  );
+
   it('does not inherit platform admin authority from the hosted resource owner', async () => {
     const actorUserId = 'invited-member';
     const resourceOwnerUserId = 'admin-group-owner';
@@ -846,6 +1023,45 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     expect(getPlatformManagedExecutionContext(internalParams)).toEqual({ maxCredits: 4321 });
     expect(JSON.stringify(internalParams)).not.toContain('platform-managed-execution-capability');
     expect(JSON.stringify(internalParams)).not.toContain('4321');
+  });
+
+  it('reuses the original user message when regenerating a hosted group reply', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { modelRuntimeMode: 'platform-managed' },
+      chatConfig: {},
+      id: 'agent-travel-supervisor',
+      model: 'deepseek-chat',
+      plugins: [],
+      provider: 'deepseek',
+      systemRole: 'Coordinate travel work.',
+      userId,
+    });
+    const execAgent = vi.spyOn(service, 'execAgent').mockResolvedValue({
+      assistantMessageId: 'assistant-2',
+      operationId: 'operation-2',
+      success: true,
+      topicId: 'topic-1',
+      userMessageId: 'original-user-message',
+    } as any);
+
+    await service.execPlatformManagedGroupAgent(
+      {
+        agentId: 'agent-travel-supervisor',
+        groupId: 'group-travel',
+        message: 'make a poster',
+        parentMessageId: 'original-user-message',
+        topicId: 'topic-1',
+      },
+      { maxCredits: 4321 },
+    );
+
+    expect(execAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appContext: expect.objectContaining({ groupId: 'group-travel', topicId: 'topic-1' }),
+        parentMessageId: 'original-user-message',
+        resume: true,
+      }),
+    );
   });
 
   it('should merge runtime systemRole for inbox agent when DB systemRole is empty', async () => {
@@ -1132,6 +1348,41 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
       'Default Lobe AI agent id: agt_inbox',
     );
   });
+
+  it.each(['task', 'goal'] as const)(
+    'loads only the work topic rather than the whole group during a hosted %s run',
+    async (kind) => {
+      service = new AiAgentService(mockDb, 'user-1');
+      mockResolveTask.mockResolvedValue({ id: 'task-row-1', identifier: 'T-1' });
+      mockGetAgentConfig.mockResolvedValue({
+        agencyConfig: { modelRuntimeMode: 'platform-managed' },
+        chatConfig: {},
+        id: 'worker',
+        model: 'deepseek-chat',
+        provider: 'deepseek',
+        plugins: [],
+        systemRole: '',
+        userId: 'user-1',
+      });
+      await service.execPlatformManagedAgent(
+        {
+          agentId: 'worker',
+          taskId: kind === 'task' ? 'task-row-1' : undefined,
+          appContext: {
+            groupId: 'group-a',
+            topicId: 'topic-1',
+            ...(kind === 'goal' ? { viewedGoal: 'goal-1' } : {}),
+          },
+          prompt: 'Perform assigned work',
+        },
+        { actorUserId: 'user-1', resourceOwnerUserId: 'user-1', sharedBudget: {} as any },
+      );
+      expect(mockMessageQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: 'group-a', topicId: 'topic-1' }),
+        expect.objectContaining({ groupTimeline: false }),
+      );
+    },
+  );
 
   it('should inject lobe-agent when history has audio and model lacks native audio support', async () => {
     mockGetAgentConfig.mockResolvedValue({

@@ -41,7 +41,7 @@ const Header = memo(() => {
         </Flexbox>
       }
       style={{
-        borderBottom: `1px solid ${cssVar.colorBorderSecondary}`,
+        borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
       }}
     />
   );

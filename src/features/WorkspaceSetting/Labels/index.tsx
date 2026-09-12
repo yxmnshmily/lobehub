@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { useFetchAgentLabels } from '@/hooks/useFetchAgentLabels';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
 import { useHomeStore } from '@/store/home';
 import { agentLabelSelectors } from '@/store/home/selectors';
@@ -45,8 +46,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 12px;
     border-radius: ${cssVar.borderRadius};
 
-    &:hover {
-      background: ${cssVar.colorFillTertiary};
+    @media (hover: hover) {
+      &:hover {
+        background: ${cssVar.colorFillTertiary};
+      }
+    }
+  `,
+  toolbar: css`
+    width: 100%;
+    min-width: 0;
+
+    > :first-child {
+      min-width: 0;
     }
   `,
 }));
@@ -70,6 +81,7 @@ const ACTION_COL_WIDTH = 32;
 const LabelRow = memo<LabelRowProps>(
   ({ canManage, label, manageBlockedReason, onDelete, onEdit, onRestoreConflict }) => {
     const { t } = useTranslation(['setting', 'common']);
+    const mobile = useIsMobile();
     const updateAgentLabel = useHomeStore((s) => s.updateAgentLabel);
 
     const toggleArchive = () => {
@@ -151,9 +163,9 @@ const LabelRow = memo<LabelRowProps>(
         <Flexbox
           horizontal
           align={'center'}
-          flex={'none'}
+          flex={mobile ? 1 : 'none'}
           gap={12}
-          style={{ width: NAME_COL_WIDTH }}
+          style={{ minWidth: 0, width: mobile ? undefined : NAME_COL_WIDTH }}
         >
           <span
             className={styles.dot}
@@ -163,27 +175,31 @@ const LabelRow = memo<LabelRowProps>(
             {label.name}
           </Text>
         </Flexbox>
-        <Flexbox flex={1} style={{ minWidth: 0 }}>
-          {label.description ? (
-            <Text ellipsis fontSize={12} type={'secondary'}>
-              {label.description}
-            </Text>
-          ) : null}
-        </Flexbox>
+        {!mobile && (
+          <Flexbox flex={1} style={{ minWidth: 0 }}>
+            {label.description ? (
+              <Text ellipsis fontSize={12} type={'secondary'}>
+                {label.description}
+              </Text>
+            ) : null}
+          </Flexbox>
+        )}
         <Text
           fontSize={12}
-          style={{ flex: 'none', textAlign: 'end', width: USAGE_COL_WIDTH }}
+          style={{ flex: 'none', textAlign: 'end', width: mobile ? 72 : USAGE_COL_WIDTH }}
           type={'secondary'}
         >
           {t('workspaceSetting.labels.usage', { count: label.usageCount })}
         </Text>
-        <Text
-          fontSize={12}
-          style={{ flex: 'none', textAlign: 'end', width: CREATED_COL_WIDTH }}
-          type={'secondary'}
-        >
-          {dayjs(label.createdAt).format('YYYY-MM-DD')}
-        </Text>
+        {!mobile && (
+          <Text
+            fontSize={12}
+            style={{ flex: 'none', textAlign: 'end', width: CREATED_COL_WIDTH }}
+            type={'secondary'}
+          >
+            {dayjs(label.createdAt).format('YYYY-MM-DD')}
+          </Text>
+        )}
         <Flexbox align={'center'} flex={'none'} style={{ width: ACTION_COL_WIDTH }}>
           {actions}
         </Flexbox>
@@ -197,29 +213,42 @@ LabelRow.displayName = 'WorkspaceLabelRow';
 /** Column header row, aligned with LabelRow via the shared widths. */
 const LabelTableHeader = memo(() => {
   const { t } = useTranslation('setting');
+  const mobile = useIsMobile();
 
   return (
     <Flexbox horizontal align={'center'} gap={12} paddingInline={12} style={{ paddingBlock: 4 }}>
-      <Text fontSize={12} style={{ flex: 'none', width: NAME_COL_WIDTH }} type={'secondary'}>
-        {t('workspaceSetting.labels.columns.name')}
-      </Text>
-      <Text ellipsis fontSize={12} style={{ flex: 1, minWidth: 0 }} type={'secondary'}>
-        {t('workspaceSetting.labels.columns.description')}
-      </Text>
       <Text
         fontSize={12}
-        style={{ flex: 'none', textAlign: 'end', width: USAGE_COL_WIDTH }}
+        type={'secondary'}
+        style={{
+          flex: mobile ? 1 : 'none',
+          minWidth: 0,
+          width: mobile ? undefined : NAME_COL_WIDTH,
+        }}
+      >
+        {t('workspaceSetting.labels.columns.name')}
+      </Text>
+      {!mobile && (
+        <Text ellipsis fontSize={12} style={{ flex: 1, minWidth: 0 }} type={'secondary'}>
+          {t('workspaceSetting.labels.columns.description')}
+        </Text>
+      )}
+      <Text
+        fontSize={12}
+        style={{ flex: 'none', textAlign: 'end', width: mobile ? 72 : USAGE_COL_WIDTH }}
         type={'secondary'}
       >
         {t('workspaceSetting.labels.columns.usage')}
       </Text>
-      <Text
-        fontSize={12}
-        style={{ flex: 'none', textAlign: 'end', width: CREATED_COL_WIDTH }}
-        type={'secondary'}
-      >
-        {t('workspaceSetting.labels.columns.created')}
-      </Text>
+      {!mobile && (
+        <Text
+          fontSize={12}
+          style={{ flex: 'none', textAlign: 'end', width: CREATED_COL_WIDTH }}
+          type={'secondary'}
+        >
+          {t('workspaceSetting.labels.columns.created')}
+        </Text>
+      )}
       <span style={{ flex: 'none', width: ACTION_COL_WIDTH }} />
     </Flexbox>
   );
@@ -234,6 +263,7 @@ LabelTableHeader.displayName = 'WorkspaceLabelTableHeader';
  */
 const WorkspaceLabelsContent = memo(() => {
   const { t } = useTranslation(['setting', 'common']);
+  const mobile = useIsMobile();
   const { error, isLoading, mutate } = useFetchAgentLabels();
 
   const isInit = useHomeStore(agentLabelSelectors.isLabelsInit);
@@ -305,12 +335,12 @@ const WorkspaceLabelsContent = memo(() => {
 
   return (
     <Flexbox gap={16}>
-      <Flexbox horizontal align={'center'} gap={12} justify={'space-between'}>
-        <Flexbox horizontal align={'center'} gap={8}>
+      <Flexbox horizontal align={'center'} className={styles.toolbar} gap={8}>
+        <Flexbox horizontal align={'center'} flex={1} gap={8} style={{ minWidth: 0 }}>
           <SearchBar
             allowClear
             placeholder={t('workspaceSetting.labels.filterPlaceholder')}
-            style={{ maxWidth: 240 }}
+            style={{ flex: 1, maxWidth: mobile ? undefined : 240, minWidth: 0 }}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />

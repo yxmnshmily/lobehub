@@ -919,6 +919,8 @@ export interface LobeAgentAgencyConfig {
    * Agents resolve to `member` for legacy rows.
    */
   modelSelectionPolicy?: AgentModelSelectionPolicy;
+  /** Server-provisioned default member whose original runtime dependencies are not portable. */
+  publicationBlockedReason?: string;
   /**
    * Model override for sub-agents this agent spawns via
    * `lobe-agent.callSubAgent`. When unset (or nulled to clear a previous

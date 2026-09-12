@@ -32,7 +32,10 @@ export interface MessageAction
   /**
    * Add a user message (convenience method)
    */
-  addUserMessage: (params: { fileList?: string[]; message: string }) => Promise<string | undefined>;
+  addUserMessage: (params: {
+    fileList?: string[];
+    message: string;
+  }) => Promise<string | boolean | undefined>;
 
   /**
    * Send a message in this conversation (unified Main + Thread)
@@ -59,6 +62,7 @@ export const messageSlice: StateCreator<
   addAIMessage: async (content: string) => {
     const state = get();
     const { context, hooks } = state;
+    if (hooks.onSendMessage) return undefined;
     const { agentId, topicId, threadId } = context;
 
     // Get parent message ID
@@ -104,6 +108,7 @@ export const messageSlice: StateCreator<
   addUserMessage: async ({ message, fileList }) => {
     const state = get();
     const { context, hooks } = state;
+    if (hooks.onAddUserMessage) return hooks.onAddUserMessage({ message, fileList });
     const { agentId, topicId, threadId } = context;
 
     // Get parent message ID

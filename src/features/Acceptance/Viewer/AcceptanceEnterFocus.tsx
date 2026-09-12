@@ -4,7 +4,8 @@ import { Icon } from '@lobehub/ui';
 import { Button } from '@lobehub/ui/base-ui';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+
+import { useWorkspaceAwareNavigate as useNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 
 import { useAcceptanceScope } from './AcceptanceScope';
 import { acceptanceCheckPath } from './routes';

@@ -263,7 +263,7 @@ class ChatService {
             (item) => item.identifier === serverType.identifier,
           );
           officialTools.push({
-            description: `LobeHub Mcp Server: ${serverType.label}`,
+            description: `旅游群 Mcp Server: ${serverType.label}`,
             enabled: enabledPlugins.includes(serverType.identifier),
             identifier: serverType.identifier,
             installed: !!server,
@@ -276,7 +276,7 @@ class ChatService {
         const { provider } = connector;
         const server = allLobehubSkillServers.find((item) => item.identifier === provider.id);
         officialTools.push({
-          description: `LobeHub Skill Provider: ${provider.label}`,
+          description: `旅游群 Skill Provider: ${provider.label}`,
           enabled: enabledPlugins.includes(provider.id),
           identifier: provider.id,
           installed: !!server,

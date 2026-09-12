@@ -11,8 +11,12 @@ vi.mock('@lobehub/ui', () => ({
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({
-  ActionIcon: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
-    React.createElement('button', props),
+  ActionIcon: ({
+    size,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    size?: { blockSize?: number };
+  }) => React.createElement('button', { ...props, 'data-block-size': size?.blockSize }),
 }));
 
 vi.mock('@lobehub/ui/mobile', () => {
@@ -51,6 +55,6 @@ describe('mobile me settings Header', () => {
     );
 
     expect(html).toContain('aria-label="back"');
+    expect(html).toContain('data-block-size="44"');
   });
 });
-

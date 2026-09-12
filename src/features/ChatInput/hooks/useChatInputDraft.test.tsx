@@ -189,6 +189,30 @@ describe('useChatInputDraft', () => {
     expect(setDocument).toHaveBeenCalledWith('json', draftJson);
   });
 
+  it('ignores a delayed restore callback after its editor was destroyed', () => {
+    const editor = {
+      getLexicalEditor: vi.fn(() => null),
+      isEmpty: true,
+      setDocument: vi.fn(() => {
+        throw new Error('DataSource for type "json" is not registered.');
+      }),
+    } as unknown as IEditor;
+    const store = createStore({ draftKey: 'main_agent_topic', editor });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider createStore={() => store}>{children}</Provider>
+    );
+    saveDraft('main_agent_topic', { root: { children: [{ text: 'draft' }] } });
+
+    const { result } = renderHook(() => useChatInputDraft(), { wrapper });
+
+    expect(() => {
+      act(() => {
+        result.current.restoreDraft(editor);
+      });
+    }).not.toThrow();
+    expect(editor.setDocument).not.toHaveBeenCalled();
+  });
+
   it('saves the old draft, clears the editor and restores the new draft on draftKey change', () => {
     const oldJson = { root: { children: [{ text: 'old topic draft' }] } };
     const newJson = { root: { children: [{ text: 'new topic draft' }] } };
@@ -229,6 +253,35 @@ describe('useChatInputDraft', () => {
 
     expect(getDraft('main_agt_a_tpc_1')).toEqual(oldJson);
     expect(getDraft('main_agt_a_tpc_2')).toEqual(newJson);
+  });
+
+  it('waits for the replacement editor instead of restoring into a destroyed editor', () => {
+    const editor = {
+      cleanDocument: vi.fn(),
+      focus: vi.fn(),
+      getDocument: vi.fn(() => {
+        throw new Error('DataSource for type "json" is not registered.');
+      }),
+      getLexicalEditor: vi.fn(() => null),
+      isEmpty: true,
+      setDocument: vi.fn(),
+    } as unknown as IEditor;
+    const store = createStore({ draftKey: 'main_agt_a_tpc_1', editor });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider createStore={() => store}>{children}</Provider>
+    );
+    saveDraft('main_agt_a_tpc_2', { root: { children: [{ text: 'new topic draft' }] } });
+
+    renderHook(() => useChatInputDraft(), { wrapper });
+
+    expect(() => {
+      act(() => {
+        store.setState({ draftKey: 'main_agt_a_tpc_2' });
+      });
+    }).not.toThrow();
+    expect(editor.cleanDocument).not.toHaveBeenCalled();
+    expect(editor.setDocument).not.toHaveBeenCalled();
+    expect(editor.focus).not.toHaveBeenCalled();
   });
 
   it('focuses the editor after switching to another draft key', () => {

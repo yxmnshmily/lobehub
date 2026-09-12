@@ -67,9 +67,11 @@ export async function GET(request: NextRequest) {
   // Keep the durable database ownership boundary in addition to the runtime
   // metadata check. Redis stream keys do not carry a principal on their own.
   const serverDB = await getServerDB();
-  const operation = await new AgentOperationModel(serverDB, callerUserId, workspaceId).findById(
-    operationId,
-  );
+  const operation = await new AgentOperationModel(
+    serverDB,
+    callerUserId,
+    workspaceId ?? undefined,
+  ).findById(operationId);
   if (!operation) {
     return NextResponse.json({ error: 'operation_not_found' }, { status: 404 });
   }

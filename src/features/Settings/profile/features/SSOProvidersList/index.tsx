@@ -1,7 +1,7 @@
 import { isDesktop } from '@lobechat/const';
 import { type MenuProps } from '@lobehub/ui';
 import { DropdownMenu, Flexbox, Tooltip } from '@lobehub/ui';
-import { ActionIcon, confirmModal, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, confirmModal, Text } from '@lobehub/ui/base-ui';
 import { ArrowRight, Plus, Unlink } from 'lucide-react';
 import { type CSSProperties } from 'react';
 import { memo, useMemo } from 'react';
@@ -23,13 +23,16 @@ export const SSOProvidersList = memo(() => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const providers = useUserStore(authSelectors.authProviders);
   const hasPasswordAccount = useUserStore(authSelectors.hasPasswordAccount);
+  const loaded = useUserStore(authSelectors.isLoadedAuthProviders);
+  const loading = useUserStore((s) => s.isLoadingAuthProviders);
+  const error = useUserStore((s) => s.authProvidersError);
   const refreshAuthProviders = useUserStore((s) => s.refreshAuthProviders);
   const oAuthSSOProviders = useServerConfigStore(serverConfigSelectors.oAuthSSOProviders);
   const { t } = useTranslation('auth');
 
   // Allow unlink if user has multiple SSO providers OR has email/password login
-  const allowUnlink = providers.length > 1 || hasPasswordAccount;
-  const enableAuthActions = !isDesktop && isLogin;
+  const allowUnlink = loaded && !loading && !error && (providers.length > 1 || hasPasswordAccount);
+  const enableAuthActions = !isDesktop && isLogin && loaded && !loading && !error;
 
   // Get linked provider IDs for filtering
   const linkedProviderIds = useMemo(() => {
@@ -96,6 +99,18 @@ export const SSOProvidersList = memo(() => {
 
   return (
     <Flexbox gap={8}>
+      {error ? (
+        <Flexbox horizontal align="center" gap={8}>
+          <Text role="alert" type="secondary">
+            {t('profile.sso.loadError')}
+          </Text>
+          <Button size="small" onClick={() => void refreshAuthProviders()}>
+            {t('profile.sso.retry')}
+          </Button>
+        </Flexbox>
+      ) : (
+        (!loaded || loading) && <Text type="secondary">{t('profile.sso.loading')}</Text>
+      )}
       {providers.map((item) => (
         <Flexbox
           horizontal
@@ -128,7 +143,7 @@ export const SSOProvidersList = memo(() => {
         </Flexbox>
       ))}
 
-      {!isDesktop && !allowUnlink && (
+      {!isDesktop && loaded && !error && !allowUnlink && providers.length > 0 && (
         <Text fontSize={11} type="secondary">
           {t('profile.sso.unlink.forbidden')}
         </Text>

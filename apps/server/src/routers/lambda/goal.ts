@@ -103,6 +103,7 @@ export const goalRouter = router({
         createdByAgentId: z.string().optional(),
         config: z
           .object({
+            groupId: z.string().min(1).optional(),
             // Bounds mirror `resolveMaxConcurrentTasks`, so a rejected value and
             // a clamped one cannot disagree about what the cap may be.
             maxConcurrentTasks: z.number().int().min(1).max(10).nullable().optional(),
@@ -252,6 +253,7 @@ export const goalRouter = router({
     .input(
       z.object({
         agentId: z.string().optional(),
+        groupId: z.string().min(1).optional(),
         limit: z.number().optional(),
         offset: z.number().optional(),
         projectId: z.string().optional(),

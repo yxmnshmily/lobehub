@@ -172,7 +172,7 @@ const Header = memo(() => {
           return;
         }
         toast.success(t('confirmRemoveSessionSuccess', { ns: 'chat' }));
-        navigate('/');
+        navigate('/group/default');
       },
       title: t('confirmRemoveSessionItemAlert', { ns: 'chat' }),
     });

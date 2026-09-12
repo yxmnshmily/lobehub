@@ -100,7 +100,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     min-height: 56px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   address: css`
     flex: 1;
@@ -122,7 +122,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-height: 72px;
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
   `,

@@ -3,14 +3,15 @@
 import { agentDisplayName, type AgentItem } from '@lobechat/types';
 import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, Icon, Popover } from '@lobehub/ui';
-import { ActionIcon, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, cssVar } from 'antd-style';
 import { BookOpen, FileText, Settings } from 'lucide-react';
 import { memo, type PropsWithChildren, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { ArticleSkeleton } from '@/components/Skeleton';
 import ModelSelect from '@/features/ModelSelect';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
@@ -26,7 +27,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   footer: css`
     padding-block: 12px;
     padding-inline: 16px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   section: css`
     padding-block: 12px;
@@ -70,11 +71,21 @@ interface AgentProfilePopupProps extends PropsWithChildren {
   agentId: string;
   /** When set, enables group-specific actions (settings nav + model change). */
   groupId?: string;
+  nativeButton?: boolean;
+  readOnly?: boolean;
   trigger?: 'click' | 'hover';
 }
 
 const AgentProfilePopup = memo<AgentProfilePopupProps>(
-  ({ agent, agentId, groupId, children, trigger = 'click' }) => {
+  ({
+    agent,
+    agentId,
+    groupId,
+    children,
+    trigger = 'click',
+    readOnly = false,
+    nativeButton = false,
+  }) => {
     const { t } = useTranslation('chat');
     const navigate = useWorkspaceAwareNavigate();
     const [open, setOpen] = useState(false);
@@ -85,6 +96,7 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
     const { canEditResource: canEditGroup, isAccessResolved: isGroupAccessResolved } =
       useResourceAccess('agentGroup', open ? groupId : undefined);
     const canConfigure =
+      !readOnly &&
       canEditContent &&
       isAgentAccessResolved &&
       canEditAgent &&
@@ -95,7 +107,9 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
     const { data: fetched, isLoading } = useSWR(
       open && canConfigure ? agentProfileKeys.detail(agentId) : null,
       () => agentService.getAgentConfigById(agentId) as Promise<FetchedAgent | null>,
-      { revalidateOnFocus: false },
+      // Group layouts enable suspense globally; preview requests must use the
+      // card's loading state instead of replacing the surrounding member page.
+      { revalidateOnFocus: false, suspense: false },
     );
 
     const merged: Partial<AgentPreview> = {
@@ -128,7 +142,7 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
       navigate(`/group/${groupId}/profile?tab=${agentId}`);
     };
 
-    const handleHeaderClick = () => {
+    const handleViewProfile = () => {
       setOpen(false);
       navigate(`/agent/${agentId}/profile`);
     };
@@ -155,10 +169,27 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
             />
           </Flexbox>
         )
+      ) : groupId ? (
+        <Flexbox className={styles.section} gap={4}>
+          <div className={styles.sectionTitle}>{t('groupSidebar.agentProfile.model')}</div>
+          <Flexbox
+            horizontal
+            align="center"
+            gap={8}
+            style={{
+              padding: 8,
+              border: `0.5px solid ${cssVar.colorBorderSecondary}`,
+              borderRadius: 8,
+            }}
+          >
+            {merged.model && <ModelIcon model={merged.model} size={20} />}
+            <Text>{merged.model || '群模型未配置'}</Text>
+          </Flexbox>
+        </Flexbox>
       ) : footerLoading ? (
         <Flexbox horizontal align={'center'} className={styles.footer} gap={14}>
-          <Skeleton height={16} width={90} />
-          <Skeleton height={16} width={60} />
+          <SkeletonBar height={16} width={90} />
+          <SkeletonBar height={16} width={60} />
         </Flexbox>
       ) : canConfigure && (merged.model || hasStats) ? (
         <Flexbox horizontal align={'center'} className={styles.footer} gap={14} wrap={'wrap'}>
@@ -220,9 +251,15 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
             </Flexbox>
           ) : undefined
         }
-        onHeaderClick={canConfigure ? handleHeaderClick : undefined}
       >
         {modelSection}
+        {canConfigure && (
+          <Flexbox className={styles.footer}>
+            <Button block type={'text'} onClick={handleViewProfile}>
+              {t('agentProfile.viewProfile')}
+            </Button>
+          </Flexbox>
+        )}
       </AgentProfileCard>
     );
 
@@ -230,9 +267,9 @@ const AgentProfilePopup = memo<AgentProfilePopupProps>(
       <Popover
         classNames={trigger === 'click' ? { trigger: styles.trigger } : undefined}
         content={content}
-        nativeButton={false}
+        nativeButton={nativeButton}
         open={open}
-        placement={trigger === 'hover' ? 'top' : 'right'}
+        placement={trigger === 'hover' ? 'top' : 'bottomLeft'}
         trigger={trigger}
         styles={{
           content: { borderRadius: 12, overflow: 'hidden', padding: 0 },

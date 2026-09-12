@@ -16,7 +16,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     inline-size: 20px;
     block-size: 20px;
-    border: 1.5px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 50%;
 
     transition:

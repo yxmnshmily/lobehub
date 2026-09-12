@@ -122,7 +122,25 @@ export class DocumentModel {
   };
 
   delete = async (id: string) => {
-    return this.db.delete(documents).where(and(eq(documents.id, id), this.ownership()));
+    return this.db.transaction(async (tx) => {
+      const [document] = await tx
+        .select({ id: documents.id })
+        .from(documents)
+        .where(and(eq(documents.id, id), this.ownership()))
+        .limit(1);
+      if (document) {
+        await tx
+          .delete(works)
+          .where(
+            and(
+              eq(works.resourceType, 'document'),
+              eq(works.resourceId, document.id),
+              buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, works),
+            ),
+          );
+      }
+      return tx.delete(documents).where(and(eq(documents.id, id), this.ownership()));
+    });
   };
 
   deleteAll = async () => {

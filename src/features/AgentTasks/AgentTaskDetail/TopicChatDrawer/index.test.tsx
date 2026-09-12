@@ -1,14 +1,15 @@
 /**
  * @vitest-environment happy-dom
  */
-import type { TaskDetailActivity } from '@lobechat/types';
+import type { ConversationContext, TaskDetailActivity } from '@lobechat/types';
 import { fireEvent, render } from '@testing-library/react';
 import type { CSSProperties, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import { useGatewayReconnect } from '@/hooks/useGatewayReconnect';
 
-import TopicChatDrawer from './index';
+import TopicChatDrawer, { TopicChatDrawerBody } from './index';
 
 const mocks = vi.hoisted(() => ({
   agentState: {
@@ -16,13 +17,20 @@ const mocks = vi.hoisted(() => ({
   },
   chatState: {
     dbMessagesMap: {} as Record<string, unknown[]>,
+    operations: {} as Record<
+      string,
+      { context: ConversationContext; metadata: { serverOperationId: string }; status: string }
+    >,
     replaceMessages: vi.fn(),
+    useFetchTopicDetail: vi.fn(),
   },
   permission: {
     allowed: true,
     reason: 'requires member',
   },
   navigate: vi.fn(),
+  shareOptions: vi.fn(),
+  providerOptions: vi.fn(),
   serverConfigState: {
     serverConfig: {
       enableBusinessFeatures: false,
@@ -169,7 +177,32 @@ vi.mock('@/features/Conversation/ChatList', () => ({
 }));
 
 vi.mock('@/features/Conversation/ConversationProvider', () => ({
-  ConversationProvider: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  ConversationProvider: ({
+    children,
+    context,
+    messages,
+    skipFetch,
+    onMessagesChange,
+  }: {
+    children?: ReactNode;
+    context: ConversationContext;
+    messages?: unknown[];
+    skipFetch?: boolean;
+    onMessagesChange?: unknown;
+  }) => {
+    mocks.providerOptions({ onMessagesChange, context });
+    return (
+      <div
+        data-context={JSON.stringify(context)}
+        data-messages={JSON.stringify(messages)}
+        data-skip-fetch={String(!!skipFetch)}
+        data-testid="conversation-context"
+        data-writes-back={String(!!onMessagesChange)}
+      >
+        {children}
+      </div>
+    );
+  },
 }));
 
 vi.mock('@/features/Conversation/Messages', () => ({
@@ -181,10 +214,14 @@ vi.mock('@/features/Conversation/Markdown/plugins/Task', () => ({
 }));
 
 vi.mock('@/features/ShareModal', () => ({
-  useShareModal: () => ({
-    openShareModal: vi.fn(),
-  }),
+  useShareModal: (options: unknown) => {
+    mocks.shareOptions(options);
+    return { openShareModal: vi.fn() };
+  },
 }));
+
+vi.mock('@/components/AsyncError', () => ({ default: () => <div data-testid="topic-error" /> }));
+vi.mock('@/components/404', () => ({ default: () => <div data-testid="topic-not-found" /> }));
 
 vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
   useWorkspaceAwareNavigate: () => mocks.navigate,
@@ -224,10 +261,6 @@ vi.mock('@/store/user', () => ({
   useUserStore: (selector: (state: typeof mocks.userState) => unknown) => selector(mocks.userState),
 }));
 
-vi.mock('@/store/chat/utils/messageMapKey', () => ({
-  messageMapKey: () => 'topic-chat-key',
-}));
-
 vi.mock('../../features/AssigneeAvatar', () => ({
   default: ({ agentId, size }: { agentId?: string; size?: number }) => (
     <span data-agent-id={agentId} data-size={size} data-testid="assignee-avatar" />
@@ -252,6 +285,11 @@ vi.mock('./FeedbackInput', () => ({
 
 describe('TopicChatDrawer', () => {
   beforeEach(() => {
+    mocks.chatState.operations = {};
+    mocks.chatState.dbMessagesMap = {};
+    mocks.chatState.useFetchTopicDetail.mockImplementation((id: string) => ({
+      data: { id, groupId: null },
+    }));
     mocks.agentState.useHydrateAgentConfig.mockClear();
     mocks.chatState.replaceMessages.mockClear();
     mocks.navigate.mockClear();
@@ -292,6 +330,13 @@ describe('TopicChatDrawer', () => {
       'topic-1',
       expect.objectContaining({ heteroType: 'claude-code', operationId: 'op-1' }),
       'agt_assignee',
+      undefined,
+      expect.objectContaining({
+        agentId: 'agt_assignee',
+        isolatedTopic: true,
+        scope: 'main',
+        topicId: 'topic-1',
+      }),
     );
   });
 
@@ -388,6 +433,63 @@ describe('TopicChatDrawer', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/agent/agt_assignee/topic-1');
   });
 
+  it('keeps a group run in the group when opening its conversation', () => {
+    mocks.chatState.useFetchTopicDetail.mockReturnValue({
+      data: { id: 'topic-1', groupId: 'cg_team' },
+    });
+    const { getByText } = render(
+      <GroupWorkScopeContext value={{ groupId: 'cg_team' }}>
+        <TopicChatDrawer />
+      </GroupWorkScopeContext>,
+    );
+    fireEvent.click(getByText('taskDetail.topicMenu.openGroupTopic'));
+    expect(mocks.navigate).toHaveBeenCalledWith('/group/cg_team/topic-1');
+    expect(mocks.taskState.closeTopicDrawer).toHaveBeenCalledOnce();
+  });
+
+  it('binds run replies to the containing group without changing the selected member', () => {
+    mocks.chatState.useFetchTopicDetail.mockReturnValue({
+      data: { id: 'topic-1', groupId: 'cg_team' },
+    });
+    const { getByTestId } = render(
+      <GroupWorkScopeContext value={{ groupId: 'cg_team' }}>
+        <TopicChatDrawer />
+      </GroupWorkScopeContext>,
+    );
+    expect(
+      JSON.parse(getByTestId('conversation-context').getAttribute('data-context')!),
+    ).toMatchObject({
+      agentId: 'agt_assignee',
+      groupId: 'cg_team',
+      isolatedTopic: true,
+      scope: 'group',
+      topicId: 'topic-1',
+    });
+  });
+
+  it('keeps the reused acceptance conversation body in its group', () => {
+    mocks.chatState.useFetchTopicDetail.mockImplementation((id: string) => ({
+      data: { id, groupId: id === 'review-topic' ? 'cg_team' : null },
+    }));
+    const { getByTestId, rerender } = render(
+      <GroupWorkScopeContext value={{ groupId: 'cg_team' }}>
+        <TopicChatDrawerBody agentId="agt_reviewer" topicId="review-topic" />
+      </GroupWorkScopeContext>,
+    );
+    expect(
+      JSON.parse(getByTestId('conversation-context').getAttribute('data-context')!),
+    ).toMatchObject({
+      agentId: 'agt_reviewer',
+      groupId: 'cg_team',
+      scope: 'group',
+      topicId: 'review-topic',
+    });
+    rerender(<TopicChatDrawerBody agentId="agt_reviewer" topicId="personal-topic" />);
+    const context = JSON.parse(getByTestId('conversation-context').getAttribute('data-context')!);
+    expect(context).toMatchObject({ scope: 'main', topicId: 'personal-topic' });
+    expect(context.groupId).toBeUndefined();
+  });
+
   it('uses a resizable bottom-right floating panel', () => {
     const { getByTestId } = render(<TopicChatDrawer />);
 
@@ -399,4 +501,127 @@ describe('TopicChatDrawer', () => {
       'min(640px, calc(100dvh - 16px))',
     );
   });
+
+  it('preserves a legacy personal run even when its task was moved into a group', () => {
+    const { getByTestId, getByText } = render(
+      <GroupWorkScopeContext value={{ groupId: 'cg_team' }}>
+        <TopicChatDrawer />
+      </GroupWorkScopeContext>,
+    );
+    const context = JSON.parse(getByTestId('conversation-context').getAttribute('data-context')!);
+    expect(context.groupId).toBeUndefined();
+    expect(context.scope).toBe('main');
+    fireEvent.click(getByText('taskDetail.topicMenu.openAgentTopic'));
+    expect(mocks.navigate).toHaveBeenCalledWith('/agent/agt_assignee/topic-1');
+  });
+
+  it('does not open a personal conversation before the topic ownership is resolved', () => {
+    mocks.chatState.useFetchTopicDetail.mockReturnValue({ data: undefined });
+    const { getByText, queryByTestId } = render(<TopicChatDrawer />);
+    fireEvent.click(getByText('taskDetail.topicMenu.openAgentTopic'));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(queryByTestId('conversation-context')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [{ data: null }, 'topic-not-found'],
+    [{ data: undefined, error: new Error('forbidden') }, 'topic-error'],
+  ])(
+    'does not mount a conversation for missing or forbidden topic detail %#',
+    (response, testId) => {
+      mocks.chatState.useFetchTopicDetail.mockReturnValue(response);
+      const { getByTestId, getByText, queryByTestId } = render(<TopicChatDrawer />);
+      expect(getByTestId(testId)).toBeInTheDocument();
+      expect(queryByTestId('conversation-context')).not.toBeInTheDocument();
+      fireEvent.click(getByText('taskDetail.topicMenu.openAgentTopic'));
+      expect(mocks.navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses actual group ownership outside a group page for sharing and reconnect', () => {
+    mocks.chatState.useFetchTopicDetail.mockReturnValue({
+      data: { id: 'topic-1', groupId: 'cg_actual' },
+    });
+    const { getByText } = render(<TopicChatDrawer />);
+    fireEvent.click(getByText('taskDetail.topicMenu.openGroupTopic'));
+    expect(mocks.navigate).toHaveBeenCalledWith('/group/cg_actual/topic-1');
+    expect(mocks.shareOptions).toHaveBeenLastCalledWith({
+      context: {
+        agentId: 'agt_assignee',
+        groupId: 'cg_actual',
+        isolatedTopic: true,
+        threadId: null,
+        topicId: 'topic-1',
+      },
+    });
+    expect(useGatewayReconnect).toHaveBeenLastCalledWith(
+      'topic-1',
+      undefined,
+      'agt_assignee',
+      undefined,
+      expect.objectContaining({ groupId: 'cg_actual', isolatedTopic: true, scope: 'group' }),
+    );
+  });
+
+  it.each([true, false])(
+    'follows an already-connected run without overwriting its bucket (task drawer active: %s)',
+    (taskDrawerActive) => {
+      mocks.chatState.useFetchTopicDetail.mockReturnValue({
+        data: { id: 'topic-1', groupId: 'cg_actual' },
+      });
+      mocks.taskState.taskDetailMap['T-1'].activities[0].runningOperation = {
+        assistantMessageId: 'ast',
+        operationId: 'server-op',
+      };
+      mocks.chatState.operations.live = {
+        context: {
+          agentId: 'agt_assignee',
+          groupId: 'cg_actual',
+          scope: 'group',
+          topicId: 'topic-1',
+        },
+        metadata: { serverOperationId: 'server-op' },
+        status: 'running',
+      };
+      if (!taskDrawerActive) {
+        mocks.taskState.activeTopicDrawerTopicId = '';
+        mocks.chatState.useFetchTopicDetail.mockReturnValue({
+          data: {
+            id: 'topic-1',
+            groupId: 'cg_actual',
+            metadata: { runningOperation: { assistantMessageId: 'ast', operationId: 'server-op' } },
+          },
+        });
+      }
+      mocks.chatState.dbMessagesMap['group_cg_actual_topic-1'] = [
+        { id: 'ast', topicId: 'topic-1', content: 'draft' },
+        { id: 'other', topicId: 'topic-other', content: 'unrelated' },
+      ];
+      const { getByTestId, rerender } = render(
+        <TopicChatDrawerBody agentId="agt_assignee" topicId="topic-1" />,
+      );
+      const panel = getByTestId('conversation-context');
+      expect(panel).toHaveAttribute('data-skip-fetch', 'true');
+      const provider = mocks.providerOptions.mock.lastCall![0];
+      provider.onMessagesChange(
+        [{ id: 'ast', topicId: 'topic-1', content: 'filtered' }],
+        provider.context,
+      );
+      expect(mocks.chatState.replaceMessages).not.toHaveBeenCalled();
+      expect(JSON.parse(panel.getAttribute('data-context')!).isolatedTopic).not.toBe(true);
+      expect(JSON.parse(panel.getAttribute('data-messages')!)).toEqual([
+        { id: 'ast', topicId: 'topic-1', content: 'draft' },
+      ]);
+      mocks.chatState.dbMessagesMap['group_cg_actual_topic-1'] = [
+        { id: 'ast', topicId: 'topic-1', content: 'finished' },
+      ];
+      mocks.chatState.operations.live.status = 'completed';
+      rerender(
+        <TopicChatDrawerBody disableInputCollapse agentId="agt_assignee" topicId="topic-1" />,
+      );
+      expect(
+        JSON.parse(getByTestId('conversation-context').getAttribute('data-messages')!)[0].content,
+      ).toBe('finished');
+    },
+  );
 });

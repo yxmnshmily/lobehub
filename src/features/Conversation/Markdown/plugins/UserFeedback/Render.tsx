@@ -4,6 +4,8 @@ import { createStaticStyles } from 'antd-style';
 import { MessageSquareText } from 'lucide-react';
 import { memo, useMemo } from 'react';
 
+import { useTravelTranslation } from '@/utils/i18n/travel';
+
 import { type MarkdownElementProps } from '../type';
 import { type ParsedUserFeedbackComment, parseUserFeedback } from './parseUserFeedback';
 
@@ -50,7 +52,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     margin-block: 0 12px !important;
     padding-block: 0 12px !important;
     padding-inline: 0 !important;
-    border-block-end: 1px solid ${cssVar.colorSplit} !important;
+    border-block-end: 0.5px solid ${cssVar.colorSplit} !important;
     border-radius: 0 !important;
 
     background: transparent !important;
@@ -70,16 +72,19 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-const Comment = memo<{ comment: ParsedUserFeedbackComment }>(({ comment }) => (
-  <Flexbox gap={2}>
-    {comment.time && <span className={styles.time}>{comment.time}</span>}
-    <div className={styles.comment}>{comment.content}</div>
-  </Flexbox>
-));
+const Comment = memo<{ comment: ParsedUserFeedbackComment }>(({ comment }) => {
+  return (
+    <Flexbox gap={2}>
+      {comment.time && <span className={styles.time}>{comment.time}</span>}
+      <div className={styles.comment}>{comment.content}</div>
+    </Flexbox>
+  );
+});
 
 Comment.displayName = 'UserFeedbackComment';
 
 const Render = memo<MarkdownElementProps>(({ children }) => {
+  const translateTravel = useTravelTranslation();
   const text = typeof children === 'string' ? children : String(children ?? '');
   const comments = useMemo(() => parseUserFeedback(text), [text]);
 
@@ -96,7 +101,7 @@ const Render = memo<MarkdownElementProps>(({ children }) => {
           </span>
           <Flexbox horizontal align={'center'} flex={1} gap={8} style={{ minWidth: 0 }}>
             <Text ellipsis weight={500}>
-              User feedback
+              {translateTravel('用户反馈')}
             </Text>
             <span className={styles.countBadge}>{countLabel}</span>
           </Flexbox>

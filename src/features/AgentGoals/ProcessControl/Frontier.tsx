@@ -1,6 +1,5 @@
 'use client';
 
-import type { GoalDecisionOption } from '@lobechat/types';
 import { Block, Flexbox, Icon, TextArea, Tooltip } from '@lobehub/ui';
 import { Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
@@ -17,6 +16,7 @@ import { useActivityTime } from '@/hooks/useActivityTime';
 import {
   coordinatorGateReason,
   coordinatorNodeTitleKey,
+  coordinatorOptionLabelKey,
   coordinatorReasonCopy,
   viewGateKind,
 } from './coordinatorCopy';
@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 6px;
 
     & + & {
-      border-block-start: 1px dashed ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px dashed ${cssVar.colorBorderSecondary};
     }
   `,
   blockedHead: css`
@@ -83,7 +83,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   list: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgContainer};
   `,
@@ -121,27 +121,6 @@ interface FrontierProps {
   /** The coordinator is still decomposing — the empty list is a promise, not a lull. */
   planning?: boolean;
 }
-
-/** Server option ids are stable; their labels are English strings from the coordinator. */
-const useOptionLabel = () => {
-  const { t } = useTranslation('chat');
-  return (option: GoalDecisionOption) => {
-    switch (option.id) {
-      case 'fail': {
-        return t('goalProcess.gate.option.fail');
-      }
-      case 'retire': {
-        return t('goalProcess.gate.option.retire');
-      }
-      case 'retry': {
-        return t('goalProcess.gate.option.retry');
-      }
-      default: {
-        return option.label;
-      }
-    }
-  };
-};
 
 const RowGlyph = memo<{ kind: FrontierItem['kind']; view: GoalNodeView }>(({ kind, view }) => {
   switch (kind) {
@@ -290,7 +269,6 @@ const FrontierRow = memo<{
   subject?: GoalNodeView;
 }>(({ actions, canEdit, item, numbers, onSelect, subject }) => {
   const { t } = useTranslation('chat');
-  const optionLabel = useOptionLabel();
   const [note, setNote] = useState('');
   const { view } = item;
   const { node } = view;
@@ -377,21 +355,24 @@ const FrontierRow = memo<{
               </Flexbox>
               {/* Actions close the card: read the situation, add guidance, then decide. */}
               <Flexbox horizontal gap={8}>
-                {view.decision?.options?.map((option) => (
-                  <Tooltip key={option.id} title={option.description}>
-                    <Button
-                      type={
-                        option.id === view.decision?.recommendedOptionId ? 'primary' : 'default'
-                      }
-                      onClick={(event) => {
-                        stop(event);
-                        actions.decide(view.decision!.id, option.id, note.trim() || undefined);
-                      }}
-                    >
-                      {optionLabel(option)}
-                    </Button>
-                  </Tooltip>
-                ))}
+                {view.decision?.options?.map((option) => {
+                  const labelKey = coordinatorOptionLabelKey(option.id, gateKind);
+                  return (
+                    <Tooltip key={option.id} title={option.description}>
+                      <Button
+                        type={
+                          option.id === view.decision?.recommendedOptionId ? 'primary' : 'default'
+                        }
+                        onClick={(event) => {
+                          stop(event);
+                          actions.decide(view.decision!.id, option.id, note.trim() || undefined);
+                        }}
+                      >
+                        {labelKey ? t(labelKey) : option.label}
+                      </Button>
+                    </Tooltip>
+                  );
+                })}
               </Flexbox>
             </>
           )}

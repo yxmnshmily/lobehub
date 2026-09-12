@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ModelItemRender, ProviderItemRender } from '@/components/ModelSelect';
 
-import { styles } from '../../styles';
+import { providerGridStyle, styles } from '../../styles';
 import { type ModelWithProviders } from '../../types';
 import { menuKey } from '../../utils';
 import ModelDetailPanel from '../ModelDetailPanel';
@@ -114,8 +114,8 @@ export const MultipleProvidersModelItem = memo<MultipleProvidersModelItemProps>(
                 model={data.model.id}
                 provider={(activeProvider ?? data.providers[0]).id}
               />
-              <DropdownMenuGroup>
-                <DropdownMenuGroupLabel>
+              <DropdownMenuGroup style={providerGridStyle}>
+                <DropdownMenuGroupLabel style={{ gridColumn: '1 / -1' }}>
                   {t('ModelSwitchPanel.useModelFrom')}
                 </DropdownMenuGroupLabel>
                 {data.providers.map((p) => {
@@ -126,6 +126,7 @@ export const MultipleProvidersModelItem = memo<MultipleProvidersModelItemProps>(
                   return (
                     <DropdownMenuItem
                       key={key}
+                      style={{ minWidth: 0 }}
                       onClick={() => {
                         if (providerRestricted) {
                           onRestrictedModelClick?.();

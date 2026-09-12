@@ -1,5 +1,7 @@
 import type { MessageMapScope } from '@lobechat/types';
 
+import { notifyUser } from '@/server/services/notification';
+
 export type AgentInterventionReviewStatus =
   | 'approved'
   | 'cancelled'
@@ -574,17 +576,32 @@ export async function acknowledgeAgentInterventionProducerResolution(
 ): Promise<void> {}
 
 /**
- * Called only after the pending runtime state and all referenced tool messages
- * are durable. In a Cloud override, resolving this promise is the durable
- * Review-create boundary: the provider-neutral batch must already exist (or
- * have been idempotently observed). A rejection means persistence did not
- * succeed and is intentionally fatal/retryable to the parked lifecycle.
- *
- * Push / Live Activity fanout happens only after that create boundary and must
- * be caught, logged, or durably retried inside the Cloud implementation. A
- * downstream delivery failure must never reject this slot after persistence.
- * OSS deliberately has no durable store and therefore keeps the no-op default.
+ * Recalls the user after the pending runtime state and tool messages are durable.
+ * This deployment sends a plain inbox notification; it does not create Cloud
+ * Review records or approval tokens. Delivery failure cannot fail the parked run.
  */
 export async function notifyAgentInterventionRequired(
-  _params: NotifyAgentInterventionRequiredParams,
-): Promise<void> {}
+  params: NotifyAgentInterventionRequiredParams,
+): Promise<void> {
+  if (!params.batch.sealed || params.items.length === 0) return;
+  const context = params.context;
+  const agentId = context.agentId ?? params.agentId;
+  // Plain recall only: approval still happens in the authorized conversation UI.
+  // Never mint a Review token or copy runtime arguments into notifications.
+  await notifyUser({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    eventId: params.batch.activityKey,
+    type: 'agent_intervention_required',
+    content: '助理正在等待你的确认或回答，请回到会话继续处理。',
+    actionUrl: context.groupId
+      ? '/group/' +
+        encodeURIComponent(context.groupId) +
+        (context.topicId ? '#topic:' + encodeURIComponent(context.topicId) : '')
+      : agentId
+        ? '/agent/' +
+          encodeURIComponent(agentId) +
+          (context.topicId ? '?topic=' + encodeURIComponent(context.topicId) : '')
+        : undefined,
+  });
+}

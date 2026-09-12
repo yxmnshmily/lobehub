@@ -1,7 +1,7 @@
 import { Center, FileTypeIcon, Flexbox, Icon } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { Upload } from 'antd';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { ArrowUpIcon, PlusIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -73,6 +73,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 const EmptyPlaceholder = () => {
   const { t } = useTranslation('components');
+  const { mobile = false } = useResponsive();
 
   const pushDockFileList = useFileStore((s) => s.pushDockFileList);
   const uploadTopLevel = useTopLevelFileUpload();
@@ -116,12 +117,25 @@ const EmptyPlaceholder = () => {
         <Text as={'h4'}>{t('FileManager.emptyStatus.title')}</Text>
         <Text type={'secondary'}>{t('FileManager.emptyStatus.or')}</Text>
       </Flexbox>
-      <Flexbox horizontal className={styles.actions} gap={12}>
+      <Flexbox
+        horizontal
+        className={styles.actions}
+        gap={mobile ? 8 : 12}
+        style={
+          mobile
+            ? {
+                display: 'grid',
+                gridTemplateColumns: `repeat(${libraryId ? 2 : 3}, minmax(0, 1fr))`,
+              }
+            : undefined
+        }
+      >
         {!libraryId && (
           <Flexbox
             className={styles.card}
             padding={16}
             role="button"
+            style={mobile ? { width: '100%' } : undefined}
             tabIndex={0}
             onClick={() => {
               open();
@@ -158,6 +172,7 @@ const EmptyPlaceholder = () => {
             className={styles.card}
             padding={16}
             role="button"
+            style={mobile ? { width: '100%' } : undefined}
             tabIndex={0}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -193,6 +208,7 @@ const EmptyPlaceholder = () => {
             className={styles.card}
             padding={16}
             role="button"
+            style={mobile ? { width: '100%' } : undefined}
             tabIndex={0}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {

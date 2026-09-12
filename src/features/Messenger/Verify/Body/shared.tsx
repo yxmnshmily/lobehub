@@ -15,8 +15,8 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
 
-import AgentSelect from '../../AgentSelect';
 import { type MessengerPlatform, PlatformBrandIcon } from '../../constants';
+import GroupSelect from '../../GroupSelect';
 import { getMessengerErrorMessage } from '../../i18n';
 import {
   buildMessengerScopeOptions,
@@ -74,7 +74,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-block: 10px;
 
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   infoValue: css`
@@ -186,21 +186,7 @@ export const ConfirmCard = memo<ConfirmCardProps>(
       setSelectedAgentId(undefined);
     }, [enableWorkspaceScopes, scope]);
 
-    // Scope-aware agent list. The SWR key matches AgentSelect's so the fetch is
-    // shared (single request per scope) and stays in sync as the scope changes.
-    const agentsSWR = useSWR(messengerKeys.agentsForBinding(scopeWorkspaceId), () =>
-      messengerService.listAgentsForBinding(scopeWorkspaceId),
-    );
-
     const [confirming, setConfirming] = useState(false);
-
-    // Default-select the first agent (inbox is pinned to the top) once a scope's
-    // list loads. Resetting selectedAgentId on scope change re-triggers this so
-    // it re-defaults to the new scope's inbox.
-    useEffect(() => {
-      if (selectedAgentId || !agentsSWR.data?.length) return;
-      setSelectedAgentId(agentsSWR.data[0].id);
-    }, [agentsSWR.data, selectedAgentId]);
 
     // Mirror the Messenger connection card's scope picker: avatar + name per row.
     // Personal uses the user's avatar; workspaces use their own.
@@ -228,7 +214,11 @@ export const ConfirmCard = memo<ConfirmCardProps>(
       if (!selectedAgentId) return;
       setConfirming(true);
       try {
-        await messengerService.confirmLink({ initialAgentId: selectedAgentId, randomId });
+        await messengerService.confirmLink({
+          initialGroupId: selectedAgentId,
+          workspaceId: scopeWorkspaceId,
+          randomId,
+        });
         onSuccess();
       } catch (error) {
         toast.error(getMessengerErrorMessage(error, t, 'verify.error.generic'));
@@ -284,7 +274,7 @@ export const ConfirmCard = memo<ConfirmCardProps>(
                   value={scope}
                   onChange={(next) => {
                     setScope((next as string | null) ?? PERSONAL_SCOPE);
-                    // Re-default to the new scope's inbox agent.
+                    // Require an explicit workgroup selection in the new scope.
                     setSelectedAgentId(undefined);
                   }}
                 />
@@ -292,16 +282,12 @@ export const ConfirmCard = memo<ConfirmCardProps>(
             )}
             <Flexbox gap={8}>
               <Text strong>{t('verify.confirm.defaultAgent')}</Text>
-              {agentsSWR.data?.length === 0 ? (
-                <Text type="warning">{t('verify.confirm.noAgents')}</Text>
-              ) : (
-                <AgentSelect
-                  placeholder={t('verify.confirm.defaultAgentPlaceholder')}
-                  value={selectedAgentId}
-                  workspaceId={scopeWorkspaceId}
-                  onChange={setSelectedAgentId}
-                />
-              )}
+              <GroupSelect
+                placeholder={t('verify.confirm.defaultAgentPlaceholder')}
+                value={selectedAgentId}
+                workspaceId={scopeWorkspaceId}
+                onChange={setSelectedAgentId}
+              />
               <Text style={{ fontSize: 12 }} type="secondary">
                 {t('verify.confirm.defaultAgentHint')}
               </Text>

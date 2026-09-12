@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,14 +12,27 @@ const knowledgeBaseState = vi.hoisted(() => ({
   knowledgeBaseRenamingId: null as string | null,
   updateKnowledgeBase: vi.fn(),
 }));
+const toggleLeftPanel = vi.hoisted(() => vi.fn());
+vi.mock('@/store/global', () => ({
+  useGlobalStore: Object.assign(() => undefined, { getState: () => ({ toggleLeftPanel }) }),
+}));
+vi.mock('@/hooks/usePermission', () => ({ usePermission: () => ({ allowed: true }) }));
 
 vi.mock('@/components/LibIcon', () => ({
   default: () => <span data-testid="repo-icon" />,
 }));
 
 vi.mock('@/features/NavPanel/components/NavItem', () => ({
-  default: ({ actions, title }: { actions?: ReactNode; title: ReactNode }) => (
-    <div data-testid="nav-item">
+  default: ({
+    actions,
+    title,
+    onDoubleClick,
+  }: {
+    actions?: ReactNode;
+    title: ReactNode;
+    onDoubleClick?: React.MouseEventHandler;
+  }) => (
+    <div data-testid="nav-item" onDoubleClick={onDoubleClick}>
       <span data-testid="nav-title">{title}</span>
       {actions}
     </div>
@@ -40,8 +53,10 @@ vi.mock('@/features/ResourceManager/store', () => ({
 }));
 
 vi.mock('@/store/library', () => ({
-  useKnowledgeBaseStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector(knowledgeBaseState),
+  useKnowledgeBaseStore: Object.assign(
+    (selector: (state: Record<string, unknown>) => unknown) => selector(knowledgeBaseState),
+    { setState: vi.fn() },
+  ),
 }));
 
 vi.mock('./Actions', () => ({
@@ -57,6 +72,13 @@ describe('KnowledgeBaseItem', () => {
     knowledgeBaseState.knowledgeBaseLoadingIds = [];
     knowledgeBaseState.knowledgeBaseRenamingId = null;
     knowledgeBaseState.updateKnowledgeBase.mockReset();
+    toggleLeftPanel.mockClear();
+  });
+
+  it('opens the sidebar before beginning inline rename from an icon row', () => {
+    render(<KnowledgeBaseItem id="kb-1" name="My Library" />);
+    fireEvent.doubleClick(screen.getByTestId('nav-item'), { altKey: true });
+    expect(toggleLeftPanel).toHaveBeenCalledWith(true);
   });
 
   it('keeps the visible row and rename anchor inside one list child', () => {

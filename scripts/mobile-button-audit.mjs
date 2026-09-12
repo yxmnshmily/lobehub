@@ -75,11 +75,18 @@ const audit = async (label) => {
         seen.add(element);
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
-        return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+        return (
+          style.visibility !== 'hidden' &&
+          style.display !== 'none' &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
       })
       .map((element, index) => {
         const rect = element.getBoundingClientRect();
-        const text = (element.innerText || element.textContent || '').replaceAll(/\s+/g, ' ').trim();
+        const text = (element.innerText || element.textContent || '')
+          .replaceAll(/\s+/g, ' ')
+          .trim();
         const name =
           element.getAttribute('aria-label') ||
           element.getAttribute('title') ||
@@ -102,7 +109,13 @@ const audit = async (label) => {
             rect.right > window.innerWidth + 1 ||
             rect.top < -1 ||
             rect.bottom > window.innerHeight + 1,
-          rect: { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top, width: rect.width },
+          rect: {
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            width: rect.width,
+          },
           title: element.getAttribute('title') || '',
           tag: element.tagName.toLowerCase(),
         };
@@ -138,22 +151,25 @@ const audit = async (label) => {
             text: (element.textContent || '').replaceAll(/\s+/g, ' ').trim().slice(0, 80),
           };
         })
-        .filter((item) => item.rect.left < -1 || item.rect.right > document.documentElement.clientWidth + 1)
+        .filter(
+          (item) =>
+            item.rect.left < -1 || item.rect.right > document.documentElement.clientWidth + 1,
+        )
         .sort((a, b) => b.rect.width - a.rect.width)
         .slice(0, 12),
-      leakedDomProps: [...document.querySelectorAll('[knowledgecutoff],[reasoning],[search],[structuredoutput]')].map(
-        (element) => ({
-          attributes: Object.fromEntries(
-            [...element.attributes].map((attribute) => [attribute.name, attribute.value]),
-          ),
-          className: typeof element.className === 'string' ? element.className.slice(0, 160) : '',
-          insp:
-            element.getAttribute('data-insp-path') ||
-            element.closest('[data-insp-path]')?.getAttribute('data-insp-path') ||
-            '',
-          tag: element.tagName.toLowerCase(),
-        }),
-      ),
+      leakedDomProps: [
+        ...document.querySelectorAll('[knowledgecutoff],[reasoning],[search],[structuredoutput]'),
+      ].map((element) => ({
+        attributes: Object.fromEntries(
+          [...element.attributes].map((attribute) => [attribute.name, attribute.value]),
+        ),
+        className: typeof element.className === 'string' ? element.className.slice(0, 160) : '',
+        insp:
+          element.getAttribute('data-insp-path') ||
+          element.closest('[data-insp-path]')?.getAttribute('data-insp-path') ||
+          '',
+        tag: element.tagName.toLowerCase(),
+      })),
       serverIsMobile: window.__SERVER_CONFIG__?.isMobile,
       scripts: [...document.scripts]
         .map((script) => script.src)
@@ -167,7 +183,9 @@ const audit = async (label) => {
 
   if (label === 'group') {
     result.groupAncestorChain = await page.evaluate(() => {
-      const start = document.querySelector('[data-insp-path^="src/routes/(main)/group/_layout/index.tsx"]');
+      const start = document.querySelector(
+        '[data-insp-path^="src/routes/(main)/group/_layout/index.tsx"]',
+      );
       const chain = [];
       let element = start;
       while (element) {
@@ -227,20 +245,21 @@ const clickAndClose = async (name, label = name) => {
     await control.click({ timeout: 3000 });
     await page.waitForTimeout(400);
     const leakedDomProps = await page.evaluate(() =>
-      [...document.querySelectorAll('[knowledgecutoff],[reasoning],[search],[structuredoutput]')].map(
-        (element) => ({
-          attributes: Object.fromEntries(
-            [...element.attributes].map((attribute) => [attribute.name, attribute.value]),
-          ),
-          className: typeof element.className === 'string' ? element.className.slice(0, 160) : '',
-          insp:
-            element.getAttribute('data-insp-path') ||
-            element.closest('[data-insp-path]')?.getAttribute('data-insp-path') ||
-            '',
-          parentInsp: element.parentElement?.closest('[data-insp-path]')?.getAttribute('data-insp-path') || '',
-          tag: element.tagName.toLowerCase(),
-        }),
-      ),
+      [
+        ...document.querySelectorAll('[knowledgecutoff],[reasoning],[search],[structuredoutput]'),
+      ].map((element) => ({
+        attributes: Object.fromEntries(
+          [...element.attributes].map((attribute) => [attribute.name, attribute.value]),
+        ),
+        className: typeof element.className === 'string' ? element.className.slice(0, 160) : '',
+        insp:
+          element.getAttribute('data-insp-path') ||
+          element.closest('[data-insp-path]')?.getAttribute('data-insp-path') ||
+          '',
+        parentInsp:
+          element.parentElement?.closest('[data-insp-path]')?.getAttribute('data-insp-path') || '',
+        tag: element.tagName.toLowerCase(),
+      })),
     );
     console.log(
       JSON.stringify({
@@ -294,7 +313,10 @@ try {
   await settle();
 
   await page.getByRole('button', { name: '手机号登录' }).click();
-  const phoneInput = page.locator('input[type="tel"], input').filter({ hasNot: page.locator('[type="checkbox"]') }).first();
+  const phoneInput = page
+    .locator('input[type="tel"], input')
+    .filter({ hasNot: page.locator('[type="checkbox"]') })
+    .first();
   await phoneInput.fill('13800138000');
   const smsButton = page.getByRole('button', { name: '获取验证码' });
   console.log(
@@ -328,7 +350,13 @@ try {
       await collapse.click();
       await page.waitForTimeout(150);
       await collapse.click();
-      console.log(JSON.stringify({ label: `home-collapse-${section}`, result: 'clicked-twice', type: 'interaction' }));
+      console.log(
+        JSON.stringify({
+          label: `home-collapse-${section}`,
+          result: 'clicked-twice',
+          type: 'interaction',
+        }),
+      );
     }
   }
   await page.locator('a[href*="/group/"]').first().waitFor({ state: 'visible', timeout: 10_000 });
@@ -357,7 +385,9 @@ try {
   if (await groupHeader.isVisible().catch(() => false)) {
     await groupHeader.click();
     await page.waitForTimeout(250);
-    console.log(JSON.stringify({ label: 'group-header-menu', result: 'clicked', type: 'interaction' }));
+    console.log(
+      JSON.stringify({ label: 'group-header-menu', result: 'clicked', type: 'interaction' }),
+    );
     await page.keyboard.press('Escape');
   }
 
@@ -365,7 +395,9 @@ try {
   if (await panelToggle.isVisible().catch(() => false)) {
     await panelToggle.click();
     await page.waitForTimeout(500);
-    console.log(JSON.stringify({ label: 'group-sidebar-toggle', result: 'clicked', type: 'interaction' }));
+    console.log(
+      JSON.stringify({ label: 'group-sidebar-toggle', result: 'clicked', type: 'interaction' }),
+    );
   }
   for (const name of [
     'DeepSeek V4 Flash',
@@ -464,12 +496,24 @@ try {
     await audit('agent-route');
     const agentEditor = page.locator('[contenteditable="true"]').first();
     if (await agentEditor.isVisible().catch(() => false)) {
-      for (const name of ['推理强度', '联网搜索', '记忆', '上传', '技能', '显示格式工具栏', '高级参数']) {
+      for (const name of [
+        '推理强度',
+        '联网搜索',
+        '记忆',
+        '上传',
+        '技能',
+        '显示格式工具栏',
+        '高级参数',
+      ]) {
         await clickAndClose(name, `agent-composer-${name}`);
       }
     } else {
       console.log(
-        JSON.stringify({ label: 'agent-composer', result: 'not-present-on-route', type: 'interaction' }),
+        JSON.stringify({
+          label: 'agent-composer',
+          result: 'not-present-on-route',
+          type: 'interaction',
+        }),
       );
     }
   }

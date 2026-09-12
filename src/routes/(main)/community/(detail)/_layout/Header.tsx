@@ -10,6 +10,7 @@ import urlJoin from 'url-join';
 
 import NavHeader from '@/features/NavHeader';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import Nav from '@/routes/(main)/community/_layout/Sidebar/Header/Nav';
 import StoreSearchBar from '@/routes/(main)/community/features/Search';
 import UserAvatar from '@/routes/(main)/community/features/UserAvatar';
 import { useDiscoverStore } from '@/store/discover';
@@ -58,16 +59,23 @@ const Header = memo(() => {
   return (
     <NavHeader
       className={styles.headerContainer}
-      right={<UserAvatar avatarOverride={detailAvatar} />}
+      height={64}
       style={cssVariables}
       left={
-        <Flexbox horizontal align={'center'} flex={1} gap={8}>
+        <Flexbox horizontal align={'center'} flex={1} gap={4} style={{ minWidth: 0 }}>
           <ActionIcon icon={ArrowLeft} size={'small'} onClick={handleGoBack} />
-          <StoreSearchBar />
+          <Nav />
         </Flexbox>
       }
+      right={
+        <>
+          <StoreSearchBar />
+          <UserAvatar avatarOverride={detailAvatar} />
+        </>
+      }
       styles={{
-        left: { flex: 1 },
+        left: { flex: 1, minWidth: 0 },
+        right: { flex: '0 1 360px', minWidth: 140 },
       }}
     />
   );

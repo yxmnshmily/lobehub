@@ -54,7 +54,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   footer: css`
     padding-block: 12px;
     padding-inline: 20px;
-    border-block-start: 1px solid ${cssVar.colorFillTertiary};
+    border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
     background: ${cssVar.colorFillQuaternary};
   `,
   hint: css`

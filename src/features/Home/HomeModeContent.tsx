@@ -9,6 +9,7 @@ import { HashIcon } from 'lucide-react';
 import { memo, type ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useWorkspaceMemberProfiles } from '@/business/client/hooks/useWorkspaceMemberProfiles';
 import AsyncError from '@/components/AsyncError';
 import AssigneeAvatar from '@/features/AgentTasks/features/AssigneeAvatar';
@@ -101,6 +102,8 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 interface HomeModeContentProps {
+  hideRecentActivity?: boolean;
+  hideRecommendations?: boolean;
   /**
    * The rail is folded away, so this column carries the sections it owns: goals
    * and reports stay visible, while suggestions — nothing that happened, only
@@ -252,7 +255,7 @@ interface SkeletonLineProps {
  */
 const SkeletonLine = memo<SkeletonLineProps>(({ bar, flex, line, width }) => (
   <Flexbox align={'flex-start'} flex={flex} height={line} justify={'center'}>
-    <Skeleton height={bar} width={width} />
+    <SkeletonBar height={bar} width={width} />
   </Flexbox>
 ));
 
@@ -459,169 +462,195 @@ const ScheduledTaskContent = memo(() => {
   );
 });
 
-const HomeModeContent = memo<HomeModeContentProps>(({ inlineRail, mode, onSuggestionSelect }) => {
-  const { t } = useTranslation('home');
-  const isLogin = useUserStore(authSelectors.isLogin);
-  const authLoaded = useUserStore(authSelectors.isLoaded);
-  const myId = useUserStore(userProfileSelectors.userId);
-  const recentsCount = useGlobalStore(systemStatusSelectors.homeRecentsCount);
-  const hiddenWidgets = useGlobalStore(systemStatusSelectors.hiddenHomeWidgets);
-  const recentsHidden = hiddenWidgets.includes('recents');
-  const tasksHidden = hiddenWidgets.includes('tasks');
-  const scheduledTasksHidden = isHomeWidgetHidden('scheduledTasks', hiddenWidgets);
-  const cacheScope = useCacheScope();
+const HomeModeContent = memo<HomeModeContentProps>(
+  ({
+    hideRecentActivity = false,
+    hideRecommendations = false,
+    inlineRail,
+    mode,
+    onSuggestionSelect,
+  }) => {
+    const { t } = useTranslation('home');
+    const isLogin = useUserStore(authSelectors.isLogin);
+    const authLoaded = useUserStore(authSelectors.isLoaded);
+    const myId = useUserStore(userProfileSelectors.userId);
+    const recentsCount = useGlobalStore(systemStatusSelectors.homeRecentsCount);
+    const hiddenWidgets = useGlobalStore(systemStatusSelectors.hiddenHomeWidgets);
+    const recentsHidden = hideRecentActivity || hiddenWidgets.includes('recents');
+    const tasksHidden = hiddenWidgets.includes('tasks');
+    const scheduledTasksHidden = isHomeWidgetHidden('scheduledTasks', hiddenWidgets);
+    const cacheScope = useCacheScope();
 
-  // One page-level mine/team scope, shared by the inbox sections and Recent
-  // topics. In personal mode the member map is empty, `isTeam` stays false and
-  // the whole layer is inert.
-  const memberProfiles = useWorkspaceMemberProfiles();
-  const isTeam = memberProfiles.size > 1;
-  const [scope, setScope] = useState<'mine' | 'team'>('mine');
-  const teamView = isTeam && scope === 'team';
+    // One page-level mine/team scope, shared by the inbox sections and Recent
+    // topics. In personal mode the member map is empty, `isTeam` stays false and
+    // the whole layer is inert.
+    const memberProfiles = useWorkspaceMemberProfiles();
+    const isTeam = memberProfiles.size > 1;
+    const [scope, setScope] = useState<'mine' | 'team'>('mine');
+    const teamView = isTeam && scope === 'team';
 
-  // Workspace topics are shared, so "mine" must be narrowed server-side —
-  // client-filtering the top N of a team-wide feed could starve out the
-  // viewer's own topics entirely.
-  const recentsSWR = useClientDataSWR(
-    isLogin && !recentsHidden
-      ? recentKeys.topicList(HOME_TOPIC_RECENT_LIMIT, cacheScope, teamView ? 'team' : 'mine')
-      : null,
-    () => recentService.getAll(HOME_TOPIC_RECENT_LIMIT, ['topic'], true, !teamView),
-    { revalidateOnFocus: false },
-  );
+    // Workspace topics are shared, so "mine" must be narrowed server-side —
+    // client-filtering the top N of a team-wide feed could starve out the
+    // viewer's own topics entirely.
+    const recentsSWR = useClientDataSWR(
+      isLogin && !recentsHidden
+        ? recentKeys.topicList(HOME_TOPIC_RECENT_LIMIT, cacheScope, teamView ? 'team' : 'mine')
+        : null,
+      () => recentService.getAll(HOME_TOPIC_RECENT_LIMIT, ['topic'], true, !teamView),
+      { revalidateOnFocus: false },
+    );
 
-  const inboxTopics = useHomeInboxTopics(isLogin);
-  const mineUnreadCount = useMemo(
-    () => filterTopicsForInboxScope(inboxTopics.unread, myId, false).length,
-    [inboxTopics.unread, myId],
-  );
-  const mineRunningCount = useMemo(
-    () => filterTopicsForInboxScope(inboxTopics.running, myId, false).length,
-    [inboxTopics.running, myId],
-  );
-  const useFetchBriefs = useBriefStore((s) => s.useFetchBriefs);
-  const briefsSWR = useFetchBriefs(isLogin, cacheScope);
-  const briefs = useBriefStore(briefListSelectors.briefs(cacheScope));
-  const briefsInit = useBriefStore(briefListSelectors.isBriefsInit(cacheScope));
-  const needsYouCount = useMemo(() => splitBriefs(briefs).needsYou.length, [briefs]);
-  const topicRecents = recentsSWR.data ?? [];
+    const inboxTopics = useHomeInboxTopics(isLogin);
+    const mineUnreadCount = useMemo(
+      () => filterTopicsForInboxScope(inboxTopics.unread, myId, false).length,
+      [inboxTopics.unread, myId],
+    );
+    const mineRunningCount = useMemo(
+      () => filterTopicsForInboxScope(inboxTopics.running, myId, false).length,
+      [inboxTopics.running, myId],
+    );
+    const useFetchBriefs = useBriefStore((s) => s.useFetchBriefs);
+    const briefsSWR = useFetchBriefs(isLogin && !hideRecentActivity, cacheScope);
+    const briefs = useBriefStore(briefListSelectors.briefs(cacheScope));
+    const briefsInit = useBriefStore(briefListSelectors.isBriefsInit(cacheScope));
+    const needsYouCount = useMemo(() => splitBriefs(briefs).needsYou.length, [briefs]);
+    const topicRecents = recentsSWR.data ?? [];
 
-  if (mode === 'chat') {
-    // With the recents section switched off nothing is fetched, so it reports as
-    // settled-and-empty rather than perpetually loading, and the remaining
-    // activity alone decides what this column is.
-    const state = resolveHomeChatContentState({
-      authLoaded: !!authLoaded,
-      hasError: !recentsHidden && !!recentsSWR.error,
-      isLogin: !!isLogin,
-      recentsCount: topicRecents.length,
-      recentsInit: recentsHidden || recentsSWR.data !== undefined,
-      activityCount: mineRunningCount + mineUnreadCount + needsYouCount,
-      activityError: Boolean(inboxTopics.error || briefsSWR.error),
-      activityResolved:
-        (inboxTopics.isInit || Boolean(inboxTopics.error)) &&
-        (briefsInit || Boolean(briefsSWR.error)),
-    });
+    if (mode === 'chat') {
+      // With the recents section switched off nothing is fetched, so it reports as
+      // settled-and-empty rather than perpetually loading, and the remaining
+      // activity alone decides what this column is.
+      const state = resolveHomeChatContentState({
+        authLoaded: !!authLoaded,
+        hasError: !recentsHidden && !!recentsSWR.error,
+        isLogin: !!isLogin,
+        recentsCount: topicRecents.length,
+        recentsInit: recentsHidden || recentsSWR.data !== undefined,
+        activityCount:
+          mineRunningCount + mineUnreadCount + (hideRecentActivity ? 0 : needsYouCount),
+        activityError: Boolean(inboxTopics.error || (!hideRecentActivity && briefsSWR.error)),
+        activityResolved:
+          (inboxTopics.isInit || Boolean(inboxTopics.error)) &&
+          (hideRecentActivity || briefsInit || Boolean(briefsSWR.error)),
+      });
 
-    // The empty short-circuit predates the fold-in: with the rail open it only
-    // skips the main column's own blocks, while news and suggestions live on in
-    // the rail. Folded, it would swallow them too — news needs no activity to
-    // exist. Mirror the expanded page instead: suggestions first, then whatever
-    // folded in (both sections render null when there is nothing to carry).
-    if (state === 'empty') {
-      // The starters are what the recents section shows when it has nothing to
-      // list, so switching that section off takes them with it.
-      const starters = recentsHidden ? null : <EmptySuggestions onSelect={onSuggestionSelect} />;
+      // The empty short-circuit predates the fold-in: with the rail open it only
+      // skips the main column's own blocks, while news and suggestions live on in
+      // the rail. Folded, it would swallow them too — news needs no activity to
+      // exist. Mirror the expanded page instead: suggestions first, then whatever
+      // folded in (both sections render null when there is nothing to carry).
+      if (state === 'empty') {
+        // The starters are what the recents section shows when it has nothing to
+        // list, so switching that section off takes them with it.
+        const starters = recentsHidden ? null : <EmptySuggestions onSelect={onSuggestionSelect} />;
 
-      if (!inlineRail) return starters;
+        if (!inlineRail) return starters;
+
+        return (
+          <Flexbox gap={32}>
+            {starters}
+            <HomeInbox
+              inlineRail
+              hideNeedsYou={hideRecentActivity}
+              hideRecommendations={hideRecommendations}
+              variant={'main'}
+            />
+            {!hideRecommendations && <Recommendations variant={'main'} />}
+          </Flexbox>
+        );
+      }
 
       return (
         <Flexbox gap={32}>
-          {starters}
-          <HomeInbox inlineRail variant={'main'} />
-          <Recommendations variant={'main'} />
+          <HomeInbox
+            hideNeedsYou={hideRecentActivity}
+            hideRecommendations={hideRecommendations}
+            inlineRail={inlineRail}
+            scope={scope}
+            variant={'main'}
+            onScopeChange={setScope}
+          />
+          {!recentsHidden && (state !== 'ready' || topicRecents.length > 0) && (
+            <GroupBlock
+              actionAlwaysVisible
+              count={resolveRecentsBadgeCount(topicRecents.length, recentsCount)}
+              title={t('dashboard.chat.recents')}
+              action={
+                isTeam ? (
+                  <Segmented
+                    size={'small'}
+                    value={scope}
+                    options={[
+                      { label: t('inbox.scope.mine'), value: 'mine' },
+                      { label: t('inbox.scope.team'), value: 'team' },
+                    ]}
+                    onChange={(value) => setScope(value as 'mine' | 'team')}
+                  />
+                ) : undefined
+              }
+            >
+              {state === 'error' ? (
+                <AsyncError
+                  error={recentsSWR.error}
+                  variant={'inline'}
+                  onRetry={recentsSWR.mutate}
+                />
+              ) : state === 'loading' ? (
+                <LoadingRows withTime />
+              ) : (
+                <Flexbox gap={4}>
+                  {topicRecents.slice(0, recentsCount).map((item) => (
+                    <RecentTopicRow key={item.id} showAuthor={teamView} topic={item} />
+                  ))}
+                </Flexbox>
+              )}
+            </GroupBlock>
+          )}
+          {inlineRail && !hideRecommendations && <Recommendations variant={'main'} />}
         </Flexbox>
       );
     }
 
-    return (
-      <Flexbox gap={32}>
-        <HomeInbox
-          inlineRail={inlineRail}
-          scope={scope}
-          variant={'main'}
-          onScopeChange={setScope}
-        />
-        {!recentsHidden && (state !== 'ready' || topicRecents.length > 0) && (
-          <GroupBlock
-            actionAlwaysVisible
-            count={resolveRecentsBadgeCount(topicRecents.length, recentsCount)}
-            title={t('dashboard.chat.recents')}
-            action={
-              isTeam ? (
-                <Segmented
-                  size={'small'}
-                  value={scope}
-                  options={[
-                    { label: t('inbox.scope.mine'), value: 'mine' },
-                    { label: t('inbox.scope.team'), value: 'team' },
-                  ]}
-                  onChange={(value) => setScope(value as 'mine' | 'team')}
-                />
-              ) : undefined
-            }
-          >
-            {state === 'error' ? (
-              <AsyncError error={recentsSWR.error} variant={'inline'} onRetry={recentsSWR.mutate} />
-            ) : state === 'loading' ? (
-              <LoadingRows withTime />
-            ) : (
-              <Flexbox gap={4}>
-                {topicRecents.slice(0, recentsCount).map((item) => (
-                  <RecentTopicRow key={item.id} showAuthor={teamView} topic={item} />
-                ))}
-              </Flexbox>
-            )}
-          </GroupBlock>
-        )}
-        {inlineRail && <Recommendations variant={'main'} />}
-      </Flexbox>
-    );
-  }
+    if (!isLogin) return null;
 
-  if (!isLogin) return null;
+    if (mode === 'task') {
+      // Recent tasks answer "what is going on"; the scheduled block answers "what
+      // will happen without me" — the second question only makes sense after the
+      // first, so it always sits underneath.
+      //
+      // No inline inset: section headers sit flush with the composer edge and the
+      // folded-in inbox sections above, exactly like chat mode — row hover pills
+      // overhang by design (see `rowBox`).
+      const taskBlocks = (
+        <Flexbox gap={32}>
+          {!tasksHidden && <TaskContent />}
+          {!scheduledTasksHidden && <ScheduledTaskContent />}
+        </Flexbox>
+      );
 
-  if (mode === 'task') {
-    // Recent tasks answer "what is going on"; the scheduled block answers "what
-    // will happen without me" — the second question only makes sense after the
-    // first, so it always sits underneath.
-    //
-    // No inline inset: section headers sit flush with the composer edge and the
-    // folded-in inbox sections above, exactly like chat mode — row hover pills
-    // overhang by design (see `rowBox`).
-    const taskBlocks = (
-      <Flexbox gap={32}>
-        {!tasksHidden && <TaskContent />}
-        {!scheduledTasksHidden && <ScheduledTaskContent />}
-      </Flexbox>
-    );
+      if (!inlineRail) return taskBlocks;
 
-    if (!inlineRail) return taskBlocks;
+      // The rail's sections sit beside task mode while it is open, so a folded
+      // rail must not take them away here either: goals and reports above the
+      // task list, suggestions after it. Unread and needs-you stay
+      // hidden — task mode never surfaces them, folded or not.
+      return (
+        <Flexbox gap={32}>
+          <HomeInbox
+            hideNeedsYou
+            hideUnread
+            inlineRail
+            hideRecommendations={hideRecommendations}
+            variant={'main'}
+          />
+          {taskBlocks}
+          {!hideRecommendations && <Recommendations variant={'main'} />}
+        </Flexbox>
+      );
+    }
 
-    // The rail's sections sit beside task mode while it is open, so a folded
-    // rail must not take them away here either: goals and reports above the
-    // task list, suggestions after it. Unread and needs-you stay
-    // hidden — task mode never surfaces them, folded or not.
-    return (
-      <Flexbox gap={32}>
-        <HomeInbox hideNeedsYou hideUnread inlineRail variant={'main'} />
-        {taskBlocks}
-        <Recommendations variant={'main'} />
-      </Flexbox>
-    );
-  }
-
-  return null;
-});
+    return null;
+  },
+);
 
 export default HomeModeContent;

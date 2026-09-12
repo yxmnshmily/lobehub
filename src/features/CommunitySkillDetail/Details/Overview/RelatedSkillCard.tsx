@@ -9,6 +9,7 @@ import urlJoin from 'url-join';
 import Rate from '@/components/RatingOverview/Rate';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { type DiscoverSkillItem } from '@/types/discover';
+import { displayBranding } from '@/utils/displayBranding';
 
 import { useDetailActionContext } from '../../DetailProvider';
 
@@ -94,7 +95,7 @@ const RelatedSkillCard = memo<DiscoverSkillItem>(
               {name || identifier}
             </Text>
             <Flexbox horizontal align={'center'} className={styles.meta} gap={4}>
-              {author && <span className={styles.metaAuthor}>{author}</span>}
+              {author && <span className={styles.metaAuthor}>{displayBranding(author)}</span>}
               {displayRating && (
                 <Flexbox horizontal align={'center'} className={styles.metaRating} gap={3}>
                   {author && <span>·</span>}

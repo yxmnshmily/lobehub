@@ -7,9 +7,10 @@ import {
   toast,
 } from '@lobehub/ui/base-ui';
 import { CopyIcon, LinkIcon, MoreHorizontalIcon, TrashIcon } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { memo, use, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { usePermission } from '@/hooks/usePermission';
@@ -31,8 +32,9 @@ const GoalDetailActions = memo<GoalDetailActionsProps>(({ agentId, goalId, proje
   // origin (and the shell location does not track the active tab) — build the
   // shareable web URL from the app origin and the goal route explicitly.
   const appOrigin = useAppOrigin();
+  const groupScope = use(GroupWorkScopeContext);
   const shareUrl = appOrigin
-    ? `${appOrigin}${agentId ? `/agent/${agentId}/goal/${goalId}` : `/goal/${goalId}`}`
+    ? `${appOrigin}${scopeGroupWorkPath(agentId ? `/agent/${agentId}/goal/${goalId}` : `/goal/${goalId}`, groupScope)}`
     : undefined;
 
   const items = useMemo<DropdownItem[]>(
@@ -72,7 +74,15 @@ const GoalDetailActions = memo<GoalDetailActionsProps>(({ agentId, goalId, proje
             onOk: async () => {
               // Mirrors the list scope the goal was rendered under, so the page
               // the user lands on is the one whose cache was just refreshed.
-              await deleteGoal(agentId, goalId, projectId ? `project:${projectId}` : undefined);
+              await deleteGoal(
+                agentId,
+                goalId,
+                groupScope
+                  ? `group:${groupScope.groupId}`
+                  : projectId
+                    ? `project:${projectId}`
+                    : undefined,
+              );
               navigate(
                 agentId
                   ? `/agent/${agentId}/goals`
@@ -86,7 +96,7 @@ const GoalDetailActions = memo<GoalDetailActionsProps>(({ agentId, goalId, proje
         },
       },
     ],
-    [agentId, canEditTask, deleteGoal, goalId, navigate, projectId, shareUrl, t],
+    [agentId, groupScope, canEditTask, deleteGoal, goalId, navigate, projectId, shareUrl, t],
   );
 
   return (

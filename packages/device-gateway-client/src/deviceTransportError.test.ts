@@ -116,8 +116,10 @@ describe('describeGatewayRequestFailure', () => {
 
   it('recognises the DOM AbortError name as well', () => {
     expect(
-      describeGatewayRequestFailure(Object.assign(new Error('aborted'), { name: 'AbortError' }), 'tool call')
-        .code,
+      describeGatewayRequestFailure(
+        Object.assign(new Error('aborted'), { name: 'AbortError' }),
+        'tool call',
+      ).code,
     ).toBe(DeviceTransportErrorCode.DeviceResponseTimeout);
   });
 
@@ -151,7 +153,10 @@ describe('describeGatewayRequestFailure', () => {
     // The old copy claimed the gateway was unreachable for every rejection,
     // including ones (a malformed response body, say) that prove nothing about
     // whether the device ran the call.
-    const failure = describeGatewayRequestFailure(new Error('Unexpected token < in JSON'), 'tool call');
+    const failure = describeGatewayRequestFailure(
+      new Error('Unexpected token < in JSON'),
+      'tool call',
+    );
 
     expect(failure.code).toBe(DeviceTransportErrorCode.GatewayError);
     expect(failure.content).toContain('unclear whether the device ran it');

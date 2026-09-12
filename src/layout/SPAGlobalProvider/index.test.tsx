@@ -38,7 +38,12 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => {
   return {
     ...(await importOriginal<object>()),
     ModalHost: () => React.createElement('div', { 'data-testid': 'base-modal-host' }),
-    ToastHost: () => React.createElement('div', { 'data-testid': 'toast-host' }),
+    ToastHost: ({ className, position }: { className?: string; position?: string }) =>
+      React.createElement('div', {
+        className,
+        'data-position': position,
+        'data-testid': 'toast-host',
+      }),
   };
 });
 
@@ -260,6 +265,8 @@ describe('SPAGlobalProvider', () => {
     expect(screen.getByTestId('legacy-modal-host')).toBeInTheDocument();
     expect(screen.getByTestId('base-modal-host')).toBeInTheDocument();
     expect(screen.getByTestId('toast-host')).toBeInTheDocument();
+    expect(screen.getByTestId('toast-host')).toHaveAttribute('data-position', 'top');
+    expect(screen.getByTestId('toast-host').className).not.toBe('');
     expect(screen.getByTestId('context-menu-host')).toBeInTheDocument();
   });
 

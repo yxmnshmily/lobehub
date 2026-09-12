@@ -160,7 +160,7 @@ class TravelProductionExecutionRuntime {
     ) {
       return errorResult('TOOL_FORBIDDEN', '当前运行上下文无权使用旅游制作服务。');
     }
-    let maxCredits: number;
+    let maxCredits: number | undefined;
     try {
       maxCredits = capability.sharedBudget
         ? getPlatformUsageSharedBudgetLimit(capability.sharedBudget, {
@@ -171,7 +171,7 @@ class TravelProductionExecutionRuntime {
     } catch {
       maxCredits = Number.NaN;
     }
-    if (!Number.isSafeInteger(maxCredits) || maxCredits <= 0) {
+    if (maxCredits !== undefined && (!Number.isSafeInteger(maxCredits) || maxCredits <= 0)) {
       return errorResult(
         'GENERATION_LIMIT_REQUIRED',
         '提交制作任务前必须设置有效的 Credits 上限。',

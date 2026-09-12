@@ -1,5 +1,6 @@
 import { buildWorkspaceWhere, type LobeChatDatabase } from '@lobechat/database';
 import { travelGenerationTasks } from '@lobechat/database/schemas';
+import type { GenerateObjectPayload } from '@lobechat/model-runtime';
 import type { ModelUsage } from '@lobechat/types';
 import { and, eq, inArray } from 'drizzle-orm';
 
@@ -27,6 +28,7 @@ import { TRAVEL_SPECIALIST_TEMPLATES } from '@/server/services/user/travelServic
 
 import {
   type TravelGenerationAdapter,
+  type TravelGenerationArtifact,
   TravelGenerationArtifactPersistenceError,
   TravelGenerationCapabilityUnavailableError,
   type TravelGenerationExecutionRequest,
@@ -161,8 +163,9 @@ const generateCopy = async (
   }
   if (!modelConfig) throw new TravelGenerationCapabilityUnavailableError('No group model');
   const { model, provider } = modelConfig;
-  if (context.hostedExecution) {
-    const payload = {
+  const hostedExecution = context.hostedExecution;
+  if (hostedExecution) {
+    const payload: GenerateObjectPayload = {
       messages: [
         { content: getHostedCopywriterSystemPrompt(), role: 'system' as const },
         { content: prompt, role: 'user' as const },
@@ -178,16 +181,36 @@ const generateCopy = async (
         },
       },
     };
-    const generated = await runPlatformUsageSharedBudgetStep(context.hostedExecution.sharedBudget, {
-      actorUserId: context.hostedExecution.actorUserId,
+    const generated = await runPlatformUsageSharedBudgetStep(hostedExecution.sharedBudget, {
+      actorUserId: hostedExecution.actorUserId,
       inputHash: hashPlatformUsageProviderInput(payload),
       kind: 'call_llm',
       model,
-      operationId: context.hostedExecution.operationId,
+      operationId: hostedExecution.operationId,
       provider,
       prepareProviderCall: async ({ pricing, remainingCredits }) => {
+        if (remainingCredits === undefined) {
+          const runtime = await context.initTextRuntime({
+            actorUserId: hostedExecution.actorUserId,
+            provider,
+            workspaceId: context.workspaceId,
+          });
+          return async () => {
+            let usage: ModelUsage | undefined;
+            const result = await runtime.generateObject(payload, {
+              onUsage: (nextUsage) => {
+                usage = nextUsage;
+              },
+            });
+            const content = (result as { content?: unknown })?.content;
+            if (typeof content !== 'string' || !content.trim()) {
+              throw new Error('Copy generation returned no content');
+            }
+            return { output: { content: content.trim(), usage }, usage };
+          };
+        }
         const prepared = await context.prepareBoundedText({
-          actorUserId: context.hostedExecution.actorUserId,
+          actorUserId: hostedExecution.actorUserId,
           payload,
           pricing: pricing.pricing,
           provider,
@@ -536,10 +559,11 @@ export const __INTERNAL_createTravelGenerationBillingOrchestrator = (
         request.owner.workspaceId === params.workspaceId
       ) {
         const modelConfig = await resolvePricedModelConfig(request.type);
-        const result = await orchestrator.run({
+        const pricedRequest: PricedTravelGenerationRequest = {
           ...request,
           [PRICED_TEXT_MODEL_CONFIG]: modelConfig,
-        });
+        };
+        const result = await orchestrator.run(pricedRequest);
         const { [PRICED_TEXT_MODEL_CONFIG]: _pricedTextModelConfig, ...publicResult } =
           result as TravelGenerationRecord & PricedTravelGenerationRequest;
         return publicResult;
@@ -549,7 +573,7 @@ export const __INTERNAL_createTravelGenerationBillingOrchestrator = (
   };
 };
 
-/** Hosted default-group copy generation sharing the caller's one explicit Credits ceiling. */
+/** Hosted default-group copy generation sharing the authenticated billing context. */
 export const createHostedTravelCopyGenerationOrchestrator = (
   params: ProductionContext & {
     actorUserId: string;

@@ -58,6 +58,7 @@ interface CreateServerCallLlmAttemptInput {
   model: string;
   modelRuntime: Pick<ModelRuntime, 'chat'>;
   onFirstChunk: () => void;
+  onProviderRequestId?: (providerRequestId: string) => Promise<void>;
   operationLogId: string;
   provider: string;
   resolved: ServerCallLlmTooling['resolved'];
@@ -143,6 +144,7 @@ export class ServerCallLlmAttempt {
   private readonly model: string;
   private readonly modelRuntime: Pick<ModelRuntime, 'chat'>;
   private readonly onFirstChunk: () => void;
+  private readonly onProviderRequestId?: (providerRequestId: string) => Promise<void>;
   private readonly operationLogId: string;
   private readonly provider: string;
   private reasoning?: ModelReasoning;
@@ -172,6 +174,7 @@ export class ServerCallLlmAttempt {
     model,
     modelRuntime,
     onFirstChunk,
+    onProviderRequestId,
     operationLogId,
     provider,
     resolved,
@@ -187,6 +190,7 @@ export class ServerCallLlmAttempt {
     this.model = model;
     this.modelRuntime = modelRuntime;
     this.onFirstChunk = onFirstChunk;
+    this.onProviderRequestId = onProviderRequestId;
     this.operationLogId = operationLogId;
     this.provider = provider;
     this.resolved = resolved;
@@ -313,6 +317,9 @@ export class ServerCallLlmAttempt {
       metadata: this.runtimeMetadata,
       user: this.ctx.userId,
     });
+
+    const providerRequestId = this.runtimeDiagnostics.providerResponse?.requestId?.trim();
+    if (providerRequestId) await this.onProviderRequestId?.(providerRequestId);
 
     await consumeStreamUntilDone(response);
 

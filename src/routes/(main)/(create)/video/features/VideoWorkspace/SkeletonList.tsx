@@ -1,9 +1,10 @@
 'use client';
 
 import { Block, Center, Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { memo } from 'react';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import PromptInput from '@/routes/(main)/(create)/video/features/PromptInput';
 
 interface SkeletonListProps {
@@ -16,20 +17,20 @@ const SkeletonList = memo<SkeletonListProps>(({ embedInput = true }) => {
       <Block variant={'borderless'}>
         <Flexbox gap={12}>
           {/* Prompt text skeleton */}
-          <Skeleton height={20} width={'95%'} />
+          <SkeletonBar height={20} width={'95%'} />
 
           {/* Metadata skeleton (model tag, resolution, aspect ratio) */}
           <Flexbox horizontal gap={4} style={{ marginBottom: 10 }}>
-            <Skeleton height={22} width={120} />
-            <Skeleton height={22} width={80} />
-            <Skeleton height={22} width={60} />
+            <SkeletonBar height={22} width={120} />
+            <SkeletonBar height={22} width={80} />
+            <SkeletonBar height={22} width={60} />
           </Flexbox>
 
           {/* Video player skeleton */}
-          <Skeleton height={'auto'} style={{ aspectRatio: '16/9' }} />
+          <SkeletonBar height={'auto'} style={{ aspectRatio: '16/9' }} />
 
           {/* Timestamp skeleton */}
-          <Skeleton height={14} width={140} />
+          <SkeletonBar height={14} width={140} />
         </Flexbox>
       </Block>
       <div style={{ flex: 1 }} />

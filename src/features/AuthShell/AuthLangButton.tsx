@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import { LOBE_LOCALE_COOKIE } from '@/const/locale';
 import { localeOptions, normalizeLocale } from '@/locales/resources';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 const setCookieSimple = (key: string, value: string, days: number) => {
   const expires = new Date(Date.now() + days * 86_400_000).toUTCString();
@@ -24,6 +25,7 @@ const setCookieSimple = (key: string, value: string, days: number) => {
 };
 
 const AuthLangButton = memo(() => {
+  const translateTravel = useTravelTranslation();
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ bottom: 0, left: 0 });
@@ -32,10 +34,14 @@ const AuthLangButton = memo(() => {
   const rootRef = useRef<HTMLDivElement>(null);
   const browserLanguage = typeof navigator !== 'undefined' ? navigator.language : 'zh-CN';
   const current = normalizeLocale(i18n.language || i18n.resolvedLanguage || browserLanguage);
-  const currentLabel = localeOptions.find((item) => item.value === current)?.label || '简体中文';
+  const currentLabel =
+    localeOptions.find((item) => item.value === current)?.label || translateTravel('简体中文');
 
   const getMenuItems = useCallback(
-    () => Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') || []),
+    () =>
+      Array.from(
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') || [],
+      ),
     [],
   );
 
@@ -185,12 +191,12 @@ const AuthLangButton = memo(() => {
             }}
           >
             <div
-              aria-label="Language"
+              aria-label={translateTravel('语言')}
               ref={menuRef}
               role="menu"
               style={{
                 background: 'Canvas',
-                border: '1px solid color-mix(in srgb, CanvasText 28%, transparent)',
+                border: '0.5px solid color-mix(in srgb, CanvasText 28%, transparent)',
                 borderRadius: 8,
                 bottom: menuPosition.bottom,
                 boxShadow: '0 8px 28px rgba(0, 0, 0, 0.18)',

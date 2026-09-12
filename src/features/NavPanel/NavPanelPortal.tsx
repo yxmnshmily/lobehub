@@ -7,6 +7,8 @@ import { useSingleton } from '@/hooks/useSingleton';
 import { registerNavPanelContent, unregisterNavPanelContent } from './registry';
 
 interface NavPanelPortalProps extends PropsWithChildren {
+  /** Register this route as intentionally having no navigation panel. */
+  hidden?: boolean;
   /**
    * Stable route-owned key used by NavPanelHost to select the active content.
    * @example <NavPanelPortal navKey="agent">...</NavPanelPortal>
@@ -14,21 +16,23 @@ interface NavPanelPortalProps extends PropsWithChildren {
   navKey?: string;
 }
 
-export const NavPanelPortal = memo<NavPanelPortalProps>(({ children, navKey = 'default' }) => {
-  const owner = useSingleton(() => Symbol('NavPanelPortal'));
+export const NavPanelPortal = memo<NavPanelPortalProps>(
+  ({ children, hidden = false, navKey = 'default' }) => {
+    const owner = useSingleton(() => Symbol('NavPanelPortal'));
 
-  useLayoutEffect(() => {
-    if (!children) return;
+    useLayoutEffect(() => {
+      if (!children && !hidden) return;
 
-    registerNavPanelContent(navKey, owner, children);
+      registerNavPanelContent(navKey, owner, children, hidden);
 
-    return () => {
-      unregisterNavPanelContent(navKey, owner);
-    };
-  }, [children, navKey, owner]);
+      return () => {
+        unregisterNavPanelContent(navKey, owner);
+      };
+    }, [children, hidden, navKey, owner]);
 
-  return null;
-});
+    return null;
+  },
+);
 
 NavPanelPortal.displayName = 'NavPanelPortal';
 

@@ -10,6 +10,13 @@ import {
 
 const authConfig = vi.hoisted(() => ({ emailVerificationRequired: false }));
 
+// Template persistence is covered with a real database in the integration suite.
+vi.mock('./travelServiceGroupTemplate', () => ({
+  applySuperGroupTemplate: vi.fn().mockResolvedValue(undefined),
+  getSuperGroupTemplate: vi.fn().mockResolvedValue({ members: [], revision: 0 }),
+  lockSuperGroupTemplate: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/envs/auth', () => ({
   authEnv: {
     get AUTH_EMAIL_VERIFICATION() {
@@ -275,6 +282,7 @@ describe('initDefaultTravelServiceGroup', () => {
     expect(getBuiltinAgent).toHaveBeenCalledWith('inbox');
     expect(updateAgentConfig).toHaveBeenCalledWith('travel-supervisor', {
       title: '旅游群主AI',
+      description: expect.stringContaining('协调分歧'),
     });
     expect(ensureSupervisorAgent).toHaveBeenCalledWith('travel-group', 'travel-supervisor');
     expect(ensureContentIfBlank).toHaveBeenCalledWith(
@@ -331,11 +339,7 @@ describe('initDefaultTravelServiceGroup', () => {
       4,
       'default-travel-document-assistant',
       expect.objectContaining({
-        plugins: [
-          'lobe-travel-production',
-          'lobe-agent-documents',
-          'tourism-document-production',
-        ],
+        plugins: ['lobe-travel-production', 'lobe-agent-documents', 'tourism-document-production'],
       }),
     );
     expect(ensureParticipantAgents).toHaveBeenCalledWith('travel-group', [
@@ -462,9 +466,12 @@ describe('initDefaultTravelServiceGroup', () => {
 
     await initDefaultTravelServiceGroup(database, 'user-a');
 
-    expect(updateAgentConfig).toHaveBeenCalledWith('document-agent', {
-      plugins: ['custom-tool', 'lobe-travel-production', 'lobe-agent-documents'],
-    });
+    expect(updateAgentConfig).toHaveBeenCalledWith(
+      'document-agent',
+      expect.objectContaining({
+        plugins: ['custom-tool', 'lobe-travel-production', 'lobe-agent-documents'],
+      }),
+    );
   });
 
   it('removes the direct image tool so a managed image assistant cannot bypass billing', async () => {
@@ -480,9 +487,12 @@ describe('initDefaultTravelServiceGroup', () => {
 
     await initDefaultTravelServiceGroup(database, 'user-a');
 
-    expect(updateAgentConfig).toHaveBeenCalledWith('image-agent', {
-      plugins: ['custom-tool', 'lobe-travel-production'],
-    });
+    expect(updateAgentConfig).toHaveBeenCalledWith(
+      'image-agent',
+      expect.objectContaining({
+        plugins: ['custom-tool', 'lobe-travel-production'],
+      }),
+    );
   });
 
   it('fails explicitly when the built-in supervisor template is unavailable', async () => {
@@ -562,13 +572,8 @@ describe('initDefaultTravelServiceGroup', () => {
       .mockResolvedValueOnce({
         agencyConfig: platformManaged,
         id: 'document-agent',
-        plugins: [
-          'lobe-travel-production',
-          'lobe-agent-documents',
-          'tourism-document-production',
-        ],
-        systemRole:
-          '你是行程文档助理，负责行程单、方案书、报价单、手册和 Word/PDF 文档内容。',
+        plugins: ['lobe-travel-production', 'lobe-agent-documents', 'tourism-document-production'],
+        systemRole: '你是行程文档助理，负责行程单、方案书、报价单、手册和 Word/PDF 文档内容。',
         title: '行程文档助理',
       });
     findSkillByIdentifier
@@ -701,11 +706,7 @@ describe('initDefaultTravelServiceGroup', () => {
       .mockResolvedValueOnce({
         agencyConfig: platformManaged,
         id: 'document-agent',
-        plugins: [
-          'lobe-travel-production',
-          'lobe-agent-documents',
-          'tourism-document-production',
-        ],
+        plugins: ['lobe-travel-production', 'lobe-agent-documents', 'tourism-document-production'],
       });
     findSkillByIdentifier.mockResolvedValue({ id: 'skill' });
     getSupervisorAgentId.mockResolvedValue('user-inbox');
@@ -749,11 +750,7 @@ describe('initDefaultTravelServiceGroup', () => {
       .mockResolvedValueOnce({
         agencyConfig: platformManaged,
         id: 'document-agent',
-        plugins: [
-          'lobe-travel-production',
-          'lobe-agent-documents',
-          'tourism-document-production',
-        ],
+        plugins: ['lobe-travel-production', 'lobe-agent-documents', 'tourism-document-production'],
       });
     findSkillByIdentifier.mockResolvedValue({ id: 'skill' });
     getSupervisorAgentId.mockResolvedValue('travel-supervisor');
@@ -796,11 +793,7 @@ describe('initDefaultTravelServiceGroup', () => {
       .mockResolvedValueOnce({
         agencyConfig: platformManaged,
         id: 'document-agent',
-        plugins: [
-          'lobe-travel-production',
-          'lobe-agent-documents',
-          'tourism-document-production',
-        ],
+        plugins: ['lobe-travel-production', 'lobe-agent-documents', 'tourism-document-production'],
       });
     findSkillByIdentifier.mockResolvedValue({ id: 'skill' });
     getSupervisorAgentId.mockResolvedValue('user-inbox');

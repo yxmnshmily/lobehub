@@ -2,6 +2,18 @@
 
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
+import {
+  AtSign,
+  CircleUserRound,
+  Heart,
+  IdCard,
+  Image,
+  Link,
+  LockKeyhole,
+  type LucideIcon,
+  Mail,
+  Smartphone,
+} from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import { SETTINGS_ANCHOR_ROW_ATTR, SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -14,6 +26,18 @@ interface ProfileRowProps {
   label?: string;
   labelSlot?: ReactNode;
 }
+
+const fieldIcons: Record<string, LucideIcon> = {
+  'profile-avatar': Image,
+  'profile-full-name': CircleUserRound,
+  'profile-user-id': IdCard,
+  'profile-username': AtSign,
+  'profile-password': LockKeyhole,
+  'profile-email': Mail,
+  'profile-phone': Smartphone,
+  'profile-connected-accounts': Link,
+  'profile-interests': Heart,
+};
 
 const styles = createStaticStyles(({ css, responsive }) => ({
   action: css`
@@ -38,6 +62,15 @@ const styles = createStaticStyles(({ css, responsive }) => ({
       flex: 0 0 auto;
     }
   `,
+  labelContent: css`
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+
+    > svg {
+      flex-shrink: 0;
+    }
+  `,
   row: css`
     display: flex;
     gap: 24px;
@@ -55,7 +88,13 @@ const styles = createStaticStyles(({ css, responsive }) => ({
 }));
 
 const ProfileRow = ({ anchor, label, labelSlot, children, action }: ProfileRowProps) => {
-  const labelNode = labelSlot ?? (label && <Text strong>{label}</Text>);
+  const FieldIcon = anchor ? fieldIcons[anchor] : undefined;
+  const labelNode = (
+    <span className={styles.labelContent}>
+      {FieldIcon && <FieldIcon aria-hidden size={18} />}
+      {labelSlot ?? (label && <Text strong>{label}</Text>)}
+    </span>
+  );
 
   return (
     <div className={styles.row} {...(anchor ? { [SETTINGS_ANCHOR_ROW_ATTR]: '' } : undefined)}>

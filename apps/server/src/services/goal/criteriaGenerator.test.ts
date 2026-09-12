@@ -14,6 +14,23 @@ vi.mock('@/server/services/aiGeneration', () => ({
 vi.mock('./modelConfig', () => ({ resolveGoalModelConfig }));
 
 describe('GoalCriteriaGeneratorService', () => {
+  it('keeps a valid group assignment and rejects a planner-selected outsider', async () => {
+    const service = new GoalCriteriaGeneratorService({} as any, 'user-1');
+    const draft = {
+      problemStatement: 'Deliver copy',
+      tasks: [{ assigneeAgentId: 'writer', instruction: 'Write', title: 'Copy' }],
+    };
+    generateObject.mockResolvedValue(draft);
+    await expect(
+      service.decompose({ requirement: 'Copy', members: [{ agentId: 'writer', title: 'Writer' }] }),
+    ).resolves.toMatchObject(draft);
+    await expect(
+      service.decompose({
+        requirement: 'Copy',
+        members: [{ agentId: 'reviewer', title: 'Reviewer' }],
+      }),
+    ).resolves.toBeUndefined();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     resolveGoalModelConfig.mockResolvedValue({ model: 'goal-model', provider: 'goal-provider' });

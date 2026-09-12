@@ -1,17 +1,21 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { cssVar } from 'antd-style';
 import { memo } from 'react';
 
 const PanelContentSkeleton = memo(() => {
   return (
-    <Flexbox gap={2} style={{ minWidth: 300 }}>
+    <Flexbox
+      gap={2}
+      style={{ maxWidth: 'calc(100vw - 32px)', minWidth: 'min(300px, 100%)', width: 300 }}
+    >
       {/* UserInfo + DataStatistics area */}
       <Flexbox gap={8} style={{ padding: '12px 16px' }}>
         <Flexbox horizontal align="center" gap={12}>
-          <Skeleton
+          <SkeletonBar
             style={{
               borderRadius: cssVar.borderRadius,
               height: 40,
@@ -20,7 +24,7 @@ const PanelContentSkeleton = memo(() => {
             }}
           />
           <Flexbox flex={1} gap={4}>
-            <Skeleton
+            <SkeletonBar
               style={{
                 borderRadius: cssVar.borderRadius,
                 height: 16,
@@ -28,7 +32,7 @@ const PanelContentSkeleton = memo(() => {
                 opacity: 0.6,
               }}
             />
-            <Skeleton
+            <SkeletonBar
               style={{
                 borderRadius: cssVar.borderRadius,
                 height: 12,
@@ -40,7 +44,7 @@ const PanelContentSkeleton = memo(() => {
         </Flexbox>
         <Flexbox horizontal gap={4}>
           {[1, 2, 3].map((i) => (
-            <Skeleton
+            <SkeletonBar
               key={i}
               style={{
                 borderRadius: cssVar.borderRadius,
@@ -58,7 +62,7 @@ const PanelContentSkeleton = memo(() => {
         <Flexbox gap={2} key={row} style={{ padding: '0 8px' }}>
           {[1, 2].map((i) => (
             <Flexbox horizontal align="center" gap={8} key={i} style={{ height: 36 }}>
-              <Skeleton
+              <SkeletonBar
                 style={{
                   borderRadius: cssVar.borderRadius,
                   height: 20,
@@ -66,7 +70,7 @@ const PanelContentSkeleton = memo(() => {
                   width: 20,
                 }}
               />
-              <Skeleton
+              <SkeletonBar
                 style={{
                   borderRadius: cssVar.borderRadius,
                   height: 14,
@@ -86,7 +90,7 @@ const PanelContentSkeleton = memo(() => {
         justify="space-between"
         style={{ padding: '6px 8px 6px 16px' }}
       >
-        <Skeleton
+        <SkeletonBar
           style={{
             borderRadius: cssVar.borderRadius,
             height: 20,
@@ -94,7 +98,7 @@ const PanelContentSkeleton = memo(() => {
             opacity: 0.4,
           }}
         />
-        <Skeleton
+        <SkeletonBar
           style={{
             borderRadius: cssVar.borderRadius,
             height: 28,

@@ -6,6 +6,9 @@ import { TRPCError } from '@trpc/server';
 import { and, count, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { USER_DELETION_ERRORS } from '@/const/userDeletion';
+import { AGENT_TRANSFER_PENDING_OWNER_DELETE } from '@/database/models/agentTransferJob';
+import { deleteManagedUser } from '@/database/models/deleteManagedUser';
 import {
   PlatformAdminOperationAuditModel,
   PlatformAdminOperationAuditQueryError,
@@ -63,6 +66,17 @@ import {
   TRAVEL_GROUP_REPAIR_SCOPE_INVALID,
   TRAVEL_GROUP_REPAIR_STATE_CHANGED,
 } from '@/server/services/user/travelServiceGroup';
+import {
+  getSuperGroupTemplate,
+  importSuperGroupTemplateMember,
+  importSuperGroupTemplateMemberInput,
+  removeSuperGroupTemplateMember,
+  removeSuperGroupTemplateMemberInput,
+  reorderSuperGroupTemplateMembers,
+  reorderSuperGroupTemplateMembersInput,
+  superGroupTemplateMemberInput,
+  upsertSuperGroupTemplateMember,
+} from '@/server/services/user/travelServiceGroupTemplate';
 
 import { hasActivePlatformAdminAccess, requirePlatformAdmin } from './_helpers/platformAdminGuard';
 
@@ -282,7 +296,7 @@ const isExecutableTravelGroupRepairPlan = (plan: DefaultTravelServiceGroupRepair
     ({ code, reviewRequired }) => !reviewRequired && safeTravelGroupRepairActionCodes.has(code),
   );
 
-const throwTravelGroupRepairError = (error: unknown): never => {
+const throwTravelGroupRepairError: (error: unknown) => never = (error) => {
   if (error instanceof TRPCError) throw error;
   if (error instanceof PlatformUserOperationsError) throwPlatformUserOperationError(error);
   if (error instanceof Error && travelGroupRepairPreconditionErrors.has(error.message)) {
@@ -304,7 +318,7 @@ const toSafeUserBanState = (state: PlatformUserBanState) => ({
   id: state.id,
 });
 
-const throwPlatformUserOperationError = (error: unknown): never => {
+const throwPlatformUserOperationError: (error: unknown) => never = (error) => {
   if (error instanceof PlatformAuthRevocationError) {
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
@@ -336,14 +350,14 @@ const throwPlatformUserOperationError = (error: unknown): never => {
   throw new TRPCError({ code, message: error.message });
 };
 
-const throwPlatformUserQueryError = (): never => {
+const throwPlatformUserQueryError: () => never = () => {
   throw new TRPCError({
     code: 'INTERNAL_SERVER_ERROR',
     message: 'Unable to load platform user information. Please try again.',
   });
 };
 
-const throwPlatformSessionRevocationError = (error: unknown): never => {
+const throwPlatformSessionRevocationError: (error: unknown) => never = (error) => {
   if (error instanceof PlatformUserOperationsError) throwPlatformUserOperationError(error);
   throw new TRPCError({
     code: 'INTERNAL_SERVER_ERROR',
@@ -391,10 +405,12 @@ const toSafeUserOperationsItem = (item: PlatformUserOperationsItem) => ({
   createdAt: item.createdAt,
   email: item.email,
   emailVerified: item.emailVerified,
+  phone: item.phone,
   fullName: redactUiText(item.fullName),
   id: item.id,
   lastActiveAt: item.lastActiveAt,
   latestSessionAt: item.latestSessionAt,
+  latestLoginAt: item.latestLoginAt,
   latestSessionIp: item.latestSessionIp,
   // This is the existing CNY travel-service ledger. Model-usage Credits use a
   // separate settlement path and must not be inferred from these fen values.
@@ -407,6 +423,61 @@ const toSafeUserOperationsItem = (item: PlatformUserOperationsItem) => ({
 });
 
 export const platformOperationsRouter = router({
+  reorderSuperGroupTemplateMembers: platformOperationsProcedure
+    .input(reorderSuperGroupTemplateMembersInput)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await reorderSuperGroupTemplateMembers(ctx.serverDB, ctx.userId, input);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: '成员排序未能同步，请稍后重试。',
+        });
+      }
+    }),
+  importSuperGroupTemplateMember: platformOperationsProcedure
+    .input(importSuperGroupTemplateMemberInput)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await importSuperGroupTemplateMember(ctx.serverDB, ctx.userId, input);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Unable to synchronize members. No changes were saved.',
+        });
+      }
+    }),
+  removeSuperGroupTemplateMember: platformOperationsProcedure
+    .input(removeSuperGroupTemplateMemberInput)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await removeSuperGroupTemplateMember(ctx.serverDB, ctx.userId, input);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Unable to synchronize members. No changes were saved.',
+        });
+      }
+    }),
+  getSuperGroupTemplate: platformOperationsProcedure.query(({ ctx }) =>
+    getSuperGroupTemplate(ctx.serverDB),
+  ),
+  upsertSuperGroupTemplateMember: platformOperationsProcedure
+    .input(superGroupTemplateMemberInput)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await upsertSuperGroupTemplateMember(ctx.serverDB, ctx.userId, input);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Unable to synchronize the super-group template. No changes were saved.',
+        });
+      }
+    }),
   banUser: platformOperationsProcedure
     .input(
       z
@@ -439,6 +510,68 @@ export const platformOperationsRouter = router({
           operatorUserId: ctx.userId,
         });
         return toSafeUserBanState(state);
+      } catch (error) {
+        throwPlatformUserOperationError(error);
+      }
+    }),
+
+  deleteUser: platformOperationsProcedure
+    .input(z.object({ targetUserId: targetUserIdSchema, confirmed: z.literal(true) }).strict())
+    .mutation(async ({ ctx, input }) => {
+      if (input.targetUserId === ctx.userId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: '请确认目标账号，不能删除当前管理员' });
+      }
+      await assertMutationAdministratorIsStillActive(ctx.serverDB, ctx.userId);
+      await assertMutationTargetExists(ctx.serverDB, input.targetUserId);
+      await new PlatformUserOperationsModel(ctx.serverDB, ctx.userId).banUser({
+        targetUserId: input.targetUserId,
+        reason: '管理员执行永久删除',
+        operationId: randomUUID(),
+      });
+      try {
+        await new PlatformAuthRevocationService(ctx.serverDB).revokeUser(input.targetUserId);
+      } catch (cause) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: USER_DELETION_ERRORS.sessions,
+          cause,
+        });
+      }
+      try {
+        return await deleteManagedUser(ctx.serverDB, input.targetUserId);
+      } catch (cause) {
+        if (
+          cause instanceof Error &&
+          cause.message === '用户仍有运行中的计费任务，请结束后再删除'
+        ) {
+          throw new TRPCError({ code: 'CONFLICT', message: USER_DELETION_ERRORS.budget, cause });
+        }
+        if (cause instanceof Error && cause.message === AGENT_TRANSFER_PENDING_OWNER_DELETE) {
+          throw new TRPCError({ code: 'CONFLICT', message: USER_DELETION_ERRORS.transfer, cause });
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: USER_DELETION_ERRORS.cleanup,
+          cause,
+        });
+      }
+    }),
+
+  setUserPassword: platformOperationsProcedure
+    .input(
+      z
+        .object({ targetUserId: targetUserIdSchema, password: z.string().min(12).max(128) })
+        .strict(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await assertMutationAdministratorIsStillActive(ctx.serverDB, ctx.userId);
+        await assertMutationTargetExists(ctx.serverDB, input.targetUserId);
+        return await new PlatformUserAccountAdministrationService(ctx.serverDB).setPassword({
+          ...input,
+          operationId: randomUUID(),
+          operatorUserId: ctx.userId,
+        });
       } catch (error) {
         throwPlatformUserOperationError(error);
       }

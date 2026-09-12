@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { LOADING_FLAT } from '@/const/message';
 import MarkdownMessage from '@/features/Conversation/Markdown';
 import ContentLoading from '@/features/Conversation/Messages/components/ContentLoading';
+import { GroupAgentQuote, useGroupMessageContent } from '@/features/SuperGroup/GroupAgentQuote';
 
 import { dataSelectors, useConversationStore } from '../../../store';
 import { normalizeThinkTags, processWithArtifact } from '../../../utils/markdown';
@@ -30,6 +31,7 @@ const MessageContent = memo<MessageContentProps>(
     const storeContent = useConversationStore(dataSelectors.getBlockContent(id));
     const storeHasTools = useConversationStore(dataSelectors.getBlockHasTools(id));
     const content = contentOverride ?? storeContent;
+    const reply = useGroupMessageContent(content);
     const hasTools = hasToolsOverride ?? storeHasTools;
 
     // Anchor the loading timer to this block's own createdAt (the freshest
@@ -42,7 +44,7 @@ const MessageContent = memo<MessageContentProps>(
       return Number.isFinite(ms) ? ms : undefined;
     });
 
-    const message = normalizeThinkTags(processWithArtifact(content ?? ''));
+    const message = normalizeThinkTags(processWithArtifact(reply.content));
     // Once a tool call exists below this block's text, the text is already
     // finalized — skip the streaming/fade-in animation so settled content above
     // a tool doesn't keep re-animating.
@@ -65,6 +67,7 @@ const MessageContent = memo<MessageContentProps>(
           <MarkdownMessage {...markdownProps} className={cx(isToolSingleLine && styles.pWithTool)}>
             {message}
           </MarkdownMessage>
+          <GroupAgentQuote id={id} referenceId={reply.referenceId} />
         </>
       )
     );

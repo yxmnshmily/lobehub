@@ -50,7 +50,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   group: css`
     & + & {
-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   groupHeader: css`

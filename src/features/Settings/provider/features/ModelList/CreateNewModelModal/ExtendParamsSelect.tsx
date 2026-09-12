@@ -435,7 +435,7 @@ const PreviewContent = ({
             gap={8}
             style={{
               background: token.colorBgElevated,
-              border: `1px solid ${token.colorBorderSecondary}`,
+              border: `0.5px solid ${token.colorBorderSecondary}`,
               borderRadius: 10,
               padding: 12,
               width: previewWidth,

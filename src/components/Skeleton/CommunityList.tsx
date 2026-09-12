@@ -7,13 +7,16 @@ import { memo } from 'react';
 
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
+import SkeletonBar from './Bar';
+import SkeletonText from './Text';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   footer: css`
-    border-block-start: 1px dashed ${cssVar.colorBorder};
+    border-block-start: 0.5px dashed ${cssVar.colorBorder};
     background: ${cssVar.colorBgContainer};
   `,
   toolbar: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 
@@ -36,12 +39,12 @@ const CommunityListSkeleton = memo<CommunityListSkeletonProps>(
           align={'center'}
           className={styles.toolbar}
           gap={12}
-          height={56}
+          height={64}
           justify={'space-between'}
-          paddingInline={16}
+          paddingInline={24}
         >
-          <Skeleton height={20} width={280} />
-          <Skeleton height={28} width={132} />
+          <SkeletonBar height={20} width={280} />
+          <SkeletonBar height={28} width={132} />
         </Flexbox>
       )}
       <Grid rows={rows} width={'100%'}>
@@ -50,14 +53,14 @@ const CommunityListSkeleton = memo<CommunityListSkeletonProps>(
             <Flexbox horizontal align={'center'} gap={12}>
               <Skeleton.Avatar shape="square" size={40} style={{ flex: 'none' }} />
               <Flexbox flex={1} gap={4}>
-                <Skeleton height={20} width={'70%'} />
-                <Skeleton height={14} width={'40%'} />
+                <SkeletonBar height={20} width={'70%'} />
+                <SkeletonBar height={14} width={'40%'} />
               </Flexbox>
             </Flexbox>
-            <Skeleton.Text rows={3} style={{ marginBottom: 0 }} />
+            <SkeletonText rows={3} style={{ marginBottom: 0 }} />
             <Flexbox horizontal gap={8}>
-              <Skeleton height={20} width={60} />
-              <Skeleton height={20} width={50} />
+              <SkeletonBar height={20} width={60} />
+              <SkeletonBar height={20} width={50} />
             </Flexbox>
             <Flexbox
               className={styles.footer}
@@ -65,7 +68,7 @@ const CommunityListSkeleton = memo<CommunityListSkeletonProps>(
               padding={8}
               style={{ marginBottom: -16, marginInline: -16 }}
             >
-              <Skeleton height={14} width={100} />
+              <SkeletonBar height={14} width={100} />
             </Flexbox>
           </Block>
         ))}

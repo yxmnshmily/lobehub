@@ -14,14 +14,14 @@ import ArtifactIcon from './Icon';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   avatar: css`
-    border-inline-end: 1px solid ${cssVar.colorSplit};
+    border-inline-end: 0.5px solid ${cssVar.colorSplit};
     background: ${cssVar.colorFillQuaternary};
   `,
   container: css`
     cursor: pointer;
 
     margin-block-start: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 8px;
 
     color: ${cssVar.colorText};

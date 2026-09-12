@@ -2,14 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { BotPromptIcon } from '@lobehub/ui/icons';
-import {
-  DnaIcon,
-  ListTodoIcon,
-  MessageSquarePlusIcon,
-  MessagesSquareIcon,
-  SearchIcon,
-  TargetIcon,
-} from 'lucide-react';
+import { DnaIcon, MessageSquarePlusIcon, MessagesSquareIcon, SearchIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import urlJoin from 'url-join';
@@ -43,10 +36,8 @@ const Nav = memo(() => {
     pathname.includes('/profile') ||
     pathname.includes('/channel') ||
     pathname.endsWith('/statistics');
-  const isGoalsActive = pathname.endsWith('/goals');
   // 下钻页 /self-evolving/:domainId 也算在这个入口下，否则点进去侧边栏就失焦了
   const isSelfLearningActive = pathname.includes('/self-evolving');
-  const isTasksActive = pathname.endsWith('/tasks') || pathname.includes('/task/');
   // Topic IDs are prefixed `topics_`, so /agent/:aid/topics_abc would also match
   // pathname.includes('/topics') — anchor to end to avoid that false positive.
   const isTopicsActive = pathname.endsWith('/topics');
@@ -60,7 +51,6 @@ const Nav = memo(() => {
   const switchTopic = useChatStore((s) => s.switchTopic);
   const [openNewTopicOrSaveTopic] = useChatStore((s) => [s.openNewTopicOrSaveTopic]);
   const isNewTopicSendInFlight = useChatStore(topicSelectors.isNewTopicSendInFlight);
-  const enableTopicAcceptance = useUserStore(labPreferSelectors.enableTopicAcceptance);
   const enableSelfLearning = useUserStore(labPreferSelectors.enableSelfLearning);
 
   const { mutate } = useActionSWR(topicActionKeys.openNewOrSave(), openNewTopicOrSaveTopic);
@@ -77,28 +67,31 @@ const Nav = memo(() => {
 
   return (
     <Flexbox gap={1} paddingInline={4}>
-      <NavItem
-        disabled={!canCreateTopic || isNewTopicSendInFlight}
-        icon={MessageSquarePlusIcon}
-        title={tTopic('actions.addNewTopic')}
-        onClick={handleNewTopic}
-      />
-      <NavItem
-        icon={SearchIcon}
-        title={t('tab.search')}
-        onClick={() => {
-          toggleCommandMenu(true);
-        }}
-      />
-      <NavItem
-        active={isTopicsActive}
-        icon={MessagesSquareIcon}
-        title={tTopic('management.sidebarEntry')}
-        onClick={() => {
-          switchTopic(null, { skipRefreshMessage: true });
-          router.push(urlJoin('/agent', agentId!, 'topics'));
-        }}
-      />
+      {/* Hide these shortcuts without removing their handlers or the topic history below. */}
+      <div hidden>
+        <NavItem
+          disabled={!canCreateTopic || isNewTopicSendInFlight}
+          icon={MessageSquarePlusIcon}
+          title={tTopic('actions.addNewTopic')}
+          onClick={handleNewTopic}
+        />
+        <NavItem
+          icon={SearchIcon}
+          title={t('tab.search')}
+          onClick={() => {
+            toggleCommandMenu(true);
+          }}
+        />
+        <NavItem
+          active={isTopicsActive}
+          icon={MessagesSquareIcon}
+          title={tTopic('management.sidebarEntry')}
+          onClick={() => {
+            switchTopic(null, { skipRefreshMessage: true });
+            router.push(urlJoin('/agent', agentId!, 'topics'));
+          }}
+        />
+      </div>
       {!hideProfile && (
         <NavItem
           active={isProfileActive}
@@ -121,26 +114,6 @@ const Nav = memo(() => {
           }}
         />
       )}
-      {enableTopicAcceptance && (
-        <NavItem
-          active={isGoalsActive}
-          icon={TargetIcon}
-          title={t('goalList.title')}
-          onClick={() => {
-            switchTopic(null, { skipRefreshMessage: true });
-            router.push(urlJoin('/agent', agentId!, 'goals'));
-          }}
-        />
-      )}
-      <NavItem
-        active={isTasksActive}
-        icon={ListTodoIcon}
-        title={t('tab.tasks')}
-        onClick={() => {
-          switchTopic(null, { skipRefreshMessage: true });
-          router.push(urlJoin('/agent', agentId!, 'tasks'));
-        }}
-      />
     </Flexbox>
   );
 });

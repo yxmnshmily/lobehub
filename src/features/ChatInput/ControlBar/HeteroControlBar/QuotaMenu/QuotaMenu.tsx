@@ -1,8 +1,9 @@
+import SkeletonBar from '@/components/Skeleton/Bar';
 'use client';
 
 import type { HeteroQuotaWindow } from '@lobechat/electron-client-ipc';
 import { Flexbox, Icon, Popover, Tooltip } from '@lobehub/ui';
-import { ActionIcon, Skeleton, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { ChevronDownIcon, GaugeIcon, RefreshCwIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -35,7 +36,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   error: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorErrorBorder};
+    border: 0.5px solid ${cssVar.colorErrorBorder};
     border-radius: ${cssVar.borderRadius};
 
     font-size: 12px;
@@ -45,7 +46,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   refreshNotice: css`
     padding: 8px;
-    border: 1px solid ${cssVar.colorWarningBorder};
+    border: 0.5px solid ${cssVar.colorWarningBorder};
     border-radius: ${cssVar.borderRadius};
 
     font-size: 12px;
@@ -55,7 +56,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   header: css`
     padding-block-end: 6px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   popover: css`
     width: 292px;
@@ -585,9 +586,9 @@ const QuotaMenu = <S extends QuotaSnapshotBase>({
 
       {loading && !hasQuotaData ? (
         <Flexbox gap={8}>
-          <Skeleton height={18} />
-          <Skeleton height={18} />
-          <Skeleton height={18} />
+          <SkeletonBar height={18} />
+          <SkeletonBar height={18} />
+          <SkeletonBar height={18} />
         </Flexbox>
       ) : quota?.status === 'unavailable' ? (
         <div className={styles.emptyState}>

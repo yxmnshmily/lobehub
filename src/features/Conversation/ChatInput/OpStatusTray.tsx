@@ -1,13 +1,14 @@
 'use client';
 
-import { formatElapsedClockTime } from '@lobechat/utils';
+import { formatElapsedClockTime, formatLocalizedTokens as formatTokens } from '@lobechat/utils';
 import { Flexbox, Icon, Popover, Tooltip } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
 import type { LucideIcon } from 'lucide-react';
-import { CircleDollarSignIcon, CoinsIcon, FootprintsIcon } from 'lucide-react';
+import { CoinsIcon, FootprintsIcon } from 'lucide-react';
 import { Fragment, memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/selectors';
 import { AI_RUNTIME_OPERATION_TYPES } from '@/store/chat/slices/operation/types';
@@ -28,7 +29,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 8px;
     padding-inline: 14px;
-    border: 1px solid ${cssVar.colorFillSecondary};
+    border: 0.5px solid ${cssVar.colorFillSecondary};
     border-block-end: none;
     border-start-start-radius: 12px;
     border-start-end-radius: 12px;
@@ -47,12 +48,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     /* keep a hairline divider on top so the tray still reads as separated from
        the conversation above, even without the full card chrome */
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 0;
     background: transparent;
   `,
   divider: css`
-    width: 1px;
+    width: 0.5px;
     height: 12px;
     background: ${cssVar.colorBorderSecondary};
   `,
@@ -205,17 +206,6 @@ const ActivityGlyph = () => (
   </svg>
 );
 
-const formatTokens = (n: number) => {
-  if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
-  return `${(n / 1_000_000).toFixed(2)}M`;
-};
-
-const formatCost = (cost: number) => {
-  if (cost < 0.01) return cost.toFixed(4);
-  return cost.toFixed(2);
-};
-
 const normalizeStepCount = (stepCount: unknown) => {
   if (typeof stepCount !== 'number' || !Number.isFinite(stepCount)) return 0;
   return Math.max(0, Math.floor(stepCount));
@@ -243,6 +233,7 @@ interface MetricItem {
 
 const OpStatusTray = memo<OpStatusTrayProps>(({ seamless, topAttached }) => {
   const { t } = useTranslation(['chat', 'opStatusTray']);
+  const { format: formatCost } = useMonthlyExchangeRate();
   const context = useConversationStore(contextSelectors.context);
   const dbMessages = useConversationStore(dataSelectors.dbMessages);
 
@@ -355,11 +346,11 @@ const OpStatusTray = memo<OpStatusTrayProps>(({ seamless, topAttached }) => {
       : undefined,
     totalCost > 0
       ? {
-          icon: CircleDollarSignIcon,
+          icon: CoinsIcon,
           key: 'cost',
           label: costLabel,
-          title: `${costLabel}: ${formatCost(totalCost)}`,
-          value: formatCost(totalCost),
+          title: `${costLabel}: ${formatCost(totalCost, 6)}`,
+          value: formatCost(totalCost, 6),
         }
       : undefined,
   ].filter((item): item is MetricItem => !!item);

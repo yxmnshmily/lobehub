@@ -1,3 +1,4 @@
+import type { ModelUsage } from '@lobechat/types';
 import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
@@ -29,7 +30,7 @@ export const travelGenerationTasks = pgTable(
     requestHash: text('request_hash'),
     input: jsonb('input').$type<Record<string, unknown>>().notNull(),
     artifacts: jsonb('artifacts').$type<unknown[]>(),
-    usage: jsonb('usage').$type<Record<string, number | undefined>>(),
+    usage: jsonb('usage').$type<ModelUsage>(),
     provider: text('provider'),
     code: text('code'),
     message: text('message'),

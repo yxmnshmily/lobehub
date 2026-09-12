@@ -28,6 +28,7 @@ import type {
   FieldSchema,
   SerializedPlatformDefinition,
 } from '@/server/services/bot/platforms/types';
+import { translateTravel } from '@/utils/i18n/travel';
 
 import { platformCredentialBodyMap, platformCredentialExtrasMap } from '../platform/registry';
 import { extractSettingsDefaults } from './formState';
@@ -37,7 +38,7 @@ const prefixCls = 'ant';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   advancedGroup: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 0 !important;
 
     .${prefixCls}-collapse-item {
@@ -178,7 +179,7 @@ const renderFieldLabel = (field: FieldSchema, t: (key: string) => string) => {
           {t('channel.paidFeature.badge')}
         </Tag>
       )}
-      {field.devOnly && <Tag color="gold">Dev Only</Tag>}
+      {field.devOnly && <Tag color="gold">{translateTravel('仅开发环境')}</Tag>}
     </Flexbox>
   );
 };

@@ -1502,7 +1502,7 @@ describe('resolveAgentConfig', () => {
       vi.spyOn(
         userSelectors.userGeneralSettingsSelectors,
         'currentResponseLanguage',
-      ).mockReturnValue('ja-JP');
+      ).mockReturnValue('en-US');
       vi.spyOn(agentSelectors.agentSelectors, 'getAgentConfigById').mockReturnValue(
         () =>
           ({
@@ -1514,7 +1514,7 @@ describe('resolveAgentConfig', () => {
       const result = resolveAgentConfig({ agentId: 'test-agent' });
 
       expect(result.agentConfig.systemRole).toBe(
-        'Preferred reply language: ja-JP. Use this language unless the user explicitly asks to switch.',
+        'Preferred reply language: en-US. Use this language unless the user explicitly asks to switch.',
       );
     });
 

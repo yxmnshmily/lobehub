@@ -2,14 +2,16 @@ import { ProviderIcon } from '@lobehub/icons';
 import { Flexbox, Tooltip } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { type TableColumnType } from 'antd';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import AsyncBoundary from '@/components/AsyncBoundary';
 import InlineTable from '@/components/InlineTable';
 import SpendType, { type SpendTypeValue } from '@/components/SpendType';
 import TablePagination from '@/components/TablePagination';
 import TotalToken from '@/components/TotalToken';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { parseAsInteger, useQueryStates } from '@/hooks/useQueryParam';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
@@ -42,16 +44,35 @@ const styles = createStaticStyles(({ css }) => ({
   // Line the footer up with InlineTable's first/last cells.
   pagination: css`
     padding-inline: 24px;
+
+    @media (width <= 575.98px) {
+      overflow: visible;
+      flex-wrap: wrap;
+      padding-inline: 8px;
+
+      > span,
+      > div {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+
+      > div {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+    }
   `,
 }));
 
 const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
+  const { format } = useMonthlyExchangeRate();
+  const { mobile = false } = useResponsive();
   const { t } = useTranslation('auth');
   // Columns shared with the workspace spend breakdown read from the same
   // namespace, so the two tables stay worded alike.
   const { t: tSpend } = useTranslation('spend');
 
-  const { data, isLoading, mutate } = useClientDataSWR(statsKeys.usageLogs(), async () =>
+  const { data, error, isLoading, mutate } = useClientDataSWR(statsKeys.usageLogs(), async () =>
     usageService.findByMonth(dateStrings),
   );
 
@@ -71,7 +92,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
     if (dateStrings) {
       mutate();
     }
-  }, [dateStrings]);
+  }, [dateStrings, mutate]);
 
   const sorted = useMemo(() => {
     const getValue = sort && SORT_VALUES[sort.field];
@@ -96,7 +117,11 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
     {
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (value) => <span style={{ textWrap: 'nowrap' }}>{formatSpendTime(value)}</span>,
+      render: (value) => (
+        <span style={{ overflowWrap: 'anywhere', textWrap: mobile ? 'wrap' : 'nowrap' }}>
+          {formatSpendTime(value)}
+        </span>
+      ),
       sorter: true,
       sortOrder: sort?.field === 'createdAt' ? sort.order : null,
       title: tSpend('table.columns.time'),
@@ -108,6 +133,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       render: (value: SpendTypeValue) => (
         <SpendType type={value}>{tSpend(`table.columns.type.enums.${value}`)}</SpendType>
       ),
+      responsive: ['sm'],
       title: tSpend('table.columns.type.title'),
       width: 80,
     },
@@ -115,18 +141,20 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       dataIndex: 'model',
       key: 'model',
       render: (value, record) => (
-        <Flexbox horizontal align={'center'} gap={16}>
+        <Flexbox horizontal align={'center'} gap={mobile ? 8 : 16} style={{ minWidth: 0 }}>
           <ProviderIcon
             provider={record.provider}
             size={18}
             style={{
-              border: `2px solid ${cssVar.colorBgContainer}`,
+              border: `0.5px solid ${cssVar.colorBgContainer}`,
               boxSizing: 'content-box',
               marginRight: -8,
             }}
           />
           <Tooltip title={value}>
-            <Text>{value?.length > 12 ? `${value.slice(0, 12)}...` : value}</Text>
+            <Text style={{ minWidth: 0, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+              {value}
+            </Text>
           </Tooltip>
         </Flexbox>
       ),
@@ -152,7 +180,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       dataIndex: 'spend',
       key: 'spend',
       // Kept in dollars, unlike the workspace breakdown's credits column.
-      render: (value) => `$${formatNumber(value, 6)}`,
+      render: (value) => format(value, 6),
       sorter: true,
       sortOrder: sort?.field === 'spend' ? sort.order : null,
       title: t('usage.table.spend'),
@@ -162,6 +190,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       dataIndex: 'tps',
       key: 'tps',
       render: (value) => (value ? formatNumber(value, 2) : '--'),
+      responsive: ['sm'],
       title: t('usage.table.tps'),
     },
     {
@@ -169,18 +198,21 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
       dataIndex: 'ttft',
       key: 'ttft',
       render: (value) => (value ? formatNumber(value / 1000, 2) : '--'),
+      responsive: ['sm'],
       title: t('usage.table.ttft'),
     },
   ];
 
-  return (
+  const content = (
     <>
       <InlineTable
         columns={columns}
         dataSource={pageData}
         loading={isLoading}
         rowKey={(record) => record.id || `${record.model}-${record.createdAt}-${record.provider}`}
+        scroll={{ x: 'max-content' }}
         size="small"
+        tableLayout={'auto'}
         onChange={(_pagination, _filters, sorter) => {
           const next = Array.isArray(sorter) ? sorter[0] : sorter;
           const field = String(next?.columnKey ?? '');
@@ -203,6 +235,18 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
         />
       )}
     </>
+  );
+
+  return (
+    <AsyncBoundary
+      data={data}
+      error={error}
+      isLoading={isLoading}
+      loading={content}
+      onRetry={() => mutate()}
+    >
+      {content}
+    </AsyncBoundary>
   );
 });
 

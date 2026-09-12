@@ -30,12 +30,16 @@ interface GenerationPromptInputProps {
 const styles = createStaticStyles(({ css }) => ({
   mobileActionScroller: css`
     scrollbar-width: none;
-
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: auto hidden;
+    flex: 1 1 auto;
+    min-width: 0;
 
     &::-webkit-scrollbar {
       display: none;
+    }
+
+    > * {
+      min-width: max-content;
     }
   `,
   textarea: css`
@@ -76,12 +80,15 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
 
     const textarea = (
       <TextArea
-        autoSize={{ maxRows, minRows }}
         className={styles.textarea}
         disabled={disabled}
         placeholder={placeholder}
         value={value}
         variant={'borderless'}
+        autoSize={{
+          maxRows: mobile ? Math.min(maxRows, 4) : maxRows,
+          minRows: mobile ? Math.min(minRows, 2) : minRows,
+        }}
         onKeyDown={handleKeyDown}
         onChange={(e) => {
           if (disabled) return;
@@ -95,7 +102,7 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
       <ChatInput
         className={className}
         header={header}
-        styles={{ body: { padding: 8 } }}
+        styles={{ body: { padding: mobile ? 6 : 8 } }}
         footer={
           centerActions ? (
             <Flexbox horizontal align={'center'} gap={4} padding={4} width={'100%'}>
@@ -132,16 +139,33 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
                 />
               </Flexbox>
             </Flexbox>
+          ) : mobile ? (
+            <Flexbox horizontal align={'center'} gap={4} padding={4} width={'100%'}>
+              <div className={styles.mobileActionScroller}>{leftActions}</div>
+              <Flexbox horizontal align={'center'} flex={'none'} gap={4} justify={'flex-end'}>
+                {rightActions}
+                <SendButton
+                  disabled={disabled || disableGenerate || !value}
+                  loading={isCreating}
+                  style={{ flex: '0 0 44px', height: 44, width: 44 }}
+                  title={isCreating ? generatingLabel : generateLabel}
+                  onClick={() => {
+                    if (disabled) return;
+
+                    onGenerate();
+                  }}
+                />
+              </Flexbox>
+            </Flexbox>
           ) : (
-            mobile ? (
-              <Flexbox gap={4} padding={4} width={'100%'}>
-                <div className={styles.mobileActionScroller}>{leftActions}</div>
-                <Flexbox horizontal align={'center'} gap={8} justify={'flex-end'} width={'100%'}>
+            <ChatInputActionBar
+              left={leftActions}
+              right={
+                <Flexbox horizontal align={'center'} gap={8}>
                   {rightActions}
                   <SendButton
                     disabled={disabled || disableGenerate || !value}
                     loading={isCreating}
-                    style={{ flex: '0 0 44px', height: 44, width: 44 }}
                     title={isCreating ? generatingLabel : generateLabel}
                     onClick={() => {
                       if (disabled) return;
@@ -150,27 +174,8 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
                     }}
                   />
                 </Flexbox>
-              </Flexbox>
-            ) : (
-              <ChatInputActionBar
-                left={leftActions}
-                right={
-                  <Flexbox horizontal align={'center'} gap={8}>
-                    {rightActions}
-                    <SendButton
-                      disabled={disabled || disableGenerate || !value}
-                      loading={isCreating}
-                      title={isCreating ? generatingLabel : generateLabel}
-                      onClick={() => {
-                        if (disabled) return;
-
-                        onGenerate();
-                      }}
-                    />
-                  </Flexbox>
-                }
-              />
-            )
+              }
+            />
           )
         }
       >

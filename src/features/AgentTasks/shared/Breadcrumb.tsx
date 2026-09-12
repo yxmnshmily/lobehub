@@ -3,11 +3,13 @@ import { Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { ChevronRight } from 'lucide-react';
-import { memo } from 'react';
+import { memo, use } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useTaskStore } from '@/store/task';
 
@@ -16,12 +18,15 @@ import { taskDetailPath } from './taskDetailPath';
 import { useAgentDisplayMeta } from './useAgentDisplayMeta';
 
 interface BreadcrumbProps {
+  agentId?: string;
   taskId?: string;
 }
 
-const Breadcrumb = memo<BreadcrumbProps>(({ taskId }) => {
+const Breadcrumb = memo<BreadcrumbProps>(({ taskId, agentId }) => {
   const { t } = useTranslation('chat');
-  const { aid } = useParams<{ aid?: string }>();
+  const groupScope = use(GroupWorkScopeContext);
+  const { aid: routeAgentId } = useParams<{ aid?: string }>();
+  const aid = agentId ?? routeAgentId;
   const agentMeta = useAgentDisplayMeta(aid);
   const taskTitle = useTaskStore((s) => (taskId ? s.taskDetailMap[taskId]?.name : undefined));
   const taskIdentifier = useTaskStore((s) =>
@@ -45,6 +50,15 @@ const Breadcrumb = memo<BreadcrumbProps>(({ taskId }) => {
       return chain.reverse();
     }),
   );
+
+  if (groupScope)
+    return (
+      <GroupPageBreadcrumb
+        groupId={groupScope.groupId}
+        title="任务"
+        detailTitle={taskId ? taskTitle || taskIdentifier || taskId : undefined}
+      />
+    );
 
   const allTasksLabel = (
     <Text color={'inherit'} weight={500}>

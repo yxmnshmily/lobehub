@@ -27,13 +27,7 @@
   align-items: center;
   gap: 12px;
 
-  opacity: 0.6;
   color: var(--brand-text-color);
-}
-
-.brand :global(.lobe-brand-loading) {
-  display: block;
-  color: inherit;
 }
 
 .debug {

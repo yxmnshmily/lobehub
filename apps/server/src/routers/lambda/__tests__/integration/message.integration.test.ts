@@ -543,6 +543,13 @@ describe('Message Router Integration Tests', () => {
           userId: memberId,
         });
 
+        await expect(
+          messageRouter.createCaller(createTestContext(memberId)).searchMessages({
+            groupId,
+            keywords: '还没有消息',
+          }),
+        ).resolves.toEqual([]);
+
         const memberCaller = groupConversationRouter.createCaller(createTestContext(memberId));
         const topic = await memberCaller.createTopic({
           groupId,
@@ -585,10 +592,18 @@ describe('Message Router Integration Tests', () => {
             { authorKind: 'owner', content: '群主回复：你好' },
           ]),
         );
-        expect(JSON.stringify(memberView)).not.toMatch(
-          new RegExp(`${memberId}|${userId}`),
-        );
+        expect(JSON.stringify(memberView)).not.toMatch(new RegExp(`${memberId}|${userId}`));
         expect(memberMessage.publicMessageId).toMatch(/^[a-f\d]{64}$/);
+
+        const sharedSearch = messageRouter.createCaller(createTestContext(memberId));
+        const found = await sharedSearch.searchMessages({ groupId, keywords: '群主回复' });
+        expect(found).toEqual([
+          expect.objectContaining({
+            content: '群主回复：你好',
+            id: expect.stringMatching(/^[a-f\d]{64}$/),
+          }),
+        ]);
+        expect(JSON.stringify(found)).not.toMatch(new RegExp(`${memberId}|${userId}`));
 
         await serverDB
           .update(chatGroupUserMemberships)
@@ -602,6 +617,9 @@ describe('Message Router Integration Tests', () => {
 
         await expect(
           memberCaller.listTextMessages({ groupId, topicId: topic.id }),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await expect(
+          sharedSearch.searchMessages({ groupId, keywords: '你好' }),
         ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         await expect(
           memberCaller.createTextMessage({
@@ -973,6 +991,40 @@ describe('Message Router Integration Tests', () => {
   });
 
   describe('removeMessage', () => {
+    it.each(['single', 'batch', 'assistant', 'group'] as const)(
+      'allows the owner to delete default-group messages through %s',
+      async (method) => {
+        const caller = messageRouter.createCaller(createTestContext(userId));
+        const [group] = await serverDB
+          .insert(chatGroups)
+          .values({
+            clientId: DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+            title: 'Default group deletion regression',
+            userId,
+          })
+          .returning();
+        const [message] = await serverDB
+          .insert(messages)
+          .values({
+            content: 'Owner may delete this message',
+            groupId: group.id,
+            role: 'user',
+            userId,
+          })
+          .returning();
+
+        if (method === 'single') await caller.removeMessage({ id: message.id });
+        else if (method === 'batch') await caller.removeMessages({ ids: [message.id] });
+        else if (method === 'assistant')
+          await caller.removeMessagesByAssistant({ groupId: group.id });
+        else await caller.removeMessagesByGroup({ groupId: group.id });
+
+        expect(await serverDB.select().from(messages).where(eq(messages.id, message.id))).toEqual(
+          [],
+        );
+      },
+    );
+
     it('should remove a single message', async () => {
       const caller = messageRouter.createCaller(createTestContext(userId));
 

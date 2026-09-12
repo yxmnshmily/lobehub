@@ -1,8 +1,7 @@
 ---
 title: LobeHub 2.0 Breaking Changes
 description: >-
-  A comprehensive guide to breaking changes in LobeHub 2.0 and how to migrate
-  from version 1.x.
+  A comprehensive guide to breaking changes in LobeHub 2.0 and how to migrate from version 1.x.
 tags:
   - LobeHub 2.0
   - Migration
@@ -18,18 +17,18 @@ This document outlines the breaking changes introduced in LobeHub 2.0 and provid
 
 The following environment variables have been removed in LobeHub 2.0:
 
-| Environment Variable                | Removal Reason                                               |
-| ----------------------------------- | ------------------------------------------------------------ |
-| `ACCESS_CODE`                       | No longer supported, use Better Auth authentication system   |
-| `NEXT_PUBLIC_SERVICE_MODE`          | 2.0 only supports Server DB mode, Client DB (PGlite) removed |
-| `NEXT_PUBLIC_ENABLE_BETTER_AUTH`    | Automatically detected via `AUTH_SECRET` presence            |
-| `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` | Automatically detected from request headers                  |
-| `NEXT_PUBLIC_ENABLE_NEXT_AUTH`      | NextAuth removed                                             |
-| `NEXT_AUTH_SECRET`                  | NextAuth removed                                             |
-| `NEXT_AUTH_SSO_PROVIDERS`           | NextAuth removed                                             |
-| `NEXTAUTH_URL`                      | NextAuth removed                                             |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk removed                                                |
-| `CLERK_SECRET_KEY`                  | Clerk removed                                                |
+| Environment Variable | Removal Reason |
+| --- | --- |
+| `ACCESS_CODE` | No longer supported, use Better Auth authentication system |
+| `NEXT_PUBLIC_SERVICE_MODE` | 2.0 only supports Server DB mode, Client DB (PGlite) removed |
+| `NEXT_PUBLIC_ENABLE_BETTER_AUTH` | Automatically detected via `AUTH_SECRET` presence |
+| `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` | Automatically detected from request headers |
+| `NEXT_PUBLIC_ENABLE_NEXT_AUTH` | NextAuth removed |
+| `NEXT_AUTH_SECRET` | NextAuth removed |
+| `NEXT_AUTH_SSO_PROVIDERS` | NextAuth removed |
+| `NEXTAUTH_URL` | NextAuth removed |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk removed |
+| `CLERK_SECRET_KEY` | Clerk removed |
 
 ## New Required Environment Variables
 
@@ -76,13 +75,6 @@ For deployment guides, see [Getting Started](/docs/self-hosting/start).
 
 LobeHub 2.0 recommends using **PostgreSQL 17** or higher.
 
-LobeHub 2.0 introduced the [pg\_search](https://github.com/paradedb/paradedb/tree/main/pg_search)
-extension for full-text search. When 2.0 shipped, Neon provided it to new PostgreSQL 17 projects.
-Neon has since stopped offering `pg_search` to new projects and has notified affected existing
-customers that the extension will be removed on September 21, 2026. Existing Neon deployments
-should complete
-[Migrate from pg\_search to Elasticsearch](/docs/self-hosting/advanced/elasticsearch-migration).
-See [Full-Text Search](/docs/self-hosting/advanced/full-text-search) before choosing the search
-backend for a current deployment.
+LobeHub 2.0 introduced the [pg_search](https://github.com/paradedb/paradedb/tree/main/pg_search) extension for full-text search. When 2.0 shipped, Neon provided it to new PostgreSQL 17 projects. Neon has since stopped offering `pg_search` to new projects and has notified affected existing customers that the extension will be removed on September 21, 2026. Existing Neon deployments should complete [Migrate from pg_search to Elasticsearch](/docs/self-hosting/advanced/elasticsearch-migration). See [Full-Text Search](/docs/self-hosting/advanced/full-text-search) before choosing the search backend for a current deployment.
 
 If you self-host your database with Docker, we recommend using the `paradedb/paradedb:latest-pg17` image.

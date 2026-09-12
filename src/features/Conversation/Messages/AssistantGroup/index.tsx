@@ -1,6 +1,12 @@
 'use client';
 
-import type { AssistantContentBlock, EmojiReaction, UISignalCallbacksBlock } from '@lobechat/types';
+import { DEFAULT_INBOX_AVATAR } from '@lobechat/const';
+import {
+  type AssistantContentBlock,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+  type EmojiReaction,
+  type UISignalCallbacksBlock,
+} from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { Tag } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
@@ -8,7 +14,6 @@ import type { MouseEventHandler, ReactNode } from 'react';
 import { memo, Suspense, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { MESSAGE_ACTION_BAR_PORTAL_ATTRIBUTES } from '@/const/messageActionPortal';
 import AgentGroupAvatar from '@/features/AgentGroupAvatar';
 import { ChatItem } from '@/features/Conversation/ChatItem';
 import { useMessageCommentCount } from '@/features/TopicComment/hooks';
@@ -46,6 +51,7 @@ import { useOperationGoals } from '../GoalTaskCard/useOperationGoals';
 import MessageWorks from '../MessageWorks';
 import SignalCallbacks from '../SignalCallbacks';
 import FileListViewer from '../User/components/FileListViewer';
+import { GroupActionsSlot } from './Actions';
 import Group from './components/Group';
 import { resolveWorkflowExpandLevel } from './components/segments';
 import type { WorkflowExpandLevelDefault } from './components/WorkflowCollapse';
@@ -53,13 +59,6 @@ import type { WorkflowExpandLevelDefault } from './components/WorkflowCollapse';
 const EditState = dynamic(() => import('./components/EditState'), {
   ssr: false,
 });
-
-const actionBarHolder = (
-  <div
-    {...{ [MESSAGE_ACTION_BAR_PORTAL_ATTRIBUTES.assistantGroup]: '' }}
-    style={{ height: '28px' }}
-  />
-);
 
 const findLatestWorkRootOperationId = (
   metadata?: { work?: { rootOperationId?: unknown } } | null,
@@ -105,12 +104,14 @@ const GroupMessage = memo<GroupMessageProps>(
     } = item;
     const avatar = useAgentMeta(agentId);
 
-    // Supervisor messages render the GROUP's identity (avatar + name + 主管 badge)
-    // rather than the supervisor agent's own bare meta (whose title is literally
-    // "Supervisor" with no avatar). The flag is a persisted snapshot on the
-    // message metadata; see metadata.orchestrationRole.
     const isSupervisor = metadata?.orchestrationRole === 'supervisor' || !!metadata?.isSupervisor;
     const groupId = useConversationStore(contextSelectors.groupId);
+    const isTravelSupervisor = useAgentGroupStore(
+      (s) =>
+        isSupervisor &&
+        agentGroupSelectors.getGroupById(groupId ?? '')(s)?.clientId ===
+          DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+    );
     const groupMeta = useAgentGroupStore((s) => agentGroupSelectors.getGroupMeta(groupId ?? '')(s));
     const memberAvatars = useAgentGroupStore(
       (s) => agentGroupSelectors.getGroupMemberAvatars(groupId ?? '')(s),
@@ -157,10 +158,8 @@ const GroupMessage = memo<GroupMessageProps>(
     const [toggleSystemRole] = useGlobalStore((s) => [s.toggleSystemRole]);
     const openChatSettings = useOpenChatSettings();
 
-    // Get the latest message block from the group that doesn't contain tools
-    const lastAssistantMsg = useConversationStore(
-      dataSelectors.getGroupLatestMessageWithoutTools(id),
-    );
+    // Text actions use the latest visible answer, even beside a tool call.
+    const lastAssistantMsg = useConversationStore(dataSelectors.getGroupLatestTextMessage(id));
 
     const contentId = lastAssistantMsg?.id;
 
@@ -176,6 +175,9 @@ const GroupMessage = memo<GroupMessageProps>(
     const interrupted = groupInterrupted || blockInterrupted;
 
     const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
+    const actionsConfig = useConversationStore(
+      (s) => s.actionsBar?.assistantGroup ?? s.actionsBar?.assistant,
+    );
     const addReaction = useConversationStore((s) => s.addReaction);
     const removeReaction = useConversationStore((s) => s.removeReaction);
     const userId = useUserStore(userProfileSelectors.userId)!;
@@ -234,10 +236,6 @@ const GroupMessage = memo<GroupMessageProps>(
     return (
       <ChatItem
         showTitle
-        // The supervisor row is labelled by the group, not by the agent behind it —
-        // drop `name` too, or the renderer's name-first resolution would surface the
-        // agent's personal name over the group title.
-        avatar={isSupervisor ? { ...avatar, name: undefined, title: groupMeta.title } : avatar}
         id={id}
         placement={'left'}
         time={createdAt}
@@ -269,17 +267,36 @@ const GroupMessage = memo<GroupMessageProps>(
                     messageId={id}
                   />
                 )}
-                {actionBarHolder}
+                <GroupActionsSlot
+                  actionsConfig={actionsConfig}
+                  contentBlock={lastAssistantMsg}
+                  contentId={contentId}
+                  data={item}
+                  id={id}
+                />
               </>
             )}
             {/* Model + token usage rides the action row instead of claiming a
                 band of its own between the answer and the round's artifacts. */}
             {isDevMode && model && (
-              <Flexbox horizontal align={'center'} paddingInline={8}>
+              <Flexbox
+                data-message-usage
+                horizontal
+                align={'center'}
+                paddingInline={8}
+                style={{ maxWidth: '100%', minWidth: 0 }}
+              >
                 <Usage model={model} performance={performance} provider={provider!} usage={usage} />
               </Flexbox>
             )}
           </>
+        }
+        avatar={
+          isTravelSupervisor
+            ? { ...avatar, avatar: DEFAULT_INBOX_AVATAR, name: undefined, title: '旅游群' }
+            : isSupervisor
+              ? { ...avatar, name: undefined, title: groupMeta.title?.trim() || avatar.title }
+              : avatar
         }
         belowMessage={
           // Virtual round artifacts (edited files / Goal handoffs) are derived
@@ -299,7 +316,7 @@ const GroupMessage = memo<GroupMessageProps>(
           ) : undefined
         }
         customAvatarRender={
-          isSupervisor
+          isSupervisor && !isTravelSupervisor && !!groupMeta.title?.trim()
             ? () => (
                 <AgentGroupAvatar
                   avatar={groupMeta.avatar}
@@ -342,7 +359,8 @@ const GroupMessage = memo<GroupMessageProps>(
           {taskCompletions && taskCompletions.length > 0 && (
             <Group
               blocks={taskCompletions}
-              contentId={taskCompletions.at(-1)?.id}
+              content={children?.length ? undefined : lastAssistantMsg?.content}
+              contentId={contentId}
               defaultWorkflowExpandLevel={workflowExpandLevel}
               disableEditing={disableEditing}
               id={id}

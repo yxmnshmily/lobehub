@@ -14,7 +14,7 @@ import Platform from './Platform';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   filesCard: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
     background: ${cssVar.colorBgContainer};
   `,
@@ -63,7 +63,7 @@ const Install = memo<{ mobile?: boolean }>(({ mobile }) => {
                 paddingInline={16}
                 style={
                   index < entries.length - 1
-                    ? { borderBottom: `1px solid ${cssVar.colorBorderSecondary}` }
+                    ? { borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}` }
                     : undefined
                 }
               >

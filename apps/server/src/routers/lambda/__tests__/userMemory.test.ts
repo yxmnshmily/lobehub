@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   UserPersonaVersionNotFoundError,
@@ -15,6 +15,16 @@ const mockUpdate = vi.fn();
 const mockFindById = vi.fn();
 
 const mockCountTopicsForMemoryExtractor = vi.fn();
+const mockListTopicsForMemoryExtractor = vi.fn();
+const mockTransitionStatus = vi.fn();
+const mockIncrementProgress = vi.fn();
+const { mockAfter, mockExecutorCreate, mockExtractTopic } = vi.hoisted(() => ({
+  mockAfter: vi.fn(),
+  mockExecutorCreate: vi.fn(),
+  mockExtractTopic: vi.fn(),
+}));
+
+vi.mock('@/server/utils/scheduleAfterResponse', () => ({ after: mockAfter }));
 const mockDeleteAll = vi.fn();
 const mockDeletePersona = vi.fn();
 const mockListPersonaVersions = vi.fn();
@@ -24,6 +34,14 @@ const { mockTriggerProcessUsers } = vi.hoisted(() => ({
   mockTriggerProcessUsers: vi.fn(),
 }));
 const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
+const { mockComposeWriting, mockBuildPersona } = vi.hoisted(() => ({
+  mockComposeWriting: vi.fn(),
+  mockBuildPersona: vi.fn(),
+}));
+vi.mock('@/server/services/memory/userMemory/persona/service', () => ({
+  UserPersonaService: vi.fn(() => ({ composeWriting: mockComposeWriting })),
+  buildUserPersonaJobInput: mockBuildPersona,
+}));
 
 vi.mock('../_helpers/platformAdminGuard', () => ({
   requirePlatformAdmin: (opts: any) => mockPlatformAdminGuard(opts),
@@ -35,6 +53,8 @@ vi.mock('@/database/models/asyncTask', () => ({
     findById: mockFindById,
     findActiveByType: mockFindActiveByType,
     update: mockUpdate,
+    transitionStatus: mockTransitionStatus,
+    incrementUserMemoryExtractionProgress: mockIncrementProgress,
   })),
   initUserMemoryExtractionMetadata: vi.fn((metadata) => metadata),
 }));
@@ -42,6 +62,7 @@ vi.mock('@/database/models/asyncTask', () => ({
 vi.mock('@/database/models/topic', () => ({
   TopicModel: vi.fn(() => ({
     countTopicsForMemoryExtractor: mockCountTopicsForMemoryExtractor,
+    listTopicsForMemoryExtractor: mockListTopicsForMemoryExtractor,
     resetMemoryExtractStatus: mockResetMemoryExtractStatus,
   })),
 }));
@@ -82,6 +103,7 @@ vi.mock('@/server/globalConfig/parseMemoryExtractionConfig', () => ({
 }));
 
 vi.mock('@/server/services/memory/userMemory/extract', () => ({
+  MemoryExtractionExecutor: { create: mockExecutorCreate },
   MemoryExtractionWorkflowService: {
     triggerProcessUsers: mockTriggerProcessUsers,
   },
@@ -106,7 +128,99 @@ beforeEach(() => {
 describe('userMemoryRouter.requestMemoryFromChatTopic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('QSTASH_TOKEN', 'test-token');
+    vi.stubEnv('VERCEL', '');
     mockTriggerProcessUsers.mockResolvedValue({ workflowRunId: 'workflow-run-1' });
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('runs a bounded, user-scoped local batch after the response when QStash is absent', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    mockFindActiveByType.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue('local-task');
+    mockListTopicsForMemoryExtractor.mockResolvedValue([{ id: 'topic-a' }, { id: 'topic-b' }]);
+    mockTransitionStatus.mockResolvedValue(true);
+    mockFindById.mockResolvedValue({ status: AsyncTaskStatus.Processing });
+    mockExecutorCreate.mockResolvedValue({ extractTopic: mockExtractTopic });
+    mockExtractTopic.mockResolvedValue({
+      memoryIds: ['memory-a'],
+    });
+    mockBuildPersona.mockResolvedValue({ retrievedMemories: 'saved memory' });
+    const fromDate = new Date('2026-09-01');
+
+    const result = await createCaller().requestMemoryFromChatTopic({ fromDate });
+
+    expect(result).toMatchObject({
+      status: AsyncTaskStatus.Pending,
+      metadata: {
+        progress: { completedTopics: 0, totalTopics: 2 },
+      },
+    });
+    expect(mockListTopicsForMemoryExtractor).toHaveBeenCalledWith({
+      startDate: fromDate,
+      endDate: undefined,
+      ignoreExtracted: false,
+      limit: 100,
+    });
+    expect(mockTriggerProcessUsers).not.toHaveBeenCalled();
+    expect(mockExecutorCreate).not.toHaveBeenCalled();
+    await mockAfter.mock.calls[0][0]();
+    expect(mockExtractTopic).toHaveBeenCalledTimes(2);
+    expect(mockComposeWriting).toHaveBeenCalledWith({
+      userId: 'user-1',
+      retrievedMemories: 'saved memory',
+    });
+    expect(mockExtractTopic).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        userId: 'user-1',
+        topicId: 'topic-a',
+        asyncTaskId: 'local-task',
+        userInitiated: true,
+        reportProgress: false,
+        from: fromDate,
+      }),
+    );
+    expect(mockIncrementProgress).toHaveBeenCalledTimes(2);
+    expect(mockIncrementProgress.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+      mockComposeWriting.mock.invocationCallOrder[0],
+    );
+    expect(mockTransitionStatus).toHaveBeenCalledWith(
+      'local-task',
+      [AsyncTaskStatus.Pending],
+      AsyncTaskStatus.Processing,
+    );
+  });
+
+  it('records local initialization failure and stops cancelled tasks before model calls', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    mockFindActiveByType.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue('local-task');
+    mockListTopicsForMemoryExtractor.mockResolvedValue([{ id: 'topic-a' }]);
+    mockTransitionStatus.mockResolvedValue(true);
+    mockExecutorCreate.mockRejectedValueOnce(new Error('model unavailable'));
+    await createCaller().requestMemoryFromChatTopic({});
+    await mockAfter.mock.calls[0][0]();
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'local-task',
+      expect.objectContaining({
+        status: AsyncTaskStatus.Error,
+        error: expect.anything(),
+      }),
+    );
+    expect(mockExtractTopic).not.toHaveBeenCalled();
+
+    mockExecutorCreate.mockResolvedValue({ extractTopic: mockExtractTopic });
+    mockFindById.mockResolvedValue({
+      status: AsyncTaskStatus.Processing,
+      metadata: {
+        control: { cancelRequestedAt: '2026-09-07T00:00:00Z' },
+      },
+    });
+    await createCaller().requestMemoryFromChatTopic({});
+    await mockAfter.mock.calls[1][0]();
+    expect(mockExtractTopic).not.toHaveBeenCalled();
   });
 
   it('dedupes when an active task exists', async () => {
@@ -127,6 +241,69 @@ describe('userMemoryRouter.requestMemoryFromChatTopic', () => {
     });
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockTriggerProcessUsers).not.toHaveBeenCalled();
+  });
+
+  it('does not create background work for an empty local batch', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    mockFindActiveByType.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue('empty-local-task');
+    mockListTopicsForMemoryExtractor.mockResolvedValue([]);
+    const result = await createCaller().requestMemoryFromChatTopic({});
+    expect(result.status).toBe(AsyncTaskStatus.Success);
+    expect(mockAfter).not.toHaveBeenCalled();
+    expect(mockTriggerProcessUsers).not.toHaveBeenCalled();
+  });
+
+  it('does not start local extraction when the existing administrator guard denies access', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    mockPlatformAdminGuard.mockRejectedValueOnce(new TRPCError({ code: 'FORBIDDEN' }));
+    await expect(
+      createCaller({ userId: 'another-user' }).requestMemoryFromChatTopic({}),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockAfter).not.toHaveBeenCalled();
+  });
+
+  it('does not report success if the homepage persona fails to save', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    mockFindActiveByType.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue('local-task');
+    mockListTopicsForMemoryExtractor.mockResolvedValue([{ id: 'topic-a' }]);
+    mockTransitionStatus.mockResolvedValue(true);
+    mockFindById.mockResolvedValue({ status: AsyncTaskStatus.Processing });
+    mockExecutorCreate.mockResolvedValue({ extractTopic: mockExtractTopic });
+    mockExtractTopic.mockResolvedValue({ memoryIds: ['memory-a'] });
+    mockBuildPersona.mockResolvedValue({});
+    mockComposeWriting.mockRejectedValueOnce(new Error('persona failed'));
+    await createCaller().requestMemoryFromChatTopic({});
+    await mockAfter.mock.calls[0][0]();
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'local-task',
+      expect.objectContaining({
+        status: AsyncTaskStatus.Error,
+      }),
+    );
+    expect(mockIncrementProgress).not.toHaveBeenCalled();
+  });
+
+  it('retains cloud scheduling on serverless deployments even without a token', async () => {
+    vi.stubEnv('QSTASH_TOKEN', '');
+    vi.stubEnv('VERCEL', '1');
+    mockFindActiveByType.mockResolvedValue(undefined);
+    mockCreate.mockResolvedValue('cloud-task');
+    mockCountTopicsForMemoryExtractor.mockResolvedValue(1);
+    mockTriggerProcessUsers.mockRejectedValueOnce(new Error('missing token'));
+    await expect(createCaller().requestMemoryFromChatTopic({})).rejects.toMatchObject({
+      code: 'INTERNAL_SERVER_ERROR',
+    });
+    expect(mockAfter).not.toHaveBeenCalled();
+    expect(mockListTopicsForMemoryExtractor).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'cloud-task',
+      expect.objectContaining({
+        status: AsyncTaskStatus.Error,
+      }),
+    );
   });
 
   it('creates task and triggers workflow with user context and dates', async () => {

@@ -64,7 +64,7 @@ const resolveVolcengineReasoningParams = (
   };
 };
 
-export const LobeVolcengineAI = createOpenAICompatibleRuntime({
+const VolcengineRuntime = createOpenAICompatibleRuntime({
   baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
   chatCompletion: {
     handlePayload: (payload) => {
@@ -129,5 +129,54 @@ export const LobeVolcengineAI = createOpenAICompatibleRuntime({
         ...(params.reasoning_effort && { reasoning_effort: params.reasoning_effort }),
       } as any;
     },
+    prepareRequest: (payload) => {
+      // These OpenAI/Chat Completions fields are outside Ark's Responses request
+      // contract. Server-side bounded group turns can add both before this
+      // provider-specific request is finalized.
+      const {
+        n: _n,
+        safety_identifier: _safetyIdentifier,
+        ...arkPayload
+      } = payload as typeof payload & {
+        n?: number;
+      };
+
+      return { payload: arkPayload };
+    },
   },
 });
+
+// Keep saved catalog aliases compatible with Ark's published inference IDs.
+// Verified against the authenticated /api/v3/models catalog on 2026-09-08.
+const DEFAULT_MODEL_ID_MAPPING = {
+  'doubao-seed-2.1-pro': 'doubao-seed-2-1-pro-260628',
+  'doubao-seed-2.1-turbo': 'doubao-seed-2-1-turbo-260628',
+};
+
+// The native Seed 2.1 endpoint created in Ark is Responses-only. Match both
+// the saved catalog aliases and the published wire IDs so ordinary group-agent
+// turns cannot accidentally fall back to /chat/completions and fail with 404.
+const NATIVE_SEED_2_1_RESPONSE_MODELS = [/^doubao-seed-2(?:\.1|-1)-(?:turbo|pro)(?:-260628)?$/];
+
+export class LobeVolcengineAI extends VolcengineRuntime {
+  constructor(options: ConstructorParameters<typeof VolcengineRuntime>[0] = {}) {
+    const useNativeAliases =
+      !options.baseURL?.trim() ||
+      /^https:\/\/ark\.cn-beijing\.volces\.com\/api\/v3\/?$/.test(options.baseURL.trim());
+    const chatCompletion =
+      useNativeAliases && !options.chatCompletion?.useResponseModels
+        ? {
+            ...options.chatCompletion,
+            useResponseModels: NATIVE_SEED_2_1_RESPONSE_MODELS,
+          }
+        : options.chatCompletion;
+    super({
+      ...options,
+      ...(chatCompletion ? { chatCompletion } : {}),
+      modelIdMapping: {
+        ...(useNativeAliases ? DEFAULT_MODEL_ID_MAPPING : {}),
+        ...options.modelIdMapping,
+      },
+    });
+  }
+}

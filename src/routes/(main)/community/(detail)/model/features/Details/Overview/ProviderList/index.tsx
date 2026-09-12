@@ -12,8 +12,9 @@ import urlJoin from 'url-join';
 import InlineTable from '@/components/InlineTable';
 import { ModelInfoTags } from '@/components/ModelSelect';
 import { BASE_PROVIDER_DOC_URL } from '@/const/url';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
-import { formatPriceByCurrency, formatTokenNumber } from '@/utils/format';
+import { formatLocalizedTokens as formatTokenNumber } from '@/utils/format';
 import { getTextInputUnitRate, getTextOutputUnitRate } from '@/utils/pricing';
 
 import { useDetailContext } from '../../../DetailProvider';
@@ -21,6 +22,7 @@ import { useDetailContext } from '../../../DetailProvider';
 const ProviderList = memo(() => {
   const { providers = [] } = useDetailContext();
   const { t } = useTranslation('discover');
+  const { money } = useMonthlyExchangeRate();
 
   return (
     <TooltipGroup>
@@ -99,9 +101,7 @@ const ProviderList = memo(() => {
               key: 'inputPrice',
               render: (_, record) => {
                 const inputRate = getTextInputUnitRate(record.model?.pricing);
-                return inputRate
-                  ? '$' + formatPriceByCurrency(inputRate, record.model.pricing?.currency)
-                  : '--';
+                return inputRate ? money(inputRate, record.model.pricing?.currency, 6) : '--';
               },
               showSorterTooltip: false,
               sorter: (a, b) => {
@@ -121,9 +121,7 @@ const ProviderList = memo(() => {
               key: 'outputPrice',
               render: (_, record) => {
                 const outputRate = getTextOutputUnitRate(record.model?.pricing);
-                return outputRate
-                  ? '$' + formatPriceByCurrency(outputRate, record.model.pricing?.currency)
-                  : '--';
+                return outputRate ? money(outputRate, record.model.pricing?.currency, 6) : '--';
               },
               showSorterTooltip: false,
               sorter: (a, b) => {

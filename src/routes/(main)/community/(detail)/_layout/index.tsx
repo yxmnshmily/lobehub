@@ -32,7 +32,7 @@ const DesktopDiscoverDetailLayout = memo(() => {
           className={styles.contentContainer}
           gap={32}
           minWidth={MAX_WIDTH}
-          paddingBlock={16}
+          paddingBlockEnd={16}
           wrapperStyle={{
             minHeight: '100%',
             position: 'relative',

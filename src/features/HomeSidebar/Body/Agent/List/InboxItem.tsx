@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { type CSSProperties } from 'react';
 import { memo } from 'react';
 
+import { usePersonalInbox } from '@/features/AgentRoute/usePersonalInbox';
 import { resolveInboxAgentRouteId } from '@/features/AgentRoute/useResolvedAgentRouteId';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
@@ -34,7 +35,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 14px;
     height: 14px;
-    border: 1.5px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 999px;
 
     color: ${cssVar.colorWarning};
@@ -56,31 +57,32 @@ interface InboxItemProps {
 const InboxItem = memo<InboxItemProps>(({ className, fallbackTitle = '旅游群主AI', style }) => {
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const inboxRouteAgentId = resolveInboxAgentRouteId(inboxAgentId);
+  const personalInbox = usePersonalInbox(inboxRouteAgentId);
   const inboxMeta = useAgentStore(agentSelectors.getAgentMetaById(inboxRouteAgentId));
 
   const isLoading = useChatStore(
     inboxAgentId ? operationSelectors.isAgentVisiblyRunning(inboxAgentId) : () => false,
   );
   const prefetchAgent = usePrefetchAgent();
-  const inboxAgentTitle = agentDisplayName(inboxMeta, fallbackTitle);
+  const inboxAgentTitle = agentDisplayName(inboxMeta, personalInbox ? '旅游群' : fallbackTitle);
   const inboxAgentAvatar = inboxMeta.avatar || DEFAULT_INBOX_AVATAR;
   const inboxUrl = usePreservedAgentUrl(inboxRouteAgentId);
 
   // Prefetch agent layout chunk and data eagerly since Lobe AI is almost always clicked
-  if (inboxAgentId) prefetchAgent(inboxAgentId);
+  if (inboxAgentId && !personalInbox) prefetchAgent(inboxAgentId);
 
   const avatarNode = (
     <Avatar emojiScaleWithBackground avatar={inboxAgentAvatar} shape={'square'} size={24} />
   );
 
   return (
-    <WorkspaceLink aria-label={inboxAgentTitle} to={inboxUrl}>
+    <WorkspaceLink aria-label={inboxAgentTitle} to={personalInbox ? '/group/default' : inboxUrl}>
       <NavItem
         className={className}
         style={style}
         title={inboxAgentTitle}
         icon={
-          isLoading ? (
+          isLoading && !personalInbox ? (
             <span className={styles.wrapper}>
               {avatarNode}
               <span className={styles.runningBadge}>

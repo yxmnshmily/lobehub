@@ -242,19 +242,18 @@ const UNIT_QUANTITY_RESOLVERS: Partial<Record<PricingUnitName, UnitQuantityResol
 };
 
 /**
- * Convert currency-specific credits to USD credits and ceil to integer
+ * Convert currency-specific credits to raw USD credits; aggregate before rounding.
  * @param credits - Credits in the original currency
  * @param currency - The currency of the credits ('USD' or 'CNY')
  * @param usdToCnyRate - Exchange rate for CNY to USD conversion (defaults to USD_TO_CNY constant)
- * @returns USD-equivalent credits (ceiled to integer)
+ * @returns USD-equivalent credits (may be fractional)
  */
 const toUSDCredits = (
   credits: number,
   currency: string = 'USD',
   usdToCnyRate = USD_TO_CNY,
 ): number => {
-  const usdCredits = currency === 'CNY' ? credits / usdToCnyRate : credits;
-  return Math.ceil(usdCredits);
+  return currency === 'CNY' ? credits / usdToCnyRate : credits;
 };
 
 /**
@@ -300,6 +299,91 @@ const computeTieredCredits = (
   segments.push({ credits, quantity, rate: matchedTier.rate });
 
   return { credits, segments };
+};
+
+/** Which usage counter bands each range param, in card-key order. */
+const RANGE_VALUE_SOURCES: Record<string, (usage: ModelTokensUsage) => number | undefined> = {
+  textInputRange: (usage) => usage.totalInputTokens ?? usage.inputTextTokens,
+  textOutputRange: (usage) => usage.totalOutputTokens ?? usage.outputTextTokens,
+};
+
+/** `[0, 0.032]` / `(0.032, 0.128]` / `[0.128, infinity]` — millions of tokens. */
+const RANGE_KEY_PATTERN = /^(\[|\()\s*([\d.]+)\s*,\s*([\d.]+|infinity)\s*(\]|\))$/i;
+
+const parseRangeKey = (
+  key: string,
+):
+  | { lower: number; lowerInclusive: boolean; upper: number; upperInclusive: boolean }
+  | undefined => {
+  const match = RANGE_KEY_PATTERN.exec(key.trim());
+  if (!match) return undefined;
+
+  const [, open, lower, upper, close] = match;
+
+  return {
+    lower: Number(lower),
+    lowerInclusive: open === '[',
+    upper: upper.toLowerCase() === 'infinity' ? Number.POSITIVE_INFINITY : Number(upper),
+    upperInclusive: close === ']',
+  };
+};
+
+const withinRange = (key: string, tokens: number): boolean => {
+  const range = parseRangeKey(key);
+  if (!range) return false;
+
+  // Card keys are expressed in millions of tokens.
+  const value = tokens / 1_000_000;
+  const aboveLower = range.lowerInclusive ? value >= range.lower : value > range.lower;
+  const belowUpper = range.upperInclusive ? value <= range.upper : value < range.upper;
+
+  return aboveLower && belowUpper;
+};
+
+/**
+ * Size-banded lookup params (`textInputRange` / `textOutputRange`) are *derived*:
+ * a card declares its tiers as bracket keys over the request's token counts and
+ * expects the engine to pick the band the request falls into. No caller supplied
+ * them, so every card that declared one — Doubao Seed 2.0/1.8/1.6, Qwen's
+ * long-context tiers — resolved no key and priced at zero. Deriving them here
+ * keeps the catalog honest without asking providers to pass a value they cannot
+ * know while streaming.
+ *
+ * The whole key is matched, never one column at a time: a card may band only some
+ * columns (`[0.128, 0.256]_[0, infinity]`), so stitching per-column winners
+ * together would fabricate a key the card never declared.
+ */
+const deriveRangeParams = (
+  unit: LookupPricingUnit,
+  options: ComputeChatCostOptions | undefined,
+  usage: ModelTokensUsage,
+): Record<string, string> | undefined => {
+  const params = unit.lookup?.pricingParams;
+  const keys = Object.keys(unit.lookup?.prices ?? {});
+  if (!params?.length || keys.length === 0) return undefined;
+
+  // A caller-supplied band is authoritative for the whole unit: mixing it with a
+  // derived one could form a key the card does not declare.
+  if (params.some((param) => options?.lookupParams?.[param] !== undefined)) return undefined;
+
+  const derived = params.filter((param) => param in RANGE_VALUE_SOURCES);
+  if (derived.length === 0) return undefined;
+
+  const matched = keys.find((candidate) => {
+    const parts = candidate.split('_');
+
+    return derived.every((param) => {
+      const tokens = RANGE_VALUE_SOURCES[param](usage);
+      const part = parts[params.indexOf(param)];
+
+      return typeof tokens === 'number' && Boolean(part) && withinRange(part, tokens);
+    });
+  });
+  if (!matched) return undefined;
+
+  const parts = matched.split('_');
+
+  return Object.fromEntries(derived.map((param) => [param, parts[params.indexOf(param)]]));
 };
 
 const resolveLookupKey = (
@@ -466,11 +550,18 @@ export const computeChatCost = (
 
     if (unit.strategy === 'lookup') {
       const lookupUnit = unit as LookupPricingUnit;
+      const derivedRange = deriveRangeParams(lookupUnit, options, usage);
       const {
         credits: rawCredits,
         key,
         issues: lookupIssue,
-      } = computeLookupCredits(lookupUnit, quantity, options);
+      } = computeLookupCredits(
+        lookupUnit,
+        quantity,
+        derivedRange
+          ? { ...options, lookupParams: { ...options?.lookupParams, ...derivedRange } }
+          : options,
+      );
 
       if (lookupIssue) issues.push(lookupIssue);
 

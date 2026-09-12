@@ -8,12 +8,13 @@ import {
 } from '@lobechat/const';
 import { type DiscoverPluginDetail, type PluginSource } from '@lobechat/types';
 import { Block, Flexbox, Icon, Image } from '@lobehub/ui';
-import { Avatar, Skeleton, Tag, Text } from '@lobehub/ui/base-ui';
+import { Avatar, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import urlJoin from 'url-join';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useDiscoverStore } from '@/store/discover';
 
@@ -106,7 +107,7 @@ const PluginItem = memo<PluginItemProps>(({ identifier }) => {
         avatar: '', // Avatar will be rendered by BuiltinToolIcon component
         category: undefined,
         createdAt: '',
-        description: `LobeHub Mcp Server: ${composioTool.label}`,
+        description: `旅游群 Mcp Server: ${composioTool.label}`,
         homepage: 'https://composio.dev',
         identifier: composioTool.identifier,
         manifest: undefined,
@@ -198,7 +199,7 @@ const PluginItem = memo<PluginItemProps>(({ identifier }) => {
   if (isLoading)
     return (
       <Block horizontal gap={12} key={identifier} padding={12} variant={'outlined'}>
-        <Skeleton.Text rows={1} />
+        <SkeletonText rows={1} />
       </Block>
     );
 

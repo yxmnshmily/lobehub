@@ -1,13 +1,14 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { ActionIcon, Avatar, SkeletonAvatar, SkeletonText, Tag, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Avatar, SkeletonAvatar, Tag, Text } from '@lobehub/ui/base-ui';
 import { Popconfirm } from 'antd';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { XIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
 import type { PermissionResourceType, ResourceCollaborator } from '@/services/resourcePermission';
 

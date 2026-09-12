@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 16px;
     height: 16px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 50%;
 
     background: ${cssVar.colorBgElevated};

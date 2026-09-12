@@ -1,13 +1,14 @@
 'use client';
 
 import { Block, Flexbox, Icon } from '@lobehub/ui';
-import { Button, SkeletonText, Text } from '@lobehub/ui/base-ui';
+import { Button, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import type { LucideIcon } from 'lucide-react';
 import { PowerOff, RotateCcw, TriangleAlert, Unlink } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import type { TransferManifest } from '@/services/resourceTransferRequest';
 
 import type { ManifestImpact, TransferManifestPerspective } from './transferManifestRows';

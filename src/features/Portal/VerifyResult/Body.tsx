@@ -20,7 +20,7 @@ import { chatPortalSelectors, threadSelectors } from '@/store/chat/selectors';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   confidenceCard: css`
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillQuaternary};
   `,

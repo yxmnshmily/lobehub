@@ -7,6 +7,10 @@ import { useMatch, useSearchParams } from 'react-router';
 
 import ConversationSegmentSkeleton from '@/components/Skeleton/Conversation/Segment';
 import { ConversationProvider } from '@/features/Conversation';
+import {
+  GroupWorkConversationContext,
+  GroupWorkScopeContext,
+} from '@/features/SuperGroup/GroupWorkScope';
 import { useInitBuiltinAgent } from '@/hooks/useInitBuiltinAgent';
 import { useOperationState } from '@/hooks/useOperationState';
 import { useAgentStore } from '@/store/agent';
@@ -33,6 +37,7 @@ export const useTaskAgentSelection = () => use(TaskAgentSelectionContext);
 
 export const TaskAgentProvider = memo<TaskAgentProviderProps>((props) => {
   const { children, preferredAgentId, viewedTaskId } = props;
+  const groupScope = use(GroupWorkScopeContext);
   useInitBuiltinAgent(BUILTIN_AGENT_SLUGS.inbox);
   useInitBuiltinAgent(BUILTIN_AGENT_SLUGS.taskAgent);
 
@@ -51,6 +56,9 @@ export const TaskAgentProvider = memo<TaskAgentProviderProps>((props) => {
 
   const detailMatch = useMatch('/task/:taskId');
   const resolvedViewedTaskId = viewedTaskId || detailMatch?.params.taskId;
+  const groupViewedTaskId = groupScope ? resolvedViewedTaskId : undefined;
+  const subject = `${groupScope?.groupId ?? ''}:${groupViewedTaskId ?? 'list'}`;
+  const [localTopic, setLocalTopic] = useState<{ subject: string; topicId: string | null }>();
 
   const scopedSelectedAgentId =
     scopedSelection.scopeAgentId === preferredAgentId
@@ -67,7 +75,7 @@ export const TaskAgentProvider = memo<TaskAgentProviderProps>((props) => {
   );
 
   useEffect(() => {
-    if (!selectedAgentId) return;
+    if (!selectedAgentId || groupScope) return;
 
     if (useAgentStore.getState().activeAgentId !== selectedAgentId) {
       setActiveAgentId(selectedAgentId);
@@ -101,19 +109,41 @@ export const TaskAgentProvider = memo<TaskAgentProviderProps>((props) => {
       scope: 'task',
       skipRefreshMessage: !targetTopicId,
     });
-  }, [routedAgentId, routedTopicId, selectedAgentId, setActiveAgentId]);
+  }, [
+    groupScope,
+    groupViewedTaskId,
+    routedAgentId,
+    routedTopicId,
+    selectedAgentId,
+    setActiveAgentId,
+  ]);
 
   const context = useMemo<ConversationContext>(
     () => ({
       agentId: selectedAgentId || '',
-      defaultTaskAssigneeAgentId: inboxAgentId,
-      scope: 'task',
-      topicId: activeTopicId,
+      defaultTaskAssigneeAgentId: groupScope ? preferredAgentId : inboxAgentId,
+      groupId: groupScope?.groupId,
+      isolatedTopic: groupScope ? true : undefined,
+      scope: groupScope ? 'group' : 'task',
+      topicId: groupScope
+        ? localTopic?.subject === subject
+          ? localTopic.topicId
+          : null
+        : activeTopicId,
       viewedTask: resolvedViewedTaskId
         ? { taskId: resolvedViewedTaskId, type: 'detail' }
         : { type: 'list' },
     }),
-    [activeTopicId, inboxAgentId, resolvedViewedTaskId, selectedAgentId],
+    [
+      activeTopicId,
+      groupScope,
+      preferredAgentId,
+      inboxAgentId,
+      resolvedViewedTaskId,
+      selectedAgentId,
+      localTopic,
+      subject,
+    ],
   );
 
   const chatKey = useMemo(() => messageMapKey(context), [context]);
@@ -125,17 +155,35 @@ export const TaskAgentProvider = memo<TaskAgentProviderProps>((props) => {
 
   return (
     <TaskAgentSelectionContext value={selectTaskAgent}>
-      <ConversationProvider
-        context={context}
-        hasInitMessages={!!messages}
-        messages={messages}
-        operationState={operationState}
-        onMessagesChange={(msgs, ctx, meta) => {
-          replaceMessages(msgs, { context: ctx, source: meta?.source });
-        }}
+      <GroupWorkConversationContext
+        value={
+          groupScope
+            ? {
+                groupId: groupScope.groupId,
+                topicId: context.topicId ?? null,
+                onTopicChange: (topicId) => setLocalTopic({ subject, topicId }),
+              }
+            : undefined
+        }
       >
-        {children}
-      </ConversationProvider>
+        <ConversationProvider
+          context={context}
+          hooks={
+            groupScope
+              ? { onTopicCreated: (topicId) => setLocalTopic({ subject, topicId }) }
+              : undefined
+          }
+          hasInitMessages={!!messages}
+          messages={messages}
+          operationState={operationState}
+          skipFetch={!!groupScope && !context.topicId}
+          onMessagesChange={(msgs, ctx, meta) => {
+            replaceMessages(msgs, { context: ctx, source: meta?.source });
+          }}
+        >
+          {children}
+        </ConversationProvider>
+      </GroupWorkConversationContext>
     </TaskAgentSelectionContext>
   );
 });

@@ -125,7 +125,7 @@ describe('MessengerTelegramBinder.handleUnlinkedMessage', () => {
     expect(sendMessageWithUrlButton).toHaveBeenCalledTimes(1);
     const [chatId, text, button] = sendMessageWithUrlButton.mock.calls[0];
     expect(chatId).toBe('C_DM');
-    expect(text).toContain('Welcome to LobeHub');
+    expect(text).toContain('Welcome to 旅游群');
     expect(button.text).toContain('Link Account');
     expect(button.url).toContain('https://app.example.com/verify-im');
     expect(button.url).toContain('im_type=telegram');
@@ -213,7 +213,7 @@ describe('MessengerTelegramBinder.notifyLinkSuccess', () => {
       '12345',
       expect.stringContaining('Linked successfully'),
     );
-    expect(sendMessage.mock.calls[0][1]).toContain('Send /agents');
+    expect(sendMessage.mock.calls[0][1]).toContain('Send /groups');
   });
 
   it('includes the active agent name (HTML-escaped) when provided', async () => {

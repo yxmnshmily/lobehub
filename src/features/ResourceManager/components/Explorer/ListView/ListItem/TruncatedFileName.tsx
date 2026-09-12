@@ -6,6 +6,29 @@ interface TruncatedFileNameProps {
 }
 
 /**
+ * 文字宽度测量：用 canvas，不做 DOM 插入、不读 offsetWidth。
+ *
+ * 旧实现每行都 createElement('span') → append 到 body → 反复读 offsetWidth，
+ * 每次读 offsetWidth 都会强制同步重排；虚拟列表滚动时每挂载一行就重排好几次，
+ * 滚动必然卡顿。canvas.measureText 不触发重排，并且按「字体+文本」缓存。
+ */
+let measureCtx: CanvasRenderingContext2D | null = null;
+const widthCache = new Map<string, number>();
+
+const measureTextWidth = (text: string, font: string): number => {
+  const key = `${font}\u0000${text}`;
+  const cached = widthCache.get(key);
+  if (cached !== undefined) return cached;
+  if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return text.length * 8;
+  measureCtx.font = font;
+  const width = measureCtx.measureText(text).width;
+  if (widthCache.size > 5000) widthCache.clear();
+  widthCache.set(key, width);
+  return width;
+};
+
+/**
  * Truncates file name from the center, preserving the extension at the end
  * Similar to macOS Finder behavior
  */
@@ -21,22 +44,11 @@ const TruncatedFileName = memo<TruncatedFileNameProps>(({ name, className }) => 
       const containerWidth = container.offsetWidth;
       if (containerWidth === 0) return;
 
-      // Create a temporary span to measure text width
-      const measureSpan = document.createElement('span');
-      measureSpan.style.visibility = 'hidden';
-      measureSpan.style.position = 'absolute';
-      measureSpan.style.whiteSpace = 'nowrap';
-      measureSpan.style.font = window.getComputedStyle(container).font;
-      document.body.append(measureSpan);
-
-      // Measure full name
-      measureSpan.textContent = name;
-      const fullWidth = measureSpan.offsetWidth;
+      const font = window.getComputedStyle(container).font;
 
       // If it fits, show the full name
-      if (fullWidth <= containerWidth) {
+      if (measureTextWidth(name, font) <= containerWidth) {
         setDisplayName(name);
-        measureSpan.remove();
         return;
       }
 
@@ -51,13 +63,8 @@ const TruncatedFileName = memo<TruncatedFileNameProps>(({ name, className }) => 
         extension = name.slice(lastDotIndex); // includes the dot
       }
 
-      // Measure ellipsis width
-      measureSpan.textContent = '...';
-      const ellipsisWidth = measureSpan.offsetWidth;
-
-      // Measure extension width
-      measureSpan.textContent = extension;
-      const extensionWidth = measureSpan.offsetWidth;
+      const ellipsisWidth = measureTextWidth('...', font);
+      const extensionWidth = measureTextWidth(extension, font);
 
       // Calculate available width for base name
       const availableWidth = containerWidth - ellipsisWidth - extensionWidth;
@@ -65,7 +72,6 @@ const TruncatedFileName = memo<TruncatedFileNameProps>(({ name, className }) => 
       if (availableWidth <= 0) {
         // Not enough space, just show ellipsis + extension
         setDisplayName(`...${extension}`);
-        measureSpan.remove();
         return;
       }
 
@@ -82,18 +88,13 @@ const TruncatedFileName = memo<TruncatedFileNameProps>(({ name, className }) => 
         const truncated =
           baseName.slice(0, startChars) + (mid > 0 ? baseName.slice(-endChars) : '');
 
-        measureSpan.textContent = truncated;
-        const truncatedWidth = measureSpan.offsetWidth;
-
-        if (truncatedWidth <= availableWidth) {
+        if (measureTextWidth(truncated, font) <= availableWidth) {
           bestFit = truncated;
           left = mid + 1;
         } else {
           right = mid - 1;
         }
       }
-
-      measureSpan.remove();
 
       // Construct final truncated name
       if (bestFit.length === 0) {

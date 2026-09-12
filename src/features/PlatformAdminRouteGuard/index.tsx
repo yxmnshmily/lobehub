@@ -6,7 +6,11 @@ import { Navigate, useLocation } from 'react-router';
 import BrandTextLoading from '@/components/Loading/BrandTextLoading';
 import { lambdaQuery } from '@/libs/trpc/client';
 
-import { resolveCustomerMainRouteAccess, resolvePlatformAdminRouteAccess } from './access';
+import {
+  isCustomerMainRoutePath,
+  resolveCustomerMainRouteAccess,
+  resolvePlatformAdminRouteAccess,
+} from './access';
 
 const PlatformAdminRouteGuard = ({ children }: PropsWithChildren) => {
   const { data: isPlatformAdmin, isLoading } =
@@ -27,8 +31,12 @@ export const platformAdminElement = (element: ReactNode) => (
 
 export const CustomerMainRouteGuard = ({ children }: PropsWithChildren) => {
   const { pathname, search } = useLocation();
-  const { data: isPlatformAdmin, isLoading } =
-    lambdaQuery.platformAccess.isPlatformAdmin.useQuery();
+  const { data: isPlatformAdmin, isLoading } = lambdaQuery.platformAccess.isPlatformAdmin.useQuery(
+    undefined,
+    {
+      enabled: !isCustomerMainRoutePath(pathname, search),
+    },
+  );
 
   const access = resolveCustomerMainRouteAccess({ isLoading, isPlatformAdmin, pathname, search });
   if (access === 'loading') return <BrandTextLoading debugId="customer-main-route" />;

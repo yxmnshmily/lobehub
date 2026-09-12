@@ -43,6 +43,7 @@ import {
 } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors, settingsSelectors } from '@/store/user/selectors';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import { useAgentId } from '../../hooks/useAgentId';
 import { useChatInputResourceAccess } from '../../hooks/useChatInputResourceAccess';
@@ -115,7 +116,7 @@ const searchIconBox = css`
 
   width: 36px;
   height: 36px;
-  border: 1px solid ${cssVar.colorBorderSecondary};
+  border: 0.5px solid ${cssVar.colorBorderSecondary};
   border-radius: 8px;
 
   background: ${cssVar.colorBgContainer};
@@ -289,6 +290,7 @@ const stripPopoverContent = (
   }) ?? [];
 
 const usePlusMenuItems = ({ close }: { close: () => void }): ActionDropdownMenuItems => {
+  const translateTravel = useTravelTranslation();
   const { t } = useTranslation('chat');
   const { t: tEditor } = useTranslation('editor');
   const { t: tSetting } = useTranslation('setting');
@@ -448,7 +450,7 @@ const usePlusMenuItems = ({ close }: { close: () => void }): ActionDropdownMenuI
     const renderGatewayModeLabel = () => (
       <span className={cx(gatewayModeLabel)}>
         {/* Brand name — same in every language, so no i18n. */}
-        <span className="title">Agent Gateway</span>
+        <span className="title">{translateTravel('智能体网关')}</span>
         <Tag color={'info'} size={'small'} variant={'filled'}>
           {t('gatewayMode.beta')}
         </Tag>
@@ -736,6 +738,7 @@ const usePlusMenuItems = ({ close }: { close: () => void }): ActionDropdownMenuI
       .filter((group) => group.length > 0)
       .flatMap((group, index) => (index === 0 ? group : [{ type: 'divider' as const }, ...group]));
   }, [
+    translateTravel,
     agentId,
     activeSearchOption,
     canConfigureResource,
@@ -804,19 +807,21 @@ const PlusAction = memo(() => {
 
 PlusAction.displayName = 'PlusAction';
 
-const Plus = () => (
-  <Suspense
-    fallback={
-      <ChatInputAction
-        disabled
-        icon={PlusIcon}
-        size={{ blockSize: 32, borderRadius: 16, size: 18 }}
-        title=""
-      />
-    }
-  >
-    <PlusAction />
-  </Suspense>
-);
+const Plus = () => {
+  return (
+    <Suspense
+      fallback={
+        <ChatInputAction
+          disabled
+          icon={PlusIcon}
+          size={{ blockSize: 32, borderRadius: 16, size: 18 }}
+          title=""
+        />
+      }
+    >
+      <PlusAction />
+    </Suspense>
+  );
+};
 
 export default Plus;

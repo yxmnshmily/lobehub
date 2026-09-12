@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
   row: css`
     padding-block: 20px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     &:last-child {

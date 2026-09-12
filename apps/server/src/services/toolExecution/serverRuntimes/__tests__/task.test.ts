@@ -1,7 +1,12 @@
 import { normalizeListTasksParams, UNFINISHED_TASK_STATUSES } from '@lobechat/builtin-tool-task';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createTaskRuntime } from '../task';
+import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
+import { getTaskExecutionContext } from '@/server/services/taskRunner/hostedExecution';
+
+import { createTaskRuntime, taskRuntime } from '../task';
+
+const callerMocks = vi.hoisted(() => ({ createCaller: vi.fn((_context: unknown) => ({})) }));
 
 const verifyMocks = vi.hoisted(() => ({ createCriteriaFromDrafts: vi.fn() }));
 
@@ -40,7 +45,7 @@ vi.mock('@lobechat/const/rbac', () => ({
 }));
 
 vi.mock('@/server/routers/lambda/task', () => ({
-  taskRouter: { createCaller: () => ({}) },
+  taskRouter: { createCaller: callerMocks.createCaller },
 }));
 
 // APP_URL is a server-only env var; the unit-test env is flagged as client, so
@@ -60,6 +65,37 @@ vi.mock('@/server/services/task', () => ({
 vi.mock('@/server/services/verify/planGenerator', () => ({
   VerifyPlanGeneratorService: vi.fn().mockImplementation(() => verifyMocks),
 }));
+
+describe('taskRuntime inherited group budget', () => {
+  it.each(['runTask', 'runTasks'] as const)(
+    'carries the opaque budget through the %s factory caller',
+    async (method) => {
+      const run = vi.fn().mockResolvedValue({ success: true, topicId: 'tpc-child' });
+      callerMocks.createCaller.mockReturnValue({ run });
+      const sharedBudget = {} as any;
+      const context = grantPlatformManagedExecution(
+        {
+          groupId: 'cg-team',
+          serverDB: {} as any,
+          toolManifestMap: {},
+          userId: 'owner',
+          workspaceId: 'workspace',
+        },
+        { actorUserId: 'owner', resourceOwnerUserId: 'owner', sharedBudget },
+      );
+      const runtime = taskRuntime.factory(context);
+      const result =
+        method === 'runTask'
+          ? await runtime.runTask({ identifier: 'T-1' })
+          : await runtime.runTasks({ identifiers: ['T-1', 'T-2'] });
+      expect(result.success).toBe(true);
+      const resolvedContext = callerMocks.createCaller.mock.calls.at(-1)![0];
+      expect(resolvedContext).toMatchObject({ userId: 'owner', workspaceId: 'workspace' });
+      expect(getTaskExecutionContext(resolvedContext)?.capability.sharedBudget).toBe(sharedBudget);
+      expect(run).toHaveBeenCalledTimes(method === 'runTask' ? 1 : 2);
+    },
+  );
+});
 
 describe('createTaskRuntime', () => {
   describe('task comments', () => {
@@ -185,6 +221,26 @@ describe('createTaskRuntime', () => {
       const taskCaller = {} as any;
       return { agentModel, taskCaller, taskModel, taskService };
     };
+
+    it('preserves the originating group when assigning another member', async () => {
+      const deps = makeDeps();
+      const runtime = createTaskRuntime({
+        ...deps,
+        agentId: 'supervisor',
+        groupId: 'group-1',
+      } as any);
+      await runtime.createTask({
+        assigneeAgentId: 'worker',
+        instruction: 'Analyse evidence',
+        name: 'Analysis',
+      });
+      expect(deps.taskService.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assigneeAgentId: 'worker',
+          config: { groupId: 'group-1' },
+        }),
+      );
+    });
 
     it('passes createdByAgentId when invoked by an agent (activity should attribute the agent)', async () => {
       const deps = makeDeps();
@@ -558,6 +614,27 @@ describe('createTaskRuntime', () => {
   });
 
   describe('listTasks', () => {
+    it('lists all members within the current group while preserving explicit assignee filters', async () => {
+      const taskCaller = { list: vi.fn().mockResolvedValue({ data: [] }) };
+      const runtime = createTaskRuntime({
+        agentModel: {} as any,
+        agentId: 'supervisor',
+        groupId: 'group-1',
+        taskCaller: taskCaller as any,
+        taskModel: {} as any,
+        taskService: {} as any,
+      });
+
+      await runtime.listTasks({});
+      expect(taskCaller.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ assigneeAgentId: undefined, groupId: 'group-1' }),
+      );
+      await runtime.listTasks({ assigneeAgentId: 'writer' });
+      expect(taskCaller.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ assigneeAgentId: 'writer', groupId: 'group-1' }),
+      );
+    });
+
     it('uses all-agent default scope in task manager context', async () => {
       const taskCaller = { list: vi.fn().mockResolvedValue({ data: [] }) };
       const runtime = createTaskRuntime({

@@ -9,8 +9,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAgentDisplayMeta } from '@/features/AgentTasks/shared/useAgentDisplayMeta';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+import NavHeader from '@/features/NavHeader';
 import { useFetchAgentList } from '@/hooks/useFetchAgentList';
-import { formatWorkVersionCost } from '@/utils/workVersionCost';
 
 import type { WorkGalleryKey } from './const';
 import { useWorkspaceWorksInfinite } from './hooks';
@@ -23,7 +24,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex: none;
 
     padding-inline: 5px 10px;
-    border: 1px solid transparent;
+    border: 0.5px solid transparent;
     border-radius: 999px;
 
     color: ${cssVar.colorTextSecondary};
@@ -48,7 +49,8 @@ const styles = createStaticStyles(({ css }) => ({
     }
 
     @media (width <= 620px) {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
   `,
   container: css`
@@ -66,6 +68,10 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 12px 10px;
     padding-inline: 24px;
+
+    @media (width <= 620px) {
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    }
 
     &::-webkit-scrollbar {
       display: none;
@@ -104,7 +110,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 4px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: 6px;
 
     font-size: 13px;
@@ -124,6 +130,10 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 0;
     padding-block: 8px 24px;
     padding-inline: 24px;
+
+    @media (width <= 620px) {
+      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    }
   `,
 }));
 
@@ -166,6 +176,7 @@ interface WorkGalleryProps {
 
 const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
   const { t, i18n } = useTranslation('file');
+  const { formatOptional: formatWorkVersionCost } = useMonthlyExchangeRate();
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   useFetchAgentList();
 
@@ -215,7 +226,7 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
         group.items.reduce((total, item) => total + (item.totalCost || 0), 0),
       ),
     }));
-  }, [filteredItems, i18n.language, t]);
+  }, [filteredItems, i18n.language, t, formatWorkVersionCost]);
 
   const handleOpen = useOpenWork();
   const retryPendingRef = useRef(false);
@@ -307,7 +318,14 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
               </div>
               <div className={styles.cardList}>
                 {group.items.map((item) => (
-                  <WorkPreviewCard item={item} key={item.id} onOpen={handleOpen} />
+                  <WorkPreviewCard
+                    item={item}
+                    key={item.id}
+                    onOpen={handleOpen}
+                    onDeleted={() => {
+                      void reload().catch(console.error);
+                    }}
+                  />
                 ))}
               </div>
             </section>
@@ -334,6 +352,7 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
     <WorkGallerySkeleton />
   ) : (
     <Flexbox className={styles.container}>
+      <NavHeader />
       {agentIds.length > 0 && (
         <Flexbox horizontal align={'center'} className={styles.filterBar} gap={4}>
           <Button

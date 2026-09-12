@@ -1,8 +1,8 @@
 'use client';
 
+import { BRANDING_LOGO_URL, BRANDING_NAME } from '@lobechat/business-const';
 import { TITLE_BAR_HEIGHT } from '@lobechat/desktop-bridge';
 import { Flexbox } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
 import { createStaticStyles, keyframes } from 'antd-style';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import {
   getOuterCssVariables,
 } from '@/features/DesktopLayoutContainer/cssVariables';
 import { styles as containerStyles } from '@/features/DesktopLayoutContainer/style';
+import Image from '@/libs/next/Image';
 import { electronStylish } from '@/styles/electron';
 
 import { readBootShellGeometry } from './geometry';
@@ -54,11 +55,6 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: center;
 
     color: ${cssVar.colorTextQuaternary};
-  `,
-  // The mark carries the fade, not the whole stack: multiplying it into the
-  // caption too leaves quaternary text at ~0.2 alpha, which is unreadable.
-  mark: css`
-    opacity: 0.48;
   `,
   // Floated rather than stacked in flow: a caption that joins the column would
   // push the brand mark off the center it shares with the app that replaces it.
@@ -157,9 +153,14 @@ const AppShellSkeleton = memo<AppShellSkeletonProps>(({ id }) => {
           >
             <div className={styles.contentBrand}>
               <div className={styles.brand}>
-                <div className={styles.mark}>
-                  <LobeHub size={40} type={'text'} />
-                </div>
+                <Image
+                  alt={BRANDING_NAME}
+                  height={64}
+                  loading="eager"
+                  src={BRANDING_LOGO_URL}
+                  style={{ display: 'block', objectFit: 'contain' }}
+                  width={64}
+                />
                 {waiting && <LoadingHint />}
               </div>
             </div>

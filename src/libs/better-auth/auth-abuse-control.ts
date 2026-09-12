@@ -281,7 +281,9 @@ class BoundedRateLimitStorage {
     if (isRedisEnabled(config)) {
       const redis = await initializeRedis(config);
       if (!redis) throw new Error('AUTH_RATE_LIMIT_STORAGE_UNAVAILABLE');
-      await redis.set(`auth-rate-limit:v1:${hashKeyPart(key)}`, JSON.stringify(value), { ex: 3600 });
+      await redis.set(`auth-rate-limit:v1:${hashKeyPart(key)}`, JSON.stringify(value), {
+        ex: 3600,
+      });
       return;
     }
     if (process.env.NODE_ENV === 'production') {
@@ -321,13 +323,11 @@ export const checkAuthAbuseLimit = async (
       email = new URLSearchParams(await request.clone().text()).get(rule.emailField) || '';
     } else {
       const body: unknown = await request.clone().json();
-      email =
-        typeof body === 'object' &&
-        body !== null &&
-        rule.emailField in body &&
-        typeof body[rule.emailField] === 'string'
-          ? body[rule.emailField]
-          : '';
+      const emailValue =
+        typeof body === 'object' && body !== null && Object.hasOwn(body, rule.emailField)
+          ? Reflect.get(body, rule.emailField)
+          : undefined;
+      email = typeof emailValue === 'string' ? emailValue : '';
     }
   } catch {
     email = '';

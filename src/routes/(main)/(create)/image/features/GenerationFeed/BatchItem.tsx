@@ -29,6 +29,15 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
     css`
       opacity: 0;
       transition: opacity 0.1s ${cssVar.motionEaseInOut};
+
+      @media (width <= 767px), (hover: none) {
+        opacity: 1;
+
+        button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+      }
     `,
   ),
   batchDeleteButton: css`
@@ -39,7 +48,8 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
     }
   `,
   container: css`
-    &:hover {
+    &:hover,
+    &:focus-within {
       .batch-actions {
         opacity: 1;
       }
@@ -47,11 +57,52 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
   `,
 
   prompt: css`
+    min-width: 0;
+    overflow-wrap: anywhere;
+
     pre {
       overflow: hidden !important;
       padding-block: 4px;
       font-size: 13px;
     }
+  `,
+  promptRow: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+  `,
+  metadata: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      align-items: flex-start;
+    }
+  `,
+  metadataMain: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+    }
+  `,
+  metadataEnd: css`
+    min-width: 0;
+
+    @media (width <= 767px) {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+  `,
+  createdAt: css`
+    white-space: nowrap;
   `,
 }));
 
@@ -112,6 +163,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
       await removeGenerationBatch(batch.id, activeTopicId);
     } catch (error) {
       console.error('Failed to delete batch:', error);
+      toast.error(t('operationFailed', { ns: 'common' }));
     }
   };
 
@@ -141,9 +193,11 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
 
   return (
     <Block className={styles.container} gap={8} variant="borderless">
-      <Flexbox horizontal align={'flex-start'} gap={16}>
+      <Flexbox horizontal align={'flex-start'} className={styles.promptRow} gap={16}>
         <ReferenceImages imageUrl={batch.config?.imageUrl} imageUrls={batch.config?.imageUrls} />
-        <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+        <Markdown className={styles.prompt} variant={'chat'}>
+          {batch.prompt}
+        </Markdown>
       </Flexbox>
       <Image.PreviewGroup>
         <Grid maxItemWidth={200} ref={imageGridRef} rows={batch.generations.length}>
@@ -160,11 +214,12 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
       <Flexbox
         horizontal
         align={'center'}
+        className={styles.metadata}
         gap={4}
         justify={'space-between'}
         style={{ opacity: 0.66 }}
       >
-        <Flexbox horizontal align={'center'} gap={4}>
+        <Flexbox horizontal align={'center'} className={styles.metadataMain} gap={4}>
           <Tag icon={<ModelIcon model={batch.model} />} variant={'borderless'}>
             {modelDisplayName}
           </Tag>
@@ -177,7 +232,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
             {t('generation.metadata.count', { count: batch.generations.length })}
           </Tag>
         </Flexbox>
-        <Flexbox horizontal align={'center'} gap={6}>
+        <Flexbox horizontal align={'center'} className={styles.metadataEnd} gap={6}>
           {showCreator && (
             <>
               <Text fontSize={12} type={'secondary'}>
@@ -188,7 +243,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
               </Text>
             </>
           )}
-          <Text as={'time'} fontSize={12} type={'secondary'}>
+          <Text as={'time'} className={styles.createdAt} fontSize={12} type={'secondary'}>
             {t('generation.metadata.createdAt', { time })}
           </Text>
         </Flexbox>

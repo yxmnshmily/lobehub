@@ -183,7 +183,7 @@ describe('Anthropic generateObject', () => {
         { maxOutputTokens: 64, route },
       );
       payload.schema.schema.properties.content.type = 'number';
-      payload.schema.schema.properties.injected = { type: 'boolean' };
+      Object.assign(payload.schema.schema.properties, { injected: { type: 'boolean' } });
 
       await expect(prepared.execute()).resolves.toEqual(
         expect.objectContaining({ output: { content: 'ok' } }),

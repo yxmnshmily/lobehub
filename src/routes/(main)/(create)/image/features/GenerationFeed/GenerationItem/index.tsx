@@ -44,8 +44,9 @@ export const GenerationItem = memo<GenerationItemProps>(
         await deleteGeneration(generation.id);
       } catch (error) {
         console.error('Failed to delete generation:', error);
+        toast.error(t('operationFailed', { ns: 'common' }));
       }
-    }, [deleteGeneration, generation.id]);
+    }, [deleteGeneration, generation.id, t]);
 
     const handleDownloadImage = useCallback(async () => {
       if (!generation.asset?.url) return;

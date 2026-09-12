@@ -75,7 +75,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex-direction: row;
 
     height: 500px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
   description: css`
@@ -86,7 +86,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   hostCard: css`
     margin-block-end: ${cssVar.paddingSM};
     padding: ${cssVar.padding};
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorFillTertiary};
@@ -99,7 +99,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: ${cssVar.paddingSM} 0;
     padding-inline: ${cssVar.paddingSM};
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   listItem: css`
     cursor: pointer;

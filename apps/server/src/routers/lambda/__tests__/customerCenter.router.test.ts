@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   creditModelConstructor: vi.fn(),
   pageLimits: vi.fn(),
   pageRows: [] as unknown[][],
+  pageTotal: 0,
   pageWhere: vi.fn(),
   usageGetUsage: vi.fn(),
   usageModelConstructor: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('@/database/models/platformCredit', () => ({
     }
 
     getAccount = mocks.creditGetAccount;
+    getAccountWithAvailability = mocks.creditGetAccount;
     listEntries = mocks.creditListEntries;
   },
 }));
@@ -65,7 +67,7 @@ const otherUserId = 'customer-center-other-user';
 const workspaceId = 'customer-center-workspace';
 const serverDB = {
   marker: 'customer-center-test-db',
-  select: vi.fn(() => {
+  select: vi.fn((fields?: { total?: unknown }) => {
     const builder = {
       from: vi.fn(() => builder),
       innerJoin: vi.fn(() => builder),
@@ -76,7 +78,7 @@ const serverDB = {
       orderBy: vi.fn(() => builder),
       where: vi.fn((condition: unknown) => {
         mocks.pageWhere(condition);
-        return builder;
+        return fields?.total ? Promise.resolve([{ total: mocks.pageTotal }]) : builder;
       }),
     };
     return builder;
@@ -99,7 +101,9 @@ const availableMetrics = {
 
 const arrangeSafeModelResults = () => {
   mocks.creditGetAccount.mockResolvedValue({
+    availableCredits: 1_750_000,
     balanceCredits: 1_750_000,
+    heldCredits: 0,
     createdAt: new Date('2026-09-02T08:00:00.000Z'),
     id: 'credit-account-id-must-not-leak',
     updatedAt: new Date('2026-09-02T09:00:00.000Z'),
@@ -243,10 +247,41 @@ const arrangeSafeModelResults = () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.pageRows.splice(0);
+  mocks.pageTotal = 0;
   arrangeSafeModelResults();
 });
 
 describe('customer center tRPC self-service projection', () => {
+  it('returns only current-user canonical usage fields without provider secrets or duplicate operations', async () => {
+    const row = {
+      countedInCanonicalTotals: true,
+      createdAt: new Date('2026-09-05T08:00:00Z'),
+      id: 'message-1',
+      kind: { available: true, value: 'chat' },
+      metrics: availableMetrics,
+      model: { available: true, value: 'test-model' },
+      provider: { available: true, value: 'private-provider' },
+      source: 'message',
+      prompt: 'PRIVATE_PROMPT',
+    };
+    mocks.usageGetUsage.mockResolvedValue({
+      recent: [row, { ...row, countedInCanonicalTotals: false, source: 'agent_operation' }],
+    });
+    const rows = await customerCaller().getUsageDetails();
+    expect(mocks.usageModelConstructor).toHaveBeenCalledWith(serverDB, customerId);
+    expect(rows).toEqual([
+      {
+        createdAt: row.createdAt,
+        id: 'message:message-1',
+        inputTokens: 200,
+        kind: 'chat',
+        model: 'test-model',
+        outputTokens: 50,
+        totalTokens: 250,
+      },
+    ]);
+    expect(JSON.stringify(rows)).not.toMatch(/private-provider|PRIVATE_PROMPT|costUsd/);
+  });
   it('filters generation rows by customer type, normalized status and inclusive date range', () => {
     const page = buildCustomerGenerationPage(
       [
@@ -449,6 +484,27 @@ describe('customer center tRPC self-service projection', () => {
     });
   });
 
+  it('omits deleted image artifacts while retaining the generation history', async () => {
+    mocks.pageRows.push(
+      [
+        {
+          id: 'deleted-image-task',
+          type: 'image',
+          status: 'succeeded',
+          code: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          artifacts: [{ type: 'image', generationId: 'deleted-image' }],
+        },
+      ],
+      [{ generationId: 'deleted-image-task', generationType: 'image' }],
+      [],
+    );
+    const detail = await customerCaller().getGenerationDetail({ id: 'deleted-image-task' });
+    expect(detail.artifacts).toEqual([]);
+    expect(detail.id).toBe('deleted-image-task');
+  });
+
   it('serves a customer-safe generation detail and hides missing records', async () => {
     mocks.pageRows.push(
       [
@@ -470,6 +526,7 @@ describe('customer center tRPC self-service projection', () => {
         },
       ],
       [{ generationId: 'owned-generation', generationType: 'image', id: 'settled-credit-entry' }],
+      [{ id: 'safe-image' }, { id: 'unsafe-image' }],
     );
 
     const detail = await (customerCaller() as any).getGenerationDetail({ id: 'owned-generation' });
@@ -1034,6 +1091,7 @@ describe('customer center tRPC self-service projection', () => {
       mocks.pageRows.push([], ...(kind === 'work' ? [[]] : []));
 
       await expect(customerCaller(workspaceId).getPage({ kind, limit: 20 })).resolves.toEqual({
+        ...(kind === 'ledger' ? { total: 0 } : {}),
         items: [],
         kind,
         nextCursor: null,
@@ -1182,17 +1240,17 @@ describe('customer center tRPC self-service projection', () => {
     expect(JSON.stringify(page)).not.toMatch(/metadata|fileId|asset|platformAiRuntime/);
   });
 
-  it.each([
-    ['image', 'image'],
-    ['video', 'video'],
-  ] as const)('applies the %s type filter to native generation topics', async (type) => {
-    mocks.pageRows.push([], [], []);
+  it.each(['image', 'video'] as const)(
+    'applies the %s type filter to native generation topics',
+    async (type) => {
+      mocks.pageRows.push([], [], []);
 
-    await customerCaller(workspaceId).getPage({ kind: 'work', limit: 20, type });
+      await customerCaller(workspaceId).getPage({ kind: 'work', limit: 20, type });
 
-    const nativeQuery = new PgDialect().sqlToQuery(mocks.pageWhere.mock.calls.at(-1)![0]);
-    expect(nativeQuery.params.filter((value) => value === type)).toHaveLength(2);
-  });
+      const nativeQuery = new PgDialect().sqlToQuery(mocks.pageWhere.mock.calls.at(-1)![0]);
+      expect(nativeQuery.params.filter((value) => value === type)).toHaveLength(2);
+    },
+  );
 
   it('does not query native media for a document-only work page', async () => {
     mocks.pageRows.push([], []);
@@ -1229,6 +1287,24 @@ describe('customer center tRPC self-service projection', () => {
       'updatedAt',
     ]);
   });
+
+  it.each([0, 73])(
+    'returns the full scoped ledger total %s independently of the page cursor',
+    async (total) => {
+      mocks.pageTotal = total;
+      const page = await customerCaller(workspaceId).getPage({
+        kind: 'ledger',
+        limit: 10,
+        cursor: encodeCustomerCenterCursor({
+          id: 'entry-cursor',
+          updatedAt: new Date('2026-09-03T08:00:00Z'),
+        }),
+      });
+      expect(page).toMatchObject({ kind: 'ledger', total, items: [] });
+      const scope = new PgDialect().sqlToQuery(mocks.pageWhere.mock.calls.at(-1)![0]);
+      expect(scope.params).toEqual([customerId, workspaceId]);
+    },
+  );
 
   it('returns a bounded customer-safe service-order page', async () => {
     mocks.pageRows.push([
@@ -1292,6 +1368,21 @@ describe('customer center tRPC self-service projection', () => {
     expect(result.usage?.canonicalTotals).toEqual(availableMetrics);
   });
 
+  it('reports spendable credits separately from the ledger balance', async () => {
+    mocks.creditGetAccount.mockResolvedValueOnce({
+      availableCredits: 100_000,
+      balanceCredits: 1_000_000,
+      heldCredits: 900_000,
+      updatedAt: new Date('2026-09-07T00:00:00Z'),
+    });
+    const result = await customerCaller().getOverview({});
+    expect(result.credits.account).toMatchObject({
+      availableCredits: 100_000,
+      balanceCredits: 1_000_000,
+      heldCredits: 900_000,
+    });
+  });
+
   it('rejects fractional Credits from either the balance or ledger instead of rounding them', async () => {
     mocks.creditGetAccount.mockResolvedValueOnce({ balanceCredits: 10.5 });
     const invalidAccount = await customerCaller().getOverview({});
@@ -1303,7 +1394,11 @@ describe('customer center tRPC self-service projection', () => {
     expect(negativeAccount.credits.account).toBeNull();
     expect(negativeAccount.credits.entries).not.toBeNull();
 
-    mocks.creditGetAccount.mockResolvedValueOnce({ balanceCredits: 10 });
+    mocks.creditGetAccount.mockResolvedValueOnce({
+      balanceCredits: 10,
+      availableCredits: 10,
+      heldCredits: 0,
+    });
     mocks.creditListEntries.mockResolvedValueOnce([
       { amountCredits: -0.5, balanceAfterCredits: 9.5, id: 'fractional-entry' },
     ]);

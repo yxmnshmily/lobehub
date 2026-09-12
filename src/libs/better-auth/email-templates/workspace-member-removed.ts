@@ -9,8 +9,8 @@ export const getWorkspaceMemberRemovedEmailTemplate = (params: {
   const isDowngrade = reason === 'downgrade';
 
   const subject = isDowngrade
-    ? `You have been removed from ${workspaceName} on LobeHub`
-    : `You have been removed from ${workspaceName} on LobeHub`;
+    ? `You have been removed from ${workspaceName} on 旅游群`
+    : `You have been removed from ${workspaceName} on 旅游群`;
 
   const heading = isDowngrade
     ? `Removed from <strong>${workspaceName}</strong>`
@@ -36,12 +36,12 @@ export const getWorkspaceMemberRemovedEmailTemplate = (params: {
     <div style="text-align: center; margin-bottom: 32px;">
       <div style="display: inline-flex; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 12px; padding: 8px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
         <span style="font-size: 24px; line-height: 1; margin-right: 10px;">🤯</span>
-        <span style="font-size: 18px; font-weight: 700; color: #000000; letter-spacing: -0.5px;">LobeHub</span>
+        <span style="font-size: 18px; font-weight: 700; color: #000000; letter-spacing: -0.5px;">旅游群</span>
       </div>
     </div>
 
     <!-- Card -->
-    <div style="background: #ffffff; border-radius: 20px; padding: 40px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.02);">
+    <div style="background: #ffffff; border-radius: 20px; padding: 40px; box-shadow: 0 8px 30px rgba(0,0,0,0.04); border: 0.5px solid rgba(0,0,0,0.02);">
 
       <!-- Header -->
       <div style="text-align: center; margin-bottom: 32px;">
@@ -57,7 +57,7 @@ export const getWorkspaceMemberRemovedEmailTemplate = (params: {
         </p>
 
         <!-- Info Note -->
-        <div style="background-color: #f0f9ff; border-radius: 12px; padding: 16px; margin-bottom: 24px; border: 1px solid #bae6fd;">
+        <div style="background-color: #f0f9ff; border-radius: 12px; padding: 16px; margin-bottom: 24px; border: 0.5px solid #bae6fd;">
           <p style="color: #0c4a6e; font-size: 14px; margin: 0; text-align: center;">
             If you believe this was a mistake, please contact the workspace owner.
           </p>
@@ -65,12 +65,12 @@ export const getWorkspaceMemberRemovedEmailTemplate = (params: {
       </div>
 
       <!-- Divider -->
-      <div style="border-top: 1px solid #e5e7eb; margin: 32px 0;"></div>
+      <div style="border-top: 0.5px solid #e5e7eb; margin: 32px 0;"></div>
 
       <!-- Footer note -->
       <div style="text-align: center;">
         <p style="color: #9ca3af; font-size: 13px; margin: 0;">
-          You can continue using LobeHub with your personal workspace.
+          You can continue using 旅游群 with your personal workspace.
         </p>
       </div>
     </div>
@@ -81,7 +81,7 @@ export const getWorkspaceMemberRemovedEmailTemplate = (params: {
         ${getEmailSupportHtml()}
       </p>
       <p style="color: #a1a1aa; font-size: 13px; margin: 0;">
-        This is an automated message from LobeHub.
+        This is an automated message from 旅游群.
       </p>
     </div>
   </div>

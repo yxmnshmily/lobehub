@@ -99,7 +99,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   widthLimiter: css`
     width: 100%;
-    max-width: 1024px;
+    max-width: 100%;
   `,
   titleRow: css`
     width: 100%;

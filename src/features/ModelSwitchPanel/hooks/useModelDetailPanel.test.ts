@@ -8,7 +8,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnabledProviderWithModels } from '@/types/aiProvider';
 
+import zhComponents from '../../../../locales/zh-CN/components.json';
 import { useModelDetailPanel } from './useModelDetailPanel';
+
+const language = vi.hoisted(() => ({ value: 'en-US' }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ i18n: { language: language.value }, t }),
+}));
+
+vi.mock('@/libs/trpc/client', () => ({
+  lambdaQuery: {
+    customerCenter: {
+      getDisplayExchangeRate: {
+        useQuery: () => ({
+          data: {
+            month: '2026-09',
+            rate: 7,
+            rateDate: '2026-08-31',
+            updatedAt: '2026-09-01T00:00:00Z',
+          },
+        }),
+      },
+    },
+  },
+}));
 
 const {
   globalState,
@@ -55,7 +78,12 @@ const translations: Record<string, string> = {
 };
 
 const t = ((key: string, options?: Record<string, string>) => {
-  const template = translations[key] ?? options?.defaultValue ?? key;
+  const template =
+    (language.value === 'zh-CN'
+      ? (zhComponents as Record<string, string>)[key]
+      : translations[key]) ??
+    options?.defaultValue ??
+    key;
 
   return template.replaceAll(/\{\{(\w+)\}\}/g, (_, name) => options?.[name] ?? '');
 }) as TFunction<'components'>;
@@ -138,12 +166,62 @@ const renderModelDetailPanelHook = (
   );
 
 describe('useModelDetailPanel', () => {
+  it('converts native CNY quotes for English without changing the original pricing', () => {
+    const pricing = {
+      currency: 'CNY',
+      units: [
+        { name: 'textInput', rate: 7, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 14, strategy: 'fixed', unit: 'millionTokens' },
+      ],
+    } as Pricing;
+    const { result } = renderModelDetailPanelHook({
+      enabledList: createEnabledList('deepseek', pricing),
+      provider: 'deepseek',
+    });
+    expect(result.current.formatPrice?.input.current).toBe('$1.00');
+    expect(result.current.formatPrice?.output.current).toBe('$2.00');
+    expect(pricing.currency).toBe('CNY');
+    expect(pricing.units[0]).toMatchObject({ rate: 7 });
+  });
   beforeEach(() => {
+    language.value = 'en-US';
     globalState.status.modelDetailPanelExpandedKeys = ['pricing'];
     globalState.updateModelDetailPanelExpandedKeys = updateExpandedKeysMock;
     updateExpandedKeysMock.mockReset();
     useEnabledChatModelsMock.mockReturnValue([]);
     useBusinessModelPricingMock.mockReturnValue(({ pricing }: { pricing?: Pricing }) => pricing);
+  });
+
+  it('localizes every generation price denominator without rescaling the price', () => {
+    language.value = 'zh-CN';
+    const { result } = renderModelDetailPanelHook({
+      enabledList: createEnabledList('openai', basePricing),
+      provider: 'openai',
+      pricingMode: 'image',
+    });
+    expect(result.current.formatUnitPrice(basePricing.units[0]).current).toBe('¥35.00');
+    expect(result.current.getUnitPriceSuffix('millionTokens')).toBe('/百万 Token');
+    expect(result.current.getUnitPriceSuffix('millionCharacters')).toBe('/百万字符');
+    expect(result.current.getUnitPriceSuffix('megapixel')).toBe('/百万像素');
+    expect(result.current.getUnitPriceSuffix('image')).toBe('/张');
+    expect(result.current.getUnitPriceSuffix('video')).toBe('/条视频');
+    expect(result.current.getUnitPriceSuffix('second')).toBe('/秒');
+    expect(basePricing.units[0]).toMatchObject({ rate: 5, unit: 'millionTokens' });
+  });
+
+  it('localizes credit amounts and cached/token tooltips and follows a language switch', () => {
+    language.value = 'zh-CN';
+    const { result, rerender } = renderModelDetailPanelHook({
+      enabledList: createEnabledList('lobehub', discountedPricing),
+    });
+    expect(result.current.formatPrice?.input.current).toBe('250万');
+    expect(result.current.formatPrice?.cachedInput.current).toBe('30万');
+    expect(result.current.getPricingTooltip('input', '250万')).toBe('输入 250万 积分/百万 Token');
+    expect(result.current.contextWindowLabel).toBe('100万 tokens');
+    language.value = 'en-US';
+    rerender();
+    expect(result.current.formatPrice?.input.current).toBe('2.5M');
+    expect(result.current.contextWindowLabel).toBe('1M tokens');
   });
 
   it('applies business pricing before formatting LobeHub credit prices', () => {

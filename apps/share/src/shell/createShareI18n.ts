@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import { DEFAULT_LANG } from '@/const/locale';
 import { normalizeLocale } from '@/locales/resources';
+import { displayBrandingPostProcessor } from '@/utils/displayBranding';
 import { unwrapESMModule } from '@/utils/esm/unwrapESMModule';
 import { loadI18nNamespaceModule } from '@/utils/i18n/loadI18nNamespaceModule';
 
@@ -43,6 +44,7 @@ export const createShareI18n = (lang?: string, bundledResources?: ShareResources
   const instance = i18next
     .createInstance()
     .use(initReactI18next)
+    .use(displayBrandingPostProcessor)
     .use(resourcesToBackend(loadShareNamespace));
 
   return {
@@ -56,6 +58,7 @@ export const createShareI18n = (lang?: string, bundledResources?: ShareResources
         lng: locale,
         ns: [],
         partialBundledLanguages: true,
+        postProcess: ['displayBranding'],
         react: {
           bindI18nStore: 'added',
           useSuspense: false,

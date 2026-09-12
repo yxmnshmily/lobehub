@@ -3,6 +3,7 @@
 import { type ThreadStatus } from '@lobechat/types';
 import { useEffect, useState } from 'react';
 
+import { useConversationStore } from '@/features/Conversation/store';
 import { useChatStore } from '@/store/chat';
 
 import { isProcessingStatus } from './utils';
@@ -16,6 +17,7 @@ interface UseTaskPollingParams {
 export const useTaskPolling = ({ messageId, threadId, status }: UseTaskPollingParams) => {
   const isProcessing = isProcessingStatus(status);
   const [hasFetched, setHasFetched] = useState(false);
+  const skipFetch = useConversationStore((s) => s.skipFetch);
 
   const [useEnablePollingTaskStatus, operations] = useChatStore((s) => [
     s.useEnablePollingTaskStatus,
@@ -34,7 +36,9 @@ export const useTaskPolling = ({ messageId, threadId, status }: UseTaskPollingPa
   // 1. Has threadId
   // 2. Not already being polled by an active operation
   // 3. Either hasn't fetched yet (initial fetch) or is still processing (continuous polling)
-  const shouldPoll = !!threadId && !hasActiveOperationPolling && (!hasFetched || isProcessing);
+  // Externally supplied conversations already refresh their authorized task tree.
+  const shouldPoll =
+    !skipFetch && !!threadId && !hasActiveOperationPolling && (!hasFetched || isProcessing);
   const { data } = useEnablePollingTaskStatus(threadId, messageId, shouldPoll);
 
   // Mark as fetched when we get data

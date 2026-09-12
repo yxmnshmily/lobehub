@@ -62,13 +62,13 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-start: 0;
 
     padding: 8px;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorFillQuaternary};
 
     @media (width <= 900px) {
       position: static;
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
       border-inline-end: 0;
     }
   `,
@@ -91,7 +91,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   work: css`
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorFillQuaternary};
   `,

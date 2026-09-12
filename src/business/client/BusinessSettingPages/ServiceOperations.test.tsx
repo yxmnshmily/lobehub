@@ -1,9 +1,26 @@
+import type * as BaseUI from '@lobehub/ui/base-ui';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Namespace } from 'i18next';
+import i18n from 'i18next';
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import zhCommon from '../../../../locales/zh-CN/common.json';
+import ManagedDeleteControl from './ManagedDeleteControl';
 import ServiceOperations from './ServiceOperations';
+
+// This suite checks rendered account values, so use real translations and interpolation.
+// The global key-passthrough mock leaves {{v0}} placeholders unresolved.
+vi.mock('react-i18next', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useTranslation: (namespace: Namespace = 'common') => ({
+    i18n,
+    t: i18n.getFixedT('zh-CN', namespace),
+  }),
+}));
+
+vi.mock('./SuperGroupTemplateSection', () => ({ default: () => null }));
 
 const mocks = vi.hoisted(() => ({
   adjust: vi.fn(),
@@ -12,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   clearModeration: vi.fn(),
   currentUserId: vi.fn(),
   forceUserPasswordReset: vi.fn(),
+  setUserPassword: vi.fn(),
+  deleteUser: vi.fn(),
   getModerationRecordQuery: vi.fn(),
   getUserSafetyOverviewQuery: vi.fn(),
   getUserAccount: vi.fn(),
@@ -25,12 +44,14 @@ const mocks = vi.hoisted(() => ({
   getUserTravelGroupHealthOverviewQuery: vi.fn(),
   privateGroupMembersRefetch: vi.fn(),
   privateGroupsRefetch: vi.fn(),
+  pendingReservationsRefetch: vi.fn(),
   userAccountRefetch: vi.fn(),
   userEntriesRefetch: vi.fn(),
   userOverviewRefetch: vi.fn(),
   userSummariesRefetch: vi.fn(),
   usersRefetch: vi.fn(),
   listUserEntriesQuery: vi.fn(),
+  listPendingReservationsQuery: vi.fn(),
   listModerationRecordsQuery: vi.fn(),
   listAuditEventsQuery: vi.fn(),
   listUserPrivateGroupsQuery: vi.fn(),
@@ -77,6 +98,33 @@ vi.mock('@lobehub/ui', () => ({
     wrap?: string;
   }) => <div {...props}>{children}</div>,
   Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  Tabs: ({
+    activeKey,
+    className,
+    items,
+    onChange,
+    size: _size,
+  }: {
+    activeKey: string;
+    className?: string;
+    items: { icon?: ReactNode; key: string; label: ReactNode }[];
+    onChange: (key: string) => void;
+    size?: string;
+  }) => (
+    <div className={className} role="tablist">
+      {items.map((item) => (
+        <button
+          aria-selected={activeKey === item.key}
+          key={item.key}
+          role="tab"
+          onClick={() => onChange(item.key)}
+        >
+          {item.icon}
+          {item.label}
+        </button>
+      ))}
+    </div>
+  ),
   TextArea: ({
     autoSize: _autoSize,
     ...props
@@ -85,7 +133,8 @@ vi.mock('@lobehub/ui', () => ({
   ),
 }));
 
-vi.mock('@lobehub/ui/base-ui', () => ({
+vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof BaseUI>()),
   Alert: ({ title }: { title: ReactNode }) => <div role="alert">{title}</div>,
   Button: ({
     children,
@@ -100,31 +149,44 @@ vi.mock('@lobehub/ui/base-ui', () => ({
   }) => <button {...props}>{children}</button>,
   Select: ({
     'aria-label': ariaLabel,
+    classNames,
     disabled,
+    labelRender,
     onChange,
     options = [],
     value,
   }: {
     'aria-label'?: string;
+    'classNames'?: { value?: string };
     'disabled'?: boolean;
+    'labelRender'?: (option: { label: string; title?: string; value: string }) => ReactNode;
     'onChange'?: (value: string) => void;
-    'options'?: { label: string; value: string }[];
+    'options'?: { label: string; title?: string; value: string }[];
     'value'?: string;
-  }) => (
-    <select
-      aria-label={ariaLabel}
-      disabled={disabled}
-      value={value || ''}
-      onChange={(event) => onChange?.(event.currentTarget.value)}
-    >
-      <option value="" />
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  ),
+  }) => {
+    const selectedOption = options.find((option) => option.value === value);
+
+    return (
+      <>
+        <select
+          aria-label={ariaLabel}
+          disabled={disabled}
+          value={value || ''}
+          onChange={(event) => onChange?.(event.currentTarget.value)}
+        >
+          <option value="" />
+          {options.map((option) => (
+            <option key={option.value} title={option.title} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {selectedOption && labelRender && (
+          <span className={classNames?.value}>{labelRender(selectedOption)}</span>
+        )}
+      </>
+    );
+  },
   Tag: ({ children, color }: { children: ReactNode; color?: string }) => (
     <span data-color={color}>{children}</span>
   ),
@@ -149,6 +211,7 @@ vi.mock('@/libs/trpc/client', () => ({
     platformCredit: {
       adjust: { useMutation: () => ({ isPending: false, mutateAsync: mocks.adjust }) },
       getUserAccount: { useQuery: mocks.getUserAccountQuery },
+      listPendingReservations: { useQuery: mocks.listPendingReservationsQuery },
       listUserEntries: { useQuery: mocks.listUserEntriesQuery },
       reverse: { useMutation: () => ({ isPending: false, mutateAsync: mocks.reverse }) },
       topUp: { useMutation: () => ({ isPending: false, mutateAsync: mocks.topUp }) },
@@ -158,6 +221,10 @@ vi.mock('@/libs/trpc/client', () => ({
       forceUserPasswordReset: {
         useMutation: () => ({ isPending: false, mutateAsync: mocks.forceUserPasswordReset }),
       },
+      setUserPassword: {
+        useMutation: () => ({ isPending: false, mutateAsync: mocks.setUserPassword }),
+      },
+      deleteUser: { useMutation: () => ({ isPending: false, mutateAsync: mocks.deleteUser }) },
       getUserOverview: { useQuery: mocks.getUserOverviewQuery },
       getUserContentCatalog: { useQuery: mocks.getUserContentCatalogQuery },
       getUserPrivateGroupMembers: { useQuery: mocks.getUserPrivateGroupMembersQuery },
@@ -235,6 +302,22 @@ const userRow = {
   username: 'zhangsan',
 };
 
+it.each([
+  [null, 'zhang@example.com', '邮箱账号：zhang@example.com'],
+  ['13800138000', 'phone-user@phone.invalid', '手机账号：13800138000'],
+])('labels the actual customer account type: %s', async (phone, email, expected) => {
+  mocks.listUsersQuery.mockReturnValue({
+    data: { items: [{ ...userRow, phone, email }], limit: 20, offset: 0, total: 1 },
+    isLoading: false,
+    error: null,
+    refetch: mocks.usersRefetch,
+  });
+  render(<ServiceOperations />);
+  await userEvent.click(await screen.findByRole('button', { name: '已选择' }));
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+  expect(screen.queryByText(/邮箱账号（手机号\/微信号）/)).not.toBeInTheDocument();
+});
+
 const overview = {
   generation: { statusCounts: [{ count: 3, status: 'succeeded' }], total: 3 },
   recentDocuments: [],
@@ -265,6 +348,24 @@ const creditEntry = {
   reversalOfEntryId: null,
   type: 'top_up',
   updatedAt: new Date('2026-09-02T07:00:00.000Z'),
+};
+
+const pendingReservation = {
+  actorUserId: userRow.id,
+  callKind: 'call_llm',
+  createdAt: new Date('2026-09-02T08:00:00.000Z'),
+  expiresAt: new Date('2026-09-02T08:05:00.000Z'),
+  generationId: 'pending-generation-safe-id',
+  generationType: 'agent-runtime-text-step',
+  id: '44444444-4444-4444-8444-444444444444',
+  model: 'deepseek-chat',
+  payerUserId: userRow.id,
+  provider: 'deepseek',
+  providerRequestId: null,
+  reservedCredits: 2_961_629,
+  settledCredits: 0,
+  status: 'provider_started',
+  updatedAt: new Date('2026-09-02T08:01:00.000Z'),
 };
 
 const moderationRecord = {
@@ -504,8 +605,11 @@ const createDeferred = <T,>() => {
   return { promise, resolve };
 };
 
-beforeEach(() => {
+beforeEach(async () => {
+  i18n.addResourceBundle('zh-CN', 'common', zhCommon, true, true);
+  await i18n.changeLanguage('zh-CN');
   vi.clearAllMocks();
+  window.history.replaceState({}, '', '/');
   mocks.currentUserId.mockReturnValue('platform-admin-self');
   mocks.listUsersQuery.mockReturnValue({
     data: { items: [userRow], limit: 20, offset: 0, total: 1 },
@@ -585,6 +689,12 @@ beforeEach(() => {
     isLoading: false,
     refetch: mocks.userEntriesRefetch,
   });
+  mocks.listPendingReservationsQuery.mockReturnValue({
+    data: [pendingReservation],
+    error: null,
+    isLoading: false,
+    refetch: mocks.pendingReservationsRefetch,
+  });
   mocks.listModerationRecordsQuery.mockReturnValue({
     data: { items: [moderationRecord], limit: 20, offset: 0, total: 1 },
     error: null,
@@ -643,7 +753,189 @@ beforeEach(() => {
   });
 });
 
+const openCustomerTab = async (name: '积分管理' | '安全与会话' | '群组与内容') => {
+  const user = userEvent.setup();
+  if (!screen.queryByRole('tab', { name })) {
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+  }
+  await user.click(await screen.findByRole('tab', { name }));
+};
+
 describe('ServiceOperations', () => {
+  it('marks the signed-in account independently of the selected customer', async () => {
+    const signedInUser = {
+      ...userRow,
+      id: 'platform-admin-self',
+      fullName: '管理员',
+      email: 'admin@example.com',
+    };
+    mocks.listUsersQuery.mockReturnValue({
+      data: { items: [userRow, signedInUser], limit: 20, offset: 0, total: 2 },
+      error: null,
+      isLoading: false,
+      refetch: mocks.usersRefetch,
+    });
+    render(<ServiceOperations />);
+    const customerRow = (await screen.findByText(userRow.email)).closest('tr')!;
+    const adminRow = screen.getByText(signedInUser.email).closest('tr')!;
+    expect(within(customerRow).queryByText('当前用户')).not.toBeInTheDocument();
+    expect(within(adminRow).getByText('当前用户')).toBeInTheDocument();
+    await userEvent.click(within(adminRow).getByRole('button', { name: '查看' }));
+    await userEvent.click(await screen.findByRole('button', { name: '返回客户列表' }));
+    expect(
+      within(screen.getByText(signedInUser.email).closest('tr')!).getByText('当前用户'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByText(userRow.email).closest('tr')!).queryByText('当前用户'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows registration and last login times in customer details', async () => {
+    render(<ServiceOperations />);
+    await userEvent.click(await screen.findByRole('button', { name: '已选择' }));
+    expect(screen.getByText(/^注册时间：/)).toBeInTheDocument();
+    expect(screen.getByText(/^最后登录时间：/)).toBeInTheDocument();
+  });
+  it('paginates credit entries ten at a time', async () => {
+    mocks.listUserEntriesQuery.mockImplementation(({ limit, offset = 0 }) => ({
+      data: Array.from({ length: 21 }, (_, index) => ({
+        ...creditEntry,
+        id: `entry-${index}`,
+        reason: `流水记录-${index}`,
+      })).slice(offset, offset + limit),
+      error: null,
+      isLoading: false,
+      refetch: mocks.userEntriesRefetch,
+    }));
+    render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
+    expect(screen.getByText('流水记录-9')).toBeInTheDocument();
+    expect(screen.queryByText('流水记录-10')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '积分流水下一页' }));
+    expect(screen.getByText('流水记录-10')).toBeInTheDocument();
+    expect(screen.queryByText('流水记录-9')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '积分流水下一页' }));
+    expect(screen.getByText('流水记录-20')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '积分流水下一页' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: '积分流水上一页' }));
+    expect(screen.getByText('流水记录-10')).toBeInTheDocument();
+  });
+  it('keeps credit action columns shrinkable and preserves the full reversal label', async () => {
+    render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
+
+    for (const title of ['管理员充值', '余额调整', '冲正流水']) {
+      expect(screen.getAllByText(title)[0].parentElement?.parentElement?.className).toBeTruthy();
+    }
+
+    const fullLabel = '充值 · 1,000,000 积分 · 首次充值';
+    const selectedLabel = (await screen.findAllByTitle(fullLabel)).find(
+      (element) => element.tagName === 'SPAN',
+    );
+    expect(selectedLabel).toBeDefined();
+    expect(selectedLabel!).toHaveTextContent(fullLabel);
+    expect(selectedLabel?.className).toBeTruthy();
+  });
+  it('keeps long account content in a keyboard-accessible scroll region', () => {
+    render(<ServiceOperations />);
+    const content = screen.getByRole('region', { name: '账户管理内容' });
+    expect(content).toHaveStyle({ minHeight: '0', overflow: 'auto' });
+    content.focus();
+    expect(content).toHaveFocus();
+  });
+  it('opens customer details separately and returns to the searchable directory', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+    expect(screen.queryByRole('tab', { name: '客户概览' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+    expect(screen.getByRole('tab', { name: '客户概览' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('搜索用户')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '返回客户列表' }));
+    expect(screen.getByLabelText('搜索用户')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '客户概览' })).not.toBeInTheDocument();
+  });
+  it('sends the former template workspace to in-group member management', async () => {
+    window.history.replaceState({}, '', '/settings/service-operations?workspace=template');
+
+    render(<ServiceOperations />);
+
+    expect(await screen.findByText('成员配置已移至超级工作群')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /超级群/ })).toBeNull();
+    expect(screen.queryByLabelText('搜索用户')).not.toBeInTheDocument();
+  });
+
+  it('opens platform moderation separately without stacking it below customer records', async () => {
+    const first = render(<ServiceOperations />);
+    expect(await screen.findByLabelText('搜索用户')).toBeInTheDocument();
+    expect(screen.queryByLabelText('审计用户 ID')).not.toBeInTheDocument();
+    expect(screen.queryByText('敏感信息审计')).not.toBeInTheDocument();
+    first.unmount();
+
+    window.history.replaceState({}, '', '/settings/content-moderation');
+    render(<ServiceOperations />);
+    expect(await screen.findByText('敏感信息审计')).toBeInTheDocument();
+    expect(screen.queryByLabelText('搜索用户')).not.toBeInTheDocument();
+  });
+
+  it('separates customer data into focused views', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
+
+    expect(await screen.findByRole('tab', { name: '客户概览' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByText('账号资料与安全')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '私人群组目录' })).not.toBeInTheDocument();
+    expect(screen.queryByText('登录会话安全概览')).not.toBeInTheDocument();
+    expect(screen.queryByText('积分管理操作')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: '群组与内容' }));
+    expect(await screen.findByRole('region', { name: '私人群组目录' })).toBeInTheDocument();
+    expect(screen.getByText('用户内容')).toBeInTheDocument();
+    expect(screen.queryByText('账号资料与安全')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: '安全与会话' }));
+    expect(await screen.findByText('登录会话安全概览')).toBeInTheDocument();
+    expect(screen.getByText('最近安全操作')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '私人群组目录' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: '积分管理' }));
+    expect(await screen.findByText('积分管理操作')).toBeInTheDocument();
+    expect(screen.getByText('积分流水')).toBeInTheDocument();
+    expect(screen.queryByText('登录会话安全概览')).not.toBeInTheDocument();
+  });
+
+  it('keeps every operations tab group inside its responsive layout contract', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+    const detailTabs = screen.getByRole('tab', { name: '客户概览' }).closest('[role="tablist"]');
+    expect(detailTabs?.className).toBeTruthy();
+
+    await user.click(screen.getByRole('tab', { name: '群组与内容' }));
+    const contentTabs = screen.getByRole('tab', { name: '生成任务 3' }).closest('[role="tablist"]');
+    expect(contentTabs?.className).toBeTruthy();
+  });
+
+  it('reveals the selected user details when the user button is pressed', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    render(<ServiceOperations />);
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }),
+    );
+  });
+
   it('loads the current user page through one batch summary query without per-user RPC calls', async () => {
     const secondUser = {
       ...userRow,
@@ -689,29 +981,25 @@ describe('ServiceOperations', () => {
     expect(mocks.getUserAccount).not.toHaveBeenCalled();
     expect(mocks.getUserOverview).not.toHaveBeenCalled();
     expect(await screen.findByText('李四')).toBeInTheDocument();
-    expect(screen.getByText('25 Credits')).toBeInTheDocument();
+    expect(screen.getByText('25 积分')).toBeInTheDocument();
   });
 
-  it('shows only safe private-group and member fields for the administrator-selected user', async () => {
+  it('shows safe private-group summaries without requesting member details', async () => {
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
     const region = await screen.findByRole('region', { name: '私人群组目录' });
     expect(within(region).getAllByText('旅游服务超级群组')).toHaveLength(2);
     expect(within(region).getByText('群组已就绪')).toBeInTheDocument();
-    expect(within(region).getByText('旅游群主AI')).toBeInTheDocument();
-    expect(within(region).getByText('旅游文案助理')).toBeInTheDocument();
-    expect(within(region).getByText('群主')).toBeInTheDocument();
-    expect(within(region).getByText('普通成员')).toBeInTheDocument();
-    expect(within(region).getByText('已启用')).toBeInTheDocument();
-    expect(within(region).getByText('已停用')).toBeInTheDocument();
+    expect(within(region).queryByText('旅游文案助理')).not.toBeInTheDocument();
+    expect(within(region).queryByText('已启用')).not.toBeInTheDocument();
+    expect(within(region).queryByText('已停用')).not.toBeInTheDocument();
     expect(mocks.listUserPrivateGroupsQuery).toHaveBeenLastCalledWith(
       { limit: 10, targetUserId: userRow.id },
       expect.objectContaining({ enabled: true, retry: false }),
     );
-    expect(mocks.getUserPrivateGroupMembersQuery).toHaveBeenLastCalledWith(
-      { groupId: overview.travelGroup.id, limit: 10, targetUserId: userRow.id },
-      expect.objectContaining({ enabled: true, retry: false }),
-    );
+    expect(mocks.getUserPrivateGroupMembersQuery).not.toHaveBeenCalled();
+    expect(within(region).queryByText('旅游群主AI')).not.toBeInTheDocument();
     for (const forbidden of [
       'PRIVATE_GROUP_CONFIG_MUST_NOT_RENDER',
       'PRIVATE_GROUP_MODEL_MUST_NOT_RENDER',
@@ -729,24 +1017,12 @@ describe('ServiceOperations', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps group and member cursors independent and bound to the selected user', async () => {
+  it('keeps group pagination bound to the selected user without loading members', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
     const region = await screen.findByRole('region', { name: '私人群组目录' });
-    await user.click(within(region).getByRole('button', { name: '成员下一页' }));
-    await waitFor(() =>
-      expect(mocks.getUserPrivateGroupMembersQuery).toHaveBeenLastCalledWith(
-        {
-          cursor: 'private-members-next-cursor',
-          groupId: overview.travelGroup.id,
-          limit: 10,
-          targetUserId: userRow.id,
-        },
-        expect.objectContaining({ enabled: true, retry: false }),
-      ),
-    );
-
     await user.click(within(region).getByRole('button', { name: '群组下一页' }));
     await waitFor(() =>
       expect(mocks.listUserPrivateGroupsQuery).toHaveBeenLastCalledWith(
@@ -758,9 +1034,10 @@ describe('ServiceOperations', () => {
         expect.objectContaining({ enabled: true, retry: false }),
       ),
     );
+    expect(mocks.getUserPrivateGroupMembersQuery).not.toHaveBeenCalled();
   });
 
-  it('shows fixed group-directory and member errors with bounded retries', async () => {
+  it('shows a fixed group-directory error with a bounded retry', async () => {
     const user = userEvent.setup();
     mocks.listUserPrivateGroupsQuery.mockReturnValue({
       data: undefined,
@@ -769,6 +1046,7 @@ describe('ServiceOperations', () => {
       refetch: mocks.privateGroupsRefetch,
     });
     const { rerender } = render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
     let region = await screen.findByRole('region', { name: '私人群组目录' });
     expect(within(region).getByRole('alert')).toHaveTextContent('私人群组目录暂时无法读取');
@@ -782,21 +1060,12 @@ describe('ServiceOperations', () => {
       isLoading: false,
       refetch: mocks.privateGroupsRefetch,
     });
-    mocks.getUserPrivateGroupMembersQuery.mockReturnValue({
-      data: undefined,
-      error: new Error('PRIVATE_MEMBER_DATABASE_SECRET'),
-      isLoading: false,
-      refetch: mocks.privateGroupMembersRefetch,
-    });
     rerender(<ServiceOperations />);
 
     region = await screen.findByRole('region', { name: '私人群组目录' });
-    await waitFor(() =>
-      expect(within(region).getByRole('alert')).toHaveTextContent('私人群组成员暂时无法读取'),
-    );
-    expect(within(region).queryByText('PRIVATE_MEMBER_DATABASE_SECRET')).not.toBeInTheDocument();
-    await user.click(within(region).getByRole('button', { name: '重试成员摘要' }));
-    expect(mocks.privateGroupMembersRefetch).toHaveBeenCalledTimes(1);
+    expect(within(region).queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(region).getAllByText('旅游服务超级群组')).toHaveLength(2);
+    expect(mocks.getUserPrivateGroupMembersQuery).not.toHaveBeenCalled();
   });
 
   it('shows a fixed user-list error and offers a bounded retry', async () => {
@@ -818,6 +1087,7 @@ describe('ServiceOperations', () => {
 
   it('shows a read-only responsive private-group health and repair preview', async () => {
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     const region = await screen.findByRole('region', { name: '私人群健康与修复预案' });
     expect(within(region).getByText('状态：需检查')).toHaveAttribute('data-color', 'red');
@@ -870,6 +1140,7 @@ describe('ServiceOperations', () => {
       refetch: mocks.travelGroupHealthRefetch,
     });
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     const region = await screen.findByRole('region', { name: '私人群健康与修复预案' });
     expect(within(region).getByText('状态：健康')).toHaveAttribute('data-color', 'green');
@@ -885,6 +1156,7 @@ describe('ServiceOperations', () => {
       refetch: mocks.travelGroupHealthRefetch,
     });
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     const region = await screen.findByRole('region', { name: '私人群健康与修复预案' });
     expect(within(region).getByText('状态：读取中')).not.toHaveAttribute('data-color', 'red');
@@ -910,6 +1182,7 @@ describe('ServiceOperations', () => {
     });
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     const region = await screen.findByRole('region', { name: '私人群健康与修复预案' });
     expect(region).toHaveStyle({ maxWidth: '100%', minWidth: 0 });
@@ -957,6 +1230,7 @@ describe('ServiceOperations', () => {
       refetch: mocks.travelGroupHealthRefetch,
     });
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     const region = await screen.findByRole('region', { name: '私人群健康与修复预案' });
     expect(within(region).getByRole('alert')).toHaveTextContent('目标用户已封禁');
@@ -966,6 +1240,7 @@ describe('ServiceOperations', () => {
   it('shows a read-only target safety overview with bounded filters and keyset pagination', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     expect(await screen.findByText('敏感信息安全概览')).toBeInTheDocument();
     expect(screen.getByText('命中总数 1')).toBeInTheDocument();
@@ -1017,15 +1292,18 @@ describe('ServiceOperations', () => {
 
   it('shows only safe generated-content catalog summaries for the selected user', async () => {
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    expect(await screen.findByText('内容摘要')).toBeInTheDocument();
+    expect(await screen.findByText('用户内容')).toBeInTheDocument();
     expect(screen.getByText('生成任务 3')).toBeInTheDocument();
     expect(screen.getByText('作品 1')).toBeInTheDocument();
     expect(screen.getByText('文档 1')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: '作品 1' }));
     expect(screen.getByText('川藏线作品')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: '文档 1' }));
     expect(screen.getByText('西藏行程摘要')).toBeInTheDocument();
     expect(screen.getByText(/文件名：西藏行程\.md/)).toBeInTheDocument();
-    expect(screen.getByText(/本区不提供删除能力/)).toBeInTheDocument();
+    expect(screen.getByText(/当前仅提供目录信息/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /删除内容/ })).not.toBeInTheDocument();
 
     for (const kind of ['generation', 'work', 'document']) {
@@ -1049,11 +1327,32 @@ describe('ServiceOperations', () => {
     }
   });
 
+  it('keeps an empty content catalog compact without filters or pagination', async () => {
+    mocks.getUserContentCatalogQuery.mockReturnValue({
+      data: { counts: { generationTasks: 0, works: 0, documents: 0 }, items: [], nextCursor: null },
+      error: null,
+      isLoading: false,
+      refetch: mocks.contentCatalogRefetch,
+    });
+    render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
+    expect(screen.getByText('该用户暂无生成任务')).toBeInTheDocument();
+    expect(screen.queryByText('筛选生成任务')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /生成任务上一页|生成任务下一页/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '作品内容目录' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: '文档 0' }));
+    expect(screen.getByText('该用户暂无文档')).toBeInTheDocument();
+  });
+
   it('applies independent type, status, and date filters to each content catalog', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    await screen.findByText('内容摘要');
+    await screen.findByText('用户内容');
+    await user.click(screen.getByText('筛选生成任务'));
     mocks.getUserContentCatalogQuery.mockClear();
 
     await user.type(screen.getByLabelText('生成任务类型'), 'copy');
@@ -1085,11 +1384,15 @@ describe('ServiceOperations', () => {
       expect.objectContaining({ enabled: true, retry: false }),
     );
 
+    await user.click(screen.getByRole('tab', { name: '作品 1' }));
+    await user.click(screen.getByText('筛选作品'));
     await user.type(screen.getByLabelText('作品类型'), 'document');
     await user.type(screen.getByLabelText('作品状态'), 'completed');
     await user.type(screen.getByLabelText('作品开始日期'), '2026-08-01');
     await user.type(screen.getByLabelText('作品结束日期'), '2026-08-31');
     await user.click(screen.getByRole('button', { name: '应用作品筛选' }));
+    await user.click(screen.getByRole('tab', { name: '文档 1' }));
+    await user.click(screen.getByText('筛选文档'));
     await user.type(screen.getByLabelText('文档类型'), 'text/markdown');
     await user.type(screen.getByLabelText('文档开始日期'), '2026-07-01');
     await user.type(screen.getByLabelText('文档结束日期'), '2026-07-31');
@@ -1125,8 +1428,9 @@ describe('ServiceOperations', () => {
   it('moves independently through content catalog cursors in both directions', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    await screen.findByText('内容摘要');
+    await screen.findByText('用户内容');
     mocks.getUserContentCatalogQuery.mockClear();
     await user.click(screen.getByRole('button', { name: '生成任务下一页' }));
 
@@ -1168,8 +1472,9 @@ describe('ServiceOperations', () => {
       refetch: mocks.usersRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    await screen.findByText('内容摘要');
+    await screen.findByText('用户内容');
     await user.click(screen.getByRole('button', { name: '生成任务下一页' }));
     await waitFor(() =>
       expect(mocks.getUserContentCatalogQuery).toHaveBeenCalledWith(
@@ -1183,6 +1488,7 @@ describe('ServiceOperations', () => {
     );
 
     mocks.getUserContentCatalogQuery.mockClear();
+    await user.click(screen.getByRole('button', { name: '返回客户列表' }));
     await user.click(screen.getByRole('button', { name: '查看' }));
     await waitFor(() =>
       expect(mocks.getUserContentCatalogQuery).toHaveBeenCalledWith(
@@ -1208,8 +1514,9 @@ describe('ServiceOperations', () => {
       refetch: mocks.contentCatalogRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    expect(await screen.findAllByText(/内容摘要暂时无法读取$/)).toHaveLength(3);
+    expect(await screen.findAllByText(/内容摘要暂时无法读取$/)).toHaveLength(1);
     expect(screen.queryByText(/CONTENT_BACKEND_PROVIDER_KEY/)).not.toBeInTheDocument();
   });
 
@@ -1224,9 +1531,12 @@ describe('ServiceOperations', () => {
       }),
     );
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
-    expect(await screen.findByText('川藏线作品')).toBeInTheDocument();
     expect(screen.getByText('content-generation-safe-id')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '作品 1' }));
+    expect(await screen.findByText('川藏线作品')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '文档 1' }));
     expect(screen.getByText('文档内容摘要暂时无法读取')).toBeInTheDocument();
     expect(screen.queryByText('DOCUMENT_INTERNAL_SECRET')).not.toBeInTheDocument();
 
@@ -1234,8 +1544,46 @@ describe('ServiceOperations', () => {
     expect(mocks.contentCatalogRefetch).toHaveBeenCalledTimes(1);
   });
 
+  it('collapses a confirmed empty safety overview without filters or pagination', async () => {
+    mocks.getUserSafetyOverviewQuery.mockReturnValue({
+      data: {
+        items: [],
+        summary: { total: 0, block: 0, review: 0, pending: 0, reviewed: 0 },
+        nextCursor: null,
+      },
+      error: null,
+      isLoading: false,
+    });
+    render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
+    const region = screen.getByRole('region', { name: '敏感信息安全概览' });
+    expect(within(region).getByText('暂无安全事件')).toBeInTheDocument();
+    expect(within(region).queryByText('命中总数 0')).not.toBeInTheDocument();
+    expect(within(region).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(region).queryByLabelText('安全分类')).not.toBeInTheDocument();
+  });
+
+  it('keeps safety filters available after a filter returns no events', async () => {
+    mocks.getUserSafetyOverviewQuery.mockImplementation((input: { category?: string }) => ({
+      data: input.category
+        ? { ...userSafetyOverview, items: [], summary: { ...userSafetyOverview.summary, total: 0 } }
+        : userSafetyOverview,
+      error: null,
+      isLoading: false,
+    }));
+    render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
+    const region = screen.getByRole('region', { name: '敏感信息安全概览' });
+    await userEvent.selectOptions(within(region).getByLabelText('安全分类'), 'credential');
+    await userEvent.click(within(region).getByRole('button', { name: '应用安全筛选' }));
+    expect(within(region).getByText('暂无匹配的安全事件')).toBeInTheDocument();
+    expect(within(region).getByLabelText('安全分类')).toBeInTheDocument();
+    expect(within(region).queryByText('暂无安全事件')).not.toBeInTheDocument();
+  });
+
   it('shows only the selected user session count and safe administrator session fields', async () => {
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     expect(await screen.findByText('登录会话安全概览')).toBeInTheDocument();
     expect(screen.getByText('会话总数：3')).toBeInTheDocument();
@@ -1263,6 +1611,7 @@ describe('ServiceOperations', () => {
   it('revokes the selected user sessions only after explicit confirmation', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await screen.findByText('登录会话安全概览');
 
     await user.click(screen.getByRole('button', { name: '撤销该用户全部会话' }));
@@ -1295,10 +1644,12 @@ describe('ServiceOperations', () => {
       refetch: mocks.usersRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     await user.click(await screen.findByRole('button', { name: '撤销该用户全部会话' }));
     expect(screen.getByRole('button', { name: '确认撤销全部会话' })).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: '返回客户列表' }));
     await user.click(screen.getByRole('button', { name: '查看' }));
     expect(screen.queryByRole('button', { name: '确认撤销全部会话' })).not.toBeInTheDocument();
     expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
@@ -1313,6 +1664,7 @@ describe('ServiceOperations', () => {
       refetch: mocks.sessionOverviewRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     expect(await screen.findByText('登录会话暂时无法读取')).toBeInTheDocument();
     expect(screen.getByText('当前管理员请在个人中心管理自己的会话')).toBeInTheDocument();
@@ -1322,6 +1674,7 @@ describe('ServiceOperations', () => {
 
   it('shows only recent safe administrator audit fields for the selected user', async () => {
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     expect(await screen.findByText('最近安全操作')).toBeInTheDocument();
     expect(screen.getByText('资料已修改')).toBeInTheDocument();
@@ -1348,7 +1701,7 @@ describe('ServiceOperations', () => {
     }
   });
 
-  it('shows customer operations with Credits and CNY travel ledgers in explicit partitions', async () => {
+  it('shows customer operations with 积分 and CNY travel ledgers in explicit partitions', async () => {
     render(<ServiceOperations />);
 
     expect(await screen.findByText('张三')).toBeInTheDocument();
@@ -1356,15 +1709,15 @@ describe('ServiceOperations', () => {
     expect(screen.getByText(/198\.51\.100\.24/)).toBeInTheDocument();
     expect(screen.getAllByText('群组已就绪')).not.toHaveLength(0);
     expect(screen.getByText('生成 3 项')).toBeInTheDocument();
-    expect(screen.getByText('1,000,000 Credits')).toBeInTheDocument();
-    expect(screen.getByText('旅行服务账本（CNY）')).toBeInTheDocument();
-    expect(screen.getByText('¥12.34')).toBeInTheDocument();
+    expect(screen.getByText('1,000,000 积分')).toBeInTheDocument();
+    expect(screen.queryByText('旅行服务账本（CNY）')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '人民币服务账本' })).not.toBeInTheDocument();
     expect(screen.queryByText('internal-model-name')).not.toBeInTheDocument();
     expect(screen.queryByText('internal-provider-name')).not.toBeInTheDocument();
     expect(screen.queryByText('generation-sensitive-id')).not.toBeInTheDocument();
   });
 
-  it('clears target-bound Credits operation drafts when switching users', async () => {
+  it('clears target-bound 积分 operation drafts when switching users', async () => {
     const user = userEvent.setup();
     const anotherUser = {
       ...userRow,
@@ -1380,23 +1733,93 @@ describe('ServiceOperations', () => {
       refetch: mocks.usersRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
 
-    await user.type(await screen.findByLabelText('充值 Credits'), '1000000');
-    await user.type(screen.getByLabelText('充值理由'), '张三的充值');
-    await user.type(screen.getByLabelText('调整 Credits'), '-500');
-    await user.type(screen.getByLabelText('调整理由'), '张三的调整');
+    await user.type(await screen.findByLabelText('充值积分'), '1000000');
+    await user.type(screen.getByLabelText('调整积分'), '-500');
 
+    await user.click(screen.getByRole('button', { name: '返回客户列表' }));
     await user.click(screen.getByRole('button', { name: '查看' }));
 
-    expect(screen.getByLabelText('充值 Credits')).toHaveValue('');
-    expect(screen.getByLabelText('充值理由')).toHaveValue('');
-    expect(screen.getByLabelText('调整 Credits')).toHaveValue('');
-    expect(screen.getByLabelText('调整理由')).toHaveValue('');
+    await openCustomerTab('积分管理');
+    expect(screen.getByLabelText('充值积分')).toHaveValue('');
+    expect(screen.getByLabelText('调整积分')).toHaveValue('');
+  });
+
+  it('sets a new password only after confirmation and toggles its visibility', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+    const input = screen.getByLabelText('新密码');
+    await user.type(input, 'New-password-12345');
+    expect(input).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: '查看新密码' }));
+    expect(input).toHaveAttribute('type', 'text');
+    await user.click(screen.getByRole('button', { name: '修改密码' }));
+    expect(mocks.setUserPassword).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '确认修改密码' }));
+    expect(mocks.setUserPassword).toHaveBeenCalledWith({
+      targetUserId: 'customer-zhang',
+      password: 'New-password-12345',
+    });
+    await waitFor(() => expect(input).toHaveValue(''));
+  });
+
+  it.each([
+    [
+      '删除未完成：账号已停用，但登录会话清理失败。请重试；不继续删除可恢复用户。',
+      '删除未完成：账号已停用，但登录会话清理失败。请重试；不继续删除可恢复用户。',
+    ],
+    ['private database details', '删除请求失败，暂无法确认账号状态。请刷新用户资料后重试。'],
+  ])('shows safe deletion failures without a fabricated wait: %s', async (message, expected) => {
+    mocks.deleteUser.mockRejectedValueOnce(new Error(message));
+    const onDeleted = vi.fn();
+    render(<ManagedDeleteControl userId="customer-zhang" userLabel="张三" onDeleted={onDeleted} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '删除用户' }));
+    await user.click(screen.getByRole('button', { name: '确认永久删除' }));
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(/等待运行中的任务/)).not.toBeInTheDocument();
+    expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it('confirms deletion by clicking without requiring a user ID and returns to the list', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+    await user.click(await screen.findByRole('button', { name: '已选择' }));
+    await user.click(screen.getByRole('button', { name: '删除用户' }));
+    expect(screen.queryByLabelText('确认删除的用户 ID')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '确认永久删除' })).toBeEnabled();
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '确认永久删除' }));
+    expect(mocks.deleteUser).toHaveBeenCalledWith({
+      targetUserId: 'customer-zhang',
+      confirmed: true,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog', { name: '永久删除用户' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('suspends a user through the existing login and AI ban after confirmation', async () => {
+    const user = userEvent.setup();
+    render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
+    await user.click(screen.getByRole('button', { name: '暂停用户' }));
+    expect(mocks.banUser).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '确认暂停用户' }));
+    expect(mocks.banUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetUserId: 'customer-zhang',
+        reason: expect.stringContaining('暂停用户'),
+      }),
+    );
   });
 
   it('updates a target display name/avatar only after explicit session-revocation confirmation', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
     await screen.findByText('张三');
 
     expect(screen.getByText('账号资料与安全')).toBeInTheDocument();
@@ -1424,6 +1847,7 @@ describe('ServiceOperations', () => {
   it('forces the official one-time password reset without accepting or exposing a password', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
     await screen.findByText('张三');
 
     await user.click(screen.getByRole('button', { name: '强制密码重置' }));
@@ -1444,6 +1868,7 @@ describe('ServiceOperations', () => {
   it('never offers target-account profile/password actions for the current administrator', async () => {
     mocks.currentUserId.mockReturnValue(userRow.id);
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
     expect(
       await screen.findByText('当前管理员请在个人中心修改自己的资料和密码'),
@@ -1458,6 +1883,7 @@ describe('ServiceOperations', () => {
       new Error('SMTP_PASSWORD_AND_RESET_TOKEN_MUST_NOT_LEAK'),
     );
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
     await screen.findByText('张三');
 
     await user.click(screen.getByRole('button', { name: '强制密码重置' }));
@@ -1481,67 +1907,100 @@ describe('ServiceOperations', () => {
     });
 
     render(<ServiceOperations />);
+    await openCustomerTab('群组与内容');
 
     expect(await screen.findByText('群组待补齐')).toBeInTheDocument();
   });
 
-  it('rejects fractional Credits before calling an administrator mutation', async () => {
+  it('rejects fractional 积分 before calling an administrator mutation', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
     await screen.findByText('张三');
 
-    await user.type(screen.getByLabelText('充值 Credits'), '12.5');
-    await user.type(screen.getByLabelText('充值理由'), '线下已收款');
+    await user.type(screen.getByLabelText('充值积分'), '12.5');
     await user.click(screen.getByRole('button', { name: '确认充值' }));
 
-    expect(await screen.findByText('Credits 必须为安全范围内的整数')).toBeInTheDocument();
+    expect(await screen.findByText('积分必须为安全范围内的整数')).toBeInTheDocument();
     expect(mocks.topUp).not.toHaveBeenCalled();
   });
 
-  it('submits integer Credits with an idempotency key and can reverse a selected entry', async () => {
+  it('shows unresolved provider calls without unsafe manual settlement actions', async () => {
+    render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
+
+    expect(await screen.findByText('待对账调用')).toBeInTheDocument();
+    expect(screen.getByText('服务商结果未知')).toBeInTheDocument();
+    expect(screen.getByText('deepseek / deepseek-chat')).toBeInTheDocument();
+    expect(screen.getByText('未捕获服务商请求 ID')).toBeInTheDocument();
+    expect(screen.getByText('2,961,629 积分预留')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '释放预留' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '人工扣费' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '重试调用' })).not.toBeInTheDocument();
+    expect(mocks.listPendingReservationsQuery).toHaveBeenCalledWith(
+      { limit: 100, targetUserId: userRow.id },
+      { enabled: true, retry: false },
+    );
+  });
+
+  it('requires reasons for credit top-ups and reversals while retaining idempotency', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
     await screen.findByText('张三');
 
-    await user.type(screen.getByLabelText('充值 Credits'), '1000000');
-    await user.type(screen.getByLabelText('充值理由'), '首次充值');
+    await user.type(screen.getByLabelText('充值积分'), '1000000');
+    await user.click(screen.getByRole('button', { name: '确认充值' }));
+
+    expect(mocks.topUp).not.toHaveBeenCalled();
+    expect(await screen.findByText('请填写操作理由')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('充值理由'), '管理员充值');
     await user.click(screen.getByRole('button', { name: '确认充值' }));
 
     await waitFor(() =>
       expect(mocks.topUp).toHaveBeenCalledWith({
         credits: 1_000_000,
         idempotencyKey: expect.stringMatching(/^admin-ui:top-up:/),
-        reason: '首次充值',
+        reason: '管理员充值',
         targetUserId: 'customer-zhang',
       }),
     );
 
-    await user.type(screen.getByLabelText('冲正理由'), '重复入账');
+    await user.click(screen.getByRole('button', { name: '确认冲正' }));
+
+    expect(mocks.reverse).not.toHaveBeenCalled();
+    expect(await screen.findByText('请填写操作理由')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('冲正理由'), '管理员冲正流水');
     await user.click(screen.getByRole('button', { name: '确认冲正' }));
 
     await waitFor(() =>
       expect(mocks.reverse).toHaveBeenCalledWith({
         entryId: creditEntry.id,
         idempotencyKey: expect.stringMatching(/^admin-ui:reversal:/),
-        reason: '重复入账',
+        reason: '管理员冲正流水',
       }),
     );
   });
 
-  it('submits a signed integer Credits adjustment with an idempotency key', async () => {
+  it('submits a signed integer 积分 adjustment with an idempotency key', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('积分管理');
     await screen.findByText('张三');
 
-    await user.type(screen.getByLabelText('调整 Credits'), '-250');
-    await user.type(screen.getByLabelText('调整理由'), '补偿校准');
+    await user.type(screen.getByLabelText('调整积分'), '-250');
+    await user.click(screen.getByRole('button', { name: '确认调整' }));
+
+    expect(mocks.adjust).not.toHaveBeenCalled();
+    expect(await screen.findByText('请填写操作理由')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('调整理由'), '管理员余额调整');
     await user.click(screen.getByRole('button', { name: '确认调整' }));
 
     await waitFor(() =>
       expect(mocks.adjust).toHaveBeenCalledWith({
         credits: -250,
         idempotencyKey: expect.stringMatching(/^admin-ui:adjust:/),
-        reason: '补偿校准',
+        reason: '管理员余额调整',
         targetUserId: 'customer-zhang',
       }),
     );
@@ -1549,6 +2008,7 @@ describe('ServiceOperations', () => {
 
   it('lists moderation summaries and only loads the redacted preview after opening details', async () => {
     const user = userEvent.setup();
+    window.history.replaceState({}, '', '/settings/content-moderation');
     render(<ServiceOperations />);
 
     expect(await screen.findAllByText('文案生成')).not.toHaveLength(0);
@@ -1583,6 +2043,7 @@ describe('ServiceOperations', () => {
       isLoading: false,
       refetch: mocks.moderationListRefetch,
     });
+    window.history.replaceState({}, '', '/settings/content-moderation');
     render(<ServiceOperations />);
 
     await user.type(screen.getByLabelText('审计用户 ID'), ' customer-zhang ');
@@ -1614,6 +2075,7 @@ describe('ServiceOperations', () => {
 
   it('marks moderation records reviewed, cleared, or recommended for banning without claiming a ban', async () => {
     const user = userEvent.setup();
+    window.history.replaceState({}, '', '/settings/content-moderation');
     render(<ServiceOperations />);
     await user.click(await screen.findByRole('button', { name: '查看审计详情' }));
 
@@ -1637,6 +2099,7 @@ describe('ServiceOperations', () => {
     const user = userEvent.setup();
     const pendingReview = createDeferred<typeof moderationDetail>();
     mocks.markModerationReviewed.mockReturnValueOnce(pendingReview.promise);
+    window.history.replaceState({}, '', '/settings/content-moderation');
     render(<ServiceOperations />);
     await user.click(await screen.findByRole('button', { name: '查看审计详情' }));
 
@@ -1657,6 +2120,7 @@ describe('ServiceOperations', () => {
   it('shows a generic moderation error without exposing a backend message', async () => {
     const user = userEvent.setup();
     mocks.markModerationReviewed.mockRejectedValueOnce(new Error('SQL_SECRET_INTERNAL'));
+    window.history.replaceState({}, '', '/settings/content-moderation');
     render(<ServiceOperations />);
     await user.click(await screen.findByRole('button', { name: '查看审计详情' }));
     await user.click(screen.getByRole('button', { name: '标记已复核' }));
@@ -1668,6 +2132,7 @@ describe('ServiceOperations', () => {
   it('does not offer a self-ban action for the current administrator', async () => {
     mocks.currentUserId.mockReturnValue(userRow.id);
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
     expect(await screen.findByText('不能封禁当前管理员账号')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '封禁用户' })).not.toBeInTheDocument();
@@ -1676,6 +2141,7 @@ describe('ServiceOperations', () => {
   it('requires explicit confirmation, a non-sensitive reason, and accepts an optional future expiry', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
     expect(mocks.banUser).not.toHaveBeenCalled();
 
@@ -1711,6 +2177,7 @@ describe('ServiceOperations', () => {
   it('strictly rejects a past local ban expiry', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
     await user.type(screen.getByLabelText('封禁理由'), '多次违反使用规则');
     await user.type(screen.getByLabelText('封禁到期时间'), '2000-01-01T00:00');
@@ -1730,6 +2197,7 @@ describe('ServiceOperations', () => {
     }>();
     mocks.banUser.mockReturnValueOnce(pendingBan.promise);
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
     await user.type(screen.getByLabelText('封禁理由'), '多次违反使用规则');
 
@@ -1763,8 +2231,9 @@ describe('ServiceOperations', () => {
       refetch: mocks.usersRefetch,
     });
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
 
-    await user.click(await screen.findByRole('button', { name: '解除封禁' }));
+    await user.click(await screen.findByRole('button', { name: '恢复用户 / 解除封禁' }));
     expect(mocks.unbanUser).not.toHaveBeenCalled();
     expect(screen.getByText('确认解除该用户的封禁状态？')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '确认解除封禁' }));
@@ -1795,7 +2264,8 @@ describe('ServiceOperations', () => {
     });
     mocks.unbanUser.mockReturnValueOnce(pendingUnban.promise);
     render(<ServiceOperations />);
-    await user.click(await screen.findByRole('button', { name: '解除封禁' }));
+    await openCustomerTab('安全与会话');
+    await user.click(await screen.findByRole('button', { name: '恢复用户 / 解除封禁' }));
 
     const confirmButton = screen.getByRole('button', { name: '确认解除封禁' });
     await user.click(confirmButton);
@@ -1811,6 +2281,7 @@ describe('ServiceOperations', () => {
     const user = userEvent.setup();
     mocks.userEntriesRefetch.mockRejectedValueOnce(new Error('temporary refresh failure'));
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     expect(mocks.getUserAccount).not.toHaveBeenCalled();
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
     await user.type(screen.getByLabelText('封禁理由'), '多次违反使用规则');
@@ -1825,6 +2296,7 @@ describe('ServiceOperations', () => {
   it('renders confirmations as accessible alert dialogs', async () => {
     const user = userEvent.setup();
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
 
     const dialog = screen.getByRole('alertdialog', { name: '确认封禁该用户？' });
@@ -1846,7 +2318,9 @@ describe('ServiceOperations', () => {
       refetch: mocks.usersRefetch,
     });
     render(<ServiceOperations />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '已选择' }));
 
+    await userEvent.setup().click(screen.getByRole('button', { name: '返回客户列表' }));
     expect(await screen.findByText(/封禁原因：联系 \[已隐藏邮箱\].*…/)).toBeInTheDocument();
     expect(screen.queryByText(/contact@example\.com/)).not.toBeInTheDocument();
   });
@@ -1855,6 +2329,7 @@ describe('ServiceOperations', () => {
     const user = userEvent.setup();
     mocks.banUser.mockRejectedValueOnce(new Error('DATABASE_SECRET_INTERNAL'));
     render(<ServiceOperations />);
+    await openCustomerTab('安全与会话');
     await user.click(await screen.findByRole('button', { name: '封禁用户' }));
     await user.type(screen.getByLabelText('封禁理由'), '多次违反使用规则');
     await user.click(screen.getByRole('button', { name: '确认封禁用户' }));

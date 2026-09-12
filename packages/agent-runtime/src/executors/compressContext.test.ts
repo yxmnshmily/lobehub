@@ -130,6 +130,92 @@ describe('compressContext executor', () => {
     };
   });
 
+  it('compacts an older group topic without replacing the current task or other topics', async () => {
+    const old = { content: 'old task', id: 'old', role: 'user', topicId: 'old-topic' };
+    const other = { content: 'another task', id: 'other', role: 'user', topicId: 'other-topic' };
+    const current = { content: 'current task', id: 'current', role: 'user', topicId: 'topic-123' };
+    const pending = { content: 'working', id: 'pending', role: 'assistant', topicId: 'topic-123' };
+    const summary = {
+      content: 'summary',
+      id: 'summary',
+      role: 'compressedGroup',
+      topicId: 'old-topic',
+    };
+    const state = createState({
+      messages: [old, other, current, pending] as any,
+      metadata: { agentId: 'agent-123', groupId: 'chat-group', topicId: 'topic-123' },
+    });
+    messagesQuery.mockResolvedValue([old]);
+    compressionCreateGroup.mockResolvedValue({
+      messageGroupId: 'summary',
+      messagesToSummarize: [old],
+    });
+    compressionFinalizeGroup.mockResolvedValue({ messages: [summary] });
+
+    const result = await compressContext(host)(createInstruction(state.messages), state);
+
+    expect(messagesQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ groupId: 'chat-group', topicId: 'old-topic' }),
+      { resolveAssetUrls: true },
+    );
+    expect(compressionCreateGroup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageIds: ['old'],
+        topicId: 'old-topic',
+      }),
+    );
+    expect(result.newState.messages).toEqual([summary, other, current, pending]);
+    expect(result.newState.metadata?.topicId).toBe('topic-123');
+    expect(result.nextContext?.payload).toEqual(
+      expect.objectContaining({ parentMessageId: 'pending' }),
+    );
+  });
+
+  it('does not commit an empty summary', async () => {
+    const state = createState({
+      messages: [
+        { content: 'old', id: 'old', role: 'user' },
+        { content: 'current', id: 'current', role: 'user' },
+      ],
+    });
+    messagesQuery.mockResolvedValue(state.messages);
+    llmStream.mockResolvedValue({ content: '   ' });
+    const result = await compressContext(host)(createInstruction(state.messages), state);
+    expect(compressionFinalizeGroup).not.toHaveBeenCalled();
+    expect(compressionRollbackGroup).toHaveBeenCalled();
+    expect(result.newState.messages).toEqual(state.messages);
+  });
+
+  it('retains older topic summaries and the full active tool turn when compacting the current topic', async () => {
+    const oldSummary = {
+      content: 'older summary',
+      id: 'older-summary',
+      role: 'compressedGroup',
+      topicId: 'older',
+    };
+    const history = { content: 'history', id: 'history', role: 'user', topicId: 'topic-123' };
+    const current = { content: 'current task', id: 'current', role: 'user', topicId: 'topic-123' };
+    const call = { content: 'tool call', id: 'call', role: 'assistant', topicId: 'topic-123' };
+    const tool = { content: 'tool result', id: 'tool', role: 'tool', topicId: 'topic-123' };
+    const summary = {
+      content: 'new summary',
+      id: 'summary',
+      role: 'compressedGroup',
+      topicId: 'topic-123',
+    };
+    const state = createState({
+      messages: [history, oldSummary, current, call, tool] as any,
+      metadata: { agentId: 'agent-123', groupId: 'chat-group', topicId: 'topic-123' },
+    });
+    messagesQuery.mockResolvedValue([history, current, call, tool]);
+    compressionFinalizeGroup.mockResolvedValue({ messages: [summary, current, call, tool] });
+    const result = await compressContext(host)(createInstruction(state.messages), state);
+    expect(compressionCreateGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ messageIds: ['history'] }),
+    );
+    expect(result.newState.messages).toEqual([summary, oldSummary, current, call, tool]);
+  });
+
   it('compresses db messages and preserves a trailing user follow-up outside the group', async () => {
     const preservedMessage = {
       content: 'continue with this exact instruction',

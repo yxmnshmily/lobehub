@@ -1,30 +1,36 @@
+import { useResponsive } from 'antd-style';
 import { useEffect, useState } from 'react';
 
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
+
+export const resolveMasonryColumnCount = (width: number, mobile: boolean) => {
+  if (width < 360) return 1;
+  if (mobile || width < 768) return 2;
+  if (width < 1024) return 3;
+  if (width < 1536) return 4;
+  return 5;
+};
+
 /**
- * Hook to calculate responsive column count for masonry layout
- * @returns The current column count based on window width
+ * Calculate the masonry column count from both the active app shell and viewport width.
+ * Mobile routes stay at two columns when previewed inside a wide host window, while
+ * very narrow phone viewports drop to one column to preserve touch-action space.
  */
 export const useMasonryColumnCount = () => {
-  const [columnCount, setColumnCount] = useState(4);
+  const { mobile: responsiveMobile = false } = useResponsive();
+  const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
+  const mobile = responsiveMobile || runtimeMobile;
+  const [columnCount, setColumnCount] = useState(() => (mobile ? 2 : 4));
 
   useEffect(() => {
     const updateColumnCount = () => {
-      const width = window.innerWidth;
-      if (width < 768) {
-        setColumnCount(2);
-      } else if (width < 1024) {
-        setColumnCount(3);
-      } else if (width < 1536) {
-        setColumnCount(4);
-      } else {
-        setColumnCount(5);
-      }
+      setColumnCount(resolveMasonryColumnCount(window.innerWidth, mobile));
     };
 
     updateColumnCount();
     window.addEventListener('resize', updateColumnCount);
     return () => window.removeEventListener('resize', updateColumnCount);
-  }, []);
+  }, [mobile]);
 
   return columnCount;
 };

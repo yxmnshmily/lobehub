@@ -298,6 +298,7 @@ class AgentService {
    */
   queryAgents = async (params?: {
     keyword?: string;
+    pluginId?: string;
     limit?: number;
     offset?: number;
   }): Promise<AvailableAgentItem[]> => {

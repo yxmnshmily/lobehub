@@ -30,7 +30,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 28px;
     height: 28px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 6px;
 
     color: ${cssVar.colorTextTertiary};
@@ -88,6 +88,7 @@ const AcceptanceWorkspace = memo<AcceptanceWorkspaceProps>(({ projectId }) => {
   const [searchParams] = useSearchParams();
   const hasFocusedCheck = Boolean(checkId || searchParams.get('check'));
   const showList = !hasFocusedCheck;
+  const projectListOnly = Boolean(projectId && !acceptanceId && showList);
   const {
     data: allAcceptances,
     error,
@@ -114,29 +115,37 @@ const AcceptanceWorkspace = memo<AcceptanceWorkspaceProps>(({ projectId }) => {
   }
 
   return (
-    <Flexbox horizontal height={'100dvh'} style={{ overflow: 'hidden' }} width={'100%'}>
+    <Flexbox
+      horizontal
+      height={projectId ? '100%' : '100dvh'}
+      style={{ overflow: 'hidden', minHeight: 0, flex: 1 }}
+      width={'100%'}
+    >
       <RouteMetaBridge />
       {showList && (
         <AcceptanceListPanel
           {...panel}
+          fullWidth={projectListOnly}
           projectActionItems={projectActionItems}
           projectId={projectId}
         />
       )}
-      <div className={styles.main}>
-        {showList && !panel.expand && (
-          <button
-            aria-label={t('workspace.expand')}
-            className={styles.expandBtn}
-            title={t('workspace.expand')}
-            type={'button'}
-            onClick={() => panel.setExpand(true)}
-          >
-            <Icon icon={PanelLeftOpen} size={16} />
-          </button>
-        )}
-        <Outlet />
-      </div>
+      {!projectListOnly && (
+        <div className={styles.main}>
+          {showList && !panel.expand && (
+            <button
+              aria-label={t('workspace.expand')}
+              className={styles.expandBtn}
+              title={t('workspace.expand')}
+              type={'button'}
+              onClick={() => panel.setExpand(true)}
+            >
+              <Icon icon={PanelLeftOpen} size={16} />
+            </button>
+          )}
+          <Outlet />
+        </div>
+      )}
     </Flexbox>
   );
 });

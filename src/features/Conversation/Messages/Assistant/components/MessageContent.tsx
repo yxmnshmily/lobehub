@@ -3,6 +3,8 @@ import { type UIChatMessage } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { memo } from 'react';
 
+import { GroupAgentQuote, useGroupMessageContent } from '@/features/SuperGroup/GroupAgentQuote';
+
 import { messageStateSelectors, useConversationStore } from '../../../store';
 import { CollapsedMessage } from '../../AssistantGroup/components/CollapsedMessage';
 import DisplayContent from '../../components/DisplayContent';
@@ -14,6 +16,7 @@ import { useMarkdown } from '../useMarkdown';
 
 const MessageContent = memo<UIChatMessage>(
   ({ id, tools, content, chunksList, search, imageList, metadata, ...props }) => {
+    const reply = useGroupMessageContent(content);
     const { drawer, markdownProps } = useMarkdown(id, !!tools?.length);
     // Use ConversationStore instead of ChatStore
     const generating = useConversationStore(messageStateSelectors.isMessageGenerating(id));
@@ -50,7 +53,7 @@ const MessageContent = memo<UIChatMessage>(
         {showFileChunks && <FileChunks data={chunksList} />}
         {showReasoning && <Reasoning {...props.reasoning} id={id} />}
         <DisplayContent
-          content={content}
+          content={reply.content}
           generating={isLoading}
           hasImages={showImageItems}
           id={id}
@@ -60,6 +63,7 @@ const MessageContent = memo<UIChatMessage>(
           tempDisplayContent={metadata?.tempDisplayContent}
         />
         {showImageItems && <ImageFileListViewer items={imageList} />}
+        <GroupAgentQuote id={id} referenceId={reply.referenceId} />
       </Flexbox>
     );
   },

@@ -1,6 +1,8 @@
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 
+import { displayBranding } from '@/utils/displayBranding';
+
 const styles = createStaticStyles(({ css, cssVar }) => ({
   summary: css`
     position: relative;
@@ -37,7 +39,11 @@ interface PersonaSummaryProps {
 }
 
 const PersonaSummary = memo<PersonaSummaryProps>(({ children }) => {
-  return <div className={styles.summary}>{children}</div>;
+  return (
+    <div className={styles.summary}>
+      {typeof children === 'string' ? displayBranding(children) : children}
+    </div>
+  );
 });
 
 export default PersonaSummary;

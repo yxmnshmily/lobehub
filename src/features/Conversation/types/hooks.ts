@@ -18,15 +18,13 @@ import {
  * - Implement custom approval flows
  */
 export interface ConversationHooks {
-  // ========================================
-  // Message Lifecycle Hooks
-  // ========================================
-
   /**
    * Allow custom hooks to be added dynamically
    */
   [key: string]: ((...args: any[]) => any) | undefined;
-
+  /** Per-message authorization used by the shared action registry. */
+  canPerformMessageAction?: (action: string, messageId: string) => boolean;
+  onAddUserMessage?: (params: { message: string; fileList?: string[] }) => Promise<boolean>;
   /**
    * Called after user and assistant messages are created in sendMessage.
    * This hook allows for custom post-message-creation behavior like:
@@ -56,7 +54,6 @@ export interface ConversationHooks {
     /** The created user message ID */
     userMessageId: string;
   }) => Promise<void>;
-
   /**
    * Called after a message is successfully sent
    *
@@ -68,7 +65,6 @@ export interface ConversationHooks {
    * ```
    */
   onAfterSendMessage?: () => Promise<void>;
-
   /**
    * Fires once per assistant turn after streaming ends and any pending tool
    * intervention has cleared. Use for post-turn side effects (e.g. extracting
@@ -88,7 +84,6 @@ export interface ConversationHooks {
     messageId: string,
     meta: { reason: 'completed' | 'stopped' | 'regenerated' | 'continued' },
   ) => Promise<unknown> | void;
-
   /**
    * Called before continuing generation
    *
@@ -96,6 +91,9 @@ export interface ConversationHooks {
    * @returns false to prevent continuation, true/void to continue
    */
   onBeforeContinue?: (messageId: string) => Promise<boolean | void>;
+  // ========================================
+  // Message Lifecycle Hooks
+  // ========================================
 
   /**
    * Called before regenerating a message
@@ -123,16 +121,14 @@ export interface ConversationHooks {
    */
   onBeforeSendMessage?: (params: SendMessageParams) => Promise<boolean | void>;
 
-  // ========================================
-  // Generation State Change Hooks
-  // ========================================
-
   /**
    * Called after continue generation completes
    *
    * @param messageId - The message ID
    */
   onContinueComplete?: (messageId: string) => void;
+
+  onDeleteMessage?: (id: string) => Promise<void>;
 
   /**
    * Called when generation is stopped by user
@@ -152,6 +148,10 @@ export interface ConversationHooks {
    * @param message - The created message
    */
   onMessageCreated?: (message: UIChatMessage) => void;
+
+  // ========================================
+  // Generation State Change Hooks
+  // ========================================
 
   /**
    * Called when a message is deleted
@@ -177,10 +177,6 @@ export interface ConversationHooks {
    */
   onMessageModified?: (messageId: string, newContent: string, originalContent?: string) => void;
 
-  // ========================================
-  // Tool Interaction Hooks
-  // ========================================
-
   /**
    * Called when an operation is cancelled
    *
@@ -194,6 +190,17 @@ export interface ConversationHooks {
    * @param messageId - The regenerated message ID
    */
   onRegenerateComplete?: (messageId: string) => void;
+
+  onRegenerateMessage?: (id: string) => Promise<void>;
+
+  /** Authorized transport override. False keeps the current composer intact. */
+  onSendMessage?: (params: SendMessageParams) => Promise<boolean>;
+
+  // ========================================
+  // Tool Interaction Hooks
+  // ========================================
+
+  onStopGenerating?: () => void;
 
   /**
    * Called when a new thread is created
@@ -233,10 +240,6 @@ export interface ConversationHooks {
    */
   onToolCallComplete?: (toolCallId: string, result: any) => void;
 
-  // ========================================
-  // Topic/Thread Change Hooks
-  // ========================================
-
   /**
    * Called when a tool call encounters an error
    *
@@ -244,6 +247,10 @@ export interface ConversationHooks {
    * @param error - The error that occurred
    */
   onToolCallError?: (toolCallId: string, error: Error) => void;
+
+  // ========================================
+  // Topic/Thread Change Hooks
+  // ========================================
 
   /**
    * Called when a tool call starts
@@ -261,14 +268,16 @@ export interface ConversationHooks {
    */
   onToolRejected?: (toolCallId: string, reason?: string) => Promise<boolean | void>;
 
-  // ========================================
-  // Custom Extension
-  // ========================================
-
   /**
    * Called when a new topic is created
    *
    * @param topicId - The created topic ID
    */
   onTopicCreated?: (topicId: string) => void;
+
+  // ========================================
+  // Custom Extension
+  // ========================================
+
+  onUpdateMessageContent?: (id: string, content: string) => Promise<void>;
 }

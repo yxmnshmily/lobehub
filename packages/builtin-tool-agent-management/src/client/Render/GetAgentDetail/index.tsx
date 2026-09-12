@@ -27,7 +27,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     margin-block-end: 12px;
     padding-block-end: 12px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   label: css`
     margin-block-end: 4px;

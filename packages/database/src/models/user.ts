@@ -279,14 +279,31 @@ export class UserModel {
   };
 
   updateSetting = async (value: Partial<UserSettingsItem>) => {
+    // Remarks are saved through the membership-checked groupInfo API. Settings
+    // saves (including stale tabs and resetSettings) must not overwrite them.
+    const general =
+      value.general != null
+        ? Object.fromEntries(
+            Object.entries(value.general ?? {}).filter(([key]) => key !== 'groupRemarks'),
+          )
+        : value.general;
     return this.db
       .insert(userSettings)
       .values({
         id: this.userId,
         ...value,
+        ...(general !== undefined && { general }),
       })
       .onConflictDoUpdate({
-        set: value,
+        set: {
+          ...value,
+          ...(general !== undefined && {
+            general: sql`CASE
+              WHEN ${userSettings.general} ? 'groupRemarks'
+              THEN ${JSON.stringify(general ?? {})}::jsonb || jsonb_build_object('groupRemarks', ${userSettings.general}->'groupRemarks')
+              ELSE ${general === null ? null : JSON.stringify(general)}::jsonb END`,
+          }),
+        },
         target: userSettings.id,
       });
   };

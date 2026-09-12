@@ -41,7 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 20px;
     height: 20px;
-    border: 2px solid ${cssVar.colorBgContainer};
+    border: 0.5px solid ${cssVar.colorBgContainer};
     border-radius: 50%;
 
     color: ${cssVar.colorTextLightSolid};

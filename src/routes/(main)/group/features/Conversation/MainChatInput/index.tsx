@@ -1,16 +1,25 @@
 'use client';
 
-import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, type HostedGroupChatBilling } from '@lobechat/types';
-import { Flexbox, InputNumber, Tooltip } from '@lobehub/ui';
+import {
+  agentDisplayName,
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+  type HostedGroupChatBilling,
+} from '@lobechat/types';
+import { Flexbox } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
-import { memo, useCallback, useRef, useState } from 'react';
+import { Bot, Smartphone } from 'lucide-react';
+import { memo, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { type ActionKeys } from '@/features/ChatInput';
-import { ChatInput } from '@/features/Conversation';
+import { ChatInput, type ChatInputProps } from '@/features/Conversation';
+import { useSession } from '@/libs/better-auth/auth-client';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
 import { useChatStore } from '@/store/chat';
-import { useServerConfigStore } from '@/store/serverConfig';
 
 import { useSendMenuItems } from './useSendMenuItems';
 
@@ -21,84 +30,82 @@ const leftActions: ActionKeys[] = [
   'tools',
   'voiceDictation',
   '---',
-  ['typo', 'params', 'clear'],
+  ['typo', 'params', 'clear', 'mention'],
 ];
 
 const rightActions: ActionKeys[] = ['model', 'voiceMessage', 'contextWindow'];
 
-const MAX_SAFE_CREDITS = Number.MAX_SAFE_INTEGER;
-
-const isValidCredits = (value: number | null): value is number =>
-  value !== null && Number.isSafeInteger(value) && value > 0;
+const useGroupMentionItems = () => {
+  const agents = useAgentGroupStore((s) =>
+    s.activeGroupId ? s.groupMap[s.activeGroupId]?.agents : undefined,
+  );
+  return useMemo(
+    () =>
+      (agents ?? []).map((agent) => ({
+        key: agent.id,
+        label: agentDisplayName(agent, agent.id),
+        metadata: { id: agent.id, type: 'member' },
+      })),
+    [agents],
+  );
+};
 
 const syncMainInputEditor = (instance: any) => {
   useChatStore.setState({ mainInputEditor: instance });
 };
 
-const HostedTravelGroupChatInput = memo<{ sendMenuItems: ReturnType<typeof useSendMenuItems> }>(
-  ({ sendMenuItems }) => {
-    const isMobile = useServerConfigStore((state) => state.isMobile);
-    const [maxCredits, setMaxCredits] = useState<number | null>(null);
-    const [isStarting, setIsStarting] = useState(false);
-    const startLockRef = useRef(false);
-    const valid = isValidCredits(maxCredits);
+interface ComposerHostProps {
+  children?: ReactNode;
+  onBilledSendAccepted?: () => void;
+}
 
-    const createBillingForSend = useCallback((): HostedGroupChatBilling | false => {
-      if (startLockRef.current || !isValidCredits(maxCredits)) return false;
+const HostedTravelGroupChatInput = memo<
+  ComposerHostProps & { sendMenuItems: ReturnType<typeof useSendMenuItems> }
+>(({ children, onBilledSendAccepted, sendMenuItems }) => {
+  const mentionItems = useGroupMentionItems();
+  const groupId = useAgentGroupStore((s) => s.activeGroupId);
+  const topics = lambdaQuery.groupConversation.listTopics.useQuery(
+    { groupId: groupId ?? '', limit: 1, recent: true },
+    { enabled: !!groupId, refetchOnWindowFocus: false },
+  );
+  const [isStarting, setIsStarting] = useState(false);
+  const startLockRef = useRef(false);
 
-      startLockRef.current = true;
-      setIsStarting(true);
-      return { idempotencyKey: globalThis.crypto.randomUUID(), maxCredits };
-    }, [maxCredits]);
+  const createBillingForSend = useCallback((): HostedGroupChatBilling | false => {
+    if (!topics.data || startLockRef.current) return false;
 
-    const releaseStartLock = useCallback(() => {
-      startLockRef.current = false;
-      setIsStarting(false);
-    }, []);
+    startLockRef.current = true;
+    setIsStarting(true);
+    return { idempotencyKey: globalThis.crypto.randomUUID() };
+  }, [topics.data]);
 
-    return (
-      <ChatInput
-        disableQueue
-        skipScrollMarginWithList
-        createBillingForSend={createBillingForSend}
-        leftActions={leftActions}
-        rightActions={rightActions}
-        sendButtonProps={!valid || isStarting ? { disabled: true } : undefined}
-        sendMenu={{ items: sendMenuItems }}
-        sendAreaPrefix={
-          <Flexbox horizontal align={'center'} gap={6}>
-            <span
-              style={{ color: cssVar.colorTextDescription, fontSize: 12, whiteSpace: 'nowrap' }}
-            >
-              {isMobile ? '最高 Credits' : '本次最高消费 Credits'}
-            </span>
-            <Tooltip title="请填写正整数，仅限制本次请求最高消耗">
-              <InputNumber
-                aria-label="本次最高消费 Credits"
-                disabled={isStarting}
-                max={MAX_SAFE_CREDITS}
-                min={1}
-                placeholder="Credits"
-                precision={0}
-                status={maxCredits !== null && !valid ? 'error' : undefined}
-                step={1}
-                style={{ width: isMobile ? 80 : 104 }}
-                value={maxCredits}
-                onChange={(value) => setMaxCredits(typeof value === 'number' ? value : null)}
-              />
-            </Tooltip>
-          </Flexbox>
-        }
-        onBilledSendAccepted={releaseStartLock}
-        onEditorReady={syncMainInputEditor}
-        onBilledSendSettled={({ accepted }) => {
-          releaseStartLock();
-          if (accepted) setMaxCredits(null);
-        }}
-      />
-    );
-  },
-);
+  const releaseStartLock = useCallback(() => {
+    startLockRef.current = false;
+    setIsStarting(false);
+  }, []);
+
+  return (
+    <ChatInput
+      disableQueue
+      children={children}
+      createBillingForSend={createBillingForSend}
+      leftActions={leftActions}
+      mentionItems={mentionItems}
+      rightActions={rightActions}
+      sendMenu={{ items: sendMenuItems }}
+      showControlBar={false}
+      sendButtonProps={
+        isStarting || !topics.data ? { disabled: true } : children ? { shape: 'round' } : undefined
+      }
+      onBilledSendSettled={releaseStartLock}
+      onEditorReady={syncMainInputEditor}
+      onBilledSendAccepted={() => {
+        releaseStartLock();
+        onBilledSendAccepted?.();
+      }}
+    />
+  );
+});
 
 HostedTravelGroupChatInput.displayName = 'HostedTravelGroupChatInput';
 
@@ -110,27 +117,102 @@ HostedTravelGroupChatInput.displayName = 'HostedTravelGroupChatInput';
  * including error alerts display.
  * Only adds MessageFromUrl for desktop mode.
  */
-const MainChatInput = memo(() => {
-  const sendMenuItems = useSendMenuItems();
-  const isHostedTravelGroup = useAgentGroupStore((state) => {
-    const currentGroup = state.activeGroupId
-      ? agentGroupSelectors.getGroupById(state.activeGroupId)(state)
-      : undefined;
-    return currentGroup?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID;
-  });
+const MainChatInput = memo<ComposerHostProps & { runtimeProps?: ChatInputProps }>(
+  ({ children, onBilledSendAccepted, runtimeProps }) => {
+    const { t } = useTranslation('auth');
+    const { data: session } = useSession();
+    const sendMenuItems = useSendMenuItems();
+    const mentionItems = useGroupMentionItems();
+    const isHostedTravelGroup = useAgentGroupStore((state) => {
+      const currentGroup = state.activeGroupId
+        ? agentGroupSelectors.getGroupById(state.activeGroupId)(state)
+        : undefined;
+      return currentGroup?.clientId === DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID;
+    });
 
-  if (isHostedTravelGroup) return <HostedTravelGroupChatInput sendMenuItems={sendMenuItems} />;
+    if (!session?.user.phoneNumber?.trim() || session.user.phoneNumberVerified !== true) {
+      return (
+        <Flexbox
+          align="center"
+          gap={12}
+          style={{
+            padding: 20,
+            borderRadius: 16,
+            background: cssVar.colorFillTertiary,
+            color: cssVar.colorTextTertiary,
+            textAlign: 'center',
+          }}
+        >
+          <button
+            disabled
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              border: 0,
+              padding: 0,
+              background: 'transparent',
+              color: cssVar.colorTextTertiary,
+              font: 'inherit',
+              cursor: 'not-allowed',
+            }}
+          >
+            <Bot aria-hidden size={18} />
+            {t('profile.groupAiUnavailable', { defaultValue: '群聊AI暂不可用，通信管局政策要求' })}
+          </button>
+          <Flexbox
+            horizontal
+            align="center"
+            gap={16}
+            justify="center"
+            style={{
+              flexWrap: 'wrap',
+              maxWidth: '100%',
+              padding: 12,
+              border: `0.5px solid ${cssVar.colorBorderSecondary}`,
+              borderRadius: 12,
+              background: cssVar.colorBgContainer,
+              boxSizing: 'border-box',
+            }}
+          >
+            <p role="status" style={{ margin: 0, color: cssVar.colorTextSecondary }}>
+              {t('profile.phoneRequiredForGroupAi', { defaultValue: '请先绑定手机号码' })}
+            </p>
+            <Button
+              href={withLobeHubMountPath('/settings/profile#profile-phone')}
+              icon={<Smartphone aria-hidden size={18} />}
+              style={{ minHeight: 40, whiteSpace: 'nowrap' }}
+              type="primary"
+            >
+              {t('profile.bindPhone', { defaultValue: '绑定手机号' })}
+            </Button>
+          </Flexbox>
+        </Flexbox>
+      );
+    }
 
-  return (
-    <ChatInput
-      skipScrollMarginWithList
-      leftActions={leftActions}
-      rightActions={rightActions}
-      sendMenu={{ items: sendMenuItems }}
-      onEditorReady={syncMainInputEditor}
-    />
-  );
-});
+    if (isHostedTravelGroup && !runtimeProps)
+      return (
+        <HostedTravelGroupChatInput
+          children={children}
+          sendMenuItems={sendMenuItems}
+          onBilledSendAccepted={onBilledSendAccepted}
+        />
+      );
+
+    return (
+      <ChatInput
+        children={children}
+        leftActions={leftActions}
+        mentionItems={mentionItems}
+        rightActions={rightActions}
+        sendMenu={{ items: sendMenuItems }}
+        onEditorReady={syncMainInputEditor}
+        {...runtimeProps}
+      />
+    );
+  },
+);
 
 MainChatInput.displayName = 'MainChatInput';
 

@@ -28,7 +28,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   divider: css`
     flex: none;
-    width: 1px;
+    width: 0.5px;
     height: 16px;
     background: ${cssVar.colorBorderSecondary};
   `,

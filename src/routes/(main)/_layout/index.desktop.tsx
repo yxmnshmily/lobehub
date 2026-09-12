@@ -10,6 +10,7 @@ import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import WorkspaceContextSlot from '@/business/client/WorkspaceContextSlot';
 import { useIsAgentShareVisitorRoute } from '@/features/AgentRoute/useAgentShareVisitorRoute';
+import { BANNER_HEIGHT } from '@/features/AlertBanner/CloudBanner';
 import DesktopBrowserGatewayBridge from '@/features/DesktopBrowserGatewayBridge';
 import DesktopFileMenuBridge from '@/features/DesktopFileMenuBridge';
 import DesktopLayoutContainer from '@/features/DesktopLayoutContainer';
@@ -38,7 +39,7 @@ import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfi
 
 import DesktopAutoOidcOnFirstOpen from './DesktopAutoOidcOnFirstOpen';
 import RegisterHotkeys from './RegisterHotkeys';
-import { styles } from './style';
+import { resolveMainContainerHeight, styles } from './style';
 
 const CloudBanner = dynamic(() => import('@/features/AlertBanner/CloudBanner'));
 const GlobalApprovalNotification = dynamic(() => import('@/features/GlobalApprovalNotification'));
@@ -85,7 +86,12 @@ const Layout: FC = () => {
           <Flexbox
             horizontal
             className={cx(isPWA ? styles.mainContainerPWA : styles.mainContainer)}
-            height={`calc(100% - ${TITLE_BAR_HEIGHT}px)`}
+            height={resolveMainContainerHeight({
+              bannerHeight: BANNER_HEIGHT,
+              desktop: true,
+              showCloudPromotion,
+              titleBarHeight: TITLE_BAR_HEIGHT,
+            })}
             width={'100%'}
           >
             {!isShareVisitor && <NavPanelShell />}

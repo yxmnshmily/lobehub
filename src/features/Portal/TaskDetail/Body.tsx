@@ -1,5 +1,5 @@
 import { Flexbox } from '@lobehub/ui';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import NotFound from '@/components/404';
@@ -10,8 +10,10 @@ import {
   TopicChatDrawer,
   useActiveTaskDetail,
 } from '@/features/AgentTasks';
+import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/selectors';
+import { useTaskStore } from '@/store/task';
 
 const Body = memo(() => {
   const { t } = useTranslation('chat');
@@ -19,6 +21,11 @@ const Body = memo(() => {
   // Same data wiring as the full /task/[tid] page — owns activeTaskId + polling
   // fetch so the shared section components resolve to this task.
   const { isInitialLoading, isNotFound, error, onRetry } = useActiveTaskDetail(taskId);
+  const groupId = useTaskStore((state) => {
+    const value = taskId ? state.taskDetailMap[taskId]?.config?.groupId : undefined;
+    return typeof value === 'string' ? value : undefined;
+  });
+  const groupScope = useMemo(() => (groupId ? { groupId } : undefined), [groupId]);
 
   if (!taskId) return null;
 
@@ -41,15 +48,17 @@ const Body = memo(() => {
   }
 
   return (
-    <Flexbox
-      flex={1}
-      height={'100%'}
-      paddingInline={16}
-      style={{ minHeight: 0, overflowY: 'auto' }}
-    >
-      {isInitialLoading ? <TaskDetailSkeleton /> : <TaskDetailSections />}
-      <TopicChatDrawer />
-    </Flexbox>
+    <GroupWorkScopeContext value={groupScope}>
+      <Flexbox
+        flex={1}
+        height={'100%'}
+        paddingInline={16}
+        style={{ minHeight: 0, overflowY: 'auto' }}
+      >
+        {isInitialLoading ? <TaskDetailSkeleton /> : <TaskDetailSections />}
+        <TopicChatDrawer />
+      </Flexbox>
+    </GroupWorkScopeContext>
   );
 });
 

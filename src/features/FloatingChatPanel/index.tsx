@@ -41,7 +41,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     align-self: stretch;
 
     width: 100%;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
 

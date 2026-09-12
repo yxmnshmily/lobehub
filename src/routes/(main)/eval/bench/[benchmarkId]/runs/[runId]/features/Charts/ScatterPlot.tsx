@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCost, formatShortenNumber } from '@lobechat/utils';
+import { formatLocalizedTokens as formatShortenNumber } from '@lobechat/utils';
 import { Flexbox } from '@lobehub/ui';
 import { Tag } from '@lobehub/ui/base-ui';
 import { Divider, Tooltip } from 'antd';
@@ -9,6 +9,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -56,6 +57,7 @@ interface ScatterPlotProps {
 
 const ScatterPlot = memo<ScatterPlotProps>(({ results, benchmarkId, runId }) => {
   const { t } = useTranslation('eval');
+  const { formatOptional: formatCost } = useMonthlyExchangeRate();
   const theme = useTheme();
   const activeWorkspaceSlug = useActiveWorkspaceSlug();
 
@@ -183,7 +185,7 @@ const ScatterPlot = memo<ScatterPlotProps>(({ results, benchmarkId, runId }) => 
                   </div>
                   {d.cost !== undefined && (
                     <div>
-                      <span className={styles.tooltipLabel}>{t('run.metrics.cost')}: </span>$
+                      <span className={styles.tooltipLabel}>{t('run.metrics.cost')}: </span>
                       {formatCost(d.cost)}
                     </div>
                   )}

@@ -20,7 +20,7 @@ describe('PluginStore', () => {
 
   it('should return the base URL if the provided language is not supported', () => {
     const pluginStore = new PluginStore();
-    const url = pluginStore.getPluginIndexUrl('fr-FR');
-    expect(url).toBe(`${baseURL}/index.fr-FR.json`);
+    const url = Reflect.apply(pluginStore.getPluginIndexUrl, pluginStore, ['fr-FR']);
+    expect(url).toBe(baseURL);
   });
 });

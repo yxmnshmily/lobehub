@@ -5,13 +5,4 @@ export interface DocumentChunk {
 }
 
 export type FileLoaderType =
-  | 'code'
-  | 'ppt'
-  | 'pdf'
-  | 'markdown'
-  | 'doc'
-  | 'text'
-  | 'latex'
-  | 'csv'
-  | 'epub'
-  | 'ipynb';
+  'code' | 'ppt' | 'pdf' | 'markdown' | 'doc' | 'text' | 'latex' | 'csv' | 'epub' | 'ipynb';

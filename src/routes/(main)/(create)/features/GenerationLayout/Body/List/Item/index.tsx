@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { useResourceManageable } from '@/hooks/useResourceManageable';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
@@ -29,6 +31,8 @@ interface TopicItemProps {
 const TopicItem = memo<TopicItemProps>(({ topic, showMoreInfo, style }) => {
   const { useStore, namespace } = useGenerationTopicContext();
   const { t } = useTranslation([namespace, 'common']);
+  const navigate = useWorkspaceAwareNavigate();
+  const { pathname } = useActiveLocation();
 
   const activeWorkspaceId = useActiveWorkspaceId();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -82,6 +86,9 @@ const TopicItem = memo<TopicItemProps>(({ topic, showMoreInfo, style }) => {
 
   const handleClick = () => {
     switchGenerationTopic(topic.id);
+    if (!pathname.endsWith(`/${namespace}`)) {
+      navigate(`/${namespace}?topic=${encodeURIComponent(topic.id)}`);
+    }
   };
 
   const handleDelete = (e: React.MouseEvent) => {

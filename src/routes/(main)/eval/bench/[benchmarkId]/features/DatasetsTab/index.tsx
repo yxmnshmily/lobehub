@@ -1,13 +1,14 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button, confirmModal, Skeleton, Text, toast } from '@lobehub/ui/base-ui';
+import { Button, confirmModal, Text, toast } from '@lobehub/ui/base-ui';
 import { Card } from 'antd';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { Plus } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { agentEvalService } from '@/services/agentEval';
 import { useEvalStore } from '@/store/eval';
 
@@ -194,11 +195,11 @@ const DatasetsTab = memo<DatasetsTabProps>(
                   <div className={loadingStyles.header}>
                     <div className={loadingStyles.icon} />
                     <Flexbox flex={1} gap={8}>
-                      <Skeleton height={16} width={120} />
-                      <Skeleton height={12} width={200} />
+                      <SkeletonBar height={16} width={120} />
+                      <SkeletonBar height={12} width={200} />
                     </Flexbox>
-                    <Skeleton height={36} width={64} />
-                    <Skeleton height={28} width={64} />
+                    <SkeletonBar height={36} width={64} />
+                    <SkeletonBar height={28} width={64} />
                   </div>
                 </Card>
               ))}

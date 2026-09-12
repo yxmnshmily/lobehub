@@ -29,7 +29,7 @@ const ResourceCategorySkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => {
           flex={'none'}
           height={44}
           justify={'space-between'}
-          paddingInline={16}
+          paddingInline={'var(--mobile-page-inner-gutter, 16px)'}
         >
           <SkeletonBar height={20} width={144} />
           <SkeletonBar height={28} width={72} />

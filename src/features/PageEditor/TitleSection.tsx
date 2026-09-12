@@ -1,12 +1,13 @@
 'use client';
 
 import { Flexbox, Icon, TextArea } from '@lobehub/ui';
-import { Button, Skeleton } from '@lobehub/ui/base-ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { SmilePlus } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import EmojiPicker from '@/components/EmojiPicker';
 import { useDocumentStore } from '@/store/document';
 import { editorSelectors } from '@/store/document/slices/editor';
@@ -114,7 +115,7 @@ const TitleSection = memo(() => {
 
       {/* Title Input */}
       {showTitleSkeleton ? (
-        <Skeleton height={44} width={320} />
+        <SkeletonBar height={44} width={320} />
       ) : (
         <TextArea
           autoSize={{ minRows: 1 }}

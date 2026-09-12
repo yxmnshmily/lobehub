@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 
-import { agentOperations } from '@/database/schemas';
+import { agentOperations, topics } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
 
 import type { resolveHostedTravelGroupTarget as ResolveHostedTravelGroupTarget } from './groupChat';
@@ -25,12 +25,32 @@ export interface HostedGroupRunAccess {
   completedAt: Date | null;
   error: unknown;
   operationId: string;
+  resultTopicId?: string;
   startedAt: Date | null;
   status: string;
   updatedAt: Date;
 }
 
 const notFound = () => new TRPCError({ code: 'NOT_FOUND', message: 'Run not found' });
+
+/** Project only the topic created by this run inside its authorized conversation scope. */
+export const resolveHostedGroupResultTopicId = async (
+  db: LobeChatDatabase,
+  input: { groupId: string; ownerUserId: string; topicId?: string | null },
+) => {
+  if (!input.topicId) return;
+  const topic = await db.query.topics.findFirst({
+    columns: { id: true },
+    where: and(
+      eq(topics.id, input.topicId),
+      eq(topics.groupId, input.groupId),
+      eq(topics.userId, input.ownerUserId),
+      isNull(topics.workspaceId),
+      isNull(topics.deletedAt),
+    ),
+  });
+  return topic?.id;
+};
 
 export const hashHostedGroupRunHandle = (runHandle: string) =>
   createHash('sha256').update('hosted-group-run:v1\0').update(runHandle).digest('hex');
@@ -125,6 +145,7 @@ export const authorizeHostedGroupRun = async (input: {
       metadata: agentOperations.metadata,
       startedAt: agentOperations.startedAt,
       status: agentOperations.status,
+      topicId: agentOperations.topicId,
       updatedAt: agentOperations.updatedAt,
       userId: agentOperations.userId,
       workspaceId: agentOperations.workspaceId,
@@ -170,6 +191,11 @@ export const authorizeHostedGroupRun = async (input: {
     completedAt: operation.completedAt,
     error: operation.error,
     operationId: operation.id,
+    resultTopicId: await resolveHostedGroupResultTopicId(input.db, {
+      groupId: input.groupId,
+      ownerUserId: operation.userId,
+      topicId: operation.topicId,
+    }),
     startedAt: operation.startedAt,
     status: operation.status,
     updatedAt: operation.updatedAt,
@@ -181,6 +207,7 @@ const toISOString = (value: Date | null) => value?.toISOString() ?? null;
 export const projectHostedGroupRunStatus = (access: HostedGroupRunAccess) => ({
   completedAt: toISOString(access.completedAt),
   errorSummary: access.error ? '任务执行失败，请稍后重试。' : null,
+  ...(access.resultTopicId ? { resultTopicId: access.resultTopicId } : {}),
   startedAt: toISOString(access.startedAt),
   status: access.status,
   updatedAt: access.updatedAt.toISOString(),

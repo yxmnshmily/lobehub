@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   connectorLine: css`
     width: 24px;
-    height: 1px;
+    height: 0.5px;
     background-color: ${cssVar.colorBorderSecondary};
 
     @media (width <= 768px) {

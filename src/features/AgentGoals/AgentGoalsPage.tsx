@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import GoalSkeleton from '@/components/Skeleton/Goal';
 import AgentBreadcrumb from '@/features/AgentBreadcrumb';
 import NavHeader from '@/features/NavHeader';
+import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { goalSelectors, useGoalStore } from '@/store/goal';
@@ -20,6 +21,7 @@ import { GoalCardItem } from './GoalCardItem';
 import GoalEmptyState from './GoalEmptyState';
 import type { GoalExampleSeed } from './goalExamples';
 import { GoalListItem } from './GoalListItem';
+import { summarizeGoals } from './goalSummary';
 
 const styles = createStaticStyles(({ css }) => ({
   countBadge: css`
@@ -49,12 +51,12 @@ const styles = createStaticStyles(({ css }) => ({
   listRows: css`
     display: flex;
     flex-direction: column;
-    border-block: 1px solid ${cssVar.colorBorderSecondary};
+    border-block: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   metric: css`
     min-width: 88px;
     padding-inline-start: 16px;
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:first-child {
       padding-inline-start: 0;
@@ -68,13 +70,14 @@ const TERMINAL_GOAL_STATUSES = new Set<GoalStatus>(['achieved', 'failed', 'cance
 
 interface AgentGoalsPageProps {
   agentId?: string;
+  groupId?: string;
   projectId?: string;
 }
 
-const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, projectId }) => {
+const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId }) => {
   const { t } = useTranslation('chat');
   const navigate = useWorkspaceAwareNavigate();
-  const scopeId = projectId ? `project:${projectId}` : agentId!;
+  const scopeId = groupId ? `group:${groupId}` : projectId ? `project:${projectId}` : agentId!;
   const useFetchGoals = useGoalStore((s) => s.useFetchGoals);
   const refreshGoals = useGoalStore((s) => s.refreshGoals);
   const goals = useGoalStore(goalSelectors.goalList(scopeId));
@@ -85,12 +88,8 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, projectId }) => {
   const setFilter = useGoalStore((s) => s.setGoalListFilter);
   const setViewMode = useGoalStore((s) => s.setGoalViewMode);
   const loadMoreGoals = useGoalStore((s) => s.loadMoreGoals);
-  const { error, isLoading } = useFetchGoals(agentId, projectId);
-  const summary = useMemo(() => {
-    const delivered = goals.filter(({ goal }) => goal.status === 'review').length;
-
-    return { delivered, pursuing: goals.length - delivered, total: goals.length };
-  }, [goals]);
+  const { error, isLoading } = useFetchGoals(agentId, projectId, groupId);
+  const summary = useMemo(() => summarizeGoals(goals), [goals]);
   const filteredGoals = useMemo(() => {
     if (filter === 'all') return goals;
 
@@ -101,6 +100,7 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, projectId }) => {
   const openCreateGoal = (seed?: GoalExampleSeed) => {
     createGoalModal({
       agentId,
+      groupId,
       initialRequirement: seed?.requirement,
       initialRoundBudget: seed?.roundBudget,
       initialTitle: seed?.title,
@@ -120,7 +120,9 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, projectId }) => {
     <Flexbox flex={1} height={'100%'}>
       <NavHeader
         left={
-          agentId ? (
+          groupId ? (
+            <GroupPageBreadcrumb groupId={groupId} title="目标" />
+          ) : agentId ? (
             <AgentBreadcrumb agentId={agentId} title={t('goalList.title')} />
           ) : (
             <Text weight={600}>{t('goalList.title')}</Text>
@@ -133,9 +135,11 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, projectId }) => {
         }
       />
       <WideScreenContainer
+        fullWidth
         flex={1}
         gap={16}
         paddingBlock={16}
+        paddingInline={16}
         wrapperStyle={{ flex: 1, overflowY: 'auto' }}
       >
         {isLoading && !isInitialized ? (

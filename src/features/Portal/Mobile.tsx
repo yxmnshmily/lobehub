@@ -15,6 +15,14 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     background: linear-gradient(${cssVar.colorBgElevated}, ${cssVar.colorBgContainer}) !important;
   `,
+  mobileSheet: css`
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  `,
 }));
 
 const MobilePortal = () => {
@@ -43,14 +51,15 @@ const MobilePortal = () => {
     // global ModalHost — above every route match, where those params are empty.
     <Modal
       allowFullscreen
-      className={cx(isPortalThread && styles.container)}
+      className={cx(styles.mobileSheet, isPortalThread && styles.container)}
       draggable={false}
       footer={null}
-      height={'95%'}
+      height={'100dvh'}
       open={showMobilePortal}
       title={t('title')}
+      width={'100vw'}
       styles={{
-        body: { padding: 0 },
+        body: { padding: 0, paddingBottom: 'env(safe-area-inset-bottom)' },
         header: { display: 'none' },
       }}
       onCancel={() => clearPortalStack()}

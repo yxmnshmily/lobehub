@@ -7,6 +7,8 @@ import { useStoreApi } from '../store';
 
 const SAVE_DEBOUNCE_MS = 500;
 
+const isEditorUnavailable = (editor: IEditor) => editor.getLexicalEditor?.() === null;
+
 export const useChatInputDraft = () => {
   const storeApi = useStoreApi();
   // The storage revision whose document the editor is currently carrying. An
@@ -19,7 +21,7 @@ export const useChatInputDraft = () => {
   const persistDraftFor = useCallback(
     (draftKey: string, removeEmpty = true) => {
       const { editor, getMarkdownContent, getJSONState } = storeApi.getState();
-      if (!editor) return;
+      if (!editor || isEditorUnavailable(editor)) return;
 
       if (getMarkdownContent().trim().length === 0) {
         const loadedDraft = loadedDraftRef.current;
@@ -66,6 +68,8 @@ export const useChatInputDraft = () => {
 
   const restoreDraft = useCallback(
     (editor: IEditor) => {
+      if (isEditorUnavailable(editor)) return;
+
       const { draftKey } = storeApi.getState();
       if (!draftKey) return;
 
@@ -91,10 +95,10 @@ export const useChatInputDraft = () => {
         if (state.draftKey === prevState.draftKey) return;
 
         saveDraftDebounced.cancel();
-        if (prevState.draftKey) persistDraftFor(prevState.draftKey);
-
         const { editor } = state;
-        if (!editor) return;
+        if (!editor || isEditorUnavailable(editor)) return;
+
+        if (prevState.draftKey) persistDraftFor(prevState.draftKey);
         editor.cleanDocument();
         restoreDraft(editor);
         if (!state.mobile) editor.focus();

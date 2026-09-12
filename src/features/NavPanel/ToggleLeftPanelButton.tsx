@@ -15,6 +15,8 @@ import { useUserStore } from '@/store/user';
 import { settingsSelectors } from '@/store/user/selectors';
 import { isMacOS } from '@/utils/platform';
 
+import { useMobileNavPanelController } from './MobileNavPanel';
+
 export const TOGGLE_BUTTON_ID = 'toggle_left_panel_button';
 
 // On macOS desktop a persistent toggle lives in the titlebar (NavigationBar),
@@ -30,9 +32,8 @@ interface ToggleLeftPanelButtonProps {
   icon?: ActionIconProps['icon'];
   /**
    * DOM id for the button. Defaults to the shared {@link TOGGLE_BUTTON_ID} which
-   * NavPanelDraggable targets for its hover-reveal CSS. Pass a custom id (or `null`)
-   * to opt out — e.g. for a persistent instance rendered outside the sidebar panel,
-   * to avoid duplicate ids and the hover-hide behavior.
+   * NavPanelDraggable targets for its shared sizing. Pass a custom id (or `null`)
+   * for an instance outside the sidebar panel to avoid duplicate ids.
    */
   id?: string | null;
   showActive?: boolean;
@@ -42,6 +43,7 @@ interface ToggleLeftPanelButtonProps {
 
 const ToggleLeftPanelButton = memo<ToggleLeftPanelButtonProps>(
   ({ title, showActive, icon, size, id = TOGGLE_BUTTON_ID, forceVisible }) => {
+    const mobilePanel = useMobileNavPanelController();
     const [expand, togglePanel] = useGlobalStore((s) => [
       systemStatusSelectors.showLeftPanel(s),
       s.toggleLeftPanel,
@@ -52,10 +54,13 @@ const ToggleLeftPanelButton = memo<ToggleLeftPanelButtonProps>(
 
     if (isMacDesktop && !forceVisible) return null;
 
+    const displayedExpand = mobilePanel?.open ?? expand;
+
     return (
       <ActionIcon
-        active={showActive ? expand : undefined}
-        icon={icon || (expand ? PanelLeftClose : PanelLeftOpen)}
+        active={showActive ? displayedExpand : undefined}
+        aria-expanded={mobilePanel ? displayedExpand : undefined}
+        icon={icon || (displayedExpand ? PanelLeftClose : PanelLeftOpen)}
         id={id ?? undefined}
         size={size || DESKTOP_HEADER_ICON_SMALL_SIZE}
         title={title || t('toggleLeftPanel.title', { ns: 'hotkey' })}
@@ -63,7 +68,7 @@ const ToggleLeftPanelButton = memo<ToggleLeftPanelButtonProps>(
           hotkey,
           placement: 'bottom',
         }}
-        onClick={() => togglePanel()}
+        onClick={() => (mobilePanel ? mobilePanel.toggle() : togglePanel())}
       />
     );
   },

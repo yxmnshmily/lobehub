@@ -5,7 +5,7 @@ type CheckRepairTarget = { id: string; seq: number; title: string };
  * reviewer does not have to hand-summarize evidence and feedback.
  */
 export const buildRepairPrompt = (acceptanceId: string) =>
-  `Use the LobeHub CLI to read the latest review feedback for acceptance ${acceptanceId}:
+  `Use the 旅游群 CLI to read the latest review feedback for acceptance ${acceptanceId}:
 
 lh acceptance feedback ${acceptanceId} --actionable
 

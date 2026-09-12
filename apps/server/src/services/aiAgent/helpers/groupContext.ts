@@ -1,27 +1,13 @@
 import type { AgentGroupConfig } from '@lobechat/context-engine';
 
 /**
- * Format error for storage in thread metadata
- * Handles Error objects which don't serialize properly with JSON.stringify
+ * Reduce runtime failures to a non-sensitive persistence marker. Provider and
+ * database errors can contain prompts, credentials, infrastructure details,
+ * or user identifiers and must not be copied into thread metadata.
  */
 export function formatErrorForMetadata(error: unknown): Record<string, any> | undefined {
   if (!error) return undefined;
-
-  // Handle Error objects
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      name: error.name,
-    };
-  }
-
-  // Handle objects with message property (like ChatMessageError)
-  if (typeof error === 'object' && 'message' in error) {
-    return error as Record<string, any>;
-  }
-
-  // Fallback: wrap in object
-  return { message: String(error) };
+  return { kind: 'runtime' };
 }
 
 /**
@@ -34,7 +20,13 @@ export function formatErrorForMetadata(error: unknown): Record<string, any> | un
  */
 export const buildGroupAgentContext = (
   currentAgentId: string,
-  group: { content?: string | null; title?: string | null } | undefined,
+  group:
+    | {
+        config?: { maxDiscussionRounds?: number } | null;
+        content?: string | null;
+        title?: string | null;
+      }
+    | undefined,
   roster: Array<{ agentId: string; role: string | null; title: string | null }>,
 ): AgentGroupConfig | undefined => {
   if (roster.length === 0) return undefined;
@@ -62,6 +54,7 @@ export const buildGroupAgentContext = (
     currentAgentName,
     currentAgentRole,
     groupTitle: group?.title || undefined,
+    maxDiscussionRounds: group?.config?.maxDiscussionRounds,
     members,
     systemPrompt: group?.content || undefined,
   };

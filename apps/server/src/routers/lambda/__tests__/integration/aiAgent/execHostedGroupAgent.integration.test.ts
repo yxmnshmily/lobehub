@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  ChatGroupSponsoredCreditModel,
   type LobeChatDatabase,
   PlatformCreditAdminModel,
   PlatformCreditModel,
@@ -16,12 +17,14 @@ import {
   platformCreditEntries,
   platformCreditReservations,
   roles,
+  topics,
   userRoles,
   users,
 } from '@lobechat/database/schemas';
 import { getTestDB } from '@lobechat/database/test-utils';
 import { and, eq } from 'drizzle-orm';
 import OpenAI from 'openai';
+import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
@@ -82,8 +85,9 @@ vi.mock('@/server/services/travelGeneration/production', async (importOriginal) 
   createHostedTravelCopyGenerationOrchestrator: vi.fn(() => ({ run: generationMocks.run })),
 }));
 
+let toolCallSequence = 0;
 const createToolCallStream = (name: string, arguments_: Record<string, unknown>) => {
-  const callId = `call_${name}_${Date.now()}`;
+  const callId = `call_${name}_${Date.now()}_${++toolCallSequence}`;
   const args = JSON.stringify(arguments_);
   return createMockResponsesStream([
     {
@@ -123,6 +127,16 @@ const waitForStreamEnd = async (operationId: string) => {
   throw new Error(`Hosted group stream did not finish for ${operationId}`);
 };
 
+// The runtime stream ends before CompletionLifecycle persists the publication marker.
+// Member clients wait on the durable status RPC, not on the in-memory/stream status.
+const waitForDurableCompletion = (readStatus: () => Promise<{ status: string } | undefined>) =>
+  vi.waitFor(
+    async () => {
+      expect((await readStatus())?.status).toBe('done');
+    },
+    { interval: 20, timeout: 5000 },
+  );
+
 describe('hosted default group two-turn execution', () => {
   let adminId: string;
   let copywriterId: string;
@@ -130,17 +144,19 @@ describe('hosted default group two-turn execution', () => {
   let memberId: string;
   let supervisorId: string;
   let userId: string;
-  let mockResponsesCreate: ReturnType<typeof vi.spyOn>;
+  let mockResponsesCreate: MockInstance<OpenAI.Responses['create']>;
   let previousCredentialOwnerId: string | undefined;
 
   beforeEach(async () => {
     pricingMocks.resolvePlatformModelPricing.mockResolvedValue({
+      contextWindowTokens: 128_000,
+      maxOutput: 16_384,
       model: 'gpt-5-pro',
       pricing: {
         currency: 'USD',
         units: [
-          { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
-          { name: 'textOutput', rate: 2, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textInput', rate: 0.001, strategy: 'fixed', unit: 'millionTokens' },
+          { name: 'textOutput', rate: 0.002, strategy: 'fixed', unit: 'millionTokens' },
         ],
       },
       provider: 'openai',
@@ -155,6 +171,13 @@ describe('hosted default group two-turn execution', () => {
     userId = await createTestUser(testDB);
     memberId = await createTestUser(testDB);
     adminId = await createTestUser(testDB);
+    for (const [id, phone] of [
+      [userId, '13800000101'],
+      [memberId, '13800000102'],
+      [adminId, '13800000103'],
+    ]) {
+      await testDB.update(users).set({ phone, phoneNumberVerified: true }).where(eq(users.id, id));
+    }
     previousCredentialOwnerId = process.env.TRAVEL_PLATFORM_CREDENTIAL_OWNER_ID;
     process.env.TRAVEL_PLATFORM_CREDENTIAL_OWNER_ID = adminId;
     await testDB
@@ -209,7 +232,7 @@ describe('hosted default group two-turn execution', () => {
           systemRole: template.systemRole,
           title: template.label,
           userId,
-      })
+        })
         .returning();
       specialistIds.push(specialist.id);
       if (template.clientId === 'default-travel-copywriter') copywriterId = specialist.id;
@@ -222,31 +245,12 @@ describe('hosted default group two-turn execution', () => {
       reason: 'hosted group integration test',
       targetUserId: userId,
     });
-    const ownerAccount = await new PlatformCreditModel(testDB, userId).getAccount();
-    const periodStartedAt = new Date();
     await testDB.insert(chatGroupUserMemberships).values({
-      canUsePaidAi: true,
+      canUsePaidAi: false,
       chatGroupId: groupId,
       invitedByUserId: userId,
-      maxCreditsPerPeriod: 5000,
-      maxCreditsPerRequest: 1000,
       membershipVersion: 2,
       userId: memberId,
-    });
-    await testDB.insert(chatGroupSponsoredCreditPolicies).values({
-      chatGroupId: groupId,
-      defaultMemberPeriodLimitCredits: 5000,
-      defaultMemberRequestLimitCredits: 1000,
-      defaultMemberSponsorshipEnabled: true,
-      enabled: true,
-      groupPeriodLimitCredits: 10_000,
-      payerAccountId: ownerAccount.id,
-      payerUserId: userId,
-      payerUserIdSnapshot: userId,
-      periodDurationSeconds: 3600,
-      periodEndsAt: new Date(periodStartedAt.getTime() + 3_600_000),
-      periodStartedAt,
-      policyVersion: 1,
     });
     mockResponsesCreate = vi.spyOn(OpenAI.Responses.prototype, 'create');
   });
@@ -280,6 +284,15 @@ describe('hosted default group two-turn execution', () => {
     expect(first.token).toEqual(expect.any(String));
     await waitForOperationComplete(inMemoryAgentStateManager, first.operationId);
     const firstEvents = await waitForStreamEnd(first.operationId);
+    await waitForDurableCompletion(() =>
+      testDB.query.agentOperations.findFirst({ where: eq(agentOperations.id, first.operationId) }),
+    );
+
+    const previousActivity = new Date('2026-09-01T00:00:00.000Z');
+    await testDB
+      .update(topics)
+      .set({ updatedAt: previousActivity })
+      .where(eq(topics.id, first.topicId!));
 
     const second = await caller.execAgent({
       agentId: supervisorId,
@@ -289,6 +302,13 @@ describe('hosted default group two-turn execution', () => {
     });
     await waitForOperationComplete(inMemoryAgentStateManager, second.operationId);
     const secondEvents = await waitForStreamEnd(second.operationId);
+    await waitForDurableCompletion(() =>
+      testDB.query.agentOperations.findFirst({ where: eq(agentOperations.id, second.operationId) }),
+    );
+    const continuedTopic = await testDB.query.topics.findFirst({
+      where: eq(topics.id, first.topicId!),
+    });
+    expect(continuedTopic!.updatedAt.getTime()).toBeGreaterThan(previousActivity.getTime());
 
     expect(second.topicId).toBe(first.topicId);
     expect(firstEvents.some(({ type }) => type === 'agent_runtime_end')).toBe(true);
@@ -360,7 +380,313 @@ describe('hosted default group two-turn execution', () => {
     }
   }, 30_000);
 
-  it('completes invite, bilateral chat, sponsored copy, safe publish and removal revocation', async () => {
+  it('runs review, quoted revision, and unquoted continuation in one member discussion', async () => {
+    const reviewer = await testDB.query.agents.findFirst({
+      where: and(
+        eq(agents.userId, userId),
+        eq(
+          agents.clientId,
+          TRAVEL_SPECIALIST_TEMPLATES.find(
+            ({ clientId }) => clientId !== 'default-travel-copywriter',
+          )!.clientId,
+        ),
+      ),
+    });
+    const reviewerId = reviewer!.id;
+    await testDB
+      .update(chatGroups)
+      .set({ config: { maxDiscussionRounds: 4 } })
+      .where(eq(chatGroups.id, groupId));
+
+    let firstMessageId = '';
+    let reviewMessageId = '';
+    mockResponsesCreate
+      .mockResolvedValueOnce(
+        createToolCallStream('lobe-group-management____speak', {
+          agentId: copywriterId,
+          instruction: '完成文案后交给审核员。',
+        }) as any,
+      )
+      .mockResolvedValueOnce(createMockResponsesAPIStream('好的，文案完毕了请检查。') as any)
+      .mockImplementationOnce((body) => {
+        const strings: string[] = [];
+        const collectStrings = (value: unknown) => {
+          if (typeof value === 'string') strings.push(value);
+          else if (Array.isArray(value)) value.forEach(collectStrings);
+          else if (value && typeof value === 'object') Object.values(value).forEach(collectStrings);
+        };
+        collectStrings(body);
+        const source = strings.find(
+          (value) =>
+            value.includes('<message_reference id="') && value.includes('好的，文案完毕了请检查。'),
+        );
+        const reference = source?.match(/<message_reference id="([^"]+)"/u)?.[1];
+        firstMessageId = reference ? decodeURIComponent(reference) : '';
+        return createToolCallStream('lobe-group-management____speak', {
+          agentId: reviewerId,
+          instruction: '检查文案。',
+          replyToMessageId: reference,
+        }) as any;
+      })
+      .mockResolvedValueOnce(createMockResponsesAPIStream('我来检查你的文案。') as any)
+      .mockImplementationOnce((body) => {
+        const strings: string[] = [];
+        const collectStrings = (value: unknown) => {
+          if (typeof value === 'string') strings.push(value);
+          else if (Array.isArray(value)) value.forEach(collectStrings);
+          else if (value && typeof value === 'object') Object.values(value).forEach(collectStrings);
+        };
+        collectStrings(body);
+        const source = strings.find(
+          (value) =>
+            value.includes('<message_reference id="') && value.includes('我来检查你的文案。'),
+        );
+        const reference = source?.match(/<message_reference id="([^"]+)"/u)?.[1];
+        reviewMessageId = reference ? decodeURIComponent(reference) : '';
+        return createToolCallStream('lobe-group-management____speak', {
+          agentId: copywriterId,
+          instruction: '根据审核意见修改。',
+          replyToMessageId: reference,
+        }) as any;
+      })
+      .mockResolvedValueOnce(createMockResponsesAPIStream('我已按建议修改文案。') as any)
+      .mockResolvedValueOnce(
+        createToolCallStream('lobe-group-management____speak', {
+          agentId: copywriterId,
+          instruction: '继续独立润色。',
+        }) as any,
+      )
+      .mockResolvedValueOnce(createMockResponsesAPIStream('我继续完善这条文案。') as any);
+
+    const caller = aiAgentRouter.createCaller({ jwtPayload: { userId }, userId });
+    const started = await caller.execAgent({
+      agentId: supervisorId,
+      appContext: { groupId },
+      billing: { idempotencyKey: 'quoted-review-revision', maxCredits: 1000 },
+      prompt:
+        'A 先交初稿；B 引用 A 提审核意见；A 引用 B 返回修订；A 再独立续写一次。',
+    });
+    const completed = await waitForOperationComplete(
+      inMemoryAgentStateManager,
+      started.operationId,
+    );
+    await waitForStreamEnd(started.operationId);
+    await waitForDurableCompletion(() =>
+      testDB.query.agentOperations.findFirst({
+        where: eq(agentOperations.id, started.operationId),
+      }),
+    );
+
+    expect(completed.status).toBe('done');
+    expect(mockResponsesCreate).toHaveBeenCalledTimes(8);
+    expect(firstMessageId).not.toBe('');
+    expect(reviewMessageId).not.toBe('');
+    const children = await testDB
+      .select({ agentId: agentOperations.agentId })
+      .from(agentOperations)
+      .where(eq(agentOperations.parentOperationId, started.operationId));
+    expect(children).toHaveLength(4);
+    expect(children.filter(({ agentId }) => agentId === copywriterId)).toHaveLength(3);
+    expect(children.filter(({ agentId }) => agentId === reviewerId)).toHaveLength(1);
+    const discussion = await testDB
+      .select({ agentId: messages.agentId, content: messages.content })
+      .from(messages)
+      .where(and(eq(messages.groupId, groupId), eq(messages.topicId, started.topicId!)));
+    const encodedFirstMessageId = encodeURIComponent(firstMessageId).replaceAll('_', '%5F');
+    const encodedReviewMessageId = encodeURIComponent(reviewMessageId).replaceAll('_', '%5F');
+    expect(discussion).toEqual(
+      expect.arrayContaining([
+        { agentId: copywriterId, content: '好的，文案完毕了请检查。' },
+        {
+          agentId: reviewerId,
+          content: `<group_reply ref="${encodedFirstMessageId}" />\n我来检查你的文案。`,
+        },
+        {
+          agentId: copywriterId,
+          content: `<group_reply ref="${encodedReviewMessageId}" />\n我已按建议修改文案。`,
+        },
+        { agentId: copywriterId, content: '我继续完善这条文案。' },
+      ]),
+    );
+    expect(
+      discussion.find(({ content }) => content === '我继续完善这条文案。')?.content,
+    ).not.toContain('<group_reply');
+  }, 30_000);
+
+  it('publishes the selected assistant response through the hosted supervisor final-text boundary', async () => {
+    const recordCompletion = AgentOperationModel.prototype.recordCompletion;
+    let releaseCompletion!: () => void;
+    const completionGate = new Promise<void>((resolve) => {
+      releaseCompletion = resolve;
+    });
+    vi.spyOn(AgentOperationModel.prototype, 'recordCompletion').mockImplementation(async function (
+      this: AgentOperationModel,
+      operationId,
+      input,
+    ) {
+      if (input.hostedGroupMemberFinal) await completionGate;
+      return recordCompletion.call(this, operationId, input);
+    });
+    try {
+      mockResponsesCreate
+        .mockResolvedValueOnce(
+          createToolCallStream('lobe-group-management____speak', {
+            agentId: supervisorId,
+            instruction: 'This target is overridden by the trusted mention.',
+          }) as any,
+        )
+        .mockResolvedValueOnce(createMockResponsesAPIStream('先明确客群，再整理行程亮点。') as any)
+        .mockResolvedValueOnce(
+          createMockResponsesAPIStream('文案助理建议：先明确客群，再整理行程亮点。') as any,
+        );
+      const memberCaller = aiAgentRouter.createCaller({
+        jwtPayload: { userId: memberId },
+        userId: memberId,
+      });
+      const started = await memberCaller.startHostedTravelGroupTask({
+        billing: { idempotencyKey: 'member-mention-final', maxCredits: 1000 },
+        groupId,
+        mentionedAgentId: copywriterId,
+        prompt: '请帮我整理这个想法',
+      });
+      const [operation] = await testDB
+        .select()
+        .from(agentOperations)
+        .where(
+          and(
+            eq(agentOperations.chatGroupId, groupId),
+            eq(agentOperations.topicId, started.resultTopicId!),
+          ),
+        );
+      const completed = await waitForOperationComplete(inMemoryAgentStateManager, operation.id);
+      await waitForStreamEnd(operation.id);
+      expect(completed.status).toBe('done');
+      expect(
+        (
+          await memberCaller.getHostedTravelGroupRunStatus({
+            groupId,
+            runHandle: started.runHandle,
+          })
+        ).status,
+      ).not.toBe('done');
+      expect(
+        await new GroupConversationAccessRepository(
+          testDB,
+        ).listAccessiblePublishedAssistantMessages(memberId, groupId, started.resultTopicId!),
+      ).toEqual([]);
+      releaseCompletion();
+      await waitForDurableCompletion(() =>
+        memberCaller.getHostedTravelGroupRunStatus({ groupId, runHandle: started.runHandle }),
+      );
+      const published = await new GroupConversationAccessRepository(
+        testDB,
+      ).listAccessiblePublishedAssistantMessages(memberId, groupId, started.resultTopicId!);
+      expect(published).toEqual([
+        expect.objectContaining({
+          content: '文案助理建议：先明确客群，再整理行程亮点。',
+          kind: 'assistant',
+        }),
+      ]);
+      const child = await testDB.query.agentOperations.findFirst({
+        where: eq(agentOperations.parentOperationId, operation.id),
+      });
+      expect(child?.agentId).toBe(copywriterId);
+    } finally {
+      releaseCompletion();
+    }
+  });
+
+  it('dispatches each selected group assistant once and rejects foreign selections before execution', async () => {
+    const secondAssistant = await testDB.query.agents.findFirst({
+      where: and(
+        eq(agents.userId, userId),
+        eq(
+          agents.clientId,
+          TRAVEL_SPECIALIST_TEMPLATES.find(
+            ({ clientId }) => clientId !== 'default-travel-copywriter',
+          )!.clientId,
+        ),
+      ),
+    });
+    const secondId = secondAssistant!.id;
+    const sponsorship = new ChatGroupSponsoredCreditModel(testDB, userId);
+    await sponsorship.enablePolicy({
+      chatGroupId: groupId,
+      expectedPolicyVersion: 0,
+      groupPeriodLimitCredits: 10_000,
+      periodDurationSeconds: 86_400,
+    });
+    await sponsorship.setMemberPaidAiLimits({
+      chatGroupId: groupId,
+      expectedMembershipVersion: 2,
+      maxCreditsPerPeriod: 3000,
+      maxCreditsPerRequest: 1000,
+      memberUserId: memberId,
+    });
+    const memberCaller = aiAgentRouter.createCaller({
+      jwtPayload: { userId: memberId },
+      userId: memberId,
+    });
+    await expect(
+      memberCaller.startHostedTravelGroupTask({
+        billing: { idempotencyKey: 'multi-foreign', maxCredits: 1000 },
+        groupId,
+        mentionedAgentIds: [copywriterId, 'foreign-assistant-id'],
+        prompt: '请各位提出建议',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockResponsesCreate).not.toHaveBeenCalled();
+
+    mockResponsesCreate
+      .mockResolvedValueOnce(
+        createToolCallStream('lobe-group-management____speak', {
+          agentId: supervisorId,
+          instruction: 'trusted override',
+        }) as any,
+      )
+      .mockResolvedValueOnce(createMockResponsesAPIStream('第一位助理的建议。') as any)
+      .mockResolvedValueOnce(
+        createToolCallStream('lobe-group-management____speak', {
+          agentId: supervisorId,
+          instruction: 'trusted override',
+        }) as any,
+      )
+      .mockResolvedValueOnce(createMockResponsesAPIStream('第二位助理的建议。') as any)
+      .mockResolvedValueOnce(createMockResponsesAPIStream('已汇总两位助理的建议。') as any);
+    const started = await memberCaller.startHostedTravelGroupTask({
+      billing: { idempotencyKey: 'member-multiple-mentions', maxCredits: 1000 },
+      groupId,
+      mentionedAgentId: copywriterId,
+      mentionedAgentIds: [copywriterId, secondId, copywriterId],
+      prompt: '请各位提出建议',
+    });
+    const [operation] = await testDB
+      .select()
+      .from(agentOperations)
+      .where(
+        and(
+          eq(agentOperations.chatGroupId, groupId),
+          eq(agentOperations.topicId, started.resultTopicId!),
+        ),
+      );
+    const completed = await waitForOperationComplete(inMemoryAgentStateManager, operation.id);
+    await waitForStreamEnd(operation.id);
+    expect(completed).toMatchObject({ status: 'done' });
+    await waitForDurableCompletion(() =>
+      memberCaller.getHostedTravelGroupRunStatus({ groupId, runHandle: started.runHandle }),
+    );
+    const children = await testDB
+      .select({ agentId: agentOperations.agentId })
+      .from(agentOperations)
+      .where(eq(agentOperations.parentOperationId, operation.id));
+    expect(children.map(({ agentId }) => agentId).sort()).toEqual([copywriterId, secondId].sort());
+    const published = await new GroupConversationAccessRepository(
+      testDB,
+    ).listAccessiblePublishedAssistantMessages(memberId, groupId, started.resultTopicId!);
+    expect(published).toEqual([expect.objectContaining({ content: '已汇总两位助理的建议。' })]);
+  }, 30_000);
+
+  it('completes invite, bilateral chat, automatic owner-funded copy, safe publish and removal revocation', async () => {
     mockResponsesCreate
       .mockResolvedValueOnce(
         createToolCallStream('lobe-group-management____speak', {
@@ -389,16 +715,20 @@ describe('hosted default group two-turn execution', () => {
 
     const ownerMembershipCaller = groupMembershipRouter.createCaller(createTestContext(userId));
     const memberMembershipCaller = groupMembershipRouter.createCaller(createTestContext(memberId));
-    const invitation = await ownerMembershipCaller.createInvitation({ email: memberEmail, groupId });
+    const invitation = await ownerMembershipCaller.createInvitation({
+      email: memberEmail,
+      groupId,
+    });
     expect(invitation).toMatchObject({ status: 'created', token: expect.any(String) });
     const pendingInvitations = await memberMembershipCaller.listMyPendingInvitations();
     expect(pendingInvitations.items).toEqual([
       expect.objectContaining({
+        billingMode: 'automatic_owner',
         groupId,
         sponsorship: {
-          billingResponsibility: 'group_owner',
-          maxCreditsPerPeriod: 5000,
-          maxCreditsPerRequest: 1000,
+          billingResponsibility: null,
+          maxCreditsPerPeriod: null,
+          maxCreditsPerRequest: null,
         },
       }),
     ]);
@@ -446,7 +776,10 @@ describe('hosted default group two-turn execution', () => {
     expect(humanMessages.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ authorKind: 'self', content: expect.stringContaining('成员说') }),
-        expect.objectContaining({ authorKind: 'owner', content: expect.stringContaining('群主回复') }),
+        expect.objectContaining({
+          authorKind: 'owner',
+          content: expect.stringContaining('群主回复'),
+        }),
       ]),
     );
     expect(JSON.stringify(humanMessages)).not.toMatch(new RegExp(`${memberId}|${userId}`));
@@ -470,7 +803,12 @@ describe('hosted default group two-turn execution', () => {
       groupId,
       prompt: '帮我写一篇西藏旅游文案',
     });
-    expect(result).toEqual({ accepted: true, runHandle: expect.stringMatching(/^[\w-]{43}$/) });
+    expect(result).toEqual({
+      accepted: true,
+      resultTopicId: expect.any(String),
+      runHandle: expect.stringMatching(/^[\w-]{43}$/),
+    });
+    expect(result.resultTopicId).toBe(humanTopic.id);
     const operationRows = await testDB
       .select()
       .from(agentOperations)
@@ -482,12 +820,16 @@ describe('hosted default group two-turn execution', () => {
     );
     expect(operation).toBeDefined();
     expect(operation?.agentId).toBe(supervisorId);
+    expect(result.resultTopicId).toBe(operation?.topicId);
     const internalOperationId = operation!.id;
     const finalState = await waitForOperationComplete(
       inMemoryAgentStateManager,
       internalOperationId,
     );
     await waitForStreamEnd(internalOperationId);
+    await waitForDurableCompletion(() =>
+      memberCaller.getHostedTravelGroupRunStatus({ groupId, runHandle: result.runHandle }),
+    );
     expect(finalState.status).toBe('done');
 
     const [publishedOperation] = await testDB
@@ -505,12 +847,9 @@ describe('hosted default group two-turn execution', () => {
       publishedAt: expect.any(String),
       version: 1,
     });
-    const publishedForMember =
-      await new GroupConversationAccessRepository(testDB).listAccessiblePublishedAssistantMessages(
-        memberId,
-        groupId,
-        operation!.topicId!,
-      );
+    const publishedForMember = await new GroupConversationAccessRepository(
+      testDB,
+    ).listAccessiblePublishedAssistantMessages(memberId, groupId, operation!.topicId!);
     expect(publishedForMember).toEqual([
       expect.objectContaining({
         content: '已为你完成西藏旅游文案',
@@ -539,6 +878,7 @@ describe('hosted default group two-turn execution', () => {
       runHandle: result.runHandle,
     });
     expect(safeStatus.status).toBe('done');
+    expect(safeStatus.resultTopicId).toBe(result.resultTopicId);
     expect(safeStatus).not.toHaveProperty('operationId');
 
     const toolMessages = await testDB
@@ -556,26 +896,25 @@ describe('hosted default group two-turn execution', () => {
       .where(
         and(
           eq(platformCreditEntries.userIdSnapshot, userId),
-          eq(platformCreditEntries.actorUserIdSnapshot, memberId),
+          eq(platformCreditEntries.actorUserIdSnapshot, userId),
           eq(platformCreditEntries.type, 'usage_charge'),
         ),
       );
-    const [sponsoredBudget] = await testDB
+    const [ownerBudget] = await testDB
       .select()
       .from(platformCreditBudgets)
       .where(
         and(
-          eq(platformCreditBudgets.actorUserIdSnapshot, memberId),
+          eq(platformCreditBudgets.actorUserIdSnapshot, userId),
           eq(platformCreditBudgets.userIdSnapshot, userId),
-          eq(platformCreditBudgets.sponsorChatGroupIdSnapshot, groupId),
-          eq(platformCreditBudgets.authorizationKind, 'group_member_sponsored'),
+          eq(platformCreditBudgets.authorizationKind, 'self'),
         ),
       );
-    const sponsoredReservations = sponsoredBudget
+    const ownerReservations = ownerBudget
       ? await testDB
           .select()
           .from(platformCreditReservations)
-          .where(eq(platformCreditReservations.budgetId, sponsoredBudget.id))
+          .where(eq(platformCreditReservations.budgetId, ownerBudget.id))
       : [];
     const memberLedgerEntries = await testDB
       .select()
@@ -594,25 +933,30 @@ describe('hosted default group two-turn execution', () => {
         type: 'copy',
       }),
     );
-    expect(sponsoredBudget).toMatchObject({
-      actorUserIdSnapshot: memberId,
-      authorizationKind: 'group_member_sponsored',
-      sponsorChatGroupIdSnapshot: groupId,
+    expect(ownerBudget).toMatchObject({
+      actorUserIdSnapshot: userId,
+      authorizationKind: 'self',
       status: 'settled',
       userIdSnapshot: userId,
     });
-    expect(sponsoredBudget?.consumedCredits).toBeGreaterThan(0);
-    expect(sponsoredReservations.length).toBeGreaterThan(0);
+    expect(ownerBudget?.consumedCredits).toBeGreaterThan(0);
+    expect(ownerReservations.length).toBeGreaterThan(0);
     expect(
-      sponsoredReservations.every(
+      ownerReservations.every(
         ({ actualUsage, status, usageEntryId }) =>
           status === 'settled' && Boolean(actualUsage) && Boolean(usageEntryId),
       ),
     ).toBe(true);
     expect(charge).toMatchObject({
-      actorUserIdSnapshot: memberId,
+      actorUserIdSnapshot: userId,
       userIdSnapshot: userId,
     });
+    expect(
+      await testDB
+        .select()
+        .from(chatGroupSponsoredCreditPolicies)
+        .where(eq(chatGroupSponsoredCreditPolicies.chatGroupId, groupId)),
+    ).toEqual([]);
 
     const replay = await memberCaller.startHostedTravelGroupTask({
       billing: { idempotencyKey: 'member-copy-turn-1', maxCredits: 1000 },

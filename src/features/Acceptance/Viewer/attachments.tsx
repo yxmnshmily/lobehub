@@ -55,7 +55,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 56px;
     height: 56px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     &:hover .acceptance-attach-remove {

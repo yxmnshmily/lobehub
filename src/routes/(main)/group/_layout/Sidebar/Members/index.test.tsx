@@ -77,8 +77,7 @@ vi.mock('@/store/agentGroup/selectors', () => ({
     activeGroupId: (state: { activeGroupId: string }) => state.activeGroupId,
     getGroupAgentCount: () => () => 3,
     getGroupById:
-      (groupId: string) =>
-      (state: { groupMap: Record<string, { clientId: string | null }> }) =>
+      (groupId: string) => (state: { groupMap: Record<string, { clientId: string | null }> }) =>
         state.groupMap[groupId],
     getGroupMemberCount: () => () => 2,
   },
@@ -91,6 +90,9 @@ vi.mock('../GroupConfig/GroupMember', () => ({
 }));
 
 vi.mock('../GroupConfig/SortMembersModal', () => ({ default: () => null }));
+vi.mock('@/business/client/BusinessSettingPages/SuperGroupTemplateSection', () => ({
+  default: () => null,
+}));
 
 describe('group member management policy', () => {
   beforeEach(() => {
@@ -123,16 +125,15 @@ describe('group member management policy', () => {
     expect(screen.getByTestId('group-member')).toHaveAttribute('data-can-manage', 'true');
   });
 
-  it('keeps member-management controls for a super admin in a platform-managed group', () => {
+  it('shows global member actions for a platform admin without enabling local writes', () => {
     mocks.isPlatformAdmin = true;
     render(<Members itemKey="members" />);
 
+    expect(screen.getByRole('button', { name: '添加成员' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '成员排序' })).toBeInTheDocument();
+    expect(screen.getByTestId('group-member')).toHaveAttribute('data-can-manage', 'false');
     expect(
-      screen.getByRole('button', { name: 'groupSidebar.members.addMember' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'groupSidebar.members.sortMember' }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('group-member')).toHaveAttribute('data-can-manage', 'true');
+      screen.queryByText('默认群成员由管理员在群成员面板统一管理，并同步到所有用户的默认群。'),
+    ).not.toBeInTheDocument();
   });
 });

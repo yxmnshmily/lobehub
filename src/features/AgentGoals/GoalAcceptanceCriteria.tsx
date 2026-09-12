@@ -19,7 +19,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 8px;
 
     &:not(:last-child) {
-      border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px dashed ${cssVar.colorBorderSecondary};
     }
   `,
   seq: css`

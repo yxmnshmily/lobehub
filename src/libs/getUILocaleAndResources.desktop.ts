@@ -8,7 +8,7 @@ import {
 type UILocaleModule = { default: UILocaleResourceInput };
 type UILocaleLoaderMap = Record<string, () => Promise<UILocaleModule>>;
 
-const uiLocaleLoaders = import.meta.glob('/locales/*/ui.json') as UILocaleLoaderMap;
+const uiLocaleLoaders = import.meta.glob('/locales/{en-US,zh-CN}/ui.json') as UILocaleLoaderMap;
 
 const loadBusinessResources = async (locale: string): Promise<UILocaleResources | null> => {
   const key = `/locales/${locale}/ui.json`;

@@ -14,7 +14,7 @@ export const useStyles = createStaticStyles(({ css, cssVar }) => ({
     padding: 4px;
   `,
   divider: css`
-    height: 1px;
+    height: 0.5px;
     margin-block: 4px;
     background-color: ${cssVar.colorBorderSecondary};
   `,

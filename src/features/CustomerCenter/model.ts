@@ -1,8 +1,11 @@
+import { formatLocalizedTokens } from '@lobechat/utils/format';
+
 export type CustomerCenterSectionKey =
-  'account-security' | 'balance-usage' | 'recharge-history' | 'my-creations';
+  'account-security' | 'plans' | 'balance-usage' | 'recharge-history' | 'my-creations';
 
 export const CUSTOMER_CENTER_SECTIONS: readonly CustomerCenterSectionKey[] = [
   'account-security',
+  'plans',
   'balance-usage',
   'recharge-history',
   'my-creations',
@@ -203,7 +206,7 @@ export const formatSignedCredits = (value: number, locale: string): string =>
 export const formatTokenCount = (value: number | null | undefined, locale: string): string =>
   value === undefined || value === null || !Number.isSafeInteger(value) || value < 0
     ? '—'
-    : formatInteger(value, locale);
+    : formatLocalizedTokens(value, locale);
 
 export const formatCustomerDateTime = (value: Date | string, locale: string): string => {
   const date = value instanceof Date ? value : new Date(value);

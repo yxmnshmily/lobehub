@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
-import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, memo, type ReactNode, Suspense, useCallback, useEffect, useState } from 'react';
 
 import { useHomeUsageWidgetActive } from '@/business/client/features/HomeUsageWidget';
 import { useHomePromoLine } from '@/business/client/features/useHomePromoLine';
@@ -295,7 +295,12 @@ const styles = createStaticStyles(({ css }) => ({
   `,
 }));
 
-const Home = memo(() => {
+const Home = memo<{
+  hideRecentActivity?: boolean;
+  hideRecommendations?: boolean;
+  identity?: ReactNode;
+  composer?: ReactNode;
+}>(({ hideRecentActivity = false, hideRecommendations = false, identity, composer }) => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const showHomeRail = useGlobalStore(systemStatusSelectors.showHomeRail);
   const showHomePortrait = useGlobalStore(systemStatusSelectors.showHomePortrait);
@@ -320,7 +325,12 @@ const Home = memo(() => {
   if (drawerTopicId && !drawerMounted) setDrawerMounted(true);
   const [acceptanceDrawerMounted, setAcceptanceDrawerMounted] = useState(false);
   if (acceptancePortalOpen && !acceptanceDrawerMounted) setAcceptanceDrawerMounted(true);
-  const railVisible = resolveRailVisibility({ hiddenWidgets, isLogin, showHomeRail, usageActive });
+  const railVisible = resolveRailVisibility({
+    hiddenWidgets,
+    isLogin,
+    showHomeRail,
+    usageActive,
+  });
   const railCollapsed = !railVisible;
   const portraitVisible = Boolean(isLogin && showHomePortrait);
 
@@ -347,14 +357,16 @@ const Home = memo(() => {
   if (minimal)
     return (
       <Flexbox className={styles.minimal} gap={MINIMAL_STACK_GAP}>
-        <HomeHeader centered />
+        <HomeHeader centered identity={identity} />
         <div className={styles.inputArea}>
-          <InputArea
-            inputValue={inputValue}
-            mode={mode}
-            onInputValueChange={handleInputValueChange}
-            onModeChange={setMode}
-          />
+          {composer ?? (
+            <InputArea
+              inputValue={inputValue}
+              mode={mode}
+              onInputValueChange={handleInputValueChange}
+              onModeChange={setMode}
+            />
+          )}
         </div>
       </Flexbox>
     );
@@ -362,7 +374,7 @@ const Home = memo(() => {
   return (
     <Flexbox className={styles.grid}>
       <div className={cx(styles.header, styles.content, railCollapsed && styles.contentCollapsed)}>
-        <HomeHeader />
+        <HomeHeader identity={identity} />
         {/* The portrait has one voice: a live campaign temporarily speaks in
             place of the daily brief, which returns when the campaign leaves. */}
         {portraitVisible && (
@@ -384,15 +396,19 @@ const Home = memo(() => {
         gap={24}
       >
         <Flexbox className={styles.inputArea} gap={12}>
-          <InputArea
-            showNewModelShortcuts
-            inputValue={inputValue}
-            mode={mode}
-            onInputValueChange={handleInputValueChange}
-            onModeChange={setMode}
-          />
+          {composer ?? (
+            <InputArea
+              showNewModelShortcuts
+              inputValue={inputValue}
+              mode={mode}
+              onInputValueChange={handleInputValueChange}
+              onModeChange={setMode}
+            />
+          )}
         </Flexbox>
         <HomeModeContent
+          hideRecentActivity={hideRecentActivity}
+          hideRecommendations={hideRecommendations}
           inlineRail={railCollapsed && isLogin}
           mode={mode}
           onSuggestionSelect={handleSuggestionSelect}
@@ -408,7 +424,11 @@ const Home = memo(() => {
           id={'home-rail'}
           inert={railCollapsed}
         >
-          <HomeInbox {...RAIL_INBOX_PROPS} variant={'rail'} />
+          <HomeInbox
+            {...RAIL_INBOX_PROPS}
+            hideRecommendations={hideRecommendations}
+            variant={'rail'}
+          />
         </aside>
       )}
 

@@ -125,6 +125,18 @@ vi.mock('@/store/agent', () => ({
   ),
 }));
 
+// Keep send tests independent of the sidebar/group-list query layer. The real
+// selected-agent resolver still runs against these available agent rows.
+vi.mock('../AgentSelect/useHomeAgentRows', () => ({
+  useHomeAgentRows: () => ({
+    defaultAgentId: agentState.inboxAgentId,
+    isPersonalTravelGroup: false,
+    privateRows: [],
+    showPrivateSection: false,
+    workspaceRows: [{ id: agentState.inboxAgentId }, ...homeState.ungroupedAgents],
+  }),
+}));
+
 vi.mock('@/store/agent/selectors', () => ({
   builtinAgentSelectors: {
     inboxAgentId: (state: typeof agentState) => state.inboxAgentId,

@@ -1,4 +1,5 @@
 export default {
+  'config.model.label': 'Model',
   'config.aspectRatio.label': 'Aspect Ratio',
   'config.cameraFixed.label': 'Fixed Camera',
   'config.duration.label': 'Duration',

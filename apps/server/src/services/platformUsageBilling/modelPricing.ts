@@ -1,10 +1,12 @@
 import type { LobeChatDatabase } from '@lobechat/database';
 import { computeChatCost } from '@lobechat/model-runtime';
 import type { ModelUsage } from '@lobechat/types';
+import { resolveDeepseekPricing } from '@lobechat/utils/deepseekPricing';
 import type { Pricing, PricingUnit, PricingUnitName } from 'model-bank';
 
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
 import { getServerGlobalConfig } from '@/server/globalConfig';
+import { getBillingExchangeRate } from '@/server/services/monthlyExchangeRate';
 import { PlatformCredentialResolver } from '@/server/services/platformAiRuntime';
 import type { ProviderConfig } from '@/types/user/settings';
 
@@ -14,6 +16,9 @@ export interface PlatformModelReference {
 }
 
 export interface PlatformModelPricingSnapshot extends PlatformModelReference {
+  contextWindowTokens?: number;
+  exchangeRate?: ModelUsage['costExchangeRate'];
+  maxOutput?: number;
   pricing: Pricing;
 }
 
@@ -106,7 +111,13 @@ const canComputeTextCost = (pricing: Pricing) => {
     if (!unitNames.has('textInput') || !unitNames.has('textOutput')) return false;
     if (!textUnits.every(hasValidTextUnitRates)) return false;
 
-    return [...unitNames].every((unitName) => canPriceRepresentativeUsage(pricing, unitName));
+    return [...unitNames].every((unitName) => {
+      // A cache-write lookup (for example Ark's TTL price) is conditional. A text
+      // request that does not create a cache must not be rejected for lacking its TTL.
+      const unit = textUnits.find((item) => item.name === unitName);
+      if (unitName === 'textInput_cacheWrite' && unit?.strategy === 'lookup') return true;
+      return canPriceRepresentativeUsage(pricing, unitName);
+    });
   } catch {
     return false;
   }
@@ -135,9 +146,42 @@ export const resolvePlatformModelPricing = async (
   const exact = models.find(
     (item) => item.id === model && (!('providerId' in item) || item.providerId === provider),
   );
-  if (!exact?.pricing || !canComputeTextCost(exact.pricing)) return undefined;
+  if (!exact?.pricing) return undefined;
+  const limits = { contextWindowTokens: exact.contextWindowTokens, maxOutput: exact.maxOutput };
+  const pricing = resolveDeepseekPricing(model, provider, exact.pricing, new Date());
+  if (!pricing || !canComputeTextCost(pricing)) return undefined;
 
-  return Object.freeze({ model, pricing: exact.pricing, provider });
+  if (pricing.currency !== 'CNY') {
+    return Object.freeze({ ...limits, model, pricing: structuredClone(pricing), provider });
+  }
+  const { rate, rateDate, updatedAt } = await getBillingExchangeRate();
+  // Normalize once at admission so cost ceilings and final settlement share this quote.
+  const normalized = structuredClone(pricing);
+  normalized.currency = 'USD';
+  normalized.units = normalized.units.map((unit) => {
+    if (unit.strategy === 'fixed') return { ...unit, rate: unit.rate / rate };
+    if (unit.strategy === 'tiered')
+      return {
+        ...unit,
+        tiers: unit.tiers.map((tier) => ({ ...tier, rate: tier.rate / rate })),
+      };
+    return {
+      ...unit,
+      lookup: {
+        ...unit.lookup,
+        prices: Object.fromEntries(
+          Object.entries(unit.lookup.prices).map(([key, value]) => [key, value / rate]),
+        ),
+      },
+    };
+  });
+  return Object.freeze({
+    ...limits,
+    model,
+    provider,
+    pricing: normalized,
+    exchangeRate: Object.freeze({ rate, rateDate, updatedAt: updatedAt! }),
+  });
 };
 
 /** Replaces any runtime-derived cost with the server catalog's exact provider/model price. */
@@ -147,7 +191,12 @@ export const pricePlatformTextUsage = (
 ): ModelUsage => {
   let computation;
   try {
-    computation = computeChatCost(snapshot.pricing, usage);
+    if (snapshot.pricing.currency === 'CNY' && !snapshot.exchangeRate) {
+      throw new Error('CNY billing requires an admission exchange-rate snapshot');
+    }
+    computation = computeChatCost(snapshot.pricing, usage, {
+      usdToCnyRate: snapshot.exchangeRate?.rate,
+    });
   } catch {
     computation = undefined;
   }
@@ -161,5 +210,5 @@ export const pricePlatformTextUsage = (
     throw new Error('Exact platform model usage cost is unavailable');
   }
 
-  return { ...usage, cost: computation.totalCost };
+  return { ...usage, cost: computation.totalCost, costExchangeRate: snapshot.exchangeRate };
 };

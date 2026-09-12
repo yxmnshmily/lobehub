@@ -3,13 +3,22 @@
 import type { MenuProps } from '@lobehub/ui';
 import { Accordion, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon } from '@lobehub/ui/base-ui';
-import { EyeOffIcon, MoreHorizontalIcon, SlidersHorizontalIcon } from 'lucide-react';
+import {
+  EyeOffIcon,
+  FolderKanban,
+  History,
+  LockKeyhole,
+  MoreHorizontalIcon,
+  SlidersHorizontalIcon,
+  UsersRound,
+} from 'lucide-react';
 import type { Key, ReactElement } from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import Recents from '@/features/Home/Recents';
+import CompactListPopover from '@/features/NavPanel/components/CompactListPopover';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
@@ -76,6 +85,7 @@ const mergeSidebarExpandedKeys = (
 
 const Body = memo(() => {
   const { t } = useTranslation('common');
+  const expanded = useGlobalStore(systemStatusSelectors.showLeftPanel);
   const tab = useActiveTabKey();
   const navigate = useWorkspaceAwareNavigate();
   const { topNavItems, bottomMenuItems } = useNavLayout();
@@ -141,6 +151,7 @@ const Body = memo(() => {
   // Items that must always be visible regardless of hiddenSections
   const isVisible = useCallback(
     (k: string) => {
+      if ((k === GroupKey.Resource || k === 'image') && !activeWorkspaceId) return false;
       // Private accordion is workspace-only. In personal mode every row is
       // implicitly owner-private, so a dedicated bucket would be a noisy
       // empty section.
@@ -238,7 +249,24 @@ const Body = memo(() => {
         );
       } else if (ACCORDION_KEYS.has(key)) {
         const comp = accordionComponents[key]?.(key);
-        if (comp) accGroup.push({ element: comp, key });
+        if (comp && !expanded) {
+          flushAccordion();
+          const sections = {
+            agent: {
+              icon: UsersRound,
+              title: t(activeWorkspaceId ? 'navPanel.publicAgents' : 'navPanel.agent'),
+            },
+            private: { icon: LockKeyhole, title: t('navPanel.privateAgents') },
+            project: { icon: FolderKanban, title: t('sidebar.title', { ns: 'project' }) },
+            recents: { icon: History, title: t('recents') },
+          };
+          const section = sections[key as keyof typeof sections];
+          elements.push(
+            <CompactListPopover icon={section.icon} key={key} title={section.title}>
+              <Accordion defaultExpandedKeys={[key]}>{comp}</Accordion>
+            </CompactListPopover>,
+          );
+        } else if (comp) accGroup.push({ element: comp, key });
       } else {
         flushAccordion();
         const link = renderNavLink(key);
@@ -248,7 +276,15 @@ const Body = memo(() => {
     flushAccordion();
 
     return elements;
-  }, [visibleKeys, renderNavLink, sidebarExpandedKeys, handleAccordionExpandedChange]);
+  }, [
+    visibleKeys,
+    renderNavLink,
+    sidebarExpandedKeys,
+    handleAccordionExpandedChange,
+    expanded,
+    activeWorkspaceId,
+    t,
+  ]);
 
   return (
     <Flexbox flex={1} gap={1} paddingInline={4} style={{ minHeight: '100%' }}>

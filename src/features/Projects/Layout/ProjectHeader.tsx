@@ -1,6 +1,8 @@
 'use client';
 
-import { memo, useCallback, useMemo } from 'react';
+import { ActionIcon } from '@lobehub/ui/base-ui';
+import { PlusIcon } from 'lucide-react';
+import { memo, use, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import SideBarHeaderLayout from '@/features/NavPanel/SideBarHeaderLayout';
@@ -10,9 +12,12 @@ import {
 } from '@/features/NavPanel/SidebarHeaderSelect';
 import type { SwitcherItem } from '@/features/NavPanel/switcher/switcherItems';
 import SwitcherMenu from '@/features/NavPanel/switcher/SwitcherMenu';
+import { openCreateProjectModal } from '@/features/Projects/CreateProjectModal';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import type { ProjectDetail } from '@/store/project';
 import { useCurrentProjectList, useProjectStore } from '@/store/project';
+
+import { GroupProjectScopeContext } from './GroupProjectScope';
 
 interface ProjectHeaderProps {
   project?: ProjectDetail['project'];
@@ -21,6 +26,7 @@ interface ProjectHeaderProps {
 const ProjectHeader = memo<ProjectHeaderProps>(({ project }) => {
   const { t } = useTranslation(['project', 'common']);
   const navigate = useWorkspaceAwareNavigate();
+  const groupScope = use(GroupProjectScopeContext);
   const projects = useCurrentProjectList();
   const { error, isLoading, mutate } = useProjectStore((s) => s.useFetchProjectList)(true);
 
@@ -42,7 +48,7 @@ const ProjectHeader = memo<ProjectHeaderProps>(({ project }) => {
 
   return (
     <SideBarHeaderLayout
-      backTo="/"
+      backTo={groupScope ? `/group/${encodeURIComponent(groupScope.groupId)}` : '/group/default'}
       left={
         <SidebarHeaderSelectPopover
           content={
@@ -64,6 +70,19 @@ const ProjectHeader = memo<ProjectHeaderProps>(({ project }) => {
             title={project?.name || t('sidebar.title')}
           />
         </SidebarHeaderSelectPopover>
+      }
+      right={
+        groupScope ? (
+          <ActionIcon
+            icon={PlusIcon}
+            title={t('create.action')}
+            onClick={() =>
+              openCreateProjectModal({
+                onCreated: (item) => navigate(`/project/${item.slug ?? item.id}/conversation`),
+              })
+            }
+          />
+        ) : undefined
       }
     />
   );

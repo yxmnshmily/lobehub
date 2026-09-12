@@ -10,6 +10,8 @@ import { PageEditor } from '@/features/PageEditor';
 import { useResourceManagerStore } from '@/features/ResourceManager/store';
 import { usePermission } from '@/hooks/usePermission';
 import dynamic from '@/libs/next/dynamic';
+import { mutate } from '@/libs/swr';
+import { resourceKeys } from '@/libs/swr/keys';
 import { documentService } from '@/services/document';
 import { useFileStore } from '@/store/file';
 import { documentSelectors } from '@/store/file/slices/document/selectors';
@@ -171,6 +173,17 @@ const ResourceManager = memo<ResourceManagerProps>(({ content }) => {
                 pageId={currentViewItemId}
                 title={currentDocument?.title}
                 onBack={handleBack}
+                onDelete={() => {
+                  handleBack();
+                  void Promise.all([
+                    import('@/store/file/slices/resource/hooks').then(({ revalidateResources }) =>
+                      revalidateResources(),
+                    ),
+                    mutate((key) => Array.isArray(key) && key[0] === resourceKeys.recentPages.root),
+                  ]).catch((error) =>
+                    console.error('Failed to refresh resources after deletion:', error),
+                  );
+                }}
                 onEmojiChange={handleEmojiChange}
                 onTitleChange={handleTitleChange}
               />

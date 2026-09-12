@@ -2,11 +2,14 @@
  * @vitest-environment happy-dom
  */
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AiHeatmaps from './AiHeatmaps';
 
 const heatmapsPropsMock = vi.hoisted(() => vi.fn());
+const mutateMock = vi.hoisted(() => vi.fn());
+let swrState: { data?: { count: number; date: string; level: number }[]; error?: unknown };
 
 vi.mock('@lobehub/charts', () => ({
   Heatmaps: (props: unknown) => {
@@ -16,7 +19,9 @@ vi.mock('@lobehub/charts', () => ({
 }));
 
 vi.mock('@lobehub/ui', () => ({
-  Flexbox: ({ children }: React.ComponentProps<'div'>) => <div>{children}</div>,
+  Flexbox: ({ children, ...props }: React.ComponentProps<'div'>) => (
+    <div {...props}>{children}</div>
+  ),
   Icon: () => <span />,
 }));
 
@@ -24,7 +29,12 @@ vi.mock('@lobehub/ui/base-ui', () => ({
   Tabs: () => <div />,
   Tag: ({ children }: React.ComponentProps<'span'>) => <span>{children}</span>,
 }));
-vi.mock('antd-style', () => ({ cssVar: { colorTextDescription: 'gray' } }));
+vi.mock('antd-style', () => ({
+  createStaticStyles: (factory: (helpers: { css: () => string }) => unknown) =>
+    factory({ css: () => 'test-class' }),
+  cssVar: { colorTextDescription: 'gray' },
+  useResponsive: () => ({ mobile: true }),
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -48,16 +58,39 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@/libs/swr', () => ({
   useClientDataSWR: () => ({
-    data: [{ count: 0, date: '2026-08-09', level: 0 }],
+    ...swrState,
     isLoading: false,
+    mutate: mutateMock,
   }),
 }));
 vi.mock('@/libs/swr/keys', () => ({ statsKeys: { heatmaps: () => ['heatmaps'] } }));
 vi.mock('@/services/message', () => ({
   messageService: { getHeatmaps: vi.fn(), getTokenHeatmaps: vi.fn() },
 }));
+vi.mock('../components/StatsFormGroup', () => ({
+  default: ({ children }: React.ComponentProps<'div'>) => <div>{children}</div>,
+}));
+vi.mock('./HeatmapStats', () => ({ default: () => <div>Heatmap stats</div> }));
+vi.mock('@/components/AsyncBoundary', () => ({
+  default: ({ children, data, error, onRetry }: any) =>
+    error && data === undefined ? (
+      <div role="alert">
+        Unable to load
+        <button type="button" onClick={onRetry}>
+          Retry
+        </button>
+      </div>
+    ) : (
+      children
+    ),
+}));
 
 describe('AiHeatmaps share layout', () => {
+  beforeEach(() => {
+    mutateMock.mockReset();
+    swrState = { data: [{ count: 0, date: '2026-08-09', level: 0 }] };
+  });
+
   it('renders non-truncated month labels with the month suffix in the exported card', () => {
     render(<AiHeatmaps inShare />);
 
@@ -76,5 +109,27 @@ describe('AiHeatmaps share layout', () => {
         hideMonthLabels: true,
       }),
     );
+  });
+
+  it('keeps the mobile heatmap swipeable without exposing a horizontal scrollbar', () => {
+    render(<AiHeatmaps mobile />);
+
+    const heatmap = screen.getByText('Heatmaps');
+    expect(heatmap.parentElement?.style.maxWidth).toBe('100%');
+    expect(heatmap.parentElement?.style.overflowX).toBe('auto');
+    expect(heatmap.parentElement?.style.scrollbarWidth).toBe('none');
+    expect(heatmapsPropsMock).toHaveBeenLastCalledWith(expect.objectContaining({ blockSize: 6 }));
+  });
+
+  it('shows a retryable error instead of a permanent loading heatmap', async () => {
+    swrState = { error: new Error('heatmap request failed') };
+
+    render(<AiHeatmaps />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load');
+    expect(screen.queryByText('Heatmaps')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(mutateMock).toHaveBeenCalledOnce();
   });
 });

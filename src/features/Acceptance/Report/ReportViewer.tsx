@@ -145,7 +145,7 @@ const styles = createStaticStyles(({ css }) => ({
     margin-block-start: 4px;
     padding-block: 6px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorInfoBorder};
+    border: 0.5px solid ${cssVar.colorInfoBorder};
     border-radius: 999px;
 
     font-size: 12px;
@@ -389,7 +389,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     height: 28px;
     padding-inline: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 999px;
 
     font-size: 12px;
@@ -434,12 +434,12 @@ const styles = createStaticStyles(({ css }) => ({
   /* checks */
   checks: css`
     overflow: hidden;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
     background: ${cssVar.colorBgContainer};
   `,
   row: css`
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: none;
@@ -516,7 +516,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   suggestion: css`
     padding-inline-start: 10px;
-    border-inline-start: 2px solid ${cssVar.colorBorder};
+    border-inline-start: 0.5px solid ${cssVar.colorBorder};
 
     font-size: 13px;
     line-height: 1.6;
@@ -574,7 +574,7 @@ const styles = createStaticStyles(({ css }) => ({
   narrativeBody: css`
     margin-block-start: 12px;
     padding: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -603,7 +603,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: min(100%, 520px);
     padding-block: 7px;
     padding-inline: 10px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     text-align: start;
@@ -664,7 +664,7 @@ const styles = createStaticStyles(({ css }) => ({
     width: auto;
     max-width: 100%;
     max-height: 360px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     object-fit: contain;
@@ -689,7 +689,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: 100%;
     height: 320px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
   `,
 }));

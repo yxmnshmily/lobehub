@@ -65,7 +65,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex: none;
     padding-block: 4px;
     padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
   tabList: css`
     && {

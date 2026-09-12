@@ -89,7 +89,8 @@ export const getAppConfig = () => {
     },
     runtimeEnv: {
       // Sentry
-      NEXT_PUBLIC_ENABLE_SENTRY: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+      NEXT_PUBLIC_ENABLE_SENTRY:
+        process.env.TELEMETRY_DISABLED === '0' && !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 
       AGENTS_INDEX_URL: !!process.env.AGENTS_INDEX_URL
         ? process.env.AGENTS_INDEX_URL
@@ -125,7 +126,7 @@ export const getAppConfig = () => {
       ENABLE_AGENT_GATEWAY: process.env.ENABLE_AGENT_GATEWAY === '1',
       AGENT_GATEWAY_URL: process.env.AGENT_GATEWAY_URL,
       enableQueueAgentRuntime: process.env.AGENT_RUNTIME_MODE === 'queue',
-      TELEMETRY_DISABLED: process.env.TELEMETRY_DISABLED === '1',
+      TELEMETRY_DISABLED: process.env.TELEMETRY_DISABLED !== '0',
     },
   });
 };

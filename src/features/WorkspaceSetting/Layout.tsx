@@ -65,7 +65,7 @@ const WorkspaceSettingsContentLayout: FC = memo(() => {
     .find((item) => item.key === activeTab)?.label;
 
   const content = (
-    <Container maxWidth={1024} paddingBlock={'24px 128px'} paddingInline={24}>
+    <Container maxWidth={'100%'} paddingBlock={'24px 128px'} paddingInline={24}>
       <Outlet />
     </Container>
   );

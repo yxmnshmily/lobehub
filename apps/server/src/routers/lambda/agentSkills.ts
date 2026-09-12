@@ -17,6 +17,7 @@ import {
   SkillResourceError,
   SkillResourceService,
 } from '@/server/services/skill';
+import { saveSkillWithSuperGroupTemplate } from '@/server/services/user/travelServiceGroupTemplate';
 
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
 import { requirePlatformAdmin } from './_helpers/platformAdminGuard';
@@ -319,13 +320,19 @@ export const agentSkillsRouter = router({
     assertWorkspaceRowManageable(ctx, target.userId, 'skill');
 
     const { id, content, manifest } = input;
-    return ctx.skillModel.update(id, {
-      content,
-      // Sync name/description from manifest to top-level fields
-      description: manifest?.description,
-      manifest: manifest as SkillManifest | undefined,
-      name: manifest?.name,
-    });
+    return saveSkillWithSuperGroupTemplate(
+      ctx.serverDB,
+      ctx.userId,
+      id,
+      {
+        content,
+        // Sync name/description from manifest to top-level fields
+        description: manifest?.description,
+        manifest: manifest as SkillManifest | undefined,
+        name: manifest?.name,
+      },
+      ctx.workspaceId ?? undefined,
+    );
   }),
 });
 

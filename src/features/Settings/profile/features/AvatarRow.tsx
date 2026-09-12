@@ -37,12 +37,40 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   wrapper: css`
     cursor: pointer;
+
     position: relative;
+
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 8px;
 
-    &:hover .avatar-edit-overlay {
+    &:hover .avatar-edit-overlay,
+    &:focus-within .avatar-edit-overlay {
       opacity: 1;
+    }
+
+    &:focus-within {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: 2px;
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      .avatar-edit-overlay {
+        inset-block: auto 0;
+        inset-inline: auto 0;
+
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+
+        opacity: 1;
+        background: ${cssVar.colorPrimary};
+      }
     }
   `,
 }));

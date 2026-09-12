@@ -48,6 +48,47 @@ describe('useTopicScrollPersist', () => {
   });
 
   describe('initial restore', () => {
+    it('opens a topic at the beginning even with a saved reading position', async () => {
+      saveScrollSnapshot('group_g_tpc_a', { atBottom: false, offset: 5000, savedAt: Date.now() });
+      const handle = createFakeVList({ scrollSize: 6000 });
+      const { rerender } = renderHook(
+        ({ contextKey }) =>
+          useTopicScrollPersist({
+            contextKey,
+            dataSourceLength: 50,
+            initialPosition: 'start',
+            virtuaRef: refOf(handle),
+          }),
+        { initialProps: { contextKey: 'group_g_tpc_a' } },
+      );
+      await advanceFrames(4);
+      expect(handle.scrollTo).toHaveBeenLastCalledWith(0);
+      expect(handle.scrollToIndex).not.toHaveBeenCalled();
+      rerender({ contextKey: 'group_g_tpc_b' });
+      await advanceFrames(4);
+      expect(handle.scrollTo).toHaveBeenCalledTimes(2);
+    });
+
+    it('cancels an unfinished history restore when a new send takes over', async () => {
+      saveScrollSnapshot('main_agt_1_tpc_a', {
+        atBottom: false,
+        offset: 5000,
+        savedAt: Date.now(),
+      });
+      const handle = createFakeVList({ scrollSize: 1000 });
+      const { result } = renderHook(() =>
+        useTopicScrollPersist({
+          contextKey: 'main_agt_1_tpc_a',
+          dataSourceLength: 50,
+          virtuaRef: refOf(handle),
+        }),
+      );
+      act(() => result.current.cancelRestore());
+      handle.scrollSize = 7000;
+      await advanceFrames(4);
+      expect(handle.scrollTo).not.toHaveBeenCalled();
+    });
+
     it('lets a message deep link override the saved scroll position', async () => {
       saveScrollSnapshot('main_agt_1_tpc_a', {
         atBottom: false,
@@ -62,6 +103,7 @@ describe('useTopicScrollPersist', () => {
           contextKey: 'main_agt_1_tpc_a',
           dataSourceLength: 50,
           headerOffset: 1,
+          initialPosition: 'start',
           messageDeepLink: {
             displayMessageId: 'assistant-group',
             id: 'assistant-child',

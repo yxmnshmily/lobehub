@@ -5,7 +5,10 @@ import { resolve } from 'node:path';
 import dotenv from 'dotenv';
 
 import { uploadAssets } from '../../../scripts/mobileSpaWorkflow/upload';
-import { localOperator, workerDeployAnnotationArgs } from '../../../scripts/workerDeployAnnotations';
+import {
+  localOperator,
+  workerDeployAnnotationArgs,
+} from '../../../scripts/workerDeployAnnotations';
 
 const shareRoot = resolve(__dirname, '..');
 const repoRoot = resolve(shareRoot, '../..');

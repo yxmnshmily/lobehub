@@ -152,6 +152,7 @@ export const serverMessagesEngine = async ({
   topicReferences,
   additionalVariables,
   userTimezone,
+  onMessageSources,
 }: ServerMessagesEngineParams): Promise<OpenAIChatMessage[]> => {
   const engine = new MessagesEngine({
     additionalContexts,
@@ -253,6 +254,7 @@ export const serverMessagesEngine = async ({
   });
 
   const result = await engine.process();
+  onMessageSources?.(result.metadata.messageCleanup?.sourceMessageIds ?? []);
   return result.messages;
 };
 

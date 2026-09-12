@@ -4,6 +4,8 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+
 /** `3m` · `2.1h` · `1.4d` — the coarse grain a list row can carry. */
 export const formatGoalDuration = (milliseconds: number) => {
   if (!milliseconds || milliseconds <= 0) return '—';
@@ -26,12 +28,16 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   metrics: css`
     display: grid;
-    grid-template-columns: minmax(178px, 1fr) 72px 48px 64px;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     column-gap: 12px;
     align-items: center;
 
     width: min(100%, 390px);
-    min-width: 390px;
+    min-width: 0;
+
+    @media (width <= 420px) {
+      column-gap: 8px;
+    }
   `,
   needsYou: css`
     justify-self: end;
@@ -48,10 +54,11 @@ const styles = createStaticStyles(({ css }) => ({
     background: ${cssVar.colorFillSecondary};
   `,
   progressValue: css`
+    transform-origin: left center;
     height: 100%;
     border-radius: inherit;
     background: ${cssVar.colorSuccess};
-    transition: width 0.2s ${cssVar.motionEaseOut};
+    transition: transform 0.2s ${cssVar.motionEaseOut};
   `,
 }));
 
@@ -72,6 +79,7 @@ export interface GoalProgressProps {
 export const GoalProgress = memo<GoalProgressProps>(
   ({ findingCount, pendingDecisions, totalRunCost, totalRunDuration, taskDone, taskTotal }) => {
     const { t } = useTranslation('chat');
+    const { format } = useMonthlyExchangeRate();
     const progress = taskTotal > 0 ? Math.round((taskDone / taskTotal) * 100) : 0;
 
     return (
@@ -79,7 +87,10 @@ export const GoalProgress = memo<GoalProgressProps>(
         {taskTotal > 0 ? (
           <Flexbox horizontal align={'center'} className={styles.acceptance} gap={6}>
             <div aria-hidden className={styles.progress}>
-              <div className={styles.progressValue} style={{ width: `${progress}%` }} />
+              <div
+                className={styles.progressValue}
+                style={{ transform: `scaleX(${progress / 100})` }}
+              />
             </div>
             <Text ellipsis color={cssVar.colorTextTertiary} fontSize={12}>
               {t('goalList.taskProgress', { done: taskDone, total: taskTotal })}
@@ -103,7 +114,7 @@ export const GoalProgress = memo<GoalProgressProps>(
           {formatGoalDuration(totalRunDuration)}
         </Text>
         <Text className={styles.metric} color={cssVar.colorTextTertiary} fontSize={12}>
-          {formatGoalCost(totalRunCost)}
+          {totalRunCost > 0 ? format(totalRunCost, 6) : '—'}
         </Text>
       </div>
     );

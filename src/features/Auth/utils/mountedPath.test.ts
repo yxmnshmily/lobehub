@@ -50,20 +50,38 @@ describe('resolveAuthCallbackPath', () => {
   it.each(['https://evil.example/callback', '//evil.example', 'javascript:alert(1)'])(
     'falls back inside the active mount for an unsafe callback: %s',
     (callbackUrl) => {
-      expect(resolveAuthCallbackPath(callbackUrl, '/lobehub/signin')).toBe('/lobehub/');
+      expect(resolveAuthCallbackPath(callbackUrl, '/lobehub/signin')).toBe(
+        '/lobehub/group/default',
+      );
     },
   );
 
   it('preserves an explicit website callback shared with the mounted account flow', () => {
     expect(resolveAuthCallbackPath('/index.html', '/lobehub/signin')).toBe('/index.html');
   });
+
+  it.each([null, undefined, '', '/', '/lobehub/'])(
+    'sends ordinary sign-in to the current user default group: %s',
+    (callback) => {
+      expect(resolveAuthCallbackPath(callback, '/lobehub/signin')).toBe('/lobehub/group/default');
+    },
+  );
+
+  it('preserves invitations and explicit group/topic targets', () => {
+    for (const path of ['/lobehub/settings/profile?invitation=test', '/lobehub/group/own/topic']) {
+      expect(resolveAuthCallbackPath(path, '/lobehub/signin')).toBe(path);
+    }
+    expect(resolveAuthCallbackPath(null, '/signin')).toBe('/group/default');
+  });
 });
 
 describe('buildMountedOnboardingPath', () => {
-  it('keeps the first signup hop mounted without nesting its default destination', () => {
-    expect(buildMountedOnboardingPath(null, '/lobehub/signup')).toBe('/lobehub/onboarding');
+  it('threads the default group through the mounted first signup hop', () => {
+    expect(buildMountedOnboardingPath(null, '/lobehub/signup')).toBe(
+      '/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault',
+    );
     expect(buildMountedOnboardingPath('https://evil.example', '/lobehub/signup')).toBe(
-      '/lobehub/onboarding',
+      '/lobehub/onboarding?callbackUrl=%2Flobehub%2Fgroup%2Fdefault',
     );
   });
 

@@ -7,8 +7,9 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import StatisticCard from '@/components/StatisticCard';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { type AgentUsageStats } from '@/types/usage/usageRecord';
-import { formatNumber, formatUsageValue } from '@/utils/format';
+import { formatLocalizedTokens as formatUsageValue } from '@/utils/format';
 
 interface StatCardsProps {
   isLoading?: boolean;
@@ -24,6 +25,7 @@ const desc = (text: string) => (
 
 const StatCards = memo<StatCardsProps>(({ summary, isLoading, rangeLabel }) => {
   const { t } = useTranslation('spend');
+  const { symbol, convert } = useMonthlyExchangeRate();
   const suffix = ` · ${rangeLabel}`;
 
   return (
@@ -33,8 +35,8 @@ const StatCards = memo<StatCardsProps>(({ summary, isLoading, rangeLabel }) => {
         title={t('usageStats.cards.cost') + suffix}
         statistic={{
           precision: 2,
-          prefix: '$',
-          value: formatNumber(summary.totalCost, 2),
+          prefix: symbol,
+          value: convert(summary.totalCost),
         }}
       />
       <StatisticCard
@@ -48,8 +50,8 @@ const StatCards = memo<StatCardsProps>(({ summary, isLoading, rangeLabel }) => {
             }),
           ),
           precision: 2,
-          prefix: '$',
-          value: formatNumber(summary.cacheSavings, 2),
+          prefix: symbol,
+          value: convert(summary.cacheSavings),
           valueStyle: { color: cssVar.colorSuccess },
         }}
       />

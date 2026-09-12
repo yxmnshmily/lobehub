@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { genFontFamily } from './font';
+import { genFontFamily, genFontFamilyCode } from './font';
 
 describe('genFontFamily', () => {
   it('puts japanese families ahead of the SC fallback for ja-JP', () => {
@@ -26,19 +26,27 @@ describe('genFontFamily', () => {
     expect(stack.indexOf('"PingFang TC"')).toBeLessThan(stack.indexOf('"PingFang SC"'));
   });
 
-  it('puts the user font first, then the env custom font', () => {
+  it('keeps an explicit user font first and the env web font behind system fonts', () => {
     const stack = genFontFamily({
       customFontFamily: 'Env Font',
       locale: 'en-US',
       userFontFamily: ' LXGW WenKai ',
     });
 
-    expect(stack.startsWith('"LXGW WenKai","Env Font",Geist')).toBe(true);
+    expect(stack.startsWith('"LXGW WenKai",-apple-system,BlinkMacSystemFont')).toBe(true);
+    expect(stack.indexOf('"Env Font"')).toBeGreaterThan(stack.indexOf('"Microsoft YaHei"'));
+    expect(stack.indexOf('"Env Font"')).toBeLessThan(stack.indexOf('ui-sans-serif'));
   });
 
   it('leaves an already composed font-family list untouched', () => {
-    expect(
-      genFontFamily({ customFontFamily: 'Foo, "Bar Baz"' }).startsWith('Foo, "Bar Baz",Geist'),
-    ).toBe(true);
+    const stack = genFontFamily({ customFontFamily: 'Foo, "Bar Baz"' });
+
+    expect(stack.startsWith('-apple-system,BlinkMacSystemFont')).toBe(true);
+    expect(stack).toContain(',Foo, "Bar Baz",ui-sans-serif');
+  });
+
+  it('does not depend on bundled Geist fonts for interface or code text', () => {
+    expect(genFontFamily()).not.toContain('Geist');
+    expect(genFontFamilyCode()).not.toContain('Geist Mono');
   });
 });

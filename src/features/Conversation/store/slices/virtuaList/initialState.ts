@@ -19,6 +19,8 @@ export interface VirtuaScrollMethods {
    */
   getTotalCount: () => number;
   getViewportSize: () => number;
+  /** Cancel bottom following and pending restoration before an explicit history jump. */
+  pauseFollowing?: () => void;
   scrollTo: (offset: number) => void;
   scrollToIndex: (
     index: number,

@@ -21,7 +21,7 @@ const styles = createStaticStyles(({ css }) => ({
     inset-inline-end: 12px;
 
     padding: 4px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     opacity: 0.55;

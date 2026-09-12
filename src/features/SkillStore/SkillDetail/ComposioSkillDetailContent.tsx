@@ -1,6 +1,5 @@
 'use client';
 
-
 import { ComposioDetailProvider } from './ComposioDetailProvider';
 import SkillDetailInner from './SkillDetailInner';
 

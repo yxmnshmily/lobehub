@@ -129,6 +129,55 @@ describe('GenerationTopicModel', () => {
       expect(result[2].id).toBe('topic1'); // oldest
     });
 
+    it('uses the latest image in each topic and falls back after deletion', async () => {
+      const topic = await generationTopicModel.create('Image conversation');
+      await generationTopicModel.update(topic.id, { coverUrl: 'old-cover' });
+      const [batch] = await serverDB
+        .insert(generationBatches)
+        .values({
+          userId,
+          generationTopicId: topic.id,
+          provider: 'test',
+          model: 'image',
+          prompt: 'test',
+        })
+        .returning();
+      await serverDB.insert(generations).values([
+        {
+          id: 'older-image',
+          userId,
+          generationBatchId: batch.id,
+          createdAt: new Date('2026-01-01'),
+          asset: { type: 'image', thumbnailUrl: 'older-thumb', url: 'older.png' },
+        },
+        {
+          id: 'latest-image',
+          userId,
+          generationBatchId: batch.id,
+          createdAt: new Date('2026-01-02'),
+          asset: { type: 'image', url: 'latest.png' },
+        },
+        {
+          id: 'pending-image',
+          userId,
+          generationBatchId: batch.id,
+          createdAt: new Date('2026-01-03'),
+        },
+      ]);
+      expect((await generationTopicModel.queryAll('image'))[0].coverUrl).toBe(
+        'https://example.com/latest.png',
+      );
+      await serverDB
+        .update(generations)
+        .set({ deletedAt: new Date() })
+        .where(eq(generations.id, 'latest-image'));
+      expect((await generationTopicModel.queryAll('image'))[0].coverUrl).toBe(
+        'https://example.com/older-thumb',
+      );
+      // Cover selection must not replace the stored fallback or change other users' data.
+      expect((await generationTopicModel.findById(topic.id))?.coverUrl).toBe('old-cover');
+    });
+
     it('should process cover URLs through FileService', async () => {
       await serverDB.insert(generationTopics).values([
         {

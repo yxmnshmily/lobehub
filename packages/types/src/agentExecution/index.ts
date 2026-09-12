@@ -390,6 +390,8 @@ export interface ExecGroupAgentParams {
   message: string;
   /** Optional: Create a new topic */
   newTopic?: ExecGroupAgentNewTopicOptions;
+  /** Existing user message to branch from when regenerating a reply. */
+  parentMessageId?: string;
   /** Suppress the AgentSignal governance side-channel for product-managed runs. */
   suppressSignal?: boolean;
   /** Optional generic deterministic tool-dispatch policy for this run. */

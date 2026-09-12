@@ -1,3 +1,4 @@
+import { formatLocalizedTokens } from '@lobechat/utils/format';
 import { Flexbox, InputNumber } from '@lobehub/ui';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +21,7 @@ interface MaxTokenSliderProps {
 }
 
 const MaxTokenSlider = memo<MaxTokenSliderProps>(({ value, onChange, defaultValue }) => {
-  const { t } = useTranslation('components');
+  const { t, i18n } = useTranslation('components');
 
   const [token, setTokens] = useMergeState(0, {
     defaultValue,
@@ -48,19 +49,32 @@ const MaxTokenSlider = memo<MaxTokenSliderProps>(({ value, onChange, defaultValu
   const isMobile = useIsMobile();
 
   const options = useMemo(
-    () => [
-      { label: '0', value: exponent(2) },
-      { label: isMobile ? '4' : '4K', value: exponent(4) }, // 4 Kibi = 4096
-      { label: isMobile ? '8' : '8K', value: exponent(8) },
-      { label: isMobile ? '16' : '16K', value: exponent(16) },
-      { label: isMobile ? '32' : '32K', value: exponent(32) },
-      { label: isMobile ? '64' : '64K', value: exponent(64) },
-      { ariaLabel: '128k', label: ' ', value: exponent((128 / Kibi) * 1000) }, // hide tick label
-      { label: isMobile ? '200' : '200k', value: exponent((200 / Kibi) * 1000) },
-      { label: '1M', value: exponent(Kibi) },
-      { label: '2M', value: exponent(2 * Kibi) },
-    ],
-    [isMobile],
+    () =>
+      [
+        { label: '0', value: exponent(2) },
+        { label: isMobile ? '4' : '4K', value: exponent(4) }, // 4 Kibi = 4096
+        { label: isMobile ? '8' : '8K', value: exponent(8) },
+        { label: isMobile ? '16' : '16K', value: exponent(16) },
+        { label: isMobile ? '32' : '32K', value: exponent(32) },
+        { label: isMobile ? '64' : '64K', value: exponent(64) },
+        { ariaLabel: '128k', label: ' ', value: exponent((128 / Kibi) * 1000) }, // hide tick label
+        { label: isMobile ? '200' : '200k', value: exponent((200 / Kibi) * 1000) },
+        { label: '1M', value: exponent(Kibi) },
+        { label: '2M', value: exponent(2 * Kibi) },
+      ].map((option) => ({
+        ...option,
+        label:
+          option.label.trim() === ''
+            ? option.label
+            : option.value === exponent(2)
+              ? '0'
+              : formatLocalizedTokens(powerKibi(option.value), i18n.language),
+        ariaLabel:
+          option.value === exponent(2)
+            ? '0'
+            : formatLocalizedTokens(powerKibi(option.value), i18n.language),
+      })),
+    [isMobile, i18n.language],
   );
 
   return (
@@ -72,10 +86,7 @@ const MaxTokenSlider = memo<MaxTokenSliderProps>(({ value, onChange, defaultValu
           formatTooltip={(sliderValue) => {
             if (sliderValue <= exponent(2)) return t('MaxTokenSlider.unlimited');
 
-            const realValue = getRealValue(sliderValue);
-            if (realValue < 125) return realValue.toFixed(0) + 'K';
-            if (realValue < Kibi) return ((realValue * Kibi) / 1000).toFixed(0) + 'k';
-            return (realValue / Kibi).toFixed(0) + 'M';
+            return formatLocalizedTokens(powerKibi(sliderValue), i18n.language);
           }}
           onChange={updateWithPowValue}
         />

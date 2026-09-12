@@ -205,7 +205,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: fit-content;
     max-width: 100%;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
   `,
   evidenceText: css`
@@ -225,7 +225,7 @@ const styles = createStaticStyles(({ css }) => ({
   emptyCard: css`
     padding-block: 48px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
@@ -293,7 +293,7 @@ const styles = createStaticStyles(({ css }) => ({
     }
   `,
   row: css`
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
 
     /* The list opens flush with the content above it. Grouped lists are
        unaffected: their first child is the group header, so rows are never
@@ -360,14 +360,14 @@ const styles = createStaticStyles(({ css }) => ({
     width: 9px;
     height: 9px;
     margin-block-start: 5px;
-    border: 2px solid;
+    border: 0.5px solid;
     border-radius: 50%;
 
     background: ${cssVar.colorBgContainer};
   `,
   stepRail: css`
     flex: 1;
-    width: 1px;
+    width: 0.5px;
     margin-block-start: 6px;
     background: ${cssVar.colorBorderSecondary};
   `,
@@ -1873,7 +1873,7 @@ const CheckList = memo<CheckListProps>(
                 gap={8}
                 style={{
                   borderBlockStart:
-                    groupIndex > 0 ? `1px solid ${cssVar.colorBorderSecondary}` : 'none',
+                    groupIndex > 0 ? `0.5px solid ${cssVar.colorBorderSecondary}` : 'none',
                 }}
                 onClick={() => onToggleGroup(key)}
               >

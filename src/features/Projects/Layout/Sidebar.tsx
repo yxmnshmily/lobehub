@@ -1,8 +1,8 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { ClipboardCheckIcon, ListTodoIcon, TargetIcon } from 'lucide-react';
-import { memo } from 'react';
+import { ClipboardCheckIcon, ListTodoIcon, MessageSquareIcon, TargetIcon } from 'lucide-react';
+import { memo, use } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 
@@ -14,7 +14,13 @@ import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwar
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
 import { useCurrentProjectDetail, useProjectStore } from '@/store/project';
 
-import { getProjectAcceptancePath, getProjectGoalsPath, getProjectTasksPath } from './navigation';
+import { GroupProjectScopeContext, scopeProjectPath } from './GroupProjectScope';
+import {
+  getProjectAcceptancePath,
+  getProjectConversationPath,
+  getProjectGoalsPath,
+  getProjectTasksPath,
+} from './navigation';
 import ProjectHeader from './ProjectHeader';
 
 const ProjectSidebarContent = memo(() => {
@@ -22,11 +28,13 @@ const ProjectSidebarContent = memo(() => {
   const { projectId } = useActiveRouteParams<{ projectId: string }>();
   const navigate = useWorkspaceAwareNavigate();
   const { pathname } = useLocation();
+  const groupScope = use(GroupProjectScopeContext);
   const detail = useCurrentProjectDetail(projectId);
   const detailSWR = useProjectStore((s) => s.useFetchProjectDetail)(projectId);
-  const projectTasksPath = getProjectTasksPath(projectId!);
-  const projectGoalsPath = getProjectGoalsPath(projectId!);
-  const projectAcceptancePath = getProjectAcceptancePath(projectId!);
+  const projectTasksPath = scopeProjectPath(getProjectTasksPath(projectId!), groupScope);
+  const conversationPath = scopeProjectPath(getProjectConversationPath(projectId!), groupScope);
+  const projectGoalsPath = scopeProjectPath(getProjectGoalsPath(projectId!), groupScope);
+  const projectAcceptancePath = scopeProjectPath(getProjectAcceptancePath(projectId!), groupScope);
 
   const header = <ProjectHeader project={detail?.project} />;
 
@@ -43,6 +51,12 @@ const ProjectSidebarContent = memo(() => {
       header={header}
       body={
         <Flexbox gap={8} paddingInline={4}>
+          <NavItem
+            active={pathname.startsWith(conversationPath)}
+            icon={MessageSquareIcon}
+            title="项目对话"
+            onClick={() => navigate(conversationPath)}
+          />
           <NavItem
             active={pathname === projectTasksPath}
             icon={ListTodoIcon}
@@ -67,11 +81,20 @@ const ProjectSidebarContent = memo(() => {
   );
 });
 
-const ProjectSidebar = memo(() => (
-  <NavPanelPortal navKey="project">
-    <ProjectSidebarContent />
-  </NavPanelPortal>
-));
+const ProjectSidebar = memo(() => {
+  const groupScope = use(GroupProjectScopeContext);
+  if (groupScope)
+    return (
+      <Flexbox data-project-sidebar="" style={{ minHeight: 0 }}>
+        <ProjectSidebarContent />
+      </Flexbox>
+    );
+  return (
+    <NavPanelPortal navKey="project">
+      <ProjectSidebarContent />
+    </NavPanelPortal>
+  );
+});
 
 ProjectSidebar.displayName = 'ProjectSidebar';
 

@@ -24,7 +24,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
     overflow: hidden;
     padding: 0;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
   `,
   command: css`
@@ -38,7 +38,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline: 16px;
 
     &:not(:last-child) {
-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     }
   `,
   // Mirrors the `rowIcon` treatment of the Connections cards in shared.tsx so
@@ -59,13 +59,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-type MessengerCommandName = 'agents' | 'feedback' | 'help' | 'new' | 'start' | 'stop' | 'switch';
+type MessengerCommandName = 'groups' | 'feedback' | 'help' | 'new' | 'start' | 'stop' | 'switch';
 
 /** Display order mirrors the onboarding flow: link first, then routing
  *  (agent / scope), then conversation controls, then meta commands. */
 const COMMANDS: { icon: LucideIcon; name: MessengerCommandName }[] = [
   { icon: LinkIcon, name: 'start' },
-  { icon: BotIcon, name: 'agents' },
+  { icon: BotIcon, name: 'groups' },
   { icon: ArrowLeftRightIcon, name: 'switch' },
   { icon: MessageSquarePlusIcon, name: 'new' },
   { icon: CircleStopIcon, name: 'stop' },

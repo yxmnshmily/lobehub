@@ -1,9 +1,10 @@
 import { Flexbox } from '@lobehub/ui';
 // import { PencilLineIcon } from 'lucide-react';
 import { type FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import NavHeader from '@/features/NavHeader';
+import PageHeader from '@/features/NavHeader/PageHeader';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import WideScreenButton from '@/features/WideScreenContainer/WideScreenButton';
 import ActionBar from '@/routes/(main)/memory/features/ActionBar';
@@ -17,6 +18,7 @@ import PersonaHeader from './features/Persona/PersonaHeader';
 import RoleTagCloud from './features/RoleTagCloud';
 
 const Home: FC = () => {
+  const { t } = useTranslation('common');
   const useFetchTags = useUserMemoryStore((s) => s.useFetchTags);
   const useFetchPersona = useUserMemoryStore((s) => s.useFetchPersona);
   const roles = useUserMemoryStore((s) => s.roles);
@@ -37,7 +39,9 @@ const Home: FC = () => {
 
   return (
     <Flexbox flex={1} height={'100%'}>
-      <NavHeader
+      <PageHeader
+        showTogglePanelButton={false}
+        title={t('tab.memory')}
         right={
           isEmpty ? undefined : (
             <ActionBar showAnalysis showPurge>
@@ -53,10 +57,15 @@ const Home: FC = () => {
       <Flexbox
         height={'100%'}
         id={SCROLL_PARENT_ID}
-        style={{ overflowY: 'auto', paddingBottom: '16vh' }}
+        style={{ overflowY: 'auto', paddingBottom: 24 }}
         width={'100%'}
       >
-        <WideScreenContainer gap={32} paddingBlock={48}>
+        <WideScreenContainer
+          fullWidth
+          gap={32}
+          paddingBlock={24}
+          style={{ marginInline: 'auto', maxWidth: 1184 }}
+        >
           <AsyncBoundary
             data={persona ?? (roles?.length ? roles : undefined)}
             error={error}

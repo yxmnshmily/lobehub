@@ -9,6 +9,7 @@ import { memo } from 'react';
 
 import { OFFICIAL_SITE } from '@/const/url';
 import { isCustomORG } from '@/const/version';
+import { useTravelTranslation } from '@/utils/i18n/travel';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   logoLink: css`
@@ -22,6 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const BrandWatermark = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest }) => {
+  const translateTravel = useTravelTranslation();
   return (
     <Flexbox
       horizontal
@@ -32,7 +34,7 @@ const BrandWatermark = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
       style={{ color: cssVar.colorTextDescription, fontSize: 12, ...style }}
       {...rest}
     >
-      <span>Powered by</span>
+      <span>{translateTravel('技术支持：')}</span>
       {isCustomORG ? (
         <span>{ORG_NAME}</span>
       ) : (

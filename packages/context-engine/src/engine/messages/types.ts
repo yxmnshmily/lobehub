@@ -177,6 +177,8 @@ export interface UserMemoryConfig {
  * Used to inject sender identity into assistant messages in multi-agent scenarios
  */
 export interface AgentGroupConfig {
+  /** Server-resolved group discussion ceiling; not model-supplied tool arguments. */
+  maxDiscussionRounds?: number;
   /** Mapping from agentId to agent info (name, role) */
   agentMap?: Record<string, AgentInfo>;
 

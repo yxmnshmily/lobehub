@@ -1,5 +1,4 @@
 import type { ExecAgentResult } from '@lobechat/types';
-import debug from 'debug';
 
 import type { MessageModel } from '@/database/models/message';
 import type { TopicModel } from '@/database/models/topic';
@@ -7,12 +6,11 @@ import { signUserJWT } from '@/libs/trpc/utils/internalJwt';
 import type { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { isAbortError } from '@/server/services/agentRuntime/abort';
 
+import { aiAgentDebug as log } from '../safeDebug';
 import type { ExecRunContext, InternalExecAgentParams } from '../types';
 import type { ApprovalClaimState } from './approvalResume';
 import type { OperationPrepResult } from './operationPrep';
 import type { ToolDiscoveryResult } from './toolDiscovery';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface StartOperationDeps {
   agentRuntimeService: AgentRuntimeService;
@@ -391,19 +389,16 @@ export const startOperation = async (
 
     // Operation startup failed (e.g., QStash queue service unavailable)
     // Update assistant message with error so user can see what went wrong
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error starting agent';
-    log(
-      'execAgent: createOperation failed, updating assistant message with error: %s',
-      errorMessage,
-    );
+    const publicErrorMessage = 'Agent execution failed.';
+    log('execAgent: createOperation failed, updating assistant message');
 
     await deps.messageModel.update(assistantMessageId, {
       content: '',
       error: {
         body: {
-          detail: errorMessage,
+          detail: publicErrorMessage,
         },
-        message: errorMessage,
+        message: publicErrorMessage,
         type: 'ServerAgentRuntimeError', // ServiceUnavailable - agent runtime service unavailable
       },
     });
@@ -414,7 +409,7 @@ export const startOperation = async (
       assistantMessageId,
       autoStarted: false,
       createdAt: new Date().toISOString(),
-      error: errorMessage,
+      error: publicErrorMessage,
       message: 'Agent operation failed to start',
       operationId,
       status: 'error',

@@ -30,5 +30,3 @@ export const setDesktopAutoOidcFirstOpenHandled = () => {
     return false;
   }
 };
-
-

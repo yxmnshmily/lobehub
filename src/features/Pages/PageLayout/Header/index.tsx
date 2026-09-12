@@ -1,7 +1,7 @@
 'use client';
 
-import { Flexbox } from '@lobehub/ui';
-import { SearchIcon } from 'lucide-react';
+import { Flexbox, Icon } from '@lobehub/ui';
+import { FileText, SearchIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -27,7 +27,17 @@ const Header = memo(() => {
         breadcrumb={[
           {
             href: '/page',
-            title: t('tab.pages'),
+            title: (
+              <Flexbox
+                horizontal
+                align="center"
+                gap={6}
+                style={{ color: 'inherit', fontSize: 14, whiteSpace: 'nowrap' }}
+              >
+                <Icon icon={FileText} />
+                <span>{t('tab.pages')}</span>
+              </Flexbox>
+            ),
           },
         ]}
       />

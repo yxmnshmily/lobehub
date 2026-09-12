@@ -90,9 +90,10 @@ describe('travelGenerationRouter', () => {
       type: 'document',
     });
 
-    const keys = vi
-      .mocked(createTravelGenerationOrchestrator)
-      .mock.calls.map(([params]) => params.idempotency.key);
+    const keys = vi.mocked(createTravelGenerationOrchestrator).mock.calls.map(([params]) => {
+      expect(params.idempotency).toBeDefined();
+      return params.idempotency?.key;
+    });
     expect(keys[1]).toBe(keys[0]);
     expect(new Set([keys[0], keys[2], keys[3], keys[4]]).size).toBe(4);
   });

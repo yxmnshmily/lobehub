@@ -14,6 +14,12 @@ const continueHeteroAfterErrorMock = vi.fn();
 const retryFailedAssistantStepMock = vi.fn();
 const navigateMock = vi.fn();
 let isInReasoningMock = false;
+let extraMock: Record<string, unknown> | undefined;
+
+vi.mock('../../Assistant/Extra', () => ({
+  AssistantMessageExtra: ({ id, extra }: { id: string; extra?: unknown }) =>
+    extra ? <div data-testid="text-extra">{JSON.stringify({ extra, id })}</div> : null,
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -109,6 +115,7 @@ vi.mock('./MessageContent', () => ({
 
 vi.mock('../../../store', () => ({
   dataSelectors: {
+    getDbMessageById: () => () => ({ extra: extraMock }),
     getDisplayMessageById: () => () => ({ parentId: 'user-1' }),
   },
   messageStateSelectors: {
@@ -138,6 +145,14 @@ describe('AssistantGroup ContentBlock', () => {
     retryFailedAssistantStepMock.mockClear();
     navigateMock.mockClear();
     isInReasoningMock = false;
+    extraMock = undefined;
+  });
+
+  it('renders the text block playback and translation state', () => {
+    extraMock = { tts: {}, translate: { content: 'Translated reply', to: 'en-US' } };
+    render(<ContentBlock assistantId="group-1" content="Reply" id="text-1" />);
+    expect(screen.getByTestId('text-extra').textContent).toContain('text-1');
+    expect(screen.getByTestId('text-extra').textContent).toContain('Translated reply');
   });
 
   it('delegates a retry to the store instead of hand-rolling delete + continue', () => {

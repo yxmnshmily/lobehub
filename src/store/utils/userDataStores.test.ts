@@ -26,7 +26,7 @@ describe('userDataStores', () => {
     useFollowUpActionStore.setState({
       slots: {
         conversation: {
-          chips: [{ content: 'previous user suggestion', id: 'private-chip' }],
+          chips: [{ label: 'Previous suggestion', message: 'previous user suggestion' }],
           status: 'ready',
         },
       },

@@ -6,7 +6,7 @@ import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { MemoryListBoundary, useResetMemoryList } from '@/features/Memory';
-import NavHeader from '@/features/NavHeader';
+import PageHeader from '@/features/NavHeader/PageHeader';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import WideScreenButton from '@/features/WideScreenContainer/WideScreenButton';
 import { useQueryState } from '@/hooks/useQueryParam';
@@ -80,7 +80,9 @@ const PreferencesArea = memo(() => {
 
   return (
     <Flexbox flex={1} height={'100%'}>
-      <NavHeader
+      <PageHeader
+        showTogglePanelButton={false}
+        title={t('tab.preferences')}
         left={
           Boolean(preferencesTotal) && (
             <Tag icon={<Icon icon={BrainCircuitIcon} />}>{preferencesTotal}</Tag>
@@ -96,10 +98,10 @@ const PreferencesArea = memo(() => {
       <Flexbox
         height={'100%'}
         id={SCROLL_PARENT_ID}
-        style={{ overflowY: 'auto', paddingBottom: '16vh' }}
+        style={{ overflowY: 'auto', paddingBottom: 24 }}
         width={'100%'}
       >
-        <WideScreenContainer gap={32} paddingBlock={48}>
+        <WideScreenContainer fullWidth gap={32} paddingBlock={24} style={{ marginInline: 'auto', maxWidth: 1184 }}>
           <FilterBar
             searchValue={searchValue}
             sortOptions={viewMode === 'grid' ? sortOptions : undefined}

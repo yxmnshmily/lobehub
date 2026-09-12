@@ -4,6 +4,7 @@ import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
+import WorkGroupSessions from '@/features/SuperGroup/WorkGroupSessions';
 import { useFetchSessions } from '@/hooks/useFetchSessions';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
@@ -89,6 +90,8 @@ const DefaultMode = memo(() => {
       ].filter(Boolean) as CollapseProps['items'],
     [t, filteredCustomSessionGroups, filteredPinnedSessions, filteredDefaultSessions],
   );
+
+  if (!activeWorkspaceId) return <WorkGroupSessions />;
 
   return (
     <>

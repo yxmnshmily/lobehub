@@ -62,7 +62,7 @@ import ToolItem from './ToolItem';
 import ToolItemDetailPopover from './ToolItemDetailPopover';
 
 const officialTag = (
-  <Tooltip placement={'top'} title={'LobeHub'}>
+  <Tooltip placement={'top'} title={'旅游群'}>
     <Tag color={'success'} icon={<Icon icon={BadgeCheck} />} size={'small'} />
   </Tooltip>
 );
@@ -390,7 +390,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 1px;
     padding-inline: 4px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 4px;
 
     color: ${cssVar.colorTextTertiary};

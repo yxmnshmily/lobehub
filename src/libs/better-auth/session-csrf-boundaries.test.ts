@@ -62,6 +62,7 @@ const createHarness = async () => {
 
     expect(response.status).toBe(200);
     expect(Boolean(cookieHeader)).toBe(true);
+    if (!cookieHeader) throw new Error('Sign-in did not return a session cookie');
     return new Headers({ cookie: cookieHeader });
   };
 

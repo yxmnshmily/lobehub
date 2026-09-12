@@ -64,3 +64,14 @@ describe('resolveMessageDeepLink', () => {
     expect(resolveMessageDeepLink([message('first')], deepLink('missing'))).toBeUndefined();
   });
 });
+
+it('locates an old topic inside the combined group timeline', () => {
+  const messages = [
+    { id: 'first', topicId: 'topic-a' },
+    { id: 'second', topicId: 'topic-b' },
+    { id: 'third', topicId: 'topic-b' },
+  ] as UIChatMessage[];
+  expect(
+    resolveMessageDeepLink(messages, { id: 'topic:topic-b', navigationKey: 'jump' }),
+  ).toMatchObject({ index: 1, displayMessageId: 'second' });
+});

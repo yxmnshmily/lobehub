@@ -1,5 +1,15 @@
 export type ViewMode = 'card' | 'list';
 
+/** Mutations supplied by a topic page's owning scope. */
+export interface TopicManagementActions {
+  favoriteTopic: (id: string, favorite: boolean) => Promise<unknown>;
+  removeTopic: (id: string, removeFiles?: boolean) => Promise<unknown>;
+  updateTopicStatus: (input: {
+    topicId: string;
+    status: 'active' | 'completed';
+  }) => Promise<unknown>;
+}
+
 export type StatusFilter = 'all' | 'active' | 'running' | 'completed' | 'archived';
 
 export type TriggerFilter = 'chat' | 'api' | 'task' | 'eval' | 'bot';

@@ -1,3 +1,4 @@
+import type { ConversationContext } from '@lobechat/types';
 import useSWR from 'swr';
 
 import { gatewayKeys } from '@/libs/swr/keys';
@@ -43,6 +44,7 @@ export const useGatewayReconnect = (
    * `reconnectToGatewayOperation`'s param JSDoc.
    */
   agentShareId?: string,
+  conversation?: Pick<ConversationContext, 'groupId' | 'isolatedTopic' | 'scope'>,
 ) => {
   const agentGatewayUrl = useServerConfigStore((s) => s.serverConfig.agentGatewayUrl);
 
@@ -56,10 +58,12 @@ export const useGatewayReconnect = (
       await useChatStore.getState().reconnectToGatewayOperation({
         agentId,
         agentShareId,
+        groupId: conversation?.groupId,
+        isolatedTopic: conversation?.isolatedTopic,
         assistantMessageId: runningOperation.assistantMessageId,
         heteroType: runningOperation.heteroType,
         operationId: runningOperation.operationId,
-        scope: runningOperation.scope,
+        scope: conversation?.scope ?? runningOperation.scope,
         threadId: runningOperation.threadId,
         topicId,
       });

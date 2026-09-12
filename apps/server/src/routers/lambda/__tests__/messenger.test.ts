@@ -8,6 +8,18 @@ import { createContextInner } from '@/libs/trpc/lambda/context';
 
 import { messengerRouter } from '../messenger';
 
+const groupMocks = vi.hoisted(() => ({
+  findById: vi.fn(),
+  getSupervisorAgentId: vi.fn(),
+  setActiveGroup: vi.fn(),
+}));
+vi.mock('@/database/models/chatGroup', () => ({
+  ChatGroupModel: class {
+    findById = groupMocks.findById;
+    getSupervisorAgentId = groupMocks.getSupervisorAgentId;
+  },
+}));
+
 const {
   mockAcquireWechatQrFinalizeLock,
   mockAssertBotFeatureAccess,
@@ -154,9 +166,63 @@ vi.mock('@/database/models/messengerAccountLink', () => ({
     findById = mockFindLinkById;
     findByIdWithCredentials = mockFindLinkByIdWithCredentials;
     list = mockListAccountLinks;
+    setActiveGroup = groupMocks.setActiveGroup;
     upsertForPlatform = mockUpsertForPlatform;
   },
 }));
+
+describe('messenger workgroup binding', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetServerDB.mockResolvedValue({});
+    mockPlatformAdminGuard.mockImplementation(async ({ next }: any) => next());
+    groupMocks.findById.mockResolvedValue({
+      id: 'group-1',
+      title: '文旅工作群',
+      userId: 'user-1',
+      workspaceId: null,
+    });
+    groupMocks.getSupervisorAgentId.mockResolvedValue('supervisor-1');
+    groupMocks.setActiveGroup.mockResolvedValue({
+      activeGroupId: 'group-1',
+      activeAgentId: 'supervisor-1',
+    });
+  });
+
+  it('resolves the supervisor on the server and persists the group identity', async () => {
+    const caller = createCaller(await createContextInner({ userId: 'user-1' }));
+    const result = await caller.setActiveGroup({ platform: 'telegram', groupId: 'group-1' });
+    expect(groupMocks.setActiveGroup).toHaveBeenCalledWith('telegram', 'group-1', null, undefined);
+    expect(result.data.activeGroupId).toBe('group-1');
+  });
+
+  it('does not bind a group outside the authorized scope', async () => {
+    groupMocks.findById.mockResolvedValue(undefined);
+    const caller = createCaller(await createContextInner({ userId: 'user-1' }));
+    await expect(
+      caller.setActiveGroup({ platform: 'telegram', groupId: 'other-group' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(groupMocks.setActiveGroup).not.toHaveBeenCalled();
+  });
+
+  it('checks write permission in the selected workspace before binding a group', async () => {
+    mockGetServerFeatureFlagsStateFromRuntimeConfig.mockResolvedValue({ enableWorkspace: true });
+    mockListUserWorkspaces.mockResolvedValue([{ id: 'workspace-1' }]);
+    mockHasAnyPermission.mockResolvedValue(false);
+    const caller = createCaller(await createContextInner({ userId: 'user-1' }));
+    await expect(
+      caller.setActiveGroup({
+        platform: 'telegram',
+        groupId: 'group-1',
+        workspaceId: 'workspace-1',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockHasAnyPermission).toHaveBeenCalledWith(['agent:update:all', 'agent:update:owner'], {
+      workspaceId: 'workspace-1',
+    });
+    expect(groupMocks.setActiveGroup).not.toHaveBeenCalled();
+  });
+});
 
 vi.mock('@/server/modules/KeyVaultsEncrypt', () => ({
   KeyVaultsGateKeeper: {
@@ -439,7 +505,7 @@ describe('messengerRouter.pollWechatQrSession', () => {
     mockConsumeWechatQrSession.mockResolvedValue(undefined);
   });
 
-  it('routes a first WeChat connection to the personal LobeAI agent', async () => {
+  it('leaves a first WeChat connection unassigned until a workgroup is selected', async () => {
     const selectBuilder = createSelectBuilder([
       { id: 'agent-inbox', title: 'LobeAI', userId: 'user-1', workspaceId: null },
     ]);
@@ -456,12 +522,12 @@ describe('messengerRouter.pollWechatQrSession', () => {
     const result = await caller.pollWechatQrSession({ sessionId: 'session-1' });
 
     expect(result).toMatchObject({
-      link: { activeAgentId: 'agent-inbox', workspaceId: null },
       status: 'confirmed',
     });
+    expect(mockGetBuiltinAgent).not.toHaveBeenCalled();
     expect(mockUpsertForPlatform).toHaveBeenCalledWith(
       expect.objectContaining({
-        activeAgentId: 'agent-inbox',
+        activeAgentId: null,
         applicationId: 'wechat-bot',
         credentials: {
           baseUrl: 'https://ilink.example.com',
@@ -701,6 +767,29 @@ describe('messengerRouter.confirmLink', () => {
     mockInitWithEnvKey.mockResolvedValue(undefined);
   });
 
+  it('confirms a workgroup binding without assigning an individual agent', async () => {
+    mockGetServerDB.mockResolvedValue({});
+    const payload = { platform: 'telegram', platformUserId: 'tg-group', tenantId: '' };
+    mockPeekLinkToken.mockResolvedValue(payload);
+    mockFindByPlatformUser.mockResolvedValue(undefined);
+    mockFindByPlatform.mockResolvedValue(undefined);
+    mockConsumeLinkToken.mockResolvedValue(payload);
+    mockUpsertForPlatform.mockResolvedValue({ id: 'link-group' });
+    groupMocks.findById.mockResolvedValue({
+      id: 'group-1',
+      title: '文旅工作群',
+      workspaceId: null,
+    });
+    groupMocks.getSupervisorAgentId.mockResolvedValue('supervisor-1');
+    const caller = createCaller(await createContextInner({ userId: 'user-1' }));
+    await expect(
+      caller.confirmLink({ initialGroupId: 'group-1', randomId: 'rand-group' }),
+    ).resolves.toMatchObject({ success: true });
+    expect(mockUpsertForPlatform).toHaveBeenCalledWith(
+      expect.objectContaining({ activeGroupId: 'group-1', activeAgentId: null, workspaceId: null }),
+    );
+  });
+
   it('blocks linking a different Telegram account when the user already has one', async () => {
     const selectBuilder = createSelectBuilder([{ id: 'agent-1', title: 'Agent 1' }]);
     const serverDB = { select: vi.fn(() => selectBuilder) };
@@ -821,6 +910,7 @@ describe('messengerRouter.confirmLink', () => {
     expect(mockConsumeLinkToken).toHaveBeenCalledWith('rand-1234');
     expect(mockUpsertForPlatform).toHaveBeenCalledWith({
       activeAgentId: 'agent-1',
+      activeGroupId: null,
       platform: 'telegram',
       platformUserId: 'tg-same',
       platformUsername: '@same',

@@ -2,7 +2,6 @@
 
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Alert, Button } from '@lobehub/ui/base-ui';
-import { Divider } from 'antd';
 import isEqual from 'fast-deep-equal';
 import { InfoIcon, PlayIcon } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useMemo } from 'react';
@@ -12,6 +11,7 @@ import urlJoin from 'url-join';
 
 import { EditorCanvas } from '@/features/EditorCanvas';
 import ModelSelect from '@/features/ModelSelect';
+import { ProfileDocument } from '@/features/SuperGroup/ProfileSurface';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryRoute } from '@/hooks/useQueryRoute';
 import { useAgentStore } from '@/store/agent';
@@ -112,70 +112,58 @@ const MemberProfile = memo(() => {
   }, [editor, agentBuilderContentUpdate, agentId, setAgentBuilderContent]);
 
   return (
-    <>
-      {/* External agent warning or AutoSaveHint */}
-      <Flexbox height={66} width={'100%'}>
-        {isExternal && !isSupervisor && (
-          <Alert
-            icon={<Icon icon={InfoIcon} />}
-            style={{ width: '100%' }}
-            title={t('group.profile.externalAgentWarning', { ns: 'chat' })}
-            type="secondary"
-            variant={'outlined'}
-          />
-        )}
-        <Flexbox paddingBlock={12}>
-          <AutoSaveHint />
-        </Flexbox>
-      </Flexbox>
-      <Flexbox
-        style={{ cursor: 'default', marginBottom: 12 }}
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        {/* Header: Avatar + Name */}
-        <AgentHeader disabled={!canEdit} readOnly={isSupervisor} />
-        {/* Config Bar: Model Selector */}
-        <Flexbox
-          horizontal
-          align={'center'}
-          gap={8}
-          justify={'flex-start'}
-          style={{ marginBottom: 12 }}
+    <ProfileDocument
+      identity={<AgentHeader disabled={!canEdit} readOnly={isSupervisor} />}
+      actions={
+        <Button
+          disabled={!canEdit}
+          icon={PlayIcon}
+          type={'primary'}
+          onClick={() => {
+            if (!groupId) return;
+            router.push(urlJoin('/group', groupId));
+          }}
         >
-          <ModelSelect
-            initialWidth
-            disabled={!canEdit}
-            value={{
-              model: config?.model,
-              provider: config?.provider,
-            }}
-            onChange={updateAgentConfig}
-          />
-        </Flexbox>
-        <AgentTool />
-        <Flexbox
-          horizontal
-          align={'center'}
-          gap={8}
-          justify={'flex-start'}
-          style={{ marginTop: 16 }}
-        >
-          <Button
-            disabled={!canEdit}
-            icon={PlayIcon}
-            type={'primary'}
-            onClick={() => {
-              if (!groupId) return;
-              router.push(urlJoin('/group', groupId));
-            }}
+          {t('startConversation')}
+        </Button>
+      }
+      controls={
+        <>
+          <Flexbox
+            horizontal
+            align={'center'}
+            gap={8}
+            justify={'flex-start'}
+            style={{ marginBottom: 12 }}
           >
-            {t('startConversation')}
-          </Button>
-        </Flexbox>
-      </Flexbox>
-      <Divider />
+            <ModelSelect
+              initialWidth
+              disabled={!canEdit}
+              value={{
+                model: config?.model,
+                provider: config?.provider,
+              }}
+              onChange={updateAgentConfig}
+            />
+          </Flexbox>
+          <AgentTool />
+        </>
+      }
+      status={
+        <>
+          {isExternal && !isSupervisor && (
+            <Alert
+              icon={<Icon icon={InfoIcon} />}
+              style={{ width: '100%' }}
+              title={t('group.profile.externalAgentWarning', { ns: 'chat' })}
+              type="secondary"
+              variant={'outlined'}
+            />
+          )}
+          <AutoSaveHint />
+        </>
+      }
+    >
       {/* Main Content: Prompt Editor */}
       <EditorCanvas
         disabled={!canEdit}
@@ -189,7 +177,7 @@ const MemberProfile = memo(() => {
         }
         onContentChange={onContentChange}
       />
-    </>
+    </ProfileDocument>
   );
 });
 

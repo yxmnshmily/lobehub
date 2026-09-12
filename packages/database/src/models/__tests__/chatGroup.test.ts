@@ -578,6 +578,85 @@ describe('ChatGroupModel', () => {
   });
 
   describe('update', () => {
+    it('should atomically merge config patches without losing existing or server-managed fields', async () => {
+      const config = {
+        allowDM: false,
+        openingMessage: 'Existing greeting',
+        memberSlots: [
+          {
+            role: 'participant' as const,
+            agentId: 'writer-1',
+            key: 'writer',
+            label: 'Writer',
+            configurable: true,
+          },
+        ],
+        superGroupTemplate: { revision: 1, members: [] },
+      };
+      await serverDB.insert(chatGroups).values({ id: 'config-patch', userId, config });
+
+      const options = { configDefaults: { allowDM: true, revealDM: false } };
+      await Promise.all([
+        chatGroupModel.update('config-patch', { config: { maxDiscussionRounds: 3 } }, options),
+        chatGroupModel.update('config-patch', { config: { openingQuestions: ['Next?'] } }, options),
+      ]);
+
+      const [stored] = await serverDB
+        .select()
+        .from(chatGroups)
+        .where(eq(chatGroups.id, 'config-patch'));
+      expect(stored.config).toEqual({
+        ...config,
+        revealDM: false,
+        maxDiscussionRounds: 3,
+        openingQuestions: ['Next?'],
+      });
+    });
+
+    it('should initialize absent config with defaults when applying a patch', async () => {
+      await serverDB.insert(chatGroups).values({ id: 'config-empty', userId });
+      const result = await chatGroupModel.update(
+        'config-empty',
+        { config: { maxDiscussionRounds: 2 } },
+        { configDefaults: { allowDM: true } },
+      );
+      expect(result.config).toEqual({ allowDM: true, maxDiscussionRounds: 2 });
+    });
+
+    it('should honor explicit empty values and keep generic replacement semantics', async () => {
+      await serverDB.insert(chatGroups).values({
+        id: 'config-clear',
+        userId,
+        config: { openingMessage: 'Hello', openingQuestions: ['Hi'], allowDM: true },
+      });
+      const result = await chatGroupModel.update(
+        'config-clear',
+        { config: { openingMessage: '', openingQuestions: [], allowDM: false } },
+        { configDefaults: {} },
+      );
+      expect(result.config).toEqual({ openingMessage: '', openingQuestions: [], allowDM: false });
+      const replaced = await chatGroupModel.update('config-clear', { config: { revealDM: true } });
+      expect(replaced.config).toEqual({ revealDM: true });
+    });
+
+    it('should not patch another users config', async () => {
+      await serverDB
+        .insert(chatGroups)
+        .values({ id: 'config-other', userId: otherUserId, config: { maxDiscussionRounds: 4 } });
+      await expect(
+        chatGroupModel.update(
+          'config-other',
+          { config: { maxDiscussionRounds: 1 } },
+          { configDefaults: {} },
+        ),
+      ).rejects.toThrow('Chat group not found or access denied');
+      const [stored] = await serverDB
+        .select()
+        .from(chatGroups)
+        .where(eq(chatGroups.id, 'config-other'));
+      expect(stored.config).toEqual({ maxDiscussionRounds: 4 });
+    });
+
     it('should update chat group', async () => {
       // Create test group
       await serverDB.insert(chatGroups).values({

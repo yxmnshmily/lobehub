@@ -75,10 +75,14 @@ export interface ChatListProps {
    * It scrolls with messages and does not participate in conversation state.
    */
   headerSlot?: ReactNode;
+  /** Topic archive navigation starts at the first message; live chats retain their position. */
+  initialPosition?: 'start' | 'restore';
   /**
    * Custom item renderer. If not provided, uses default ChatItem.
    */
   itemContent?: (index: number, id: string) => ReactNode;
+  /** External membership feeds own their read scope; do not prefetch owner-only context resources. */
+  loadContextResources?: boolean;
   /** Message hash target to locate after the virtual list has rendered. */
   messageDeepLink?: MessageDeepLink;
   /**
@@ -97,11 +101,13 @@ export interface ChatListProps {
  */
 const ChatList = memo<ChatListProps>(
   ({
+    loadContextResources = true,
     defaultWorkflowExpandLevel,
     disableActionsBar,
     filterItem,
     footerSlot,
     headerSlot,
+    initialPosition,
     welcome,
     itemContent,
     messageDeepLink,
@@ -132,6 +138,7 @@ const ChatList = memo<ChatListProps>(
     const { enableAgentSelfIteration } = useServerConfigStore(featureFlagsSelectors);
     const messagesSWR = useFetchMessages(context, {
       revalidateOnFocus: !isStreaming,
+      refreshInterval: context.groupId && !isStreaming ? 5000 : 0,
       skipFetch: skipFetch || isCreatingTopic,
     });
     const refreshError = useMessageRefreshError({
@@ -157,7 +164,8 @@ const ChatList = memo<ChatListProps>(
     // anonymous, and agent-share visitors are not the owner these APIs scope to.
     const isSharePage = !!context.topicShareId || !!context.agentShareId;
     // TODO: Migrate Agent Signal receipts behind a dedicated user-visible receipt capability.
-    const canShowAgentSignalReceipts = enableAgentSelfIteration === true && !isSharePage;
+    const canShowAgentSignalReceipts =
+      loadContextResources && enableAgentSelfIteration === true && !isSharePage;
     const { receiptsByAnchor } = useAgentSignalReceipts({
       agentId: canShowAgentSignalReceipts ? activeAgentId : undefined,
       displayMessages,
@@ -180,7 +188,7 @@ const ChatList = memo<ChatListProps>(
     const isLogin = useUserStore(authSelectors.isLogin);
     const isAgentShareVisitor = !!context.agentShareId;
     const useFetchAgentConfig = useAgentStore((s) => s.useFetchAgentConfig);
-    useFetchAgentConfig(isLogin && !isAgentShareVisitor, context.agentId);
+    useFetchAgentConfig(isLogin && !isAgentShareVisitor && loadContextResources, context.agentId);
     const messageAuthorAgentIds = useMemo(
       () =>
         [...new Set(displayMessages.map((message) => message.agentId).filter(Boolean))].filter(
@@ -195,8 +203,10 @@ const ChatList = memo<ChatListProps>(
     // yet it pulled the full unbounded list into the homepage batch. The surfaces
     // that actually render documents (working sidebar / doc page) fetch on their
     // own mount; the slash menu fetches the slim `non-web` variant.
-    useFetchNotebookDocuments(isSharePage ? undefined : context.topicId!);
-    useFetchTopicMemories(enableUserMemories && !isSharePage ? context.topicId : undefined);
+    useFetchNotebookDocuments(isSharePage || !loadContextResources ? undefined : context.topicId!);
+    useFetchTopicMemories(
+      enableUserMemories && !isSharePage && loadContextResources ? context.topicId : undefined,
+    );
 
     // Use selectors for data
 
@@ -279,6 +289,7 @@ const ChatList = memo<ChatListProps>(
             dataSource={displayMessageIds}
             footerSlot={footerSlot}
             headerSlot={headerSlot}
+            initialPosition={isStreaming || isCreatingTopic ? 'restore' : initialPosition}
             itemContent={itemContent ?? defaultItemContent}
             messageDeepLink={resolvedMessageDeepLink}
           />
@@ -290,7 +301,7 @@ const ChatList = memo<ChatListProps>(
         {messageAuthorAgentIds.map((agentId) => (
           <MessageAuthorConfigLoader
             agentId={agentId}
-            isLogin={isLogin && !isAgentShareVisitor}
+            isLogin={isLogin && !isAgentShareVisitor && loadContextResources}
             key={agentId}
           />
         ))}

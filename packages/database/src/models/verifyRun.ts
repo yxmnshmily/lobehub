@@ -613,6 +613,46 @@ export class VerifyRunModel {
       .limit(limit);
   };
 
+  /**
+   * Runs stranded before verification ever started: the plan is on disk, but the
+   * completion gate that would have judged the delivery never reached the run —
+   * its host died in between. {@link findStuckVerifying} cannot see these (they
+   * never entered `verifying`), and nothing else re-reads a `planned` run, so the
+   * acceptance and goal cards above them stay pinned on a delivery that may well
+   * be finished. Same keyset contract as {@link findStuckVerifying}.
+   */
+  static findStuckPlanned = async (
+    db: LobeChatDatabase,
+    olderThan: Date,
+    options?: { after?: { id: string; updatedAt: Date }; limit?: number },
+  ): Promise<VerifyRunItem[]> => {
+    const { after, limit = 200 } = options ?? {};
+
+    const updatedAtMs = sql`date_trunc('milliseconds', ${verifyRuns.updatedAt})`;
+
+    const conditions = [
+      eq(verifyRuns.status, 'planned'),
+      lt(verifyRuns.updatedAt, olderThan),
+      isNotNull(verifyRuns.operationId),
+    ];
+
+    if (after) {
+      conditions.push(
+        or(
+          gt(updatedAtMs, after.updatedAt),
+          and(eq(updatedAtMs, after.updatedAt), gt(verifyRuns.id, after.id)),
+        )!,
+      );
+    }
+
+    return db
+      .select()
+      .from(verifyRuns)
+      .where(and(...conditions))
+      .orderBy(asc(updatedAtMs), asc(verifyRuns.id))
+      .limit(limit);
+  };
+
   /** Update the denormalized rollup. Always go through the service-layer chokepoint. */
   updateStatus = async (runId: string, status: VerifyRunStatus | null): Promise<void> => {
     await this.db

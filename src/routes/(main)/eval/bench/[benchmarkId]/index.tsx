@@ -60,7 +60,7 @@ const styles = createStaticStyles(({ css }) => ({
   tag: css`
     padding-block: 2px;
     padding-inline: 8px;
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusXS};
 
     font-size: ${cssVar.fontSizeSM};

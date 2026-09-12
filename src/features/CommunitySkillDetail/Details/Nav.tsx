@@ -78,7 +78,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     width: 100%;
     padding-block-end: 8px;
-    border-block-end: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 88%, transparent);
+    border-block-end: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 88%, transparent);
 
     &::-webkit-scrollbar {
       display: none;

@@ -98,26 +98,29 @@ describe('hosted group artifact access', () => {
     ['wrong operation', { operationId: 'another-operation' }],
     ['joined after publication', {}, new Date('2026-09-04T00:10:00.001Z')],
     ['extra private field', { provider: 'private-provider' }],
-  ])('fails closed for %s', async (_case, markerChange, joinedAt = new Date('2026-09-04T00:05:00.000Z')) => {
-    const created = await createHostedGroupArtifactHandle({} as any, baseInput, now);
-    const persisted = mocks.record.mock.calls[0]?.[0];
-    mocks.find.mockResolvedValue({
-      marker: { ...persisted, ...markerChange },
-      operationGroupId: baseInput.groupId,
-      operationId: baseInput.operationId,
-      operationOwnerUserId: baseInput.ownerUserId,
-      readerJoinedAt: joinedAt,
-      readerMembershipVersion: 9,
-    });
+  ])(
+    'fails closed for %s',
+    async (_case, markerChange, joinedAt = new Date('2026-09-04T00:05:00.000Z')) => {
+      const created = await createHostedGroupArtifactHandle({} as any, baseInput, now);
+      const persisted = mocks.record.mock.calls[0]?.[0];
+      mocks.find.mockResolvedValue({
+        marker: { ...persisted, ...markerChange },
+        operationGroupId: baseInput.groupId,
+        operationId: baseInput.operationId,
+        operationOwnerUserId: baseInput.ownerUserId,
+        readerJoinedAt: joinedAt,
+        readerMembershipVersion: 9,
+      });
 
-    await expect(
-      resolveHostedGroupArtifact(
-        {} as any,
-        { groupId: baseInput.groupId, handle: created.handle, readerUserId: 'same-group-reader' },
-        now,
-      ),
-    ).rejects.toMatchObject({ code: HOSTED_GROUP_ARTIFACT_NOT_FOUND });
-  });
+      await expect(
+        resolveHostedGroupArtifact(
+          {} as any,
+          { groupId: baseInput.groupId, handle: created.handle, readerUserId: 'same-group-reader' },
+          now,
+        ),
+      ).rejects.toMatchObject({ code: HOSTED_GROUP_ARTIFACT_NOT_FOUND });
+    },
+  );
 
   it('rejects malformed creation input and a refused durable write', async () => {
     await expect(
@@ -139,9 +142,9 @@ describe('hosted group artifact access', () => {
     expect(mocks.record).not.toHaveBeenCalled();
 
     mocks.record.mockResolvedValue(false);
-    await expect(
-      createHostedGroupArtifactHandle({} as any, baseInput, now),
-    ).rejects.toMatchObject({ code: HOSTED_GROUP_ARTIFACT_NOT_FOUND });
+    await expect(createHostedGroupArtifactHandle({} as any, baseInput, now)).rejects.toMatchObject({
+      code: HOSTED_GROUP_ARTIFACT_NOT_FOUND,
+    });
   });
 
   it('rejects an invalid handle or a removed/reinvited member before any projection', async () => {

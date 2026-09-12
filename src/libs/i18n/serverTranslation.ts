@@ -1,6 +1,7 @@
 import { DEFAULT_LANG } from '@/const/locale';
 import { type Locales, type NS } from '@/locales/resources';
 import { normalizeLocale } from '@/locales/resources';
+import { displayBranding } from '@/utils/displayBranding';
 import { unwrapESMModule } from '@/utils/esm/unwrapESMModule';
 import { loadI18nNamespaceModuleWithFallback } from '@/utils/i18n/loadI18nNamespaceModule';
 
@@ -52,7 +53,7 @@ export const translation = async (ns: NS = 'common', hl: string) => {
           content = content.replace(`{{${k}}}`, value);
         });
       }
-      return content;
+      return displayBranding(content);
     },
   };
 };

@@ -31,6 +31,8 @@ afterEach(() => {
     isLoadedAuthProviders: false,
     authProviders: [],
     hasPasswordAccount: false,
+    authProvidersError: false,
+    isLoadingAuthProviders: false,
   });
 });
 
@@ -179,6 +181,35 @@ describe('createAuthSlice', () => {
   });
 
   describe('fetchAuthProviders', () => {
+    it('keeps Google linked when optional provider profile lookup fails', async () => {
+      mockBetterAuthClient.listAccounts.mockResolvedValueOnce({
+        data: [{ providerId: 'google', accountId: 'google-1' }],
+      });
+      mockBetterAuthClient.accountInfo.mockRejectedValueOnce(new Error('Provider unavailable'));
+      await useUserStore.getState().fetchAuthProviders();
+      expect(useUserStore.getState().authProviders).toEqual([
+        { provider: 'google', providerAccountId: 'google-1', email: undefined },
+      ]);
+      expect(useUserStore.getState().isLoadedAuthProviders).toBe(true);
+    });
+
+    it('does not cache an API error as an empty list and permits retry', async () => {
+      mockBetterAuthClient.listAccounts.mockResolvedValueOnce({
+        error: { message: 'unavailable' },
+        data: null,
+      });
+      await useUserStore.getState().fetchAuthProviders();
+      expect(useUserStore.getState().isLoadedAuthProviders).toBe(false);
+      expect(useUserStore.getState().authProvidersError).toBe(true);
+      mockBetterAuthClient.listAccounts.mockResolvedValueOnce({
+        data: [{ providerId: 'google', accountId: 'google-1' }],
+      });
+      mockBetterAuthClient.accountInfo.mockResolvedValueOnce({ data: { user: {} } });
+      await useUserStore.getState().fetchAuthProviders();
+      expect(useUserStore.getState().authProviders?.[0].provider).toBe('google');
+      expect(useUserStore.getState().authProvidersError).toBe(false);
+    });
+
     it('should skip fetching if already loaded', async () => {
       useUserStore.setState({ isLoadedAuthProviders: true });
 
@@ -224,7 +255,8 @@ describe('createAuthSlice', () => {
         await result.current.fetchAuthProviders();
       });
 
-      expect(result.current.isLoadedAuthProviders).toBe(true);
+      expect(result.current.isLoadedAuthProviders).toBe(false);
+      expect(result.current.authProvidersError).toBe(true);
       consoleSpy.mockRestore();
     });
   });

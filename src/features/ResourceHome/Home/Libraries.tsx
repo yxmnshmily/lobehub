@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     padding-block: 14px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     text-align: start;
@@ -56,7 +56,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: 14px;
     padding-inline: 16px;
-    border: 1px dashed ${cssVar.colorBorder};
+    border: 0.5px dashed ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorTextSecondary};

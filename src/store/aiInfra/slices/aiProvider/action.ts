@@ -92,7 +92,7 @@ const getModelProperty = async <T>(
   propertyName: keyof AiFullModelCard,
 ): Promise<T | undefined> => {
   const inlineValue = (model as Partial<AiFullModelCard>)[propertyName];
-  if (inlineValue !== undefined) return inlineValue as T;
+  if (inlineValue != null) return inlineValue as T;
 
   return getModelPropertyWithFallback<T | undefined>(model.id, propertyName, model.providerId);
 };

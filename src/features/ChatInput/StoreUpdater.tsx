@@ -18,6 +18,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
   ({
     agentId,
     canRecordVoiceMessage,
+    readOnlyConfig,
     chatInputEditorRef,
     contextSelectionKey,
     contextWindowMessages,
@@ -43,6 +44,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
 
     useStoreUpdater('agentId', agentId);
     useStoreUpdater('canRecordVoiceMessage', canRecordVoiceMessage);
+    useStoreUpdater('readOnlyConfig', readOnlyConfig ?? false);
     useStoreUpdater('contextSelectionKey', contextSelectionKey);
     useStoreUpdater('contextWindowMessages', contextWindowMessages);
 

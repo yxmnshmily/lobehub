@@ -72,7 +72,7 @@ export class UsageCounter {
     const merged: ModelUsage = { ...current };
 
     // Accumulate all numeric token fields
-    const numericFields: (keyof ModelUsage)[] = [
+    const numericFields = [
       'inputCachedTokens',
       'inputCacheMissTokens',
       'inputWriteCacheTokens',
@@ -91,11 +91,11 @@ export class UsageCounter {
       'totalInputTokens',
       'totalOutputTokens',
       'totalTokens',
-    ];
+    ] as const satisfies readonly (keyof ModelUsage)[];
 
     for (const field of numericFields) {
-      const prevValue = previous[field] as number | undefined;
-      const currValue = current[field] as number | undefined;
+      const prevValue = previous[field];
+      const currValue = current[field];
 
       if (prevValue !== undefined || currValue !== undefined) {
         merged[field] = (prevValue || 0) + (currValue || 0);

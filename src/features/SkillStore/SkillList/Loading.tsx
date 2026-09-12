@@ -1,10 +1,10 @@
+import SkeletonText from '@/components/Skeleton/Text';
 import { Flexbox } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
 
 const Loading = () => {
   return (
     <Flexbox padding={16}>
-      <Skeleton.Text rows={8} />
+      <SkeletonText rows={8} />
     </Flexbox>
   );
 };

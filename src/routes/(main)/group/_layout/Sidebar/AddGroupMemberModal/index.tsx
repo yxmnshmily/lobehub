@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import ImperativeModal from '@/components/ImperativeModal';
+import InvitationForm from '@/features/GroupMembership/InvitationForm';
 import { groupKeys } from '@/libs/swr/keys';
 import { agentService } from '@/services/agent';
 
@@ -25,7 +26,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     height: 500px;
     padding: 12px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius}px;
   `,
   rightColumn: css`
@@ -104,14 +105,17 @@ const AddGroupMemberModal = memo<AddGroupMemberModalProps>(
         onCancel={handleCancel}
         onOk={handleConfirm}
       >
-        <Flexbox horizontal className={styles.container} gap={8}>
-          {/* Left Column - Available Agents */}
-          <AvailableAgentList agents={availableAgents} isLoading={isLoadingAgents} />
+        <Flexbox gap={16}>
+          <InvitationForm disabled={isAdding} groupId={groupId} />
+          <Flexbox horizontal className={styles.container} gap={8}>
+            {/* Left Column - Available Agents */}
+            <AvailableAgentList agents={availableAgents} isLoading={isLoadingAgents} />
 
-          <Divider orientation={'vertical'} style={{ height: '100%' }} />
+            <Divider orientation={'vertical'} style={{ height: '100%' }} />
 
-          {/* Right Column - Selected Agents */}
-          <SelectedAgentList agents={allAgents} />
+            {/* Right Column - Selected Agents */}
+            <SelectedAgentList agents={allAgents} />
+          </Flexbox>
         </Flexbox>
       </ImperativeModal>
     );

@@ -10,7 +10,9 @@ const Layout: FC = () => {
     <>
       <Sidebar />
       <Flexbox className={styles.mainContainer} flex={1} height={'100%'}>
-        <Outlet />
+        <Flexbox flex={1} style={{ minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+          <Outlet />
+        </Flexbox>
       </Flexbox>
     </>
   );

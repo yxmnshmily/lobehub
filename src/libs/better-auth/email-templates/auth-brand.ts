@@ -4,7 +4,7 @@ import { BRANDING_LOGO_URL, BRANDING_NAME } from '@lobechat/business-const';
 import addressparser from 'nodemailer/lib/addressparser';
 import { z } from 'zod';
 
-import { getEmailSupportHtml, getEmailSupportText } from '@/libs/email/support';
+import { EMAIL_SUPPORT_ADDRESS } from '@/libs/email/support';
 
 const LOBEHUB_MOUNT_PATH = '/lobehub';
 const AUTH_CALLBACK_QUERY_KEYS = [
@@ -58,6 +58,15 @@ export const escapeEmailHtml = (value: string) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+
+const AUTH_EMAIL_WECHAT = 'jinwang1016';
+const getAuthEmailSupportHtml = () => {
+  const supportEmail = escapeEmailHtml(EMAIL_SUPPORT_ADDRESS);
+
+  return `联系${escapeEmailHtml(AUTH_EMAIL_BRAND_NAME)}：<a href="mailto:${supportEmail}" style="color: #6b7280; text-decoration: underline;">${supportEmail}</a><span style="color: #a1a1aa;"> · </span><span style="color: #6b7280;">微信号：${AUTH_EMAIL_WECHAT}</span>`;
+};
+const getAuthEmailSupportText = () =>
+  `联系${AUTH_EMAIL_BRAND_NAME}：${EMAIL_SUPPORT_ADDRESS}、微信号：${AUTH_EMAIL_WECHAT}`;
 
 export const travelGroupLogoAttachment = {
   cid: 'travel-group-logo',
@@ -124,7 +133,7 @@ export const getMountedAuthEmailUrl = (url: string, configuredAppUrl: string): s
 };
 
 export const getTravelGroupEmailFooterText = () =>
-  `${AUTH_EMAIL_BRAND_NAME}｜旅游内容与 AI 创作服务平台\n${getEmailSupportText()}`;
+  `${AUTH_EMAIL_BRAND_NAME}｜旅游内容与 AI 创作服务平台\n${getAuthEmailSupportText()}`;
 
 export const renderTravelGroupAuthEmail = ({
   content,
@@ -149,13 +158,13 @@ export const renderTravelGroupAuthEmail = ({
           <div style="margin-top:12px;font-size:22px;line-height:30px;font-weight:700;color:#080808;">${escapeEmailHtml(AUTH_EMAIL_BRAND_NAME)}</div>
           <div style="margin-top:4px;font-size:14px;line-height:22px;color:#666666;">旅游内容与 AI 创作服务平台</div>
         </td></tr>
-        <tr><td style="padding:36px 32px;background:#ffffff;border:1px solid #e3e3e3;border-radius:16px;">
+        <tr><td style="padding:36px 32px;background:#ffffff;border:0.5px solid #e3e3e3;border-radius:16px;">
           <h1 style="margin:0 0 24px;font-size:26px;line-height:36px;text-align:center;color:#080808;">${escapeEmailHtml(title)}</h1>
           ${content}
         </td></tr>
         <tr><td align="center" style="padding:24px 12px 0;font-size:13px;line-height:22px;color:#999999;">
           <p style="margin:0 0 8px;">${escapeEmailHtml(AUTH_EMAIL_BRAND_NAME)}面向旅游从业者，提供旅游文案、在线作图、视频生成、文档制作和多人 AI 协作服务。</p>
-          <p style="margin:0 0 6px;">${getEmailSupportHtml()}</p>
+          <p style="margin:0 0 6px;">${getAuthEmailSupportHtml()}</p>
           <p style="margin:0;">© ${new Date().getFullYear()} ${escapeEmailHtml(AUTH_EMAIL_BRAND_NAME)}</p>
         </td></tr>
       </table>

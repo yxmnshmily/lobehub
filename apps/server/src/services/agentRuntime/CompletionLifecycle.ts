@@ -7,7 +7,10 @@ import { isRecord } from '@lobechat/utils/object';
 import debug from 'debug';
 
 import { notifyAgentInterventionRequired } from '@/business/server/agent-run/agentInterventionReview';
-import { notifyAgentRunCompleted } from '@/business/server/agent-run/notifyAgentRunCompleted';
+import {
+  notifyAgentRunCompleted,
+  notifyAgentRunFailed,
+} from '@/business/server/agent-run/notifyAgentRunCompleted';
 import {
   AgentOperationModel,
   type ChildUsageRollup,
@@ -24,6 +27,7 @@ import { emitAgentSignalSourceEvent } from '@/server/services/agentSignal';
 import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observability/traceEvents';
 import { extractSelfIterationCompletionPayload } from '@/server/services/agentSignal/services/selfIteration/completion';
 import { parseHostedGroupRunSnapshot } from '@/server/services/platformUsageBilling/hostedGroupOperationAccess';
+import { completePlatformUsageSharedBudgetForOperation } from '@/server/services/platformUsageBilling/sharedBudget';
 import { instantiateVerifyPlanOnStart, runVerifyOnCompletion } from '@/server/services/verify';
 import { registerWorksForOperation } from '@/server/services/workRegistration';
 import { after } from '@/server/utils/scheduleAfterResponse';
@@ -420,6 +424,11 @@ export class CompletionLifecycle {
         // row exists, but never let a conflicting terminal owner be replaced.
         if (operation) return false;
       }
+      if (accepted && !isParkedStatus(status)) {
+        // The coordinator's earlier cleanup can see siblings still running in
+        // other workers. Retry only after this terminal row is authoritative.
+        await completePlatformUsageSharedBudgetForOperation(operationId);
+      }
     } catch (error) {
       if (hostedGroupMemberFinal) throw error;
       log('[%s] Failed to persist operation completion (non-fatal): %O', operationId, error);
@@ -728,7 +737,8 @@ export class CompletionLifecycle {
   private async recallUserOnCompletion(
     operationId: string,
     event: { agentId?: string; duration?: number; lastAssistantContent?: string; topicId?: string },
-    metadata: { trigger?: unknown; userId?: string } | undefined,
+    metadata: { trigger?: unknown; userId?: string; groupId?: string } | undefined,
+    failed = false,
   ): Promise<void> {
     const { isChildRun, trigger } = await this.resolveRunRecallFacts(operationId, metadata);
     if (isChildRun) {
@@ -740,7 +750,8 @@ export class CompletionLifecycle {
       return;
     }
 
-    await notifyAgentRunCompleted({
+    await (failed ? notifyAgentRunFailed : notifyAgentRunCompleted)({
+      ...(metadata?.groupId ? { groupId: metadata.groupId } : {}),
       agentId: event.agentId || undefined,
       duration: event.duration,
       lastAssistantContent: event.lastAssistantContent,
@@ -919,13 +930,13 @@ export class CompletionLifecycle {
       // into a visitor topic (`topics.senderId`) that is deliberately excluded
       // from creator-facing surfaces.
       if (
-        isSuccessLikeCompletionReason(reason) &&
+        (isSuccessLikeCompletionReason(reason) || reason === 'error') &&
         metadata?.isSubAgent !== true &&
         metadata?.orchestrationRole !== 'member' &&
         !isAgentShareRun(metadata)
       ) {
-        void this.recallUserOnCompletion(operationId, event, metadata).catch((error) =>
-          log('[%s] Completion notification failed (non-fatal): %O', operationId, error),
+        void this.recallUserOnCompletion(operationId, event, metadata, reason === 'error').catch(
+          (error) => log('[%s] Completion notification failed (non-fatal): %O', operationId, error),
         );
       }
 
@@ -1356,10 +1367,27 @@ export const buildHostedGroupMemberFinalMarker = (
     return undefined;
   }
 
+  const sourceIndex = messages.findIndex(
+    (message) => message.id === metadata.sourceMessageId && message.role === 'user',
+  );
+  // Never infer a request boundary from the nearest human message or a topic.
+  const executionMessageIds =
+    sourceIndex < 0
+      ? undefined
+      : messages
+          .slice(sourceIndex + 1)
+          .filter(
+            (message) =>
+              message.role === 'assistant' || message.role === 'tool' || message.role === 'task',
+          )
+          .map((message) => message.id)
+          .filter((id): id is string => typeof id === 'string' && Boolean(id.trim()));
+
   return {
     actorUserIdSnapshot: hostedRun.actorUserIdSnapshot,
     assistantMessageId: finalMessage.id,
     contentHash: createHash('sha256').update(finalText, 'utf8').digest('hex'),
+    ...(executionMessageIds ? { executionMessageIds: [...new Set(executionMessageIds)] } : {}),
     groupId: hostedRun.groupId,
     membershipVersion: hostedRun.membershipVersion,
     operationId,

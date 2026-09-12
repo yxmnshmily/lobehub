@@ -1,3 +1,5 @@
+import SkeletonText from '@/components/Skeleton/Text';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { Block, Flexbox } from '@lobehub/ui';
 import { Skeleton } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
@@ -25,19 +27,19 @@ const BriefCardSkeleton = memo(() => {
             size={28}
             style={{ borderRadius: cssVar.borderRadius, flex: 'none' }}
           />
-          <Skeleton height={20} width={200} />
-          <Skeleton height={14} width={72} />
+          <SkeletonBar height={20} width={200} />
+          <SkeletonBar height={14} width={72} />
         </Flexbox>
         <Skeleton.Avatar shape={'circle'} size={'small'} style={{ flex: 'none' }} />
       </Flexbox>
 
       <Divider dashed style={{ marginBlock: 0 }} />
 
-      <Skeleton.Text fontSize={14} rows={3} style={{ marginBottom: 0 }} />
+      <SkeletonText fontSize={14} rows={3} style={{ marginBottom: 0 }} />
 
       <Flexbox horizontal gap={8} style={{ alignSelf: 'flex-end' }}>
-        <Skeleton height={32} width={100} />
-        <Skeleton height={32} width={80} />
+        <SkeletonBar height={32} width={100} />
+        <SkeletonBar height={32} width={80} />
       </Flexbox>
     </Block>
   );

@@ -71,21 +71,32 @@ export const useBuilderSuggestions = ({
       // render that changed the key, so these already hold the latest values.
       const { messages, schema } = chainBuilderSuggestion({ contextSummary, locale, mode });
       const abortController = new AbortController();
-      const envelope = (await aiChatService.generateJSON(
-        {
-          messages,
-          model,
-          provider,
-          schema,
-          tracing: {
-            agentId: builderAgentId,
-            promptVersion: BUILDER_SUGGESTION_PROMPT_VERSION,
-            scenario: TRACING_SCENARIOS.BuilderSuggestion,
-            schemaName: BUILDER_SUGGESTION_SCHEMA_NAME,
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => {
+          const error = new Error('Builder suggestions timed out');
+          reject(error);
+          abortController.abort(error);
+        }, 15_000);
+      });
+      const envelope = (await Promise.race([
+        aiChatService.generateJSON(
+          {
+            messages,
+            model,
+            provider,
+            schema,
+            tracing: {
+              agentId: builderAgentId,
+              promptVersion: BUILDER_SUGGESTION_PROMPT_VERSION,
+              scenario: TRACING_SCENARIOS.BuilderSuggestion,
+              schemaName: BUILDER_SUGGESTION_SCHEMA_NAME,
+            },
           },
-        },
-        abortController,
-      )) as GenerateEnvelope;
+          abortController,
+        ),
+        deadline,
+      ]).finally(() => clearTimeout(timeout))) as GenerateEnvelope;
 
       const suggestions = (envelope?.data?.suggestions ?? [])
         .filter((s) => s?.title?.trim() && s?.prompt?.trim())

@@ -58,6 +58,8 @@ export interface MessageItemProps {
   index: number;
   inPortalThread?: boolean;
   isLatestItem?: boolean;
+  /** External transcripts may render messages without exposing mutation or AI selection actions. */
+  readOnly?: boolean;
 }
 
 const MessageItem = memo<MessageItemProps>(
@@ -72,6 +74,7 @@ const MessageItem = memo<MessageItemProps>(
     inPortalThread = false,
     index,
     isLatestItem,
+    readOnly,
   }) => {
     const topic = useConversationStore((s) => s.context.topicId);
     const enableMessageTextSelectionActions = useUserStore(
@@ -84,6 +87,7 @@ const MessageItem = memo<MessageItemProps>(
     const { effectiveDisableEditing, shouldSuppressContextMenu } = getMessageInteractionState(
       message,
       disableEditing,
+      readOnly,
     );
 
     const [editing, isMessageCreating] = useConversationStore((s) => [
@@ -256,7 +260,7 @@ const MessageItem = memo<MessageItemProps>(
     );
 
     const selectableContent =
-      enableMessageTextSelectionActions && supportsTextSelectionActions ? (
+      !readOnly && enableMessageTextSelectionActions && supportsTextSelectionActions ? (
         <TextSelectionActionLayer>{content}</TextSelectionActionLayer>
       ) : (
         content
@@ -268,6 +272,7 @@ const MessageItem = memo<MessageItemProps>(
         <Flexbox
           className={cx(styles.message, className, shouldDimCreatingMessage && styles.loading)}
           data-index={index}
+          data-share-topic-id={message?.topicId ?? ''}
           onContextMenu={onContextMenu}
         >
           <MessageSelectionWrapper id={id} role={role}>

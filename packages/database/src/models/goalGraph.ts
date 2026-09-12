@@ -25,6 +25,7 @@ import {
 import { tasks } from '../schemas/task';
 import { works, workVersions } from '../schemas/work';
 import type { LobeChatDatabase, Transaction } from '../type';
+import { groupWorkVisibility } from '../utils/groupWork';
 import { buildWorkspaceWhere } from '../utils/workspace';
 import { workOwnership } from './work/context';
 
@@ -74,7 +75,10 @@ export class GoalGraphModel {
   ) {}
 
   private ownership = () =>
-    buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, goals);
+    and(
+      buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, goals),
+      groupWorkVisibility(sql`${goals.config}`, this.userId, this.workspaceId),
+    )!;
 
   private ownedGoal = async (goalId: string, tx: LobeChatDatabase | Transaction = this.db) => {
     const [goal] = await tx

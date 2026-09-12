@@ -24,6 +24,7 @@ import {
 import { type ToolsEngine } from '@lobechat/context-engine';
 import { buildTaskDetailPrompt, buildTaskListPrompt } from '@lobechat/prompts';
 import {
+  AgentRuntimeErrorType,
   buildGoalOverviewContext,
   type ConversationContext,
   type LobeAgentChatConfig,
@@ -594,6 +595,44 @@ export class StreamingExecutorActionImpl {
       originalMessages.length,
       disableTools,
     );
+
+    // Initialize before publishing a running topic/signal. Profile-only group
+    // members have no executable config, and provider hydration can also fail.
+    // Neither failure may strand the child operation in "preparing response".
+    let prepared: ReturnType<ChatStore['internal_createAgentState']>;
+    try {
+      await getAiInfraStoreState().ensureAiProviderRuntimeStateReady();
+      prepared = this.#get().internal_createAgentState({
+        messages: [...originalMessages],
+        parentMessageId,
+        agentId,
+        disableTools,
+        topicId,
+        threadId: threadId ?? undefined,
+        initialState: params.initialState,
+        initialContext: params.initialContext,
+        operationId,
+        subAgentId,
+        isSubAgent,
+        modelOverride: params.modelOverride,
+        chatConfigOverride: params.chatConfigOverride,
+      });
+    } catch (error) {
+      if (this.#get().operations[operationId]?.status === 'cancelled') return;
+      const message = error instanceof Error ? error.message : String(error);
+      this.#get().failOperation(operationId, { message, type: 'AgentRuntimeInitializationError' });
+      if (params.skipCreateFirstMessage && parentMessageType === 'assistant') {
+        await this.#get()
+          .optimisticUpdateMessageError(
+            parentMessageId,
+            { body: { message }, message, type: AgentRuntimeErrorType.AgentRuntimeError },
+            { operationId },
+          )
+          .catch(console.error);
+      }
+      throw error;
+    }
+
     void emitClientAgentSignalSourceEvent({
       payload: {
         agentId,
@@ -629,19 +668,6 @@ export class StreamingExecutorActionImpl {
       });
     }
 
-    // Create a new array to avoid modifying the original messages
-    const messages = [...originalMessages];
-
-    // Decide tool / function-calling capability from real data, not a guess.
-    // The enabled-model list hydrates asynchronously (auth session → aiProvider
-    // runtime-state SWR); until it's ready `isCanUseFC` optimistically assumes
-    // tool use so we don't drop tools for a capable model. But this is the
-    // outbound path: `createAgentToolsEngine` below bakes the tool set into the
-    // payload and the `/webapi/chat/[provider]` route forwards it to the provider
-    // without rechecking capability. Wait (bounded) for the list so a fast first
-    // send after reload never attaches tools to a model that can't use them.
-    await getAiInfraStoreState().ensureAiProviderRuntimeStateReady();
-
     // ===========================================
     // Step 1: Create Agent State (resolves config once)
     // ===========================================
@@ -651,21 +677,7 @@ export class StreamingExecutorActionImpl {
       context: initialAgentContext,
       agentConfig,
       toolsEngine,
-    } = this.#get().internal_createAgentState({
-      messages,
-      parentMessageId: params.parentMessageId,
-      agentId,
-      disableTools,
-      topicId,
-      threadId: threadId ?? undefined,
-      initialState: params.initialState,
-      initialContext: params.initialContext,
-      operationId,
-      subAgentId, // Pass subAgentId for agent config retrieval (behavior depends on scope)
-      isSubAgent, // Pass isSubAgent to filter out lobe-agent tool in sub-agent context
-      modelOverride: params.modelOverride,
-      chatConfigOverride: params.chatConfigOverride,
-    });
+    } = prepared;
 
     if (params.skipCreateFirstMessage) {
       initialAgentState.pendingAssistantMessageId = params.parentMessageId;

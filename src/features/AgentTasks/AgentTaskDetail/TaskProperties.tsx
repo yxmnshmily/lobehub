@@ -46,7 +46,7 @@ const PRIORITY_META: Record<TaskPriority, PriorityMeta> = {
   4: { labelKey: 'priority.low' },
 };
 
-const TaskProperties = memo(() => {
+const TaskProperties = memo(({ compact = false }: { compact?: boolean }) => {
   const { t } = useTranslation(['chat', 'common']);
 
   const taskId = useTaskStore(taskDetailSelectors.activeTaskId);
@@ -68,7 +68,14 @@ const TaskProperties = memo(() => {
   const priorityMeta = PRIORITY_META[priority as TaskPriority] ?? PRIORITY_META[0];
 
   return (
-    <Block gap={4} padding={4} variant={'outlined'} width={200}>
+    <Block
+      gap={4}
+      horizontal={compact}
+      padding={compact ? 0 : 4}
+      variant={compact ? 'borderless' : 'outlined'}
+      width={compact ? '100%' : 200}
+      wrap={compact ? 'wrap' : undefined}
+    >
       <TaskStatusTag status={status} taskIdentifier={taskId}>
         <Block
           clickable

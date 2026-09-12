@@ -12,6 +12,9 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 const prefixCls = 'ant';
 
+export const MOBILE_ACTION_POPOVER_WIDTH =
+  'calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)))';
+
 const styles = createStaticStyles(({ css }) => ({
   popoverContent: css`
     .${prefixCls}-form {
@@ -95,10 +98,15 @@ const ActionPopover = memo<ActionPopoverProps>(
           ...(typeof resolvedStyles === 'object' ? resolvedStyles : {}),
           content: {
             maxHeight,
-            maxWidth: isMobile ? undefined : maxWidth,
-            minWidth: isMobile ? undefined : minWidth,
-            width: isMobile ? '100vw' : undefined,
+            maxWidth,
+            minWidth,
             ...contentStyle,
+            ...(isMobile && {
+              boxSizing: 'border-box',
+              maxWidth: MOBILE_ACTION_POPOVER_WIDTH,
+              minWidth: 0,
+              width: contentStyle.width ?? MOBILE_ACTION_POPOVER_WIDTH,
+            }),
           },
         }}
         {...rest}

@@ -78,6 +78,8 @@ export interface ServerAgentMemberRunItem {
   agentId: string;
   /** Optional supervisor instruction to guide the member's response. */
   instruction?: string;
+  /** Validated by the runner before it reaches a group member operation. */
+  replyToMessageId?: string;
   /** Server-owned deterministic tool policy for this member run. */
   toolDispatchPolicy?: OperationToolDispatchPolicy;
 }
@@ -106,6 +108,8 @@ export interface ServerAgentMemberRunParams {
 }
 
 export interface ServerAgentMemberRunResult {
+  /** Safe, user-facing startup diagnosis; never a raw exception or provider response. */
+  error?: string;
   /**
    * Whether at least one member op was forked. `false` means every member
    * failed to start — no completion bridge will fire, so the caller must

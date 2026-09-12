@@ -5,10 +5,10 @@ import { createStaticStyles, cssVar } from 'antd-style';
 
 import SkeletonBar from '../Bar';
 
-const styles = createStaticStyles(({ css }) => ({
+const styles = createStaticStyles(({ css, responsive }) => ({
   divider: css`
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
   row: css`
@@ -19,6 +19,12 @@ const styles = createStaticStyles(({ css }) => ({
 
     min-height: 64px;
     padding-block: 16px;
+
+    ${responsive.md} {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
   `,
 }));
 

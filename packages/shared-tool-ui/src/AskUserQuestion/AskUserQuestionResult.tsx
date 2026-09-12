@@ -23,7 +23,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   divider: css`
     align-self: stretch;
-    height: 1px;
+    height: 0.5px;
     margin-block: 4px;
     background: ${cssVar.colorFillSecondary};
   `,

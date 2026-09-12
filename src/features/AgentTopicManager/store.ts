@@ -55,7 +55,7 @@ const initialState: TopicsViewState = {
   status: 'active',
   timeRange: 'all',
   triggers: ['chat'],
-  viewMode: 'card',
+  viewMode: 'list',
 };
 
 export const useTopicsViewStore = create<TopicsViewState & TopicsViewActions>((set) => ({

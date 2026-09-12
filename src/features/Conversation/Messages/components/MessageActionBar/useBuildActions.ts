@@ -1,4 +1,5 @@
 import { useConversationResourceAccess } from '../../../hooks/useConversationResourceAccess';
+import { useConversationStore } from '../../../store';
 import { type MessageActionItem } from '../../../types';
 import { advancedAction } from './actions/advanced';
 import { branchingAction } from './actions/branching';
@@ -10,6 +11,7 @@ import { copyMessageIdAction } from './actions/copyMessageId';
 import { copyOperationIdAction } from './actions/copyOperationId';
 import { delAction } from './actions/del';
 import { delAndRegenerateAction } from './actions/delAndRegenerate';
+import { downloadAction } from './actions/download';
 import { editAction } from './actions/edit';
 import { regenerateAction } from './actions/regenerate';
 import { restoreToInputAction } from './actions/restoreToInput';
@@ -36,6 +38,7 @@ export const useBuildActions = (
   // actions (send/regenerate/edit/delete/translate/tts/branch) don't apply —
   // same "absent when not applicable" rule as the role checks above.
   const { canUseResource } = useConversationResourceAccess();
+  const authorize = useConversationStore((s) => s.hooks.canPerformMessageAction);
 
   const actions: Record<string, MessageActionItem | null> = {
     advanced: advancedAction.useBuild(ctx),
@@ -48,6 +51,7 @@ export const useBuildActions = (
     copyOperationId: copyOperationIdAction.useBuild(ctx),
     del: delAction.useBuild(ctx),
     delAndRegenerate: delAndRegenerateAction.useBuild(ctx),
+    download: downloadAction.useBuild(ctx),
     edit: editAction.useBuild(ctx),
     regenerate: regenerateAction.useBuild(ctx),
     restoreToInput: restoreToInputAction.useBuild(ctx),
@@ -58,7 +62,7 @@ export const useBuildActions = (
     tts: ttsAction.useBuild(ctx),
   };
 
-  if (!canUseResource) {
+  if (!canUseResource && !authorize) {
     for (const key of [
       'branching',
       'continueGeneration',
@@ -70,6 +74,12 @@ export const useBuildActions = (
       'tts',
     ]) {
       actions[key] = null;
+    }
+  }
+
+  if (authorize) {
+    for (const key of Object.keys(actions)) {
+      if (!authorize(key, ctx.id)) actions[key] = null;
     }
   }
 

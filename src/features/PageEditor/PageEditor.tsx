@@ -363,6 +363,7 @@ export const PageEditor: FC<PageEditorProps> = ({
   fullWidthHeader,
   knowledgeBaseId,
   metaReadOnly,
+  onDelete,
   onDocumentIdChange,
   onEmojiChange,
   onSave,
@@ -390,7 +391,8 @@ export const PageEditor: FC<PageEditorProps> = ({
           onDelete={() => {
             if (!canEdit) return;
 
-            deletePage(pageId || '');
+            if (onDelete) onDelete();
+            else deletePage(pageId || '');
           }}
           onEmojiChange={(emoji) => {
             if (!canEdit) return;

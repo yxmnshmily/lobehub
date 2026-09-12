@@ -22,7 +22,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       overflow: hidden;
 
       max-width: 360px;
-      border: 1px solid ${cssVar.colorBorderSecondary};
+      border: 0.5px solid ${cssVar.colorBorderSecondary};
       border-radius: 12px;
 
       transition: border-color 0.2s;

@@ -195,6 +195,14 @@ describe('createGroupOrchestrationExecutors', () => {
               role: 'user',
               updatedAt: Date.now(),
             } as UIChatMessage,
+            {
+              agentId: 'source-agent-id',
+              content: 'Source response',
+              createdAt: Date.now(),
+              id: 'msg_source_1',
+              role: 'assistant',
+              updatedAt: Date.now(),
+            } as UIChatMessage,
           ],
         },
       });
@@ -215,7 +223,11 @@ describe('createGroupOrchestrationExecutors', () => {
 
       await callAgentExecutor(
         {
-          payload: { agentId: targetAgentId, instruction: 'Please respond' },
+          payload: {
+            agentId: targetAgentId,
+            instruction: 'Please respond',
+            replyToMessageId: 'msg_source_1',
+          },
           type: 'call_agent',
         },
         createInitialState(),
@@ -234,6 +246,50 @@ describe('createGroupOrchestrationExecutors', () => {
       // Verify subAgentId is passed (NOT isSupervisor)
       expect(callArgs.context.subAgentId).toBe(targetAgentId);
       expect(callArgs.context.isSupervisor).toBeUndefined();
+      expect(callArgs.messages.at(-1)?.content).toContain('<group_reply ref="msg%5Fsource%5F1" />');
+    });
+
+    it('does not instruct an agent to quote its own message', async () => {
+      const targetAgentId = 'target-agent-id';
+      const mockStore = createMockStore({
+        dbMessagesMap: {
+          [`group_${TEST_IDS.GROUP_ID}_${TEST_IDS.TOPIC_ID}`]: [
+            {
+              agentId: targetAgentId,
+              content: 'I will continue',
+              createdAt: Date.now(),
+              id: 'msg_self_1',
+              role: 'assistant',
+              updatedAt: Date.now(),
+            } as UIChatMessage,
+          ],
+        },
+      });
+      const executors = createGroupOrchestrationExecutors({
+        get: () => mockStore,
+        messageContext: {
+          agentId: TEST_IDS.GROUP_ID,
+          scope: 'group',
+          topicId: TEST_IDS.TOPIC_ID,
+        },
+        orchestrationOperationId: TEST_IDS.ORCHESTRATION_OPERATION_ID,
+        supervisorAgentId: TEST_IDS.SUPERVISOR_AGENT_ID,
+      });
+
+      await executors.call_agent!(
+        {
+          payload: {
+            agentId: targetAgentId,
+            instruction: 'Continue refining the copy.',
+            replyToMessageId: 'msg_self_1',
+          },
+          type: 'call_agent',
+        },
+        createInitialState(),
+      );
+
+      const callArgs = (mockStore.executeClientAgent as any).mock.calls[0][0];
+      expect(callArgs.messages.at(-1)?.content).not.toContain('<group_reply');
     });
   });
 

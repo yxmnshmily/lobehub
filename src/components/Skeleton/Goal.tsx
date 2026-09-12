@@ -13,7 +13,7 @@ const styles = createStaticStyles(({ css }) => ({
   listRows: css`
     display: flex;
     flex-direction: column;
-    border-block: 1px solid ${cssVar.colorBorderSecondary};
+    border-block: 0.5px solid ${cssVar.colorBorderSecondary};
   `,
 }));
 
@@ -21,12 +21,21 @@ const GoalSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => (
   <Flexbox aria-busy flex={1} height={'100%'}>
     {chrome !== 'body' && <NavHeader />}
     <WideScreenContainer
+      fullWidth
       flex={1}
       gap={20}
       paddingBlock={16}
+      paddingInline={chrome === 'body' ? 0 : 16}
       wrapperStyle={{ flex: 1, overflowY: 'auto' }}
     >
-      <Flexbox horizontal align={'center'} justify={'space-between'} paddingBlock={'6px 18px'}>
+      <Flexbox
+        horizontal
+        align={'center'}
+        gap={16}
+        justify={'space-between'}
+        paddingBlock={'6px 18px'}
+        wrap={'wrap'}
+      >
         <Flexbox gap={6}>
           <SkeletonBar height={20} width={160} />
           <SkeletonBar height={14} width={280} />

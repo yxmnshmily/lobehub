@@ -57,7 +57,7 @@ const styles = createStaticStyles(({ css }) => {
 
       width: 22px;
       height: 22px;
-      border: 1.5px solid;
+      border: 0.5px solid;
       border-radius: 50%;
 
       font-size: 12px;

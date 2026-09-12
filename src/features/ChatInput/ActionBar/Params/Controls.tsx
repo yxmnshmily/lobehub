@@ -64,7 +64,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex-direction: column;
 
     .control-row {
-      border-block-start: 1px solid ${cssVar.colorSplit};
+      border-block-start: 0.5px solid ${cssVar.colorSplit};
     }
 
     .control-row:first-child {
@@ -100,7 +100,7 @@ const styles = createStaticStyles(({ css }) => ({
     }
 
     &:focus-visible {
-      outline: 1px solid ${cssVar.colorBorder};
+      outline: 0.5px solid ${cssVar.colorBorder};
       outline-offset: 2px;
     }
   `,
@@ -121,7 +121,7 @@ const styles = createStaticStyles(({ css }) => ({
     padding-block: 0;
   `,
   divider: css`
-    height: 1px;
+    height: 0.5px;
     background: ${cssVar.colorSplit};
   `,
   hint: css`
@@ -148,7 +148,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 16px;
     padding-inline: 12px;
-    border-block-end: 1px solid ${cssVar.colorSplit};
+    border-block-end: 0.5px solid ${cssVar.colorSplit};
 
     font-size: 14px;
     font-weight: 600;
@@ -244,7 +244,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     width: min(384px, 100%);
     max-height: 50vh;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 16px;
 
     background: ${cssVar.colorBgElevated};

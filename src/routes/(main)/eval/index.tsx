@@ -8,6 +8,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SWRConfig } from 'swr';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useEvalStore } from '@/store/eval';
@@ -34,7 +35,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     padding-block: 14px;
     padding-inline: 16px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
     color: inherit;
@@ -60,7 +61,7 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   skeletonCard: css`
     padding: 20px;
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
@@ -79,11 +80,11 @@ const SkeletonGrid = memo(() => (
         <Flexbox horizontal gap={12}>
           <Skeleton.Avatar shape={'square'} size={36} />
           <Flexbox flex={1} gap={8}>
-            <Skeleton height={14} width={160} />
-            <Skeleton height={12} width={220} />
+            <SkeletonBar height={14} width={160} />
+            <SkeletonBar height={12} width={220} />
           </Flexbox>
         </Flexbox>
-        <Skeleton height={64} />
+        <SkeletonBar height={64} />
       </Flexbox>
     ))}
   </div>

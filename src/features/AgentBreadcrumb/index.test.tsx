@@ -45,6 +45,21 @@ describe('AgentBreadcrumb', () => {
     mocks.activeWorkspaceSlug = null;
   });
 
+  it('uses the renamed inbox identity rather than a fixed history label', () => {
+    const oldInbox = mocks.agentState.agents.inbox;
+    mocks.agentState.agents.inbox = { title: '旅游群' };
+    try {
+      render(
+        <MemoryRouter initialEntries={['/agent/inbox/profile']}>
+          <AgentBreadcrumb agentId="inbox" />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('link', { name: '旅游群' })).toHaveAttribute('href', '/agent/inbox');
+    } finally {
+      mocks.agentState.agents.inbox = oldInbox;
+    }
+  });
+
   it('links the agent crumb back to the agent chat page', () => {
     render(
       <MemoryRouter initialEntries={['/agent/agent-1/profile']}>

@@ -1,12 +1,13 @@
 'use client';
 
 import { Center, Flexbox } from '@lobehub/ui';
-import { ActionIcon, SkeletonText, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { MessageSquarePlus } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
 import { useChatStore } from '@/store/chat';
 

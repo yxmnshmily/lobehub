@@ -1,9 +1,11 @@
-import SideBarLayout from '@/features/NavPanel/SideBarLayout';
+'use client';
 
-import Header from './Header';
+import SideBarLayout from '@/features/NavPanel/SideBarLayout';
+import SettingsBody from '@/features/Settings/Layout/Body';
+import SettingsHeader from '@/features/Settings/Layout/Header';
 
 const Content = () => {
-  return <SideBarLayout header={<Header />} />;
+  return <SideBarLayout body={<SettingsBody />} header={<SettingsHeader />} />;
 };
 
 export default Content;

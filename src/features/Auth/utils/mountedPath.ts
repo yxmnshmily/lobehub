@@ -19,7 +19,11 @@ export const withLobeHubMountPath = (
 export const resolveAuthCallbackPath = (
   callbackUrl: string | null | undefined,
   currentPathname = typeof window === 'undefined' ? '' : window.location.pathname,
-): string => sanitizeRedirectPath(callbackUrl, withLobeHubMountPath('/', currentPathname));
+): string => {
+  const defaultPath = withLobeHubMountPath('/group/default', currentPathname);
+  const target = sanitizeRedirectPath(callbackUrl, defaultPath);
+  return target === '/' || target === '/lobehub' || target === '/lobehub/' ? defaultPath : target;
+};
 
 /** Return verification links to a user-facing result page before continuing to the app. */
 export const buildMountedEmailVerificationResultPath = (
@@ -36,12 +40,12 @@ export const buildMountedEmailVerificationResultPath = (
   return withLobeHubMountPath(`/verify-email?${params.toString()}`, currentPathname);
 };
 
-/** Build the first signup hop without treating the mounted app root as an extra callback. */
+/** Preserve explicit destinations; otherwise finish onboarding in the user's own group. */
 export const buildMountedOnboardingPath = (
   callbackUrl: string | null | undefined,
   currentPathname = typeof window === 'undefined' ? '' : window.location.pathname,
 ): string =>
   withLobeHubMountPath(
-    buildOnboardingRedirectUrl(sanitizeRedirectPath(callbackUrl)),
+    buildOnboardingRedirectUrl(resolveAuthCallbackPath(callbackUrl, currentPathname)),
     currentPathname,
   );

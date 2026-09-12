@@ -1,5 +1,7 @@
 'use client';
 
+import { Flexbox, Icon } from '@lobehub/ui';
+import { FolderOpen } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +20,17 @@ const Header = memo(() => {
         breadcrumb={[
           {
             href: '/resource',
-            title: t('tab.resource'),
+            title: (
+              <Flexbox
+                horizontal
+                align="center"
+                gap={6}
+                style={{ color: 'inherit', fontSize: 14, whiteSpace: 'nowrap' }}
+              >
+                <Icon icon={FolderOpen} />
+                <span>{t('tab.resource')}</span>
+              </Flexbox>
+            ),
           },
         ]}
       />

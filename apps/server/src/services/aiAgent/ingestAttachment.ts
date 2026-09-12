@@ -79,8 +79,8 @@ async function compressImage(
     );
 
     return { buffer: result, mimeType: 'image/png' };
-  } catch (error) {
-    log('image compression failed, using original: %s', error);
+  } catch {
+    log('image compression failed, using original');
     return { buffer, mimeType };
   }
 }
@@ -99,12 +99,10 @@ export async function ingestAttachment(
   userId: string,
 ): Promise<IngestResult> {
   log(
-    'ingestAttachment: input name=%s, mimeType=%s, hasBuffer=%s, hasUrl=%s, size=%s',
-    source.name,
-    source.mimeType,
-    !!source.buffer,
-    !!source.url,
-    source.size,
+    'ingestAttachment: input hasBuffer=%d, hasUrl=%d, size=%d',
+    source.buffer ? 1 : 0,
+    source.url ? 1 : 0,
+    source.size ?? source.buffer?.length ?? 0,
   );
 
   let buffer: Buffer;
@@ -139,7 +137,7 @@ export async function ingestAttachment(
   if ((mimeType === 'application/octet-stream' || !mimeType.includes('/')) && source.name) {
     const inferred = mime.getType(source.name);
     if (inferred) {
-      log('ingestAttachment: inferred mimeType from filename: %s -> %s', source.name, inferred);
+      log('ingestAttachment: inferred mimeType from filename');
       mimeType = inferred;
     }
   }
@@ -161,12 +159,10 @@ export async function ingestAttachment(
   const isAudio = !isImage && !isVideo && mimeType.startsWith('audio/');
 
   log(
-    'ingestAttachment: classified name=%s, finalMimeType=%s, isImage=%s, isVideo=%s, isAudio=%s, bufferSize=%d',
-    source.name,
-    mimeType,
-    isImage,
-    isVideo,
-    isAudio,
+    'ingestAttachment: classified isImage=%d, isVideo=%d, isAudio=%d, bufferSize=%d',
+    isImage ? 1 : 0,
+    isVideo ? 1 : 0,
+    isAudio ? 1 : 0,
     buffer.length,
   );
 
@@ -182,12 +178,7 @@ export async function ingestAttachment(
       ? await fileService.getFileAccessUrl({ id: fileId, url: key })
       : '';
 
-  log(
-    'ingestAttachment: uploaded fileId=%s, key=%s, resolvedUrl=%s',
-    fileId,
-    key,
-    resolvedUrl ? 'set' : '(empty)',
-  );
+  log('ingestAttachment: upload completed, hasResolvedUrl=%d', resolvedUrl ? 1 : 0);
 
   return { fileId, isAudio, isImage, isVideo, key, resolvedUrl };
 }

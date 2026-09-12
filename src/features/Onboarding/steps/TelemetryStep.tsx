@@ -14,6 +14,7 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { ProductLogo } from '@/components/Branding';
 import { PRIVACY_URL, TERMS_URL } from '@/const/url';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 
 interface TelemetryStepProps {
@@ -22,6 +23,8 @@ interface TelemetryStepProps {
 
 const TelemetryStep = memo<TelemetryStepProps>(({ onNext }) => {
   const { t, i18n } = useTranslation('onboarding');
+  const { t: tSetting } = useTranslation('setting');
+  const telemetryDisabled = useServerConfigStore(serverConfigSelectors.telemetryDisabled);
   const locale = i18n.language;
   const [check, setCheck] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -33,10 +36,10 @@ const TelemetryStep = memo<TelemetryStepProps>(({ onNext }) => {
       if (isNavigatingRef.current) return;
       isNavigatingRef.current = true;
       setIsNavigating(true);
-      updateGeneralConfig({ telemetry: enabled });
+      updateGeneralConfig({ telemetry: !telemetryDisabled && enabled });
       onNext();
     },
-    [updateGeneralConfig, onNext],
+    [updateGeneralConfig, onNext, telemetryDisabled],
   );
 
   // eslint-disable-next-line @eslint-react/no-nested-component-definitions
@@ -55,6 +58,17 @@ const TelemetryStep = memo<TelemetryStepProps>(({ onNext }) => {
       </Block>
     );
   }, []);
+
+  if (telemetryDisabled) {
+    return (
+      <Flexbox gap={16}>
+        <Text>{tSetting('analytics.telemetry.disabledBySystem')}</Text>
+        <Button disabled={isNavigating} type="primary" onClick={() => handleChoice(false)}>
+          {t('telemetry.next')}
+        </Button>
+      </Flexbox>
+    );
+  }
 
   return (
     <Flexbox gap={16}>

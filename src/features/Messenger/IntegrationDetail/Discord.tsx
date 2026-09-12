@@ -115,7 +115,7 @@ const DiscordDetail = memo<DiscordDetailProps>(({ appId, botUsername, name, onBa
       {link ? (
         <UserAgentConnection
           link={link}
-          onSetActive={(agentId) => handleSetActive('', agentId)}
+          onSetActive={(groupId, workspaceId) => handleSetActive('', groupId, workspaceId)}
           onUnlink={() => handleUnlink('')}
         />
       ) : (

@@ -10,7 +10,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorderSecondary};
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -21,7 +21,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow: hidden;
 
-    border: 1px solid ${cssVar.colorBorder};
+    border: 0.5px solid ${cssVar.colorBorder};
     border-radius: ${cssVar.borderRadius};
 
     background: ${cssVar.colorBgContainer};
@@ -29,6 +29,15 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
   outerContainer: css`
     position: relative;
+  `,
+
+  toastViewport: css`
+    && {
+      inset-block: 50% auto;
+      inset-inline: 50% auto;
+      height: var(--toast-frontmost-height, 0px);
+      transform: translate(-50%, -50%);
+    }
   `,
 
   touchTargets: css`

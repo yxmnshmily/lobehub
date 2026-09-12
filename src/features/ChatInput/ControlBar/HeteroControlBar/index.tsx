@@ -7,14 +7,14 @@ import {
   useWatchBroadcast,
 } from '@lobechat/electron-client-ipc';
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
-import { Skeleton } from '@lobehub/ui/base-ui';
+
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { ActivityIcon, CircleAlertIcon, RadioTowerIcon, TimerResetIcon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import ChatInputCredits from '@/business/client/features/ChatInputCredits';
-import HeteroDeviceSwitcher from '@/features/ChatInput/ControlBar/HeteroDeviceSwitcher';
 import WorkspaceControls from '@/features/ChatInput/ControlBar/WorkspaceControls';
 import { useAgentId } from '@/features/ChatInput/hooks/useAgentId';
 import { useChatInputResourceAccess } from '@/features/ChatInput/hooks/useChatInputResourceAccess';
@@ -176,7 +176,6 @@ const HeteroControlBar = memo(() => {
     if (!agentId || isLoading) return null;
     return (
       <Flexbox horizontal align={'center'} className={styles.bar} justify={'space-between'}>
-        <HeteroDeviceSwitcher agentId={agentId} />
         {shouldShowApiCredits && <ChatInputCredits />}
       </Flexbox>
     );
@@ -209,8 +208,8 @@ const HeteroControlBar = memo(() => {
   if (!agentId || isLoading) {
     return (
       <Flexbox horizontal align={'center'} className={styles.bar} gap={4} justify={'space-between'}>
-        <Skeleton style={{ height: 22, minWidth: 100, width: 100 }} />
-        <Skeleton style={{ height: 22, minWidth: 80, width: 80 }} />
+        <SkeletonBar style={{ height: 22, minWidth: 100, width: 100 }} />
+        <SkeletonBar style={{ height: 22, minWidth: 80, width: 80 }} />
       </Flexbox>
     );
   }

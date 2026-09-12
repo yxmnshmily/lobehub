@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css }) => ({
   footer: css`
     margin-block-start: auto;
     padding-block-start: 10px;
-    border-block-start: 1px solid ${cssVar.colorSplit};
+    border-block-start: 0.5px solid ${cssVar.colorSplit};
   `,
   grid: css`
     display: grid;
@@ -64,16 +64,14 @@ const TopicsSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => {
   return (
     <Flexbox aria-busy flex={1} height={'100%'} style={{ minHeight: 0, overflow: 'hidden' }}>
       <NavHeader />
-      <Flexbox flex={1} style={{ minHeight: 0, overflowY: 'auto', padding: '20px 24px' }}>
+      <Flexbox flex={1} style={{ minHeight: 0, overflowY: 'auto', padding: '20px 16px' }}>
         <Flexbox
           gap={16}
           style={{
-            marginInline: 'auto',
-            maxWidth: 1440,
             width: '100%',
           }}
         >
-          <Flexbox horizontal align={'center'} gap={8} justify={'space-between'}>
+          <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
             <Flexbox horizontal gap={8}>
               <SkeletonBar height={32} radius={16} width={72} />
               <SkeletonBar height={32} radius={16} width={88} />

@@ -562,35 +562,32 @@ describe('imageRouter', () => {
       );
     });
 
-    it('fails closed before charging, persistence, or async dispatch for platform images', async () => {
+    it('admits platform images into reservation and async dispatch without business precharge', async () => {
       const ctx = markPlatformAiRuntime(createMockCtx({ workspaceId: 'workspace-1' }), {
         maxCredits: 4321,
       });
       const caller = imageRouter.createCaller(ctx);
 
-      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).rejects.toMatchObject({
-        code: 'PRECONDITION_FAILED',
-        message: '[IMAGE_BILLING_UNAVAILABLE] 平台图片权威计价与费用上限尚不可用。',
-      });
+      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).resolves.toBeDefined();
 
+      // Platform billing must not touch the legacy business precharge.
       expect(mockChargeBeforeGenerate).not.toHaveBeenCalled();
-      expect(mockServerDB.transaction).not.toHaveBeenCalled();
-      expect(mockReserveUsageRequest).not.toHaveBeenCalled();
-      expect(mockReserveUsageCall).not.toHaveBeenCalled();
-      expect(mockCreateAsyncCaller).not.toHaveBeenCalled();
-      expect(mockAsyncCallerCreateImage).not.toHaveBeenCalled();
+      // Trusted ceiling is captured through the platform reservation service.
+      expect(mockReserveUsageRequest).toHaveBeenCalled();
+      expect(mockReserveUsageCall).toHaveBeenCalled();
     });
 
-    it('rejects platform image creation without a trusted positive Credits capability', async () => {
+    it('admits owner self-paid platform images without an upfront Credits ceiling', async () => {
       const caller = imageRouter.createCaller(markPlatformAiRuntime(createMockCtx()));
 
-      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).rejects.toThrow(
-        'Credits maximum',
-      );
+      // No trusted maxCredits: the run is owner self-paid, so no reservation
+      // window is created; the async worker gates the balance and settles the
+      // actual provider usage after generation.
+      await expect(caller.createImage(createDefaultInput({ imageNum: 1 }))).resolves.toBeDefined();
 
-      expect(mockServerDB.transaction).not.toHaveBeenCalled();
+      expect(mockChargeBeforeGenerate).not.toHaveBeenCalled();
       expect(mockReserveUsageRequest).not.toHaveBeenCalled();
-      expect(mockAsyncCallerCreateImage).not.toHaveBeenCalled();
+      expect(mockReserveUsageCall).not.toHaveBeenCalled();
     });
 
     it('threads per-generation prechargeItems into each asyncTask metadata', async () => {

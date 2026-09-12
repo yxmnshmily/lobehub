@@ -39,7 +39,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-height: 58px;
     padding-block: 0;
     padding-inline: 24px;
-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
     &:last-child {
       border-block-end: 0;

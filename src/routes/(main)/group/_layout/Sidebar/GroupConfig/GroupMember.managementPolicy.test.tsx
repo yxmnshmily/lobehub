@@ -3,11 +3,26 @@
  */
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import GroupMember from './GroupMember';
 
+const fixture = vi.hoisted(() => ({ managed: false }));
+
+vi.mock('@/features/GroupMembership/useMemberSidebar', () => ({
+  useMemberSidebar: () => ({ arrange: (items: unknown[]) => items }),
+}));
+vi.mock('@/features/GroupMembership/AssistantActions', () => ({
+  default: () => <button>template member menu</button>,
+}));
+vi.mock('@/features/GroupMembership/AssistantMenu', () => ({
+  default: ({ onRemove }: any) => (
+    <button onClick={onRemove}>groupSidebar.members.removeMember</button>
+  ),
+}));
+
 vi.mock('@lobechat/types', () => ({
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID: 'travel-default',
   agentDisplayName: (agent: { title: string }) => agent.title,
 }));
 
@@ -16,6 +31,12 @@ vi.mock('@lobehub/ui', () => ({
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({
+  Popover: ({ children, content }: { children: ReactNode; content: ReactNode }) => (
+    <div>
+      {children}
+      {content}
+    </div>
+  ),
   ActionIcon: ({ title }: { title?: string }) => <button>{title}</button>,
 }));
 
@@ -28,7 +49,12 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/features/AgentProfileCard/AgentProfilePopup', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  default: ({ children, agent }: { children: ReactNode; agent: { description?: string } }) => (
+    <div aria-label="完整成员档案">
+      {children}
+      <span>{agent.description}</span>
+    </div>
+  ),
 }));
 
 vi.mock('@/features/NavPanel/components/NavItem', () => ({
@@ -57,7 +83,17 @@ vi.mock('@/store/agentGroup', () => ({
       addAgentsToGroup: vi.fn(),
       groupMap: {
         'group-1': {
+          clientId: fixture.managed ? 'travel-default' : null,
+          workspaceId: null,
           agents: [
+            {
+              avatar: '🌏',
+              description: '协调群内分工与秩序',
+              id: 'supervisor-1',
+              isSupervisor: true,
+              title: '旅游群主',
+              virtual: true,
+            },
             {
               avatar: '🤖',
               backgroundColor: null,
@@ -76,9 +112,8 @@ vi.mock('@/store/agentGroup', () => ({
 vi.mock('@/store/agentGroup/selectors', () => ({
   agentGroupSelectors: {
     getGroupMembers:
-      (groupId: string) =>
-      (state: { groupMap: Record<string, { agents: unknown[] }> }) =>
-        state.groupMap[groupId].agents,
+      (groupId: string) => (state: { groupMap: Record<string, { agents: unknown[] }> }) =>
+        state.groupMap[groupId].agents.filter((agent: any) => !agent.isSupervisor),
   },
 }));
 
@@ -112,6 +147,27 @@ vi.mock('./useRemoveGroupMember', () => ({
 }));
 
 describe('GroupMember management policy', () => {
+  beforeEach(() => {
+    fixture.managed = false;
+  });
+
+  it('shows the actual supervisor instead of the account placeholder only in a default supergroup', () => {
+    fixture.managed = true;
+    render(
+      <GroupMember
+        addModalOpen={false}
+        canManage={false}
+        groupId="group-1"
+        onAddModalOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('旅游群主')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('完整成员档案')).toHaveLength(2);
+    expect(screen.getByText('协调群内分工与秩序')).toBeInTheDocument();
+    expect(screen.queryByText('Owner')).not.toBeInTheDocument();
+    expect(screen.getByText('Member 1')).toBeInTheDocument();
+  });
+
   it('renders managed-group membership as read-only for an ordinary user', () => {
     render(
       <GroupMember
@@ -121,6 +177,16 @@ describe('GroupMember management policy', () => {
         onAddModalOpenChange={vi.fn()}
       />,
     );
+
+    expect(
+      screen.queryByRole('button', { name: 'groupSidebar.members.removeMember' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-group-member-modal')).not.toBeInTheDocument();
+  });
+
+  it('keeps default group membership mutations in the existing dedicated controls', () => {
+    fixture.managed = true;
+    render(<GroupMember addModalOpen canManage groupId="group-1" onAddModalOpenChange={vi.fn()} />);
 
     expect(
       screen.queryByRole('button', { name: 'groupSidebar.members.removeMember' }),
@@ -142,5 +208,7 @@ describe('GroupMember management policy', () => {
       screen.getByRole('button', { name: 'groupSidebar.members.removeMember' }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('add-group-member-modal')).toBeInTheDocument();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
+    expect(screen.queryByText('旅游群主')).not.toBeInTheDocument();
   });
 });

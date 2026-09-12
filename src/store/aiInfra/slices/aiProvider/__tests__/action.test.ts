@@ -126,6 +126,20 @@ describe('aiProvider action helpers', () => {
   });
 
   describe('normalizeChatModel', () => {
+    it('loads catalog pricing when the database pricing column is null', async () => {
+      const pricing: Pricing = {
+        currency: 'USD',
+        units: [{ name: 'textInput', rate: 0.02, strategy: 'fixed', unit: 'millionTokens' }],
+      };
+      vi.mocked(runtimeModule.getModelPropertyWithFallback).mockImplementation(async (_id, key) =>
+        key === 'pricing' ? pricing : undefined,
+      );
+      // SQL rows contain null even though the runtime interface declares an optional Pricing.
+      const model = { ...createChatModel(), pricing: null } as unknown as EnabledAiModel;
+      const result = await normalizeChatModel(model);
+      expect(result.pricing).toEqual(pricing);
+    });
+
     it('fills missing optional fields with safe defaults', async () => {
       const model = createChatModel({
         abilities: undefined,

@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css }) => ({
   line: css`
     flex: 1;
     block-size: 0;
-    border-block-start: 1px dashed ${cssVar.colorBorder};
+    border-block-start: 0.5px dashed ${cssVar.colorBorder};
   `,
   // The "here" marker: a dashed rule across the chat area at ~25% from the
   // bottom edge, with the trigger centered on it. Purely a visual guide except

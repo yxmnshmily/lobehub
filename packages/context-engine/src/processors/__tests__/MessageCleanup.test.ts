@@ -299,6 +299,7 @@ describe('MessageCleanupProcessor', () => {
 
       expect(result.metadata.messageCleanup).toEqual({
         cleanedCount: 2,
+        sourceMessageIds: ['msg1', 'msg2'],
         totalMessages: 2,
       });
     });
@@ -335,6 +336,7 @@ describe('MessageCleanupProcessor', () => {
       expect(result.messages).toHaveLength(0);
       expect(result.metadata.messageCleanup).toEqual({
         cleanedCount: 0,
+        sourceMessageIds: [],
         totalMessages: 0,
       });
     });

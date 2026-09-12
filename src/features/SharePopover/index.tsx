@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import { ArticleSkeleton } from '@/components/Skeleton';
+import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
@@ -44,9 +45,12 @@ interface SharePopoverContentProps {
   agentId?: string;
   onOpenModal?: () => void;
   topicId?: string;
+  topicPreview?: string;
+  topicTitle?: string;
 }
 
-const SharePopoverContent = memo<SharePopoverContentProps>(({ agentId, onOpenModal, topicId }) => {
+const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
+  const { agentId, onOpenModal, topicId, topicTitle, topicPreview } = props;
   const { t } = useTranslation('chat');
 
   const [updating, setUpdating] = useState(false);
@@ -106,7 +110,9 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ agentId, onOpenMod
     mutate,
   ]);
 
-  const shareUrl = shareInfo?.id ? `${appOrigin}/share/t/${shareInfo.id}` : '';
+  const shareUrl = shareInfo?.id
+    ? `${appOrigin}${withLobeHubMountPath(`/share/t/${encodeURIComponent(shareInfo.id)}`)}`
+    : '';
   const currentVisibility = (shareInfo?.visibility as Visibility) || 'private';
 
   const updateVisibility = useCallback(
@@ -151,6 +157,9 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ agentId, onOpenMod
           cancelText: t('cancel', { ns: 'common' }),
           content: (
             <Flexbox gap={16}>
+              {topicTitle && (
+                <Text strong>{t('shareModal.popover.selectedTopic', { title: topicTitle })}</Text>
+              )}
               <Text>{t('shareModal.popover.privacyWarning.content')}</Text>
               <Flexbox gap={12} paddingBlock={8}>
                 {PRIVACY_WARNING_ITEMS.map(({ icon: ItemIcon, labelKey }) => (
@@ -188,6 +197,7 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ agentId, onOpenMod
       currentVisibility,
       hideTopicSharePrivacyWarning,
       t,
+      topicTitle,
       updateSystemStatus,
       updateVisibility,
     ],
@@ -275,8 +285,27 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ agentId, onOpenMod
   };
 
   return (
-    <Flexbox className={styles.container} gap={12} ref={containerRef}>
+    <Flexbox
+      className={styles.container}
+      data-sharing-topic-id={activeTopicId}
+      gap={12}
+      ref={containerRef}
+    >
       <Text strong>{t('shareModal.popover.title')}</Text>
+
+      {topicTitle && (
+        <Flexbox gap={4} style={{ overflowWrap: 'anywhere' }}>
+          <Text strong>{t('shareModal.popover.selectedTopic', { title: topicTitle })}</Text>
+          {topicPreview && (
+            <Text type="secondary">
+              {t('shareModal.popover.topicOpening', { content: topicPreview })}
+            </Text>
+          )}
+          <Text className={styles.hint} type="secondary">
+            {t('shareModal.popover.visibleTopicHint')}
+          </Text>
+        </Flexbox>
+      )}
 
       <Flexbox gap={4}>
         <Text type="secondary">{t('shareModal.popover.visibility')}</Text>
@@ -328,31 +357,50 @@ interface SharePopoverProps {
   /** Owner of the topic — carries the agent-level topic-share policy. */
   agentId?: string;
   children?: ReactNode;
+  onOpenChange?: (open: boolean) => void;
   onOpenModal?: () => void;
+  open?: boolean;
   topicId?: string;
+  topicPreview?: string;
+  topicTitle?: string;
 }
 
-const SharePopover = memo<SharePopoverProps>(({ agentId, children, onOpenModal, topicId }) => {
-  const isMobile = useIsMobile();
+const SharePopover = memo<SharePopoverProps>(
+  ({ agentId, children, onOpenModal, topicId, topicTitle, topicPreview, open, onOpenChange }) => {
+    const isMobile = useIsMobile();
 
-  return (
-    <Popover
-      arrow={false}
-      placement={isMobile ? 'top' : 'bottomRight'}
-      trigger={['click']}
-      content={
-        <SharePopoverContent agentId={agentId} topicId={topicId} onOpenModal={onOpenModal} />
-      }
-      styles={{
-        content: {
-          padding: 0,
-          width: isMobile ? '100vw' : 366,
-        },
-      }}
-    >
-      {children}
-    </Popover>
-  );
-});
+    return (
+      <Popover
+        arrow={false}
+        open={open}
+        placement={isMobile ? 'top' : 'bottomRight'}
+        trigger={['click']}
+        content={
+          <>
+            {open !== false && (
+              <SharePopoverContent
+                agentId={agentId}
+                key={topicId}
+                topicId={topicId}
+                topicPreview={topicPreview}
+                topicTitle={topicTitle}
+                onOpenModal={onOpenModal}
+              />
+            )}
+          </>
+        }
+        styles={{
+          content: {
+            padding: 0,
+            width: isMobile ? '100vw' : 366,
+          },
+        }}
+        onOpenChange={onOpenChange}
+      >
+        {children}
+      </Popover>
+    );
+  },
+);
 
 export default SharePopover;

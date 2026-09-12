@@ -21,7 +21,6 @@ import {
   getWorkingDirEffectivePath,
 } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
-import debug from 'debug';
 
 import { DeviceModel } from '@/database/models/device';
 import type { MessageModel } from '@/database/models/message';
@@ -49,9 +48,8 @@ import {
   supportsCloudHeterogeneousSandbox,
 } from '../helpers/heteroErrors';
 import { resolveDeviceWorkingDirectoryConfig } from '../resolveDeviceWorkingDirectory';
+import { aiAgentDebug as log } from '../safeDebug';
 import type { ExecRunContext } from '../types';
-
-const log = debug('lobe-server:ai-agent-service');
 
 export interface HeteroDispatchDeps {
   bindTopicWorkingDirectory: (params: {

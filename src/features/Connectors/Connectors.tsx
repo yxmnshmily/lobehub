@@ -28,7 +28,7 @@ const Connectors = () => {
     <div style={{ display: 'flex', height: '100%' }}>
       <div
         style={{
-          borderRight: '1px solid var(--lobe-colors-border)',
+          borderRight: '0.5px solid var(--lobe-colors-border)',
           minWidth: 220,
           overflowY: 'auto',
           width: 220,

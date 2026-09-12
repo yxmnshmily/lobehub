@@ -1,8 +1,12 @@
 import type { ConversationContext } from '@lobechat/types';
 import type { ReactNode } from 'react';
-import { memo, useEffect, useMemo } from 'react';
+import { memo, use, useEffect, useMemo, useState } from 'react';
 
 import { ConversationProvider } from '@/features/Conversation';
+import {
+  GroupWorkConversationContext,
+  GroupWorkScopeContext,
+} from '@/features/SuperGroup/GroupWorkScope';
 import { useOperationState } from '@/hooks/useOperationState';
 import { useAgentStore } from '@/store/agent';
 import { useChatStore } from '@/store/chat';
@@ -21,11 +25,14 @@ interface GoalChatProviderProps {
  * progress overview into the request (see streamingExecutor).
  */
 export const GoalChatProvider = memo<GoalChatProviderProps>(({ agentId, children, goalId }) => {
+  const groupScope = use(GroupWorkScopeContext);
+  const subject = `${groupScope?.groupId ?? ''}:${goalId}`;
+  const [localTopic, setLocalTopic] = useState<{ subject: string; topicId: string | null }>();
   const setActiveAgentId = useAgentStore((s) => s.setActiveAgentId);
   const activeTopicId = useChatStore((s) => s.activeTopicId);
 
   useEffect(() => {
-    if (!agentId) return;
+    if (!agentId || groupScope) return;
 
     if (useAgentStore.getState().activeAgentId !== agentId) {
       setActiveAgentId(agentId);
@@ -38,15 +45,22 @@ export const GoalChatProvider = memo<GoalChatProviderProps>(({ agentId, children
     // Entering the goal page mid-way through another agent's conversation:
     // start from a fresh topic rather than showing that unrelated thread.
     void chatState.switchTopic(null, { skipRefreshMessage: true });
-  }, [agentId, setActiveAgentId]);
+  }, [agentId, goalId, groupScope, setActiveAgentId]);
 
   const context = useMemo<ConversationContext>(
     () => ({
       agentId,
-      topicId: activeTopicId,
+      ...(groupScope
+        ? { groupId: groupScope.groupId, scope: 'group' as const, isolatedTopic: true }
+        : {}),
+      topicId: groupScope
+        ? localTopic?.subject === subject
+          ? localTopic.topicId
+          : null
+        : activeTopicId,
       viewedGoal: { goalId },
     }),
-    [activeTopicId, agentId, goalId],
+    [activeTopicId, agentId, goalId, groupScope, localTopic, subject],
   );
 
   const chatKey = useMemo(() => messageMapKey(context), [context]);
@@ -55,17 +69,35 @@ export const GoalChatProvider = memo<GoalChatProviderProps>(({ agentId, children
   const operationState = useOperationState(context);
 
   return (
-    <ConversationProvider
-      context={context}
-      hasInitMessages={!!messages}
-      messages={messages}
-      operationState={operationState}
-      onMessagesChange={(msgs, ctx, meta) => {
-        replaceMessages(msgs, { context: ctx, source: meta?.source });
-      }}
+    <GroupWorkConversationContext
+      value={
+        groupScope
+          ? {
+              groupId: groupScope.groupId,
+              topicId: context.topicId ?? null,
+              onTopicChange: (topicId) => setLocalTopic({ subject, topicId }),
+            }
+          : undefined
+      }
     >
-      {children}
-    </ConversationProvider>
+      <ConversationProvider
+        context={context}
+        hooks={
+          groupScope
+            ? { onTopicCreated: (topicId) => setLocalTopic({ subject, topicId }) }
+            : undefined
+        }
+        hasInitMessages={!!messages}
+        messages={messages}
+        operationState={operationState}
+        skipFetch={!!groupScope && !context.topicId}
+        onMessagesChange={(msgs, ctx, meta) => {
+          replaceMessages(msgs, { context: ctx, source: meta?.source });
+        }}
+      >
+        {children}
+      </ConversationProvider>
+    </GroupWorkConversationContext>
   );
 });
 

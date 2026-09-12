@@ -1,12 +1,13 @@
 'use client';
 
 import { Flexbox, Icon } from '@lobehub/ui';
-import { Button, Skeleton, Tag, Text } from '@lobehub/ui/base-ui';
+import { Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { CheckCircle2Icon, ClockIcon, MoonIcon, RefreshCwIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SkeletonBar from '@/components/Skeleton/Bar';
 import type { messengerService } from '@/services/messenger';
 
 export type MessengerPushWindowSnapshot = Awaited<
@@ -85,7 +86,7 @@ export const MessengerPushWindowState = memo<MessengerPushWindowStateProps>(
         </Flexbox>
       );
 
-    if (!status) return <Skeleton height={28} width={220} />;
+    if (!status) return <SkeletonBar height={28} width={220} />;
 
     if (status.deliverability === 'always')
       return (
