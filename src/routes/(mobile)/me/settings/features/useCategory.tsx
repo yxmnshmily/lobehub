@@ -192,7 +192,7 @@ export const useCategory = (): CategoryGroup[] => {
       makeItem({ icon: TagIcon, key: SettingsTabs.Labels, label: t('setting:tab.labels') }),
       makeItem({ icon: Blocks, key: SettingsTabs.Connector, label: t('setting:tab.connector') }),
       makeItem(
-        { icon: Shapes, key: SettingsTabs.Community, label: t('common:tab.community') },
+        { icon: Shapes, key: SettingsTabs.Community, label: t('tab.community', { ns: 'common' }) },
         '/community',
       ),
       makeItem({

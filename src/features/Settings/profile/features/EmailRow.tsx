@@ -1,16 +1,21 @@
 'use client';
 
-import { Flexbox, Input } from '@lobehub/ui';
+import { isDesktop } from '@lobechat/const';
+import { Flexbox, Icon, Input } from '@lobehub/ui';
 import { Button, Text, toast } from '@lobehub/ui/base-ui';
-import { AnimatePresence, m } from 'motion/react';
+import { ExternalLinkIcon } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import urlJoin from 'url-join';
 
 import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { getEmailChangeErrorKey } from '@/features/Auth/utils/userFacingError';
+import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { changeEmail } from '@/libs/better-auth/auth-client';
+import { electronSystemService } from '@/services/electron/system';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
+import { saveToast } from '@/store/utils/saveToast';
 
 import ProfileRow from './ProfileRow';
 
@@ -22,18 +27,16 @@ const EmailRow = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const appOrigin = useAppOrigin();
 
   const handleStartEdit = () => {
     setEditValue('');
-    setError('');
     setIsEditing(true);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setEditValue('');
-    setError('');
   };
 
   const handleSave = useCallback(async () => {
@@ -41,96 +44,94 @@ const EmailRow = () => {
     if (!trimmed) return;
 
     if (!EMAIL_REGEX.test(trimmed)) {
-      setError(t('profile.emailInvalid'));
+      toast.error(t('profile.emailInvalid'));
       return;
     }
 
     try {
       setSaving(true);
-      setError('');
       const res = await changeEmail({
         callbackURL: withLobeHubMountPath('/settings/profile'),
         newEmail: trimmed,
       });
       if (res.error) {
-        setError(t(getEmailChangeErrorKey(res.error)));
+        toast.error(t(getEmailChangeErrorKey(res.error)));
         return;
       }
       setIsEditing(false);
       toast.success(t('profile.emailChangeSuccess'));
-    } catch {
-      console.error('Email change failed');
-      setError(t('profile.emailChangeError'));
+    } catch (err) {
+      console.error('Failed to change email:', err);
+      saveToast(err, { retry: () => void handleSave(), title: t('profile.saveError') });
     } finally {
       setSaving(false);
     }
   }, [editValue, t]);
 
-  const editingContent = (
-    <m.div
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      initial={{ opacity: 0, y: -10 }}
-      key="editing"
-      transition={{ duration: 0.2 }}
-    >
-      <Flexbox gap={12}>
-        <Input
-          autoFocus
-          autoComplete="email"
-          inputMode="email"
-          placeholder={t('profile.emailPlaceholder')}
-          status={error ? 'error' : undefined}
-          type="email"
-          value={editValue}
-          onPressEnter={handleSave}
-          onChange={(e) => {
-            setEditValue(e.target.value);
-            if (error) setError('');
-          }}
-        />
-        {error && (
-          <Text style={{ fontSize: 12 }} type="danger">
-            {error}
+  // Desktop OIDC and Better Auth sessions are not bridged, so change-email can only
+  // be completed on the web app.
+  if (isDesktop)
+    return (
+      <ProfileRow
+        anchor={'profile-email'}
+        label={t('profile.email')}
+        action={
+          <Text
+            style={{ cursor: 'pointer', fontSize: 13 }}
+            onClick={() => {
+              if (!appOrigin) return;
+              void electronSystemService.openExternalLink(urlJoin(appOrigin, '/settings/profile'));
+            }}
+          >
+            <Flexbox horizontal align={'center'} gap={4}>
+              {t('profile.updateEmail')}
+              <Icon icon={ExternalLinkIcon} size={12} />
+            </Flexbox>
           </Text>
-        )}
-        <Flexbox horizontal gap={8} justify="flex-end">
-          <Button disabled={saving} size="small" onClick={handleCancel}>
-            {t('profile.cancel')}
-          </Button>
-          <Button loading={saving} size="small" type="primary" onClick={handleSave}>
-            {t('profile.save')}
-          </Button>
-        </Flexbox>
-      </Flexbox>
-    </m.div>
-  );
-
-  const displayContent = (
-    <m.div
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      initial={{ opacity: 0 }}
-      key="display"
-      transition={{ duration: 0.2 }}
-    >
-      <Text>{email || '--'}</Text>
-    </m.div>
-  );
+        }
+      >
+        <Text>{email || '--'}</Text>
+      </ProfileRow>
+    );
 
   return (
     <ProfileRow
       anchor={'profile-email'}
       label={t('profile.email')}
       action={
-        !isEditing && (
+        isEditing ? (
+          <Flexbox horizontal gap={8}>
+            <Button disabled={saving} size="small" onClick={handleCancel}>
+              {t('profile.cancel')}
+            </Button>
+            <Button loading={saving} size="small" type="primary" onClick={handleSave}>
+              {t('profile.save')}
+            </Button>
+          </Flexbox>
+        ) : (
           <Button size="small" onClick={handleStartEdit}>
             {t('profile.updateEmail')}
           </Button>
         )
       }
     >
-      <AnimatePresence mode="wait">{isEditing ? editingContent : displayContent}</AnimatePresence>
+      {isEditing ? (
+        <Input
+          autoFocus
+          autoComplete="email"
+          inputMode="email"
+          placeholder={t('profile.emailPlaceholder')}
+          size="small"
+          style={{ flex: 1, minWidth: 0, width: '100%' }}
+          type="email"
+          value={editValue}
+          variant="filled"
+          onChange={(e) => setEditValue(e.target.value)}
+          onPressEnter={handleSave}
+        />
+      ) : (
+        <Text>{email || '--'}</Text>
+      )}
     </ProfileRow>
   );
 };

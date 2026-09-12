@@ -70,6 +70,13 @@ const styles = createStaticStyles(({ css }) => ({
     overscroll-behavior: contain;
     flex: 1;
   `,
+  // Dividers inside this modal use colorFillSecondary, not colorBorderSecondary.
+  // In the dark palette colorBorderSecondary and colorBgElevated are the same
+  // step of the neutral scale, so every border drawn on the modal's own surface
+  // resolves to the surface colour and disappears — the panel reads as one
+  // undifferentiated block. colorFillSecondary is alpha-based, so it lands on
+  // #f0f0f0 over the light surface (identical to what the border token gave)
+  // and stays visible over the dark one.
   header: css`
     flex: none;
     gap: 0;

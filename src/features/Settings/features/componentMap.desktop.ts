@@ -1,7 +1,6 @@
 import Billing from '@/business/client/BusinessSettingPages/Billing';
 import Credits from '@/business/client/BusinessSettingPages/Credits';
 import CustomerCenterPage from '@/business/client/BusinessSettingPages/CustomerCenterPage';
-import Notification from '@/business/client/BusinessSettingPages/Notification';
 import Plans from '@/business/client/BusinessSettingPages/Plans';
 import Referral from '@/business/client/BusinessSettingPages/Referral';
 import ServiceOperations from '@/business/client/BusinessSettingPages/ServiceOperations';
@@ -20,6 +19,7 @@ import Labels from '../labels';
 import Labs from '../labs';
 import Memory from '../memory';
 import Messenger from '../messenger';
+import { DesktopNotificationSettings } from '../notification';
 import OAuthApps from '../oauth-apps';
 import Provider from '../provider';
 import Proxy from '../proxy';
@@ -38,7 +38,7 @@ export const componentMap = {
   [SettingsTabs.ServiceModel]: ServiceModel,
   [SettingsTabs.Memory]: Memory,
   [SettingsTabs.Messenger]: Messenger,
-  [SettingsTabs.Notification]: Notification,
+  [SettingsTabs.Notification]: DesktopNotificationSettings,
   [SettingsTabs.About]: About,
   [SettingsTabs.Hotkey]: Hotkey,
   [SettingsTabs.Proxy]: Proxy,

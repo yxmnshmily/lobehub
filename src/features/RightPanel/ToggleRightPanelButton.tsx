@@ -51,6 +51,9 @@ const ToggleRightPanelButton = memo<ToggleRightPanelButtonProps>(
     if (hideWhenExpanded && expand) return null;
     return (
       <ActionIcon
+        aria-label={
+          typeof title === 'string' ? title : t('toggleRightPanel.title', { ns: 'hotkey' })
+        }
         active={showActive ? expand : undefined}
         icon={icon || (expand ? PanelRightClose : PanelRightOpen)}
         id={TOGGLE_BUTTON_ID}

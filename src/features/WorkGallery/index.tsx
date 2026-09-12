@@ -322,6 +322,9 @@ const WorkGallery = memo<WorkGalleryProps>(({ galleryKey }) => {
                     item={item}
                     key={item.id}
                     onOpen={handleOpen}
+                    onRemoved={async () => {
+                      await reload();
+                    }}
                     onDeleted={() => {
                       void reload().catch(console.error);
                     }}

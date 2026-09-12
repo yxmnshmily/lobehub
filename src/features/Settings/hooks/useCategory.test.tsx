@@ -75,6 +75,15 @@ afterEach(() => {
 });
 
 describe('settings useCategory', () => {
+  it('keeps the customer account entry and preserves the administrator settings groups', () => {
+    const { result } = renderHook(() => useCategory(), { wrapper: createWrapper(true) });
+    expect(result.current[0]?.key).toBe(SettingsGroupKey.Account);
+    expect(result.current[0]?.items.map((item) => item.key)).toEqual([
+      SettingsTabs.Notification,
+      SettingsTabs.Security,
+    ]);
+  });
+
   it('keeps technical entries together without losing or duplicating navigation targets', () => {
     platformAccess.isPlatformAdmin = true;
     const { result } = renderHook(useCategory, { wrapper: createWrapper(true) });

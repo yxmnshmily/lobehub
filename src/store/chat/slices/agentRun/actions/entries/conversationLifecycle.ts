@@ -80,6 +80,7 @@ import {
 } from '@/store/chat/slices/operation/types';
 import { PortalViewType } from '@/store/chat/slices/portal/initialState';
 import { chatPortalSelectors } from '@/store/chat/slices/portal/selectors';
+import { resolveTopicHeteroPin } from '@/store/chat/slices/topic/selectors';
 import { type ChatStore } from '@/store/chat/store';
 import {
   mergeAgentRuntimeInitialContexts,
@@ -92,7 +93,7 @@ import {
 } from '@/store/chat/utils/compression';
 import { isLocalOnlyMessage } from '@/store/chat/utils/localMessages';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
-import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
+import { snapshotAgentModel, snapshotAgentReasoning } from '@/store/chat/utils/snapshotAgentModel';
 import { topicMapKey } from '@/store/chat/utils/topicMapKey';
 import { deviceSelectors, getDeviceStoreState } from '@/store/device';
 import { getElectronStoreState } from '@/store/electron';
@@ -1211,7 +1212,10 @@ export class ConversationLifecycleActionImpl {
         : [];
     // Example: a pending repo topic without this metadata renders under "No
     // directory" until the server row lands.
-    const optimisticTopicMetadata: ChatTopicMetadata | undefined =
+    const newTopicReasoningSnapshot = newTopicModelSnapshot
+      ? await snapshotAgentReasoning(operationContext.agentId, newTopicModelSnapshot)
+      : undefined;
+    const workingDirectoryMetadata: ChatTopicMetadata | undefined =
       pendingTopicRepos.length > 0
         ? {
             repos: pendingTopicRepos,
@@ -1224,6 +1228,10 @@ export class ConversationLifecycleActionImpl {
               ...(workingDirectoryConfig ? { workingDirectoryConfig } : {}),
             }
           : undefined;
+    /** First-send persistence bypasses turnSetup, so both runtime paths must carry the effort snapshot. */
+    const optimisticTopicMetadata = newTopicReasoningSnapshot
+      ? { ...workingDirectoryMetadata, ...newTopicReasoningSnapshot }
+      : workingDirectoryMetadata;
 
     // The sidebar row was already inserted (title + model) before the awaits
     // above; the cwd/repos metadata only resolves here, so patch it on now.
@@ -1382,12 +1390,7 @@ export class ConversationLifecycleActionImpl {
               ? {
                   // Same id the optimistic sidebar row already uses.
                   id: optimisticTopic?.id,
-                  metadata: workingDirectory
-                    ? {
-                        workingDirectory,
-                        ...(workingDirectoryConfig ? { workingDirectoryConfig } : {}),
-                      }
-                    : undefined,
+                  metadata: optimisticTopicMetadata,
                   ...newTopicModelSnapshot,
                   title: newTopicTitle,
                   topicMessageIds: messages.map((m) => m.id),
@@ -1635,7 +1638,7 @@ export class ConversationLifecycleActionImpl {
         }
         const effectiveHeterogeneousProvider = applyTopicModelToHeterogeneousProvider(
           heterogeneousProvider,
-          topic?.model ? { model: topic.model, provider: topic.provider || '' } : undefined,
+          resolveTopicHeteroPin(topic),
         );
 
         await executeHeterogeneousAgent(() => this.#get(), {

@@ -209,6 +209,7 @@ export class MessageService {
   };
 
   countMessages = async (params?: {
+    approximate?: boolean;
     endDate?: string;
     range?: [string, string];
     startDate?: string;

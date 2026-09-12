@@ -9,7 +9,6 @@ export default defineConfig({
       '@': resolve(__dirname, '../../src'),
     },
     coverage: {
-      all: false,
       reporter: ['text', 'json', 'lcov', 'text-summary'],
     },
     environment: 'happy-dom',

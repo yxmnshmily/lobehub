@@ -271,7 +271,7 @@ const recoverPlannedRun = async (
   db: LobeChatDatabase,
   run: VerifyRunItem,
   now: Date,
-): Promise<'abandoned' | 'refired' | 'skipped'> => {
+): Promise<'abandoned' | 'refired' | 'settled' | 'skipped'> => {
   const operationId = run.operationId;
   if (!operationId) return 'skipped';
 

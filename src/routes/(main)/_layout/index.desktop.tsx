@@ -9,7 +9,6 @@ import { Suspense } from 'react';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import WorkspaceContextSlot from '@/business/client/WorkspaceContextSlot';
-import { useIsAgentShareVisitorRoute } from '@/features/AgentRoute/useAgentShareVisitorRoute';
 import { BANNER_HEIGHT } from '@/features/AlertBanner/CloudBanner';
 import DesktopBrowserGatewayBridge from '@/features/DesktopBrowserGatewayBridge';
 import DesktopFileMenuBridge from '@/features/DesktopFileMenuBridge';
@@ -50,12 +49,6 @@ const Layout: FC = () => {
   const { isPWA } = usePlatform();
   const { showCloudPromotion } = useServerConfigStore(featureFlagsSelectors);
 
-  // The nav lives outside `TabHost`, so it reads the active tab's location
-  // (mirrored into the electron store) rather than the root router's — see
-  // `useActiveLocation.desktop`. A visitor has no nav data, so the panel would
-  // stay a grey skeleton; unmount it for that branch of `/agent/:aid`.
-  const isShareVisitor = useIsAgentShareVisitorRoute();
-
   useSeedTabsOnBoot();
   useWindowUrlMirror();
   useLastWorkspaceSlugSync();
@@ -63,11 +56,12 @@ const Layout: FC = () => {
 
   return (
     <HotkeysProvider initiallyActiveScopes={[HotkeyScopeEnum.Global]}>
+      <DesktopAutoOidcOnFirstOpen />
+      <AuthRequiredModal />
       <WorkspaceContextSlot>
         <ActiveConversationBridge />
         <TabCacheBridges />
         <Suspense fallback={null}>
-          <DesktopAutoOidcOnFirstOpen />
           <DesktopNavigationBridge />
           <DesktopFileMenuBridge />
           <DesktopBrowserGatewayBridge />
@@ -76,7 +70,6 @@ const Layout: FC = () => {
           <OverlayMessageDispatcher />
           {showCloudPromotion && <CloudBanner />}
         </Suspense>
-        <AuthRequiredModal />
         <ZoomHUD />
 
         <Suspense fallback={null}>
@@ -89,12 +82,12 @@ const Layout: FC = () => {
             height={resolveMainContainerHeight({
               bannerHeight: BANNER_HEIGHT,
               desktop: true,
-              showCloudPromotion,
+              showCloudPromotion: Boolean(showCloudPromotion),
               titleBarHeight: TITLE_BAR_HEIGHT,
             })}
             width={'100%'}
           >
-            {!isShareVisitor && <NavPanelShell />}
+            <NavPanelShell />
             <DesktopLayoutContainer>
               <Flexbox height={'100%'} style={tabHostContainer} width={'100%'}>
                 <TabHost />

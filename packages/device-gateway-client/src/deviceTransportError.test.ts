@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  DeviceTransportErrorCode,
   describeGatewayRequestFailure,
   describeGatewayResponseFailure,
+  DeviceTransportErrorCode,
 } from './deviceTransportError';
 
 describe('describeGatewayResponseFailure', () => {
@@ -64,6 +64,22 @@ describe('describeGatewayResponseFailure', () => {
     expect(describeGatewayResponseFailure(400, '', 'tool call').code).toBe(
       DeviceTransportErrorCode.GatewayRejected,
     );
+  });
+
+  /** @example A workspace dispatch miss carries enough context for an outer agent to retry. */
+  it('describes a missing device with structured retryable scope data', () => {
+    const failure = describeGatewayResponseFailure(404, 'DEVICE_NOT_FOUND', 'tool call', {
+      deviceId: 'workspace-device-1',
+      workspaceId: 'workspace-1',
+    });
+
+    expect(failure.data).toEqual({
+      code: 'DEVICE_NOT_FOUND',
+      deviceId: 'workspace-device-1',
+      retryable: true,
+      scope: 'workspace',
+      workspaceId: 'workspace-1',
+    });
   });
 
   it('names the operation that failed', () => {

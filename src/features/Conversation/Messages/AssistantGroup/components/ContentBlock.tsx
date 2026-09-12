@@ -32,6 +32,7 @@ const ContentBlock = memo<ContentBlockProps>(
     disableEditing,
     disableMarkdownStreaming,
     hasToolsOverride,
+    projectionKey,
   }) => {
     const errorContent = useErrorContent(error);
     const extra = useConversationStore((s) => dataSelectors.getDbMessageById(id)(s)?.extra);
@@ -125,7 +126,11 @@ const ContentBlock = memo<ContentBlockProps>(
 
         {hasTools && (
           <SafeBoundary>
-            <Tools disableEditing={disableEditing} messageId={id} />
+            <Tools
+              disableEditing={disableEditing}
+              messageId={id}
+              toolIds={projectionKey ? tools?.map((tool) => tool.id) : undefined}
+            />
           </SafeBoundary>
         )}
 

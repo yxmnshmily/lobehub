@@ -19,7 +19,9 @@ import { cleanupTestUser, createTestAgent, createTestContext, createTestUser } f
 // Mock getServerDB to return our test database instance
 let testDB: LobeChatDatabase;
 vi.mock('@/database/core/db-adaptor', () => ({
-  getServerDB: vi.fn(() => testDB),
+  getServerDB: vi.fn(function () {
+    return testDB;
+  }),
 }));
 
 // Route authorization is covered by platformAdmin.router.test.ts. These
@@ -31,23 +33,29 @@ vi.mock('../../_helpers/platformAdminGuard', () => ({
 
 // Mock FileService to avoid S3 dependency
 vi.mock('@/server/services/file', () => ({
-  FileService: vi.fn().mockImplementation(() => ({
-    createGlobalFile: vi.fn().mockResolvedValue({ id: 'mock-global-file-id' }),
-    createFileRecord: vi.fn().mockResolvedValue({ fileId: 'mock-file-id', url: '/f/mock-file-id' }),
-    downloadFileToLocal: vi.fn(),
-    getFileContent: vi.fn(),
-    uploadBuffer: vi.fn().mockResolvedValue({ key: 'mock-key' }),
-    uploadMedia: vi.fn().mockResolvedValue({ key: 'mock-key' }),
-  })),
+  FileService: vi.fn().mockImplementation(function () {
+    return {
+      createGlobalFile: vi.fn().mockResolvedValue({ id: 'mock-global-file-id' }),
+      createFileRecord: vi
+        .fn()
+        .mockResolvedValue({ fileId: 'mock-file-id', url: '/f/mock-file-id' }),
+      downloadFileToLocal: vi.fn(),
+      getFileContent: vi.fn(),
+      uploadBuffer: vi.fn().mockResolvedValue({ key: 'mock-key' }),
+      uploadMedia: vi.fn().mockResolvedValue({ key: 'mock-key' }),
+    };
+  }),
 }));
 
 // Mock SkillResourceService to avoid S3 dependency
 vi.mock('@/server/services/skill/resource', () => ({
-  SkillResourceService: vi.fn().mockImplementation(() => ({
-    storeResources: vi.fn().mockResolvedValue({}),
-    readResource: vi.fn().mockRejectedValue(new Error('Resource not found')),
-    listResources: vi.fn().mockResolvedValue([]),
-  })),
+  SkillResourceService: vi.fn().mockImplementation(function () {
+    return {
+      storeResources: vi.fn().mockResolvedValue({}),
+      readResource: vi.fn().mockRejectedValue(new Error('Resource not found')),
+      listResources: vi.fn().mockResolvedValue([]),
+    };
+  }),
 }));
 
 // Mock GitHub module
@@ -59,20 +67,24 @@ const normalizeIdentifierPart = (part: string) =>
 
 const mockGitHubInstance = {
   downloadRepoZip: vi.fn(),
-  generateIdentifier: vi
-    .fn()
-    .mockImplementation((info: { owner: string; path?: string; repo: string }) => {
-      const parts = [normalizeIdentifierPart(info.owner), normalizeIdentifierPart(info.repo)];
-      if (info.path) {
-        const lastSegment = info.path.split('/').findLast(Boolean);
-        if (lastSegment) parts.push(normalizeIdentifierPart(lastSegment));
-      }
-      return parts.join('-').toLowerCase();
-    }),
+  generateIdentifier: vi.fn().mockImplementation(function (info: {
+    owner: string;
+    path?: string;
+    repo: string;
+  }) {
+    const parts = [normalizeIdentifierPart(info.owner), normalizeIdentifierPart(info.repo)];
+    if (info.path) {
+      const lastSegment = info.path.split('/').findLast(Boolean);
+      if (lastSegment) parts.push(normalizeIdentifierPart(lastSegment));
+    }
+    return parts.join('-').toLowerCase();
+  }),
   parseRepoUrl: vi.fn(),
 };
 vi.mock('@/server/modules/GitHub', () => ({
-  GitHub: vi.fn().mockImplementation(() => mockGitHubInstance),
+  GitHub: vi.fn().mockImplementation(function () {
+    return mockGitHubInstance;
+  }),
   GitHubNotFoundError: class extends Error {},
   GitHubParseError: class extends Error {},
 }));
@@ -83,14 +95,18 @@ const mockParserInstance = {
   parseZipPackage: vi.fn(),
 };
 vi.mock('@/server/services/skill/parser', () => ({
-  SkillParser: vi.fn().mockImplementation(() => mockParserInstance),
+  SkillParser: vi.fn().mockImplementation(function () {
+    return mockParserInstance;
+  }),
 }));
 
 const mockMarketServiceInstance = {
   getSkillDownloadUrl: vi.fn(),
 };
 vi.mock('@/server/services/market', () => ({
-  MarketService: vi.fn().mockImplementation(() => mockMarketServiceInstance),
+  MarketService: vi.fn().mockImplementation(function () {
+    return mockMarketServiceInstance;
+  }),
 }));
 
 // User-supplied URLs (importFromUrl / importFromMarket download) must be fetched through
@@ -100,7 +116,7 @@ vi.mock('@/server/services/market', () => ({
 const { mockSsrfSafeFetch } = vi.hoisted(() => ({ mockSsrfSafeFetch: vi.fn() }));
 vi.mock('@lobechat/ssrf-safe-fetch', () => ({ ssrfSafeFetch: mockSsrfSafeFetch }));
 
-const mockFetch = vi.fn(() => {
+const mockFetch = vi.fn(function () {
   throw new Error('raw global fetch must not be used for user-supplied URLs; use ssrfSafeFetch');
 });
 vi.stubGlobal('fetch', mockFetch);
@@ -923,7 +939,7 @@ describe('Skill Router Integration Tests', () => {
       mockGitHubInstance.downloadRepoZip.mockResolvedValue(Buffer.from('mock-zip'));
 
       let callCount = 0;
-      mockParserInstance.parseZipPackage.mockImplementation(() => {
+      mockParserInstance.parseZipPackage.mockImplementation(function () {
         callCount++;
         return {
           content: callCount === 1 ? '# Original' : '# Updated Content',
@@ -1002,7 +1018,7 @@ description: A skill from URL
       });
 
       let callCount = 0;
-      mockParserInstance.parseSkillMd.mockImplementation(() => {
+      mockParserInstance.parseSkillMd.mockImplementation(function () {
         callCount++;
         return {
           content: callCount === 1 ? '# Original' : '# Updated',
@@ -1057,7 +1073,7 @@ description: A skill from URL
       });
 
       let callCount = 0;
-      mockParserInstance.parseZipPackage.mockImplementation(() => {
+      mockParserInstance.parseZipPackage.mockImplementation(function () {
         callCount++;
         return {
           content: callCount === 1 ? '# Original' : '# Updated',

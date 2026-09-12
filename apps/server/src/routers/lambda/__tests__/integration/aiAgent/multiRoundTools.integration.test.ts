@@ -27,14 +27,20 @@ process.env.OPENAI_API_KEY = 'sk-test-fake-api-key-for-testing';
 // Mock getServerDB to return our test database instance
 let testDB: LobeChatDatabase;
 vi.mock('@/database/core/db-adaptor', () => ({
-  getServerDB: vi.fn(() => testDB),
+  getServerDB: vi.fn(function () {
+    return testDB;
+  }),
 }));
 
 // Mock FileService to avoid S3 environment variable requirements
 vi.mock('@/server/services/file', () => ({
-  FileService: vi.fn().mockImplementation(() => ({
-    getFullFileUrl: vi.fn().mockImplementation((path: string) => (path ? `/files${path}` : null)),
-  })),
+  FileService: vi.fn().mockImplementation(function () {
+    return {
+      getFullFileUrl: vi.fn().mockImplementation(function (path: string) {
+        return path ? `/files${path}` : null;
+      }),
+    };
+  }),
 }));
 
 let mockResponsesCreate: any;
@@ -258,7 +264,7 @@ describe('Multi-Round Tool Execution', () => {
     'should not duplicate tool messages across multiple LLM rounds with batch tool execution',
     async () => {
       let callCount = 0;
-      mockResponsesCreate.mockImplementation(() => {
+      mockResponsesCreate.mockImplementation(function () {
         callCount++;
         if (callCount === 1) {
           return Promise.resolve(createMockResponseWithMultipleTools(1) as any);
@@ -269,7 +275,7 @@ describe('Multi-Round Tool Execution', () => {
       });
 
       const mockExecuteTool = vi.spyOn(ToolExecutionService.prototype, 'executeTool');
-      mockExecuteTool.mockImplementation(async (toolCall) => {
+      mockExecuteTool.mockImplementation(async function (toolCall) {
         const isSearch = toolCall.apiName === 'search';
         return {
           content: JSON.stringify({
@@ -346,7 +352,7 @@ describe('Multi-Round Tool Execution', () => {
     'should maintain correct state.messages structure in AgentState across tool rounds',
     async () => {
       let callCount = 0;
-      mockResponsesCreate.mockImplementation(() => {
+      mockResponsesCreate.mockImplementation(function () {
         callCount++;
         if (callCount === 1) {
           return Promise.resolve(createMockResponseWithMultipleTools(1) as any);

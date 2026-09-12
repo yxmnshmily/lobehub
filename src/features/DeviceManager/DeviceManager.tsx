@@ -76,6 +76,13 @@ const styles = createStaticStyles(({ css }) => ({
     border-radius: ${cssVar.borderRadiusLG};
     background: ${cssVar.colorBgContainer};
   `,
+  // The personal page renders inside a settings form card, so the list and the
+  // onboarding state drop their own card chrome — one frame, not two nested.
+  plainCol: css`
+    overflow: hidden;
+    min-width: 0;
+    border-radius: ${cssVar.borderRadiusLG};
+  `,
   emptyHero: css`
     padding-block: 40px;
     padding-inline: 32px;
@@ -275,7 +282,7 @@ const Capabilities = memo(() => {
 // row text — loading → loaded is a content swap, not a relayout (ux §4.1).
 // `withHeader` mirrors the personal page's count/connect header row; the
 // workspace page has no list header (its actions live in the page's tab row).
-const ListSkeleton = memo<{ withHeader?: boolean }>(({ withHeader }) => (
+const ListSkeleton = memo<{ withHeader?: boolean; bordered?: boolean }>(({ withHeader }) => (
   <Flexbox className={styles.listCol} flex={1}>
     {withHeader && (
       <Flexbox horizontal align={'center'} className={styles.listHeader}>
@@ -313,7 +320,7 @@ const DeviceManager = memo<DeviceManagerProps>(({ onConnect, scope, visibility }
 
   // Workspace-keyed SWR fetch — the shared hook every device-listing surface
   // uses (see `useDeviceList` for why the raw TRPC React Query path is wrong).
-  const { data, isLoading, error, mutate, isValidating } = useDeviceList();
+  const { data, isLoading, isValidating, error, mutate } = useDeviceList();
   // `listDevices` is workspace-aware and returns both pools — keep each surface
   // to its own scope (and visibility tab). Ghost rows (`visibility: null`,
   // online but unregistered) belong to the shared pool: the server already
@@ -343,7 +350,7 @@ const DeviceManager = memo<DeviceManagerProps>(({ onConnect, scope, visibility }
   const isPrivatePool = isWorkspace && visibility === 'private';
   const emptyState = (
     <Flexbox gap={32}>
-      <Flexbox className={styles.emptyCard}>
+      <Flexbox className={isWorkspace ? styles.emptyCard : styles.plainCol}>
         <Flexbox align={'center'} className={styles.emptyHero} gap={12}>
           <span className={styles.heroIcon}>
             <Icon icon={isWorkspace && !isPrivatePool ? ServerIcon : MonitorDownIcon} size={28} />

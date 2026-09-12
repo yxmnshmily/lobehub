@@ -445,6 +445,8 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
       }
 
       if (Object.keys(updateData).length > 0) {
+        // Attribution rides the caller's context, not this payload — see
+        // `AuthContext.actingAgentId`.
         ops.push(taskCaller().update({ id: task.id, ...updateData }));
       }
 
@@ -982,7 +984,9 @@ export const taskRuntime: ServerRuntimeRegistration = {
       agentModel: new AgentModel(db, userId),
       taskModel: new TaskModel(db, userId),
       taskService: new TaskService(db, userId),
-      taskCaller: taskRouter.createCaller(carryTaskExecutionContext({ userId }, context)),
+      taskCaller: taskRouter.createCaller(
+        carryTaskExecutionContext({ actingAgentId: agentId, userId }, context),
+      ),
     } as TaskRuntimeDeps;
 
     let resolved = false;
@@ -999,7 +1003,7 @@ export const taskRuntime: ServerRuntimeRegistration = {
       deps.taskModel = new TaskModel(db, userId, wsId);
       deps.taskService = new TaskService(db, userId, wsId);
       deps.taskCaller = taskRouter.createCaller(
-        carryTaskExecutionContext({ userId, workspaceId: wsId }, context),
+        carryTaskExecutionContext({ actingAgentId: agentId, userId, workspaceId: wsId }, context),
       );
     };
 

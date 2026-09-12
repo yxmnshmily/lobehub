@@ -7,6 +7,7 @@ import { memo } from 'react';
 import SkeletonBar from './Bar';
 
 export interface SkeletonTextProps {
+  animated?: boolean;
   className?: string;
   fontSize?: number;
   gap?: number;
@@ -35,7 +36,7 @@ const SkeletonText = memo<SkeletonTextProps>(
 
     const rowWidth = (index: number) => {
       if (widths) return widths[index] ?? widths.at(-1) ?? '100%';
-      if (width !== undefined) return width;
+      if (width !== undefined && !Array.isArray(width)) return width;
       return index === rowCount - 1 && rowCount > 1 ? '66%' : '100%';
     };
 

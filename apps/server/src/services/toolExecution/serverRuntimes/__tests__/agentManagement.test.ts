@@ -33,26 +33,32 @@ vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
 }));
 
 vi.mock('@/database/models/agent', () => ({
-  AgentModel: vi.fn(() => ({
-    countAgents: mockCountAgents,
-    getAgentConfigById: mockGetAgentConfigById,
-    queryAgents: mockQueryAgents,
-    update: mockUpdateAgent,
-    updateConfig: mockUpdateConfig,
-  })),
+  AgentModel: vi.fn(function () {
+    return {
+      countAgents: mockCountAgents,
+      getAgentConfigById: mockGetAgentConfigById,
+      queryAgents: mockQueryAgents,
+      update: mockUpdateAgent,
+      updateConfig: mockUpdateConfig,
+    };
+  }),
 }));
 
 vi.mock('@/database/models/plugin', () => ({
-  PluginModel: vi.fn(() => ({
-    create: mockCreatePlugin,
-    findById: mockFindById,
-  })),
+  PluginModel: vi.fn(function () {
+    return {
+      create: mockCreatePlugin,
+      findById: mockFindById,
+    };
+  }),
 }));
 
 vi.mock('@/server/services/discover', () => ({
-  DiscoverService: vi.fn(() => ({
-    getAssistantList: mockGetAssistantList,
-  })),
+  DiscoverService: vi.fn(function () {
+    return {
+      getAssistantList: mockGetAssistantList,
+    };
+  }),
 }));
 
 const createRuntime = () =>

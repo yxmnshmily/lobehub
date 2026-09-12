@@ -38,6 +38,8 @@ vi.mock('@/hooks/usePermission', () => ({ usePermission: () => ({ allowed: true 
 vi.mock('@/features/AgentBreadcrumb', () => ({ default: () => null }));
 vi.mock('./GoalDetailActions', () => ({ default: () => null }));
 vi.mock('./GoalRequirement', () => ({ default: () => null }));
+vi.mock('./NorthStarMetrics', () => ({ default: () => null }));
+vi.mock('./GoalSupervision', () => ({ GoalSupervision: () => null }));
 vi.mock('./ProcessControl', () => ({ default: () => null }));
 vi.mock('@/features/RightPanel', () => ({
   default: ({ children, expand }: { children: ReactNode; expand: boolean }) => (

@@ -75,6 +75,7 @@ import {
   resolveServerDefaultHeterogeneousModel,
   SERVER_DEFAULT_HETEROGENEOUS_AGENT_TYPES,
 } from '@/server/modules/ModelRuntime';
+import { mapAgentInterventionTRPCError } from '@/server/routers/lambda/_helpers/agentInterventionError';
 import {
   assertCanUseMessageTargets,
   assertCanUseTopicTargets,
@@ -1164,7 +1165,12 @@ const ExecAgentSchema = z
      * messages are the dominant caller. Pass a more specific value (`'cli'`,
      * `'openapi'`, `'eval'`, …) to override.
      */
-    trigger: z.string().optional(),
+    trigger: z
+      .string()
+      .refine((value) => value !== RequestTrigger.Bot, {
+        message: 'The bot trigger is reserved for authenticated server-side bot ingress',
+      })
+      .optional(),
     /**
      * User intervention configuration for tool approvals.
      * Pass `{ approvalMode: 'headless' }` from headless clients (CLI, cron, bots)
@@ -3717,6 +3723,8 @@ export const aiAgentRouter = router({
         workspaceId: ctx.workspaceId,
       });
 
+      // A rejected resolution describes the submitted response, not a server
+      // fault, so map the contract failure instead of letting it become a 500.
       const resolution = await resolveAgentInterventionBySource({
         action: input.action,
         actorUserId: ctx.userId,
@@ -3725,6 +3733,8 @@ export const aiAgentRouter = router({
         resolutionRequestId: input.resolutionRequestId,
         targets: input.targets,
         workspaceId: ctx.workspaceId ?? undefined,
+      }).catch((error: unknown) => {
+        throw mapAgentInterventionTRPCError(error);
       });
 
       if (!resolution.handled) {
@@ -3772,6 +3782,8 @@ export const aiAgentRouter = router({
         reviewToken: input.reviewToken,
         userId: ctx.userId,
         workspaceId: ctx.workspaceId ?? undefined,
+      }).catch((error: unknown) => {
+        throw mapAgentInterventionTRPCError(error);
       });
 
       if (!resolution.handled) {
@@ -3830,6 +3842,8 @@ export const aiAgentRouter = router({
         target: { reviewToken: input.reviewToken },
         userId: ctx.userId,
         workspaceId: ctx.workspaceId ?? undefined,
+      }).catch((error: unknown) => {
+        throw mapAgentInterventionTRPCError(error);
       });
 
       if (!resolution.handled) return { status: 'unavailable' as const, success: false as const };
@@ -4137,7 +4151,14 @@ export const aiAgentRouter = router({
       // `shareChat.refreshGatewayToken` instead.
       const topic = await ctx.topicModel.findOwnTopicById(input.topicId);
 
-      if (!topic?.metadata?.runningOperation) {
+      // Same liveness check as `shareChat.refreshGatewayToken`: the marker is
+      // cleared best-effort, so refuse to reconnect a client to a run that has
+      // already ended — the client treats NOT_FOUND as "stale marker, clear it".
+      const runningOperation = topic?.metadata?.runningOperation;
+      if (
+        !runningOperation ||
+        !(await ctx.topicModel.isRunningOperationAlive(ctx.serverDB, runningOperation))
+      ) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'No running operation found on this topic',

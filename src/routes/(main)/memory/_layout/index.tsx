@@ -3,9 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { type FC } from 'react';
 import { Outlet } from 'react-router';
-import { SWRConfig } from 'swr';
 
-import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import { RouteSkeletonChromeProvider } from '@/spa/router/routeSkeletonChrome';
 
 import Sidebar from './Sidebar';
@@ -28,13 +26,9 @@ const DesktopMemoryLayout: FC = () => {
                (identity / contexts / preferences / experiences / activities). */
             style={{ minHeight: 0, minWidth: 0, overflow: 'hidden', padding: 48 }}
           >
-            <SWRConfig value={{ suspense: true }}>
-              <SuspenseRouteBoundary>
-                <RouteSkeletonChromeProvider>
-                  <Outlet />
-                </RouteSkeletonChromeProvider>
-              </SuspenseRouteBoundary>
-            </SWRConfig>
+            <RouteSkeletonChromeProvider>
+              <Outlet />
+            </RouteSkeletonChromeProvider>
           </Flexbox>
         </div>
       </Flexbox>

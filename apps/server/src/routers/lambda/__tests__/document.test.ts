@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   assertCanEditResource: vi.fn(),
   assertCanPerformResourceAction: vi.fn(),
   businessFileTransferStorageCheck: vi.fn(),
+  canPerformResourceAction: vi.fn(),
   countFileUsageInSubtree: vi.fn(),
   createDocument: vi.fn(),
   deleteDocument: vi.fn(),
@@ -21,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   getResourceMeta: vi.fn(),
   getDocumentById: vi.fn(),
   resolvePublishedResource: vi.fn(),
+  getWorkspaceUsersPermissions: vi.fn(),
+  notifyDocumentMention: vi.fn(),
   publishToWorkspace: vi.fn(),
   setAccessLevel: vi.fn(),
   subtreeHasForeignRows: vi.fn(),
@@ -28,56 +31,86 @@ const mocks = vi.hoisted(() => ({
   updateDocument: vi.fn(),
 }));
 
+vi.mock('@/business/server/document-mention/notifyActivity', () => ({
+  notifyDocumentMention: mocks.notifyDocumentMention,
+}));
+vi.mock('@/database/models/rbac', () => ({
+  RbacModel: { getWorkspaceUsersPermissions: mocks.getWorkspaceUsersPermissions },
+}));
+vi.mock('@/server/utils/scheduleAfterResponse', () => ({
+  after: (work: () => Promise<unknown> | unknown) => work(),
+}));
 vi.mock('@/business/server/lambda-routers/file', () => ({
   businessFileTransferStorageCheck: mocks.businessFileTransferStorageCheck,
 }));
-vi.mock('@/database/models/chunk', () => ({ ChunkModel: vi.fn(() => ({})) }));
+vi.mock('@/database/models/chunk', () => ({
+  ChunkModel: vi.fn(function () {
+    return {};
+  }),
+}));
 vi.mock('@/database/models/document', async (importOriginal) => ({
   DOCUMENT_TRANSFER_FOREIGN_ROWS: ((await importOriginal()) as Record<string, string>)
     .DOCUMENT_TRANSFER_FOREIGN_ROWS,
-  DocumentModel: vi.fn(() => ({
-    countFileUsageInSubtree: mocks.countFileUsageInSubtree,
-    findById: mocks.findById,
-    findByIds: mocks.findByIds,
-    findBySlug: mocks.findBySlug,
-    subtreeHasForeignRows: mocks.subtreeHasForeignRows,
-    transferTo: mocks.transferTo,
-  })),
+  DocumentModel: vi.fn(function () {
+    return {
+      countFileUsageInSubtree: mocks.countFileUsageInSubtree,
+      findById: mocks.findById,
+      findByIds: mocks.findByIds,
+      findBySlug: mocks.findBySlug,
+      subtreeHasForeignRows: mocks.subtreeHasForeignRows,
+      transferTo: mocks.transferTo,
+    };
+  }),
 }));
-vi.mock('@/database/models/file', () => ({ FileModel: vi.fn(() => ({})) }));
-vi.mock('@/database/models/message', () => ({ MessageModel: vi.fn(() => ({})) }));
+vi.mock('@/database/models/file', () => ({
+  FileModel: vi.fn(function () {
+    return {};
+  }),
+}));
+vi.mock('@/database/models/message', () => ({
+  MessageModel: vi.fn(function () {
+    return {};
+  }),
+}));
 vi.mock('@/database/models/resourcePermission', () => ({
-  ResourcePermissionModel: vi.fn(() => ({
-    getAccessLevel: mocks.getAccessLevel,
-    removeAll: vi.fn(),
-    setAccessLevel: mocks.setAccessLevel,
-  })),
+  ResourcePermissionModel: vi.fn(function () {
+    return {
+      getAccessLevel: mocks.getAccessLevel,
+      removeAll: vi.fn(),
+      setAccessLevel: mocks.setAccessLevel,
+    };
+  }),
 }));
 vi.mock('@/server/services/document', () => ({
-  DocumentService: vi.fn(() => ({
-    createDocument: mocks.createDocument,
-    getDocumentById: mocks.getDocumentById,
-    deleteDocument: mocks.deleteDocument,
-    deleteDocuments: mocks.deleteDocuments,
-    publishToWorkspace: mocks.publishToWorkspace,
-    updateDocument: mocks.updateDocument,
-  })),
+  DocumentService: vi.fn(function () {
+    return {
+      createDocument: mocks.createDocument,
+      getDocumentById: mocks.getDocumentById,
+      deleteDocument: mocks.deleteDocument,
+      deleteDocuments: mocks.deleteDocuments,
+      publishToWorkspace: mocks.publishToWorkspace,
+      updateDocument: mocks.updateDocument,
+    };
+  }),
 }));
 vi.mock('@/server/services/groupConversationAccess/conversationRepository', () => ({
-  GroupConversationAccessRepository: vi.fn(() => ({
-    resolvePublishedResource: mocks.resolvePublishedResource,
-  })),
+  GroupConversationAccessRepository: vi.fn(function () {
+    return {
+      resolvePublishedResource: mocks.resolvePublishedResource,
+    };
+  }),
 }));
 vi.mock('@/server/services/resourcePermission', () => ({
   assertCanEditResource: mocks.assertCanEditResource,
   assertCanPerformResourceAction: mocks.assertCanPerformResourceAction,
   buildResourcePermissionState: vi.fn(),
+  canPerformResourceAction: mocks.canPerformResourceAction,
   getResourceMeta: mocks.getResourceMeta,
 }));
 vi.mock('@/server/services/workspacePermission', () => ({
   hasWorkspaceScopedPermission: vi.fn(),
 }));
-vi.mock('@/server/routers/lambda/_helpers/knowledgeBaseAccess', () => ({
+vi.mock('@/server/services/knowledgeBaseAccess', () => ({
   assertContentsNotInRestrictedKnowledgeBase: mocks.assertContentsNotInRestrictedKnowledgeBase,
   getRestrictedKnowledgeBaseIds: vi.fn().mockResolvedValue([]),
 }));
@@ -348,8 +381,8 @@ describe('documentRouter createDocument under a knowledge-base folder', () => {
   });
 
   it('authorizes a move into a KB folder through the KB as well', async () => {
-    mocks.findById.mockImplementation(async (id: string) =>
-      id === 'doc-1'
+    mocks.findById.mockImplementation(async function (id: string) {
+      return id === 'doc-1'
         ? {
             id: 'doc-1',
             parentId: null,
@@ -357,8 +390,8 @@ describe('documentRouter createDocument under a knowledge-base folder', () => {
             visibility: 'public',
             workspaceId: 'ws-1',
           }
-        : { id, ...kbFolder },
-    );
+        : { id, ...kbFolder };
+    });
 
     await caller().updateDocument({ id: 'doc-1', parentId: 'kb-folder' });
 
@@ -417,5 +450,113 @@ describe('documentRouter publishDocumentToWorkspace', () => {
     await caller().publishDocumentToWorkspace({ accessLevel: 'edit', id: 'doc-1' });
 
     expect(mocks.setAccessLevel).toHaveBeenCalledWith('document', 'doc-1', 'edit', 'creator-1');
+  });
+});
+
+describe('documentRouter updateDocument mention notifications', () => {
+  const savedAt = new Date('2026-09-09T10:00:00.000Z');
+  const flushAfterWork = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const createCaller = (workspaceId: string | null = 'ws-1') =>
+    documentRouter.createCaller({
+      serverDB: {},
+      userId: 'member-1',
+      workspaceId,
+      workspaceRole: 'member',
+    } as any);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.assertContentsNotInRestrictedKnowledgeBase.mockResolvedValue(undefined);
+    mocks.getResourceMeta.mockResolvedValue({
+      userId: 'member-1',
+      visibility: 'public',
+      workspaceId: 'ws-1',
+    });
+    mocks.canPerformResourceAction.mockResolvedValue(true);
+    mocks.notifyDocumentMention.mockResolvedValue(undefined);
+  });
+
+  it('notifies each newly mentioned member who can view the document', async () => {
+    mocks.updateDocument.mockResolvedValue({
+      addedMentionUserIds: ['member-1', 'member-2', 'member-3', 'member-4'],
+      historyAppended: true,
+      id: 'doc-1',
+      savedAt,
+    });
+    mocks.getWorkspaceUsersPermissions.mockResolvedValue(
+      new Map([
+        ['member-2', ['document:view']],
+        ['member-3', ['document:view']],
+      ]),
+    );
+    mocks.canPerformResourceAction.mockImplementation(async function ({ userId }) {
+      return userId !== 'member-3';
+    });
+
+    await createCaller().updateDocument({ id: 'doc-1', editorData: '{"root":{}}' });
+    await flushAfterWork();
+
+    // member-1 is the actor, member-3 lacks view access, member-4 is no longer a member.
+    expect(mocks.notifyDocumentMention).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyDocumentMention).toHaveBeenCalledWith({
+      actorUserId: 'member-1',
+      documentId: 'doc-1',
+      recipientUserId: 'member-2',
+      savedAt,
+      workspaceId: 'ws-1',
+    });
+  });
+
+  it('does nothing when the save added no mentions', async () => {
+    mocks.updateDocument.mockResolvedValue({ historyAppended: true, id: 'doc-1', savedAt });
+
+    await createCaller().updateDocument({ id: 'doc-1', editorData: '{"root":{}}' });
+    await flushAfterWork();
+
+    expect(mocks.getWorkspaceUsersPermissions).not.toHaveBeenCalled();
+    expect(mocks.notifyDocumentMention).not.toHaveBeenCalled();
+  });
+
+  it('skips a restricted knowledge base recipient without blocking other mentions', async () => {
+    mocks.updateDocument.mockResolvedValue({
+      addedMentionUserIds: ['member-2', 'member-3'],
+      historyAppended: true,
+      id: 'doc-1',
+      savedAt,
+    });
+    mocks.getWorkspaceUsersPermissions.mockResolvedValue(
+      new Map([
+        ['member-2', ['document:view']],
+        ['member-3', ['document:view']],
+      ]),
+    );
+    mocks.assertContentsNotInRestrictedKnowledgeBase.mockImplementation(async function ({
+      userId,
+    }) {
+      if (userId === 'member-2') throw new TRPCError({ code: 'FORBIDDEN' });
+    });
+
+    await createCaller().updateDocument({ id: 'doc-1', editorData: '{"root":{}}' });
+    await flushAfterWork();
+
+    expect(mocks.notifyDocumentMention).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyDocumentMention).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientUserId: 'member-3' }),
+    );
+  });
+
+  it('does nothing outside a workspace', async () => {
+    mocks.updateDocument.mockResolvedValue({
+      addedMentionUserIds: ['member-2'],
+      historyAppended: true,
+      id: 'doc-1',
+      savedAt,
+    });
+
+    await createCaller(null).updateDocument({ id: 'doc-1', editorData: '{"root":{}}' });
+    await flushAfterWork();
+
+    expect(mocks.notifyDocumentMention).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ import { type FC } from 'react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { MemoryListBoundary } from '@/features/Memory';
 import PageHeader from '@/features/NavHeader/PageHeader';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import WideScreenButton from '@/features/WideScreenContainer/WideScreenButton';
@@ -48,7 +49,7 @@ const IdentitiesArea = memo(() => {
   }, [searchValue, typeFilter]);
 
   // Call SWR hook to fetch data
-  const { isLoading } = useFetchIdentities({
+  const { data, error, isLoading, mutate } = useFetchIdentities({
     page: identitiesPage,
     pageSize: 12,
     q: searchValue || undefined,
@@ -69,9 +70,6 @@ const IdentitiesArea = memo(() => {
     },
     [setTypeFilterRaw],
   );
-
-  // Show loading: during search/reset or initial load
-  const showLoading = identitiesSearchLoading || !identitiesInit;
 
   // Action bar, type tabs and search are controls over nothing on an empty
   // collection, so they only render once there is something to act on.
@@ -107,18 +105,29 @@ const IdentitiesArea = memo(() => {
         style={{ overflowY: 'auto', paddingBottom: 24 }}
         width={'100%'}
       >
-        <WideScreenContainer fullWidth gap={32} paddingBlock={24} style={{ marginInline: 'auto', maxWidth: 1184 }}>
+        <WideScreenContainer
+          fullWidth
+          gap={32}
+          paddingBlock={24}
+          style={{ marginInline: 'auto', maxWidth: 1184 }}
+        >
           {showControls && (
             <Flexbox horizontal align={'center'} gap={12} justify={'space-between'}>
               <SegmentedBar typeValue={typeFilter} onTypeChange={handleTypeChange} />
               <CommonFilterBar searchValue={searchValue} onSearch={handleSearch} />
             </Flexbox>
           )}
-          {showLoading ? (
-            <Loading viewMode={viewMode} />
-          ) : (
+          <MemoryListBoundary
+            data={data}
+            error={error}
+            isInitialized={identitiesInit}
+            isLoading={isLoading}
+            isResetting={identitiesSearchLoading}
+            loading={<Loading viewMode={viewMode} />}
+            onRetry={() => void mutate()}
+          >
             <List isLoading={isLoading} searchValue={searchValue} viewMode={viewMode} />
-          )}
+          </MemoryListBoundary>
         </WideScreenContainer>
       </Flexbox>
     </Flexbox>

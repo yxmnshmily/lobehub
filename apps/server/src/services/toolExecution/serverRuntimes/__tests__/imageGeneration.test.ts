@@ -16,17 +16,29 @@ interface ImageCallerContext {
 }
 
 const callerMocks = vi.hoisted(() => ({
-  aiModel: vi.fn(() => ({})),
-  aiProvider: vi.fn(() => ({})),
-  generation: vi.fn(() => ({})),
-  generationTopic: vi.fn(() => ({})),
-  image: vi.fn((_ctx: ImageCallerContext) => ({})),
+  aiModel: vi.fn(function () {
+    return {};
+  }),
+  aiProvider: vi.fn(function () {
+    return {};
+  }),
+  generation: vi.fn(function () {
+    return {};
+  }),
+  generationTopic: vi.fn(function () {
+    return {};
+  }),
+  image: vi.fn(function (_ctx: ImageCallerContext) {
+    return {};
+  }),
   listPlatformModels: vi.fn(),
-  markPlatformAiRuntime: vi.fn((value, capability) => ({
-    ...value,
-    capability,
-    trustedPlatformRuntime: true,
-  })),
+  markPlatformAiRuntime: vi.fn(function (value, capability) {
+    return {
+      ...value,
+      capability,
+      trustedPlatformRuntime: true,
+    };
+  }),
 }));
 
 vi.mock('@/server/routers/lambda/aiModel', () => ({
@@ -46,9 +58,11 @@ vi.mock('@/server/routers/lambda/image', () => ({
 }));
 vi.mock('@/server/services/platformAiRuntime', () => ({
   markPlatformAiRuntime: callerMocks.markPlatformAiRuntime,
-  PlatformAiRuntime: vi.fn().mockImplementation(() => ({
-    listEnabledModels: callerMocks.listPlatformModels,
-  })),
+  PlatformAiRuntime: vi.fn().mockImplementation(function () {
+    return {
+      listEnabledModels: callerMocks.listPlatformModels,
+    };
+  }),
 }));
 
 describe('imageGenerationRuntime', () => {
@@ -214,7 +228,7 @@ describe('imageGenerationRuntime', () => {
       }),
     });
     callerMocks.aiModel.mockReturnValue({
-      getAiProviderModelList: vi.fn(async ({ limit }: { limit?: number }) => {
+      getAiProviderModelList: vi.fn(async function ({ limit }: { limit?: number }) {
         const models = [{ id: 'hidden-image' }, { id: 'visible-image' }];
         return typeof limit === 'number' ? models.slice(0, limit) : models;
       }),

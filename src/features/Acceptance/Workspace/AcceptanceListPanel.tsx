@@ -1,22 +1,14 @@
 'use client';
 
-import {
-  Accordion,
-  AccordionItem,
-  Center,
-  DraggablePanel,
-  DraggablePanelContainer,
-  type DraggablePanelProps,
-  Empty,
-  Flexbox,
-  Icon,
-} from '@lobehub/ui';
-import type { DropdownItem } from '@lobehub/ui/base-ui';
+import { Accordion, AccordionItem, Center, Empty, Flexbox, Icon } from '@lobehub/ui';
+import type { DraggablePanelProps, DropdownItem } from '@lobehub/ui/base-ui';
 import {
   ActionIcon,
   Button,
   Checkbox,
   confirmModal,
+  DraggablePanel,
+  DraggablePanelContainer,
   DropdownMenu,
   Text,
   toast,
@@ -281,6 +273,12 @@ interface AcceptanceListPanelProps extends ReportPanelExpand {
   fullWidth?: boolean;
   headerLeading?: ReactNode;
   /**
+   * Rendered inside a host that already supplies the collection title and the
+   * way to dismiss it (the shell top bar plus its drawer). Drops the panel's
+   * own resizable frame and title row so the title is not stated twice.
+   */
+  hosted?: boolean;
+  /**
    * The per-project entries, as MENU ITEMS. Injected by the main app rather
    * than imported here: they open the create-project modal and navigate to
    * `/project/:id`, neither of which exists in the standalone workbench app —
@@ -302,6 +300,7 @@ const AcceptanceListPanel = memo<AcceptanceListPanelProps>(
     expand,
     fullWidth = false,
     headerLeading,
+    hosted,
     isNarrow,
     projectActionItems,
     projectId,
@@ -688,7 +687,10 @@ const AcceptanceListPanel = memo<AcceptanceListPanelProps>(
     const content = (
       <Container style={{ flex: 'none', height: '100%', minWidth: fullWidth ? 0 : PANEL_MIN }}>
         <div className={headerLeading ? styles.headWithBrand : styles.head}>
-          <div className={headerLeading ? styles.titleRowWithBrand : styles.titleRow}>
+          <div
+            style={hosted ? { display: 'none' } : undefined}
+            className={headerLeading ? styles.titleRowWithBrand : styles.titleRow}
+          >
             <Flexbox
               horizontal
               align={'center'}
@@ -929,6 +931,12 @@ const AcceptanceListPanel = memo<AcceptanceListPanelProps>(
         )}
       </Container>
     );
+    if (hosted)
+      return (
+        <Flexbox height={'100%'} style={{ overflow: 'hidden' }} width={'100%'}>
+          {content}
+        </Flexbox>
+      );
     if (fullWidth) return <Flexbox className={styles.projectList}>{content}</Flexbox>;
     return (
       <DraggablePanel

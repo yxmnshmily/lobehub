@@ -3,9 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { type FC } from 'react';
 import { Outlet } from 'react-router';
-import { SWRConfig } from 'swr';
 
-import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
 import SideBar from '@/features/Settings/Layout/SideBar';
 import { RouteSkeletonChromeProvider } from '@/spa/router/routeSkeletonChrome';
@@ -35,13 +33,9 @@ const Layout: FC = () => {
           data-settings-surface="flat"
           height={'100%'}
         >
-          <SWRConfig value={{ suspense: true }}>
-            <SuspenseRouteBoundary>
-              <RouteSkeletonChromeProvider>
-                <Outlet />
-              </RouteSkeletonChromeProvider>
-            </SuspenseRouteBoundary>
-          </SWRConfig>
+          <RouteSkeletonChromeProvider>
+            <Outlet />
+          </RouteSkeletonChromeProvider>
         </Flexbox>
       </Flexbox>
     </SettingsContextProvider>

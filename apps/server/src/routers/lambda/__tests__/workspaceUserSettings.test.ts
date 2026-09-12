@@ -6,7 +6,9 @@ const mockAssertTravelMutationAllowed = vi.hoisted(() => vi.fn());
 // serverDatabase middleware calls getServerDB(); stub it (the model mocks
 // ignore the db handle anyway).
 vi.mock('@/database/core/db-adaptor', () => ({
-  getServerDB: vi.fn(() => ({})),
+  getServerDB: vi.fn(function () {
+    return {};
+  }),
 }));
 
 vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
@@ -16,16 +18,20 @@ vi.mock('@/server/services/user/travelServiceGroupMutationGuard', () => ({
 
 const mockUpdatePreference = vi.fn();
 vi.mock('@/database/models/workspaceUserSettings', () => ({
-  WorkspaceUserSettingsModel: vi.fn(() => ({
-    updatePreference: mockUpdatePreference,
-  })),
+  WorkspaceUserSettingsModel: vi.fn(function () {
+    return {
+      updatePreference: mockUpdatePreference,
+    };
+  }),
 }));
 
 const mockUpdateSessionGroupId = vi.fn();
 vi.mock('@/database/models/agent', () => ({
-  AgentModel: vi.fn(() => ({
-    updateSessionGroupId: mockUpdateSessionGroupId,
-  })),
+  AgentModel: vi.fn(function () {
+    return {
+      updateSessionGroupId: mockUpdateSessionGroupId,
+    };
+  }),
 }));
 
 const mockHasPermission = vi.fn();
@@ -35,9 +41,11 @@ vi.mock('@/server/services/workspacePermission', () => ({
 
 const mockChatGroupUpdate = vi.fn();
 vi.mock('@/database/models/chatGroup', () => ({
-  ChatGroupModel: vi.fn(() => ({
-    update: mockChatGroupUpdate,
-  })),
+  ChatGroupModel: vi.fn(function () {
+    return {
+      update: mockChatGroupUpdate,
+    };
+  }),
 }));
 
 const mockAssertCanEdit = vi.fn();
@@ -47,9 +55,11 @@ vi.mock('@/server/services/resourcePermission', () => ({
 
 const mockGetBlockingHolder = vi.fn();
 vi.mock('@/server/services/editLock', () => ({
-  EditLockService: vi.fn(() => ({
-    getBlockingHolder: mockGetBlockingHolder,
-  })),
+  EditLockService: vi.fn(function () {
+    return {
+      getBlockingHolder: mockGetBlockingHolder,
+    };
+  }),
 }));
 
 const { workspaceUserSettingsRouter } = await import('../workspaceUserSettings');

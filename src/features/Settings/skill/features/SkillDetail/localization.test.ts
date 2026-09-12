@@ -1,7 +1,11 @@
-import { ArtifactsIdentifier, builtinSkills } from '@lobechat/builtin-skills';
+import { ArtifactsIdentifier } from '@lobechat/builtin-skills';
+import { loadBuiltinSkill } from '@/store/tool/slices/builtin/loadBuiltinSkills';
+import { AuvManifest } from '@lobechat/builtin-tool-auv';
 import { type TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
+import enUS from '../../../../../../locales/en-US/setting.json';
+import zhCN from '../../../../../../locales/zh-CN/setting.json';
 import { getLocalizedBuiltinSkillDetail, getNoPermissionsTitle } from './localization';
 
 const createTranslator = (translations: Record<string, string> = {}) =>
@@ -51,8 +55,8 @@ describe('SkillDetail localization helpers', () => {
     expect(skill.content).toBe('<lobehub_platform_guides>\n# Identity\n</lobehub_platform_guides>');
   });
 
-  it('hides the outer tag from the built-in artifacts guide', () => {
-    const skill = builtinSkills.find(({ identifier }) => identifier === ArtifactsIdentifier);
+  it('hides the outer tag from the built-in artifacts guide', async () => {
+    const skill = await loadBuiltinSkill(ArtifactsIdentifier);
 
     const result = getLocalizedBuiltinSkillDetail(skill, ArtifactsIdentifier, createTranslator());
 
@@ -60,6 +64,26 @@ describe('SkillDetail localization helpers', () => {
     expect(result.content).not.toContain('</artifacts_info>');
     expect(result.content).toContain('# 1. Evaluation Criteria');
   });
+
+  it.each([
+    [enUS, 'Computer Use'],
+    [zhCN, '使用电脑'],
+  ] as const)(
+    'localizes the Computer Use skill from shipped translations',
+    (translations, title) => {
+      const result = getLocalizedBuiltinSkillDetail(
+        {
+          description: AuvManifest.meta.description ?? '',
+          identifier: AuvManifest.identifier,
+          name: AuvManifest.meta.title,
+          source: 'builtin',
+        },
+        AuvManifest.identifier,
+        createTranslator(translations),
+      );
+      expect(result.title).toBe(title);
+    },
+  );
 
   it('localizes builtin skill title and description', () => {
     const t = createTranslator({

@@ -10,7 +10,9 @@ import { cleanupTestUser, createTestContext, createTestUser } from './setup';
 
 let testDB: LobeChatDatabase;
 vi.mock('@/database/core/db-adaptor', () => ({
-  getServerDB: vi.fn(() => testDB),
+  getServerDB: vi.fn(function () {
+    return testDB;
+  }),
 }));
 
 // Route authorization is covered by platformAdmin.router.test.ts. These

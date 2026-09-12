@@ -127,6 +127,7 @@ export const startOperation = async (
     userInterventionConfig,
     userTimezone,
   } = input;
+  const { audio, video, vision } = discovery.modelMediaCapabilities;
 
   log(
     'execAgent: creating operation %s — agentDocuments=%d, knowledgeBases=%s, tools=%d, skills=%d',
@@ -275,7 +276,15 @@ export const startOperation = async (
           }
         : {}),
       maxSteps,
-      modelRuntimeConfig: { model, provider },
+      modelRuntimeConfig: {
+        mediaCapabilities: {
+          ...(typeof audio === 'boolean' && { audio }),
+          ...(typeof video === 'boolean' && { video }),
+          ...(typeof vision === 'boolean' && { vision }),
+        },
+        model,
+        provider,
+      },
       hooks,
       operationId,
       parentOperationId,

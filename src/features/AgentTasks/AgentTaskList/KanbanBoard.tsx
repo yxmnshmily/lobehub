@@ -27,6 +27,7 @@ import type { TaskListItem } from '@/store/task/slices/list/initialState';
 import { createTaskModal } from '../CreateTaskModal';
 import type { TaskItemRouteScope } from '../features/AgentTaskItem';
 import AgentTaskItem from '../features/AgentTaskItem';
+import { useTaskStatusChange } from '../features/useTaskStatusChange';
 import { taskDetailPath } from '../shared/taskDetailPath';
 import HiddenColumnsPanel from './HiddenColumnsPanel';
 import {
@@ -96,7 +97,7 @@ const KanbanBoard = memo<KanbanBoardProps>(
       [isQueryScopeCurrent, taskGroups],
     );
     const updateTask = useTaskStore((s) => s.updateTask);
-    const updateTaskStatus = useTaskStore((s) => s.updateTaskStatus);
+    const changeTaskStatus = useTaskStatusChange();
 
     const hiddenColumns = useGlobalStore(systemStatusSelectors.taskKanbanHiddenColumns);
     const hiddenPanelCollapsed = useGlobalStore(
@@ -155,7 +156,9 @@ const KanbanBoard = memo<KanbanBoardProps>(
 
         try {
           if (groupBy === 'status' && column.targetStatus) {
-            await updateTaskStatus(task.identifier, column.targetStatus);
+            const changed = await changeTaskStatus(task.identifier, column.targetStatus);
+            if (!changed)
+              useTaskStore.setState({ taskGroups: prevGroups }, false, 'kanban/cancelMove');
           } else if ((groupBy === 'assignee' || groupBy === 'member') && assigneeUpdate) {
             await updateTask(task.identifier, assigneeUpdate);
           } else if (groupBy === 'priority') {
@@ -165,7 +168,7 @@ const KanbanBoard = memo<KanbanBoardProps>(
           useTaskStore.setState({ taskGroups: prevGroups }, false, 'kanban/revertMove');
         }
       },
-      [canEditTask, columns, groupBy, updateTask, updateTaskStatus],
+      [canEditTask, columns, groupBy, updateTask, changeTaskStatus],
     );
 
     const handleDragCancel = useCallback(() => {

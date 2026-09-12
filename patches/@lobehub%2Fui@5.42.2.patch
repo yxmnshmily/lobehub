@@ -1,0 +1,1280 @@
+diff --git a/es/Tabs/style.mjs b/es/Tabs/style.mjs
+--- a/es/Tabs/style.mjs
++++ b/es/Tabs/style.mjs
+@@ -18,7 +18,7 @@
+ 		dropdown: css`
+       .${prefixCls}-tabs-dropdown-menu {
+         padding: 4px;
+-        border: 1px solid ${cssVar.colorBorderSecondary};
++        border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+         .${prefixCls}-tabs-dropdown-menu-item {
+           border-radius: ${cssVar.borderRadius};
+diff --git a/es/Drawer/Drawer.mjs b/es/Drawer/Drawer.mjs
+--- a/es/Drawer/Drawer.mjs
++++ b/es/Drawer/Drawer.mjs
+@@ -11,10 +11,10 @@
+ 	const headerBorder = useMemo(() => {
+ 		if (height === "100%" || width === "100%" || height === "100vh" || width === "100vw") return {};
+ 		switch (placement) {
+-			case "top": return { borderBottom: `1px solid ${cssVar.colorBorder}` };
+-			case "bottom": return { borderTop: `1px solid ${cssVar.colorBorder}` };
+-			case "left": return { borderRight: `1px solid ${cssVar.colorBorder}` };
+-			case "right": return { borderLeft: `1px solid ${cssVar.colorBorder}` };
++			case "top": return { borderBottom: `0.5px solid ${cssVar.colorBorder}` };
++			case "bottom": return { borderTop: `0.5px solid ${cssVar.colorBorder}` };
++			case "left": return { borderRight: `0.5px solid ${cssVar.colorBorder}` };
++			case "right": return { borderLeft: `0.5px solid ${cssVar.colorBorder}` };
+ 			default: return {};
+ 		}
+ 	}, [
+@@ -47,7 +47,7 @@
+ 		width: sidebarWidth,
+ 		style: {
+ 			background: cssVar.colorBgLayout,
+-			borderRight: `1px solid ${cssVar.colorBorderSecondary}`,
++			borderRight: `0.5px solid ${cssVar.colorBorderSecondary}`,
+ 			height: "100vh",
+ 			overflowX: "hidden",
+ 			overflowY: "auto",
+diff --git a/es/Footer/style.mjs b/es/Footer/style.mjs
+--- a/es/Footer/style.mjs
++++ b/es/Footer/style.mjs
+@@ -197,7 +197,7 @@
+ 		root: css`
+       grid-area: footer;
+       align-self: stretch;
+-      border-block-start: 1px solid ${cssVar.colorSplit};
++      border-block-start: 0.5px solid ${cssVar.colorSplit};
+       color: ${cssVar.colorTextDescription};
+ 
+       ${responsive.sm} {
+diff --git a/es/Toc/style.mjs b/es/Toc/style.mjs
+--- a/es/Toc/style.mjs
++++ b/es/Toc/style.mjs
+@@ -39,7 +39,7 @@
+     `,
+ 		expand: cx(staticStylish.blur, css`
+         width: 100%;
+-        border-block-end: 1px solid ${cssVar.colorSplit};
++        border-block-end: 0.5px solid ${cssVar.colorSplit};
+         border-radius: 0;
+ 
+         background-color: color-mix(in srgb, ${cssVar.colorBgLayout} 50%, transparent);
+diff --git a/es/Form/style.mjs b/es/Form/style.mjs
+--- a/es/Form/style.mjs
++++ b/es/Form/style.mjs
+@@ -8,7 +8,7 @@
+     gap: 48px;
+     .${prefixCls}-collapse .${prefixCls}-collapse-header {
+       padding-block-end: 16px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+ 
+     .${prefixCls}-collapse-body {
+@@ -113,7 +113,7 @@
+ 	return { root: css`
+       ${responsive.sm} {
+         padding: 16px;
+-        border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++        border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+         background: ${cssVar.colorBgContainer};
+       }
+     ` };
+@@ -240,7 +240,7 @@
+ 
+     width: max-content;
+     padding: 8px;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 48px;
+ 
+     background: ${cssVar.colorBgContainer};
+@@ -250,7 +250,7 @@
+     ${responsive.sm} {
+       margin-block-start: calc(-1 * ${cssVar.borderRadius});
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   `
+diff --git a/es/SideNav/style.mjs b/es/SideNav/style.mjs
+--- a/es/SideNav/style.mjs
++++ b/es/SideNav/style.mjs
+@@ -6,7 +6,7 @@
+     min-height: 640px;
+     padding-block: 12px;
+     padding-inline: 0;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: ${cssVar.colorBgContainer};
+   `);
+diff --git a/es/CodeDiff/style.mjs b/es/CodeDiff/style.mjs
+--- a/es/CodeDiff/style.mjs
++++ b/es/CodeDiff/style.mjs
+@@ -76,7 +76,7 @@
+     `,
+ 		headerOutlined: css`
+       & + .${prefix}-body {
+-        border-block-start: 1px solid ${cssVar.colorFillQuaternary};
++        border-block-start: 0.5px solid ${cssVar.colorFillQuaternary};
+       }
+     `,
+ 		outlined: staticStylish.variantOutlinedWithoutHover,
+diff --git a/es/ThemeProvider/GlobalStyle/antdOverride.mjs b/es/ThemeProvider/GlobalStyle/antdOverride.mjs
+--- a/es/ThemeProvider/GlobalStyle/antdOverride.mjs
++++ b/es/ThemeProvider/GlobalStyle/antdOverride.mjs
+@@ -50,7 +50,7 @@
+       min-height: unset;
+       padding-block: 4px;
+       padding-inline: 8px;
+-      border: 1px solid ${token.colorBorderSecondary} !important;
++      border: 0.5px solid ${token.colorBorderSecondary} !important;
+       border-radius: ${token.borderRadiusSM}px !important;
+ 
+       font-size: ${token.fontSizeSM}px;
+@@ -97,7 +97,7 @@
+     }
+ 
+     .${token.prefixCls}-modal-content {
+-      border: 1px solid ${token.colorBorderSecondary} !important;
++      border: 0.5px solid ${token.colorBorderSecondary} !important;
+     }
+ 
+     .${token.prefixCls}-radio-wrapper
+diff --git a/es/chat/ChatItem/style.mjs b/es/chat/ChatItem/style.mjs
+--- a/es/chat/ChatItem/style.mjs
++++ b/es/chat/ChatItem/style.mjs
+@@ -4,7 +4,7 @@
+ 	const blockStylish = css`
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border: 1px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
++    border: 0.5px solid color-mix(in srgb, ${cssVar.colorBorderSecondary} 66%, transparent);
+     border-radius: ${cssVar.borderRadiusLG};
+ 
+     background-color: ${cssVar.colorBgContainer};
+@@ -150,7 +150,7 @@
+       ${editingStylish}
+       padding-block: 8px 12px;
+       padding-inline: 12px;
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+       &:active,
+       &:hover {
+@@ -161,7 +161,7 @@
+       ${editingStylish}
+       padding-block: 8px 12px;
+       padding-inline: 12px;
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+       border-radius: ${cssVar.borderRadius};
+ 
+       background: ${cssVar.colorFillQuaternary};
+diff --git a/es/chat/ChatHeader/style.mjs b/es/chat/ChatHeader/style.mjs
+--- a/es/chat/ChatHeader/style.mjs
++++ b/es/chat/ChatHeader/style.mjs
+@@ -18,7 +18,7 @@
+       height: 52px;
+       min-height: 52px;
+       max-height: 52px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+       background: ${cssVar.colorBgContainer};
+     `,
+diff --git a/es/Alert/style.mjs b/es/Alert/style.mjs
+--- a/es/Alert/style.mjs
++++ b/es/Alert/style.mjs
+@@ -40,13 +40,13 @@
+       overflow: hidden;
+ 
+       max-width: 100%;
+-      border: 1px solid;
++      border: 0.5px solid;
+       border-block-start: none;
+       border-end-start-radius: ${cssVar.borderRadiusLG};
+       border-end-end-radius: ${cssVar.borderRadiusLG};
+     `,
+ 		extraHeader: css`
+-      border-block-start: 1px dashed;
++      border-block-start: 0.5px dashed;
+       border-radius: 0;
+       background: transparent !important;
+     `,
+diff --git a/es/Markdown/markdown.style.mjs b/es/Markdown/markdown.style.mjs
+--- a/es/Markdown/markdown.style.mjs
++++ b/es/Markdown/markdown.style.mjs
+@@ -48,7 +48,7 @@
+         margin-inline: 0.25em;
+         padding-block: 0.1em;
+         padding-inline: 0.4em;
+-        border: 1px solid var(--lobe-markdown-border-color);
++        border: 0.5px solid var(--lobe-markdown-border-color);
+         border-radius: 0.25em;
+ 
+         font-family: ${cssVar.fontFamilyCode};
+@@ -94,8 +94,8 @@
+ 
+           width: 0.4em;
+           height: 0.4em;
+-          border-block-end: 1.5px solid ${cssVar.colorTextSecondary};
+-          border-inline-end: 1.5px solid ${cssVar.colorTextSecondary};
++          border-block-end: 0.5px solid ${cssVar.colorTextSecondary};
++          border-inline-end: 0.5px solid ${cssVar.colorTextSecondary};
+ 
+           font-family: ${cssVar.fontFamily};
+ 
+@@ -106,7 +106,7 @@
+       &[open] {
+         summary {
+           padding-block-end: 0.75em;
+-          border-block-end: 1px dashed ${cssVar.colorBorder};
++          border-block-end: 0.5px dashed ${cssVar.colorBorder};
+ 
+           &::before {
+             transform: rotateZ(45deg);
+@@ -163,7 +163,7 @@
+       margin-block: calc(var(--lobe-markdown-margin-multiple) * 1.5em);
+       border-color: ${cssVar.colorBorder};
+       border-style: dashed;
+-      border-width: 1px;
++      border-width: 0.5px;
+       border-block-start: none;
+       border-inline-start: none;
+       border-inline-end: none;
+diff --git a/es/Markdown/style.mjs b/es/Markdown/style.mjs
+--- a/es/Markdown/style.mjs
++++ b/es/Markdown/style.mjs
+@@ -155,7 +155,7 @@
+ 
+           width: 0.66em;
+           height: 0.66em;
+-          border: 1px solid ${cssVar.colorFill};
++          border: 0.5px solid ${cssVar.colorFill};
+           border-radius: 50%;
+ 
+           background-color: attr(data-color);
+diff --git a/es/Markdown/plugins/remarkBr.mjs b/es/Markdown/plugins/remarkBr.mjs
+--- a/es/Markdown/plugins/remarkBr.mjs
++++ b/es/Markdown/plugins/remarkBr.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkBr.ts
+ /**
+ * Remark plugin to handle <br> and <br/> tags in markdown text
+diff --git a/es/Markdown/plugins/remarkGfmPlus.mjs b/es/Markdown/plugins/remarkGfmPlus.mjs
+--- a/es/Markdown/plugins/remarkGfmPlus.mjs
++++ b/es/Markdown/plugins/remarkGfmPlus.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkGfmPlus.ts
+ const DEFAULT_ALLOW_HTML_TAGS = [
+ 	"sub",
+diff --git a/es/Markdown/plugins/rehypeCustomFootnotes.mjs b/es/Markdown/plugins/rehypeCustomFootnotes.mjs
+--- a/es/Markdown/plugins/rehypeCustomFootnotes.mjs
++++ b/es/Markdown/plugins/rehypeCustomFootnotes.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/rehypeCustomFootnotes.ts
+ const rehypeCustomFootnotes = () => (tree, file) => {
+ 	const linksData = file.data.footnoteLinks || {};
+diff --git a/es/Markdown/plugins/remarkCustomFootnotes.mjs b/es/Markdown/plugins/remarkCustomFootnotes.mjs
+--- a/es/Markdown/plugins/remarkCustomFootnotes.mjs
++++ b/es/Markdown/plugins/remarkCustomFootnotes.mjs
+@@ -1,4 +1,4 @@
+-import { SKIP, visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { SKIP, visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkCustomFootnotes.ts
+ const remarkCustomFootnotes = () => (tree, file) => {
+ 	const footnoteLinks = /* @__PURE__ */ new Map();
+diff --git a/es/Markdown/plugins/rehypeKatexDir.mjs b/es/Markdown/plugins/rehypeKatexDir.mjs
+--- a/es/Markdown/plugins/rehypeKatexDir.mjs
++++ b/es/Markdown/plugins/rehypeKatexDir.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/rehypeKatexDir.ts
+ const rehypeKatexDir = () => (tree) => {
+ 	visit(tree, "element", (node) => {
+diff --git a/es/Markdown/plugins/remarkVideo.mjs b/es/Markdown/plugins/remarkVideo.mjs
+--- a/es/Markdown/plugins/remarkVideo.mjs
++++ b/es/Markdown/plugins/remarkVideo.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkVideo.ts
+ /**
+ * Remark plugin to handle <video> tags in markdown text
+diff --git a/es/Markdown/plugins/remarkColor.mjs b/es/Markdown/plugins/remarkColor.mjs
+--- a/es/Markdown/plugins/remarkColor.mjs
++++ b/es/Markdown/plugins/remarkColor.mjs
+@@ -1,4 +1,4 @@
+-import { visit } from "../../node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.mjs";
++import { visit } from "unist-util-visit";
+ //#region src/Markdown/plugins/remarkColor.ts
+ /**
+ * Remark plugin to handle color syntax in markdown code spans
+diff --git a/es/Segmented/style.mjs b/es/Segmented/style.mjs
+--- a/es/Segmented/style.mjs
++++ b/es/Segmented/style.mjs
+@@ -6,12 +6,12 @@
+ 	return {
+ 		borderless: staticStylish.variantBorderlessWithoutHover,
+ 		filled: css`
+-      border: 1px solid ${cssVar.colorFillQuaternary};
++      border: 0.5px solid ${cssVar.colorFillQuaternary};
+       background: ${cssVar.colorBgLayout};
+     `,
+ 		glass: staticStylish.blur,
+ 		outlined: css`
+-      border: 1px solid ${cssVar.colorBorderSecondary};
++      border: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: transparent;
+     `,
+ 		root: css``,
+diff --git a/es/HotkeyInput/style.mjs b/es/HotkeyInput/style.mjs
+--- a/es/HotkeyInput/style.mjs
++++ b/es/HotkeyInput/style.mjs
+@@ -7,7 +7,7 @@
+ 		borderless: staticStylish.variantBorderless,
+ 		disabled: staticStylish.disabled,
+ 		error: css`
+-      border: 1px solid ${cssVar.colorError};
++      border: 0.5px solid ${cssVar.colorError};
+     `,
+ 		errorText: css`
+       font-size: 12px;
+diff --git a/es/Collapse/style.mjs b/es/Collapse/style.mjs
+--- a/es/Collapse/style.mjs
++++ b/es/Collapse/style.mjs
+@@ -57,7 +57,7 @@
+         border: none;
+         background: transparent;
+         .${prefixCls}-collapse-item {
+-          border: 1px solid ${cssVar.colorFillSecondary};
++          border: 0.5px solid ${cssVar.colorFillSecondary};
+           background: ${cssVar.colorBgContainer};
+         }
+ 
+@@ -91,17 +91,17 @@
+     `,
+ 		outlined: css`
+       &.${prefixCls}-collapse {
+-        border: 1px solid ${cssVar.colorFillSecondary};
++        border: 0.5px solid ${cssVar.colorFillSecondary};
+         background: ${cssVar.colorBgContainer};
+         .${prefixCls}-collapse-item .${prefixCls}-collapse-header {
+           transition: none;
+         }
+         .${prefixCls}-collapse-item-active .${prefixCls}-collapse-header {
+-          border-block-end: 1px solid ${cssVar.colorFillTertiary};
++          border-block-end: 0.5px solid ${cssVar.colorFillTertiary};
+         }
+         .${prefixCls}-collapse-item:not(:first-child) {
+           .${prefixCls}-collapse-header {
+-            border-block-start: 1px solid ${cssVar.colorFillTertiary};
++            border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+           }
+         }
+       }
+diff --git a/es/Image/style.mjs b/es/Image/style.mjs
+--- a/es/Image/style.mjs
++++ b/es/Image/style.mjs
+@@ -181,7 +181,8 @@
+ 
+       position: absolute;
+       inset-block-start: 50%;
+-      transform: translateY(-50%);
++      /* Keep centering independent of the button press scale animation. */
++      translate: 0 -50%;
+ 
+       filter: ${controlHalo};
+     `,
+diff --git a/es/Image/viewer/useViewerGestures.mjs b/es/Image/viewer/useViewerGestures.mjs
+--- a/es/Image/viewer/useViewerGestures.mjs
++++ b/es/Image/viewer/useViewerGestures.mjs
+@@ -1,7 +1,6 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ //#region src/Image/viewer/useViewerGestures.ts
+ const DRAG_THRESHOLD = 4;
+-const DOUBLE_CLICK_WINDOW = 250;
+ const capturePointer = (node, pointerId) => {
+ 	if (typeof node.setPointerCapture === "function") node.setPointerCapture(pointerId);
+ };
+@@ -16,15 +15,7 @@
+ 	const imageNodeRef = useRef(null);
+ 	const dragRef = useRef(null);
+ 	const movedRef = useRef(false);
+-	const pendingCloseRef = useRef(null);
+-	const isCleanRef = useRef(isClean);
+-	isCleanRef.current = isClean;
+-	const cancelPendingClose = useCallback(() => {
+-		if (pendingCloseRef.current === null) return;
+-		clearTimeout(pendingCloseRef.current);
+-		pendingCloseRef.current = null;
+-	}, []);
+-	useEffect(() => cancelPendingClose, [cancelPendingClose]);
++	const surfacePressRef = useRef(null);
+ 	const imageRef = useCallback((node) => {
+ 		imageNodeRef.current = node;
+ 	}, []);
+@@ -63,7 +54,7 @@
+ 	const onPointerDown = useCallback((event) => {
+ 		if (dragRef.current?.panning) return;
+ 		if (event.button !== 0) return;
+-		cancelPendingClose();
++		surfacePressRef.current = event.target === event.currentTarget;
+ 		const start = {
+ 			x: event.clientX,
+ 			y: event.clientY
+@@ -79,7 +70,7 @@
+ 		if (!panEligible) return;
+ 		capturePointer(event.target, event.pointerId);
+ 		setPanning(true);
+-	}, [cancelPendingClose, isZoomed]);
++	}, [isZoomed]);
+ 	const onPointerMove = useCallback((event) => {
+ 		const drag = dragRef.current;
+ 		if (!drag || drag.id !== event.pointerId) return;
+@@ -102,32 +93,21 @@
+ 		setPanning(false);
+ 		dragEnd();
+ 	}, [dragEnd]);
+-	const onSurfaceClick = useCallback(() => {
+-		if (movedRef.current) return;
+-		cancelPendingClose();
++	const onSurfaceClick = useCallback((event) => {
++		event?.stopPropagation();
++		if (!event || event.target !== event.currentTarget || surfacePressRef.current === false || movedRef.current) return;
+ 		onClose();
+-	}, [cancelPendingClose, onClose]);
+-	const onImageClick = useCallback((event) => {
+-		event.stopPropagation();
+-		cancelPendingClose();
+-		if (movedRef.current || !isCleanRef.current) return;
+-		pendingCloseRef.current = setTimeout(() => {
+-			pendingCloseRef.current = null;
+-			if (!isCleanRef.current) return;
+-			onClose();
+-		}, DOUBLE_CLICK_WINDOW);
+-	}, [cancelPendingClose, onClose]);
++	}, [onClose]);
++	const onImageClick = useCallback((event) => event.stopPropagation(), []);
+ 	const onImageDoubleClick = useCallback((event) => {
+ 		event.stopPropagation();
+-		cancelPendingClose();
+ 		handleDoubleClick({
+ 			x: event.clientX,
+ 			y: event.clientY
+ 		});
+-	}, [cancelPendingClose, handleDoubleClick]);
++	}, [handleDoubleClick]);
+ 	return {
+-		cancelPendingClose,
+-		cursor: isZoomed ? panning ? "grabbing" : "grab" : "zoom-out",
++		cursor: isZoomed ? panning ? "grabbing" : "grab" : "zoom-in",
+ 		imageRef,
+ 		onImageClick,
+ 		onImageDoubleClick,
+diff --git a/es/Image/viewer/useZoomPan.mjs b/es/Image/viewer/useZoomPan.mjs
+--- a/es/Image/viewer/useZoomPan.mjs
++++ b/es/Image/viewer/useZoomPan.mjs
+@@ -2,8 +2,6 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { animate, motionValue } from "motion/react";
+ //#region src/Image/viewer/useZoomPan.ts
+-const WHEEL_CLOSE_THRESHOLD = 100;
+-const WHEEL_IDLE_MS = 300;
+ const ZOOM_STEP = 1.5;
+ const RESET_TRANSITION = {
+ 	damping: 30,
+@@ -11,7 +9,7 @@
+ 	type: "spring"
+ };
+ const CLEAN_EPSILON = .01;
+-const useZoomPan = ({ natural, viewport, maxScale, onCloseRequest, isClosing, isTransitioning, fillViewport, defaultZoom, autoZoomThreshold }) => {
++const useZoomPan = ({ natural, viewport, maxScale, isClosing, isTransitioning, fillViewport, defaultZoom, autoZoomThreshold }) => {
+ 	const naturalRef = useRef(natural);
+ 	const viewportRef = useRef(viewport);
+ 	const maxScaleRef = useRef(maxScale ?? 8);
+@@ -38,23 +36,10 @@
+ 		y: motionValue(0)
+ 	}));
+ 	const effectiveMaxScale = useCallback(() => Math.max(maxScaleRef.current, initialScaleRef.current), []);
+-	const onCloseRequestRef = useRef(onCloseRequest);
+-	onCloseRequestRef.current = onCloseRequest;
+ 	const isClosingRef = useRef(isClosing);
+ 	isClosingRef.current = isClosing;
+ 	const isTransitioningRef = useRef(isTransitioning);
+ 	isTransitioningRef.current = isTransitioning;
+-	const closeAccumRef = useRef(0);
+-	const disarmedRef = useRef(false);
+-	const idleTimerRef = useRef(null);
+-	const resetCloseTracking = useCallback(() => {
+-		if (idleTimerRef.current !== null) {
+-			clearTimeout(idleTimerRef.current);
+-			idleTimerRef.current = null;
+-		}
+-		closeAccumRef.current = 0;
+-		disarmedRef.current = false;
+-	}, []);
+ 	const closing = useCallback(() => isClosingRef.current?.() ?? false, []);
+ 	const isAtFitFloor = useCallback(() => scale.get() <= 1.01, [scale]);
+ 	const isOrientationClean = useCallback(() => Math.abs(rotate.get()) < CLEAN_EPSILON && !flipX.get() && !flipY.get(), [
+@@ -203,55 +188,23 @@
+ 	const handleWheel = useCallback((event) => {
+ 		event.preventDefault?.();
+ 		if (closing()) return;
+-		if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+-		idleTimerRef.current = setTimeout(() => {
+-			idleTimerRef.current = null;
+-			closeAccumRef.current = 0;
+-			disarmedRef.current = false;
+-		}, WHEEL_IDLE_MS);
+ 		const delta = normalizeWheelDelta(event.deltaY, event.deltaMode, viewportRef.current.height);
+ 		const currentScale = scale.get();
+-		if (!!(event.ctrlKey || event.metaKey) || delta < 0 || !isAtFitFloor()) {
+-			disarmedRef.current = true;
+-			closeAccumRef.current = 0;
+-			const rawTarget = currentScale * wheelZoomFactor(delta);
+-			if (rawTarget <= 1) {
+-				animate(scale, 1, RESET_TRANSITION);
+-				animate(x, 0, RESET_TRANSITION);
+-				animate(y, 0, RESET_TRANSITION);
+-				return;
+-			}
+-			const targetScale = clampScale(rawTarget, effectiveMaxScale());
+-			const fitRect = getFitRect();
+-			const anchor = {
+-				x: event.clientX,
+-				y: event.clientY
+-			};
+-			const next = anchoredZoom({
+-				scale: currentScale,
+-				x: x.get(),
+-				y: y.get()
+-			}, targetScale, anchor, fitRect);
+-			applyTransform(next, fitRect);
++		// At the fit floor, outward scrolling must never dismiss the preview.
++		if (delta >= 0 && isAtFitFloor()) return;
++		const rawTarget = currentScale * wheelZoomFactor(delta);
++		if (rawTarget <= 1) {
++			animate(scale, 1, RESET_TRANSITION);
++			animate(x, 0, RESET_TRANSITION);
++			animate(y, 0, RESET_TRANSITION);
+ 			return;
+ 		}
+-		if (disarmedRef.current || !isOrientationClean()) return;
+-		closeAccumRef.current += Math.abs(delta);
+-		if (closeAccumRef.current >= WHEEL_CLOSE_THRESHOLD) {
+-			closeAccumRef.current = 0;
+-			onCloseRequestRef.current?.();
+-		}
+-	}, [
+-		applyTransform,
+-		closing,
+-		effectiveMaxScale,
+-		getFitRect,
+-		isAtFitFloor,
+-		isOrientationClean,
+-		scale,
+-		x,
+-		y
+-	]);
++		const targetScale = clampScale(rawTarget, effectiveMaxScale());
++		const fitRect = getFitRect();
++		const anchor = { x: event.clientX, y: event.clientY };
++		const next = anchoredZoom({ scale: currentScale, x: x.get(), y: y.get() }, targetScale, anchor, fitRect);
++		applyTransform(next, fitRect);
++	}, [applyTransform, closing, effectiveMaxScale, getFitRect, isAtFitFloor, scale, x, y]);
+ 	const rotateBy = useCallback((delta) => {
+ 		if (closing()) return;
+ 		rotate.jump(normalizeRotation(rotate.get() + delta));
+@@ -382,7 +335,6 @@
+ 		isClean: derived.isClean,
+ 		isZoomed: derived.isZoomed,
+ 		reset,
+-		resetCloseTracking,
+ 		rotate,
+ 		rotateLeft,
+ 		rotateRight,
+diff --git a/es/Image/viewer/ImageViewer.mjs b/es/Image/viewer/ImageViewer.mjs
+--- a/es/Image/viewer/ImageViewer.mjs
++++ b/es/Image/viewer/ImageViewer.mjs
+@@ -44,7 +44,7 @@
+ 	const isTransitioningIndirectRef = useRef(() => true);
+ 	const isTransitioningIndirect = useCallback(() => isTransitioningIndirectRef.current(), []);
+ 	const fillViewport = Boolean(currentEntry.previewSrc && currentEntry.previewSrc !== currentEntry.src);
+-	const { canZoomIn, canZoomOut, dragBy, dragEnd, escIntent, flipHorizontal, flipVertical, flipX, flipY, getInitialScale, handleDoubleClick, handleWheel, isClean, isZoomed, reset, resetCloseTracking, rotate, rotateLeft, rotateRight, rotation, scale, setNatural: syncZoomNatural, setViewport: syncZoomViewport, toggleActualSize, x, y, zoomIn, zoomOut } = useZoomPan({
++	const { canZoomIn, canZoomOut, dragBy, dragEnd, flipHorizontal, flipVertical, flipX, flipY, getInitialScale, handleDoubleClick, handleWheel, isClean, isZoomed, reset, rotate, rotateLeft, rotateRight, rotation, scale, setNatural: syncZoomNatural, setViewport: syncZoomViewport, toggleActualSize, x, y, zoomIn, zoomOut } = useZoomPan({
+ 		autoZoomThreshold: currentEntry.options.autoZoomThreshold,
+ 		defaultZoom: currentEntry.options.defaultZoom,
+ 		fillViewport,
+@@ -119,17 +119,14 @@
+ 	const handleDialogOpenChange = useCallback((open, eventDetails) => {
+ 		if (open) return;
+ 		if (isClosing()) return;
+-		if (eventDetails.reason === "escape-key" && escIntent() === "reset") {
++		if (eventDetails.reason !== "escape-key") {
+ 			eventDetails.cancel();
+-			reset();
+ 			return;
+ 		}
+ 		handleClose();
+ 	}, [
+-		escIntent,
+ 		handleClose,
+ 		isClosing,
+-		reset
+ 	]);
+ 	const gestures = useViewerGestures({
+ 		dragBy,
+@@ -144,13 +141,11 @@
+ 		zoomOut
+ 	});
+ 	const { hasNext, hasPrev, next, prev } = useGalleryNav({
+-		cancelPendingClose: gestures.cancelPendingClose,
+ 		currentIndex,
+ 		entries,
+ 		flipX,
+ 		flipY,
+ 		getInitialScale,
+-		resetCloseTracking,
+ 		rotate,
+ 		scale,
+ 		setCurrentIndex,
+@@ -219,7 +214,8 @@
+ 						className: styles.viewerBackdrop,
+ 						ref: backdropRef,
+ 						style: zIndex === void 0 ? void 0 : { zIndex },
+-						onClick: gestures.onSurfaceClick
++						onClick: gestures.onSurfaceClick,
++						onPointerDown: gestures.onPointerDown
+ 					}),
+ 					/* @__PURE__ */ jsxs(Dialog.Popup, {
+ 						"aria-label": currentEntry.element.alt || void 0,
+diff --git a/es/Image/viewer/useGalleryNav.mjs b/es/Image/viewer/useGalleryNav.mjs
+--- a/es/Image/viewer/useGalleryNav.mjs
++++ b/es/Image/viewer/useGalleryNav.mjs
+@@ -12,22 +12,16 @@
+ 		width: Math.max(rect.width, 1)
+ 	};
+ };
+-const useGalleryNav = ({ cancelPendingClose, currentIndex, entries, flipX, flipY, getInitialScale, resetCloseTracking, rotate, scale, setCurrentIndex, setNatural, setSource, switchTo, syncZoomNatural, x, y }) => {
++const useGalleryNav = ({ currentIndex, entries, flipX, flipY, getInitialScale, rotate, scale, setCurrentIndex, setNatural, setSource, switchTo, syncZoomNatural, x, y }) => {
+ 	const indexRef = useRef(currentIndex);
+ 	indexRef.current = currentIndex;
+ 	const switchingRef = useRef(false);
+ 	const switchToRef = useRef(switchTo);
+ 	switchToRef.current = switchTo;
+-	const cancelPendingCloseRef = useRef(cancelPendingClose);
+-	cancelPendingCloseRef.current = cancelPendingClose;
+-	const resetCloseTrackingRef = useRef(resetCloseTracking);
+-	resetCloseTrackingRef.current = resetCloseTracking;
+ 	const goTo = useCallback((nextIndex) => {
+ 		if (switchingRef.current) return;
+ 		if (nextIndex < 0 || nextIndex >= entries.length || nextIndex === indexRef.current) return;
+ 		switchingRef.current = true;
+-		cancelPendingCloseRef.current();
+-		resetCloseTrackingRef.current();
+ 		switchToRef.current(() => {
+ 			const nextEntry = entries[nextIndex];
+ 			setCurrentIndex(nextIndex);
+diff --git a/es/EmojiPicker/style.mjs b/es/EmojiPicker/style.mjs
+--- a/es/EmojiPicker/style.mjs
++++ b/es/EmojiPicker/style.mjs
+@@ -27,7 +27,7 @@
+     }
+   `,
+ 	tabs: css`
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     .ant-tabs-tab {
+       display: flex;
+diff --git a/es/styles/theme/customStylishStatic.mjs b/es/styles/theme/customStylishStatic.mjs
+--- a/es/styles/theme/customStylishStatic.mjs
++++ b/es/styles/theme/customStylishStatic.mjs
+@@ -149,23 +149,23 @@
+     background: ${cssVar.colorFillTertiary};
+   `,
+ 	variantOutlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+ 
+     &:hover {
+-      border: 1px solid ${cssVar.colorBorder};
++      border: 0.5px solid ${cssVar.colorBorder};
+       background: ${cssVar.colorBgContainer};
+     }
+   `,
+ 	variantOutlinedDanger: css`
+-    border: 1px solid ${cssVar.colorErrorBorder};
++    border: 0.5px solid ${cssVar.colorErrorBorder};
+ 
+     &:hover {
+-      border: 1px solid ${cssVar.colorErrorBorder};
++      border: 0.5px solid ${cssVar.colorErrorBorder};
+     }
+   `,
+ 	variantOutlinedWithoutHover: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+   `
+ }));
+diff --git a/es/styles/theme/customStylish.mjs b/es/styles/theme/customStylish.mjs
+--- a/es/styles/theme/customStylish.mjs
++++ b/es/styles/theme/customStylish.mjs
+@@ -128,23 +128,23 @@
+       background: ${token.colorFillTertiary};
+     `,
+ 		variantOutlined: css`
+-      border: 1px solid ${token.colorBorderSecondary};
++      border: 0.5px solid ${token.colorBorderSecondary};
+       background: ${token.colorBgContainer};
+ 
+       &:hover {
+-        border: 1px solid ${token.colorBorder};
++        border: 0.5px solid ${token.colorBorder};
+         background: ${token.colorBgContainer};
+       }
+     `,
+ 		variantOutlinedDanger: css`
+-      border: 1px solid ${token.colorErrorBorder};
++      border: 0.5px solid ${token.colorErrorBorder};
+ 
+       &:hover {
+-        border: 1px solid ${token.colorErrorBorder};
++        border: 0.5px solid ${token.colorErrorBorder};
+       }
+     `,
+ 		variantOutlinedWithoutHover: css`
+-      border: 1px solid ${token.colorBorderSecondary};
++      border: 0.5px solid ${token.colorBorderSecondary};
+       background: ${token.colorBgContainer};
+     `
+ 	};
+diff --git a/es/mobile/TabBar/style.mjs b/es/mobile/TabBar/style.mjs
+--- a/es/mobile/TabBar/style.mjs
++++ b/es/mobile/TabBar/style.mjs
+@@ -12,7 +12,7 @@
+       flex: none;
+ 
+       width: 100vw;
+-      border-block-start: 1px solid ${cssVar.colorFillTertiary};
++      border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+ 
+       background: ${cssVar.colorBgLayout};
+     `,
+diff --git a/es/mobile/ChatInputArea/style.mjs b/es/mobile/ChatInputArea/style.mjs
+--- a/es/mobile/ChatInputArea/style.mjs
++++ b/es/mobile/ChatInputArea/style.mjs
+@@ -5,7 +5,7 @@
+ 		container: css`
+       flex: none;
+       padding-block: 12px;
+-      border-block-start: 1px solid ${cssVar.colorFillTertiary};
++      border-block-start: 0.5px solid ${cssVar.colorFillTertiary};
+       background: ${cssVar.colorFillQuaternary};
+     `,
+ 		expand: css`
+diff --git a/es/DraggableSideNav/style.mjs b/es/DraggableSideNav/style.mjs
+--- a/es/DraggableSideNav/style.mjs
++++ b/es/DraggableSideNav/style.mjs
+@@ -50,7 +50,7 @@
+     flex-direction: column;
+ 
+     height: 100%;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: var(--draggable-side-nav-bg, ${cssVar.colorBgLayout});
+   `,
+@@ -234,7 +234,7 @@
+ 
+       position: absolute;
+ 
+-      border: 1px solid ${cssVar.colorBorder};
++      border: 0.5px solid ${cssVar.colorBorder};
+ 
+       color: ${cssVar.colorTextTertiary};
+ 
+diff --git a/es/Avatar/AvatarGroup/style.mjs b/es/Avatar/AvatarGroup/style.mjs
+--- a/es/Avatar/AvatarGroup/style.mjs
++++ b/es/Avatar/AvatarGroup/style.mjs
+@@ -3,7 +3,7 @@
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	return {
+ 		avatar: css`
+-      border: 2px solid ${cssVar.colorBgContainer} !important;
++      border: 0.5px solid ${cssVar.colorBgContainer} !important;
+     `,
+ 		count: css`
+       &[class*='ant-avatar'] {
+diff --git a/es/base-ui/Drawer/style.mjs b/es/base-ui/Drawer/style.mjs
+--- a/es/base-ui/Drawer/style.mjs
++++ b/es/base-ui/Drawer/style.mjs
+@@ -171,7 +171,7 @@
+     min-height: 56px;
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-block-end: 1px solid ${cssVar.colorSplit};
++    border-block-end: 0.5px solid ${cssVar.colorSplit};
+   `,
+ 	containerInner: css`
+     display: flex;
+@@ -285,7 +285,7 @@
+ 
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background: ${cssVar.colorBgLayout};
+   `,
+@@ -306,7 +306,7 @@
+ 
+     padding-block: 12px;
+     padding-inline: 16px;
+-    border-block-start: 1px solid ${cssVar.colorSplit};
++    border-block-start: 0.5px solid ${cssVar.colorSplit};
+   `
+ }));
+ //#endregion
+diff --git a/es/base-ui/Form/style.mjs b/es/base-ui/Form/style.mjs
+--- a/es/base-ui/Form/style.mjs
++++ b/es/base-ui/Form/style.mjs
+@@ -118,7 +118,7 @@
+   `,
+ 	headerBorderless: css`
+     padding-block-end: 16px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	headerBoxed: css`
+     padding: 16px;
+@@ -231,7 +231,7 @@
+ const footerStyles = createStaticStyles(({ css, cssVar }) => ({ root: css`
+     ${responsive.sm} {
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   ` }));
+@@ -245,7 +245,7 @@
+ 
+     width: max-content;
+     padding: 8px;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 48px;
+ 
+     background: ${cssVar.colorBgContainer};
+@@ -255,7 +255,7 @@
+     ${responsive.sm} {
+       margin-block-start: calc(-1 * ${cssVar.borderRadius});
+       padding: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+       background: ${cssVar.colorBgContainer};
+     }
+   `
+diff --git a/es/base-ui/Tooltip/style.mjs b/es/base-ui/Tooltip/style.mjs
+--- a/es/base-ui/Tooltip/style.mjs
++++ b/es/base-ui/Tooltip/style.mjs
+@@ -58,7 +58,7 @@
+     transform-origin: var(--transform-origin);
+ 
+     max-width: min(320px, var(--available-width));
+-    border: 1px solid ${cssVar.colorFill};
++    border: 0.5px solid ${cssVar.colorFill};
+     border-radius: ${cssVar.borderRadiusSM};
+ 
+     font-size: ${cssVar.fontSizeSM};
+diff --git a/es/base-ui/Radio/style.mjs b/es/base-ui/Radio/style.mjs
+--- a/es/base-ui/Radio/style.mjs
++++ b/es/base-ui/Radio/style.mjs
+@@ -28,7 +28,7 @@
+ 
+     margin: 0;
+     padding: 0;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 50%;
+ 
+     color: ${cssVar.colorBgLayout};
+diff --git a/es/base-ui/Input/style.mjs b/es/base-ui/Input/style.mjs
+--- a/es/base-ui/Input/style.mjs
++++ b/es/base-ui/Input/style.mjs
+@@ -45,7 +45,7 @@
+     }
+   `,
+ 	outlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: ${cssVar.colorBgContainer};
+ 
+     &:hover:not(:focus-within, [data-disabled]) {
+@@ -135,7 +135,7 @@
+ 
+     width: 22px;
+     margin-inline-end: -8px;
+-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	numberInput: css`
+     font-variant-numeric: tabular-nums;
+diff --git a/es/base-ui/DropdownMenu/sharedStyle.mjs b/es/base-ui/DropdownMenu/sharedStyle.mjs
+--- a/es/base-ui/DropdownMenu/sharedStyle.mjs
++++ b/es/base-ui/DropdownMenu/sharedStyle.mjs
+@@ -27,13 +27,13 @@
+     flex-shrink: 0;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-start: 1px solid ${cssVar.colorBorder};
++    border-block-start: 0.5px solid ${cssVar.colorBorder};
+   `,
+ 	header: css`
+     flex-shrink: 0;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-end: 1px solid ${cssVar.colorBorder};
++    border-block-end: 0.5px solid ${cssVar.colorBorder};
+   `,
+ 	groupLabel: css`
+     user-select: none;
+diff --git a/es/base-ui/Alert/style.mjs b/es/base-ui/Alert/style.mjs
+--- a/es/base-ui/Alert/style.mjs
++++ b/es/base-ui/Alert/style.mjs
+@@ -129,7 +129,7 @@
+     min-height: 40px;
+     padding-block: 8px;
+     padding-inline: 14px;
+-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 0;
+ 
+     font-size: 12px;
+diff --git a/es/base-ui/Accordion/style.mjs b/es/base-ui/Accordion/style.mjs
+--- a/es/base-ui/Accordion/style.mjs
++++ b/es/base-ui/Accordion/style.mjs
+@@ -96,7 +96,7 @@
+   `,
+ 	itemOutlined: css`
+     & + & {
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+   `,
+ 	panel: css`
+@@ -120,7 +120,7 @@
+   `,
+ 	rootOutlined: css`
+     overflow: hidden;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadiusLG};
+   `,
+ 	trigger: css`
+diff --git a/es/base-ui/Segmented/style.mjs b/es/base-ui/Segmented/style.mjs
+--- a/es/base-ui/Segmented/style.mjs
++++ b/es/base-ui/Segmented/style.mjs
+@@ -137,12 +137,12 @@
+     width: 100%;
+   `,
+ 	listFilled: css`
+-    border: 1px solid ${cssVar.colorFillQuaternary};
++    border: 0.5px solid ${cssVar.colorFillQuaternary};
+     background: ${cssVar.colorBgLayout};
+   `,
+ 	listGlass: staticStylish.blur,
+ 	listOutlined: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     background: transparent;
+   `,
+ 	listShadow: staticStylish.shadow,
+diff --git a/es/base-ui/ToggleGroup/style.mjs b/es/base-ui/ToggleGroup/style.mjs
+--- a/es/base-ui/ToggleGroup/style.mjs
++++ b/es/base-ui/ToggleGroup/style.mjs
+@@ -70,7 +70,7 @@
+     border-radius: 0;
+ 
+     & + & {
+-      border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     }
+   `,
+ 	root: css`
+@@ -82,7 +82,7 @@
+   `,
+ 	rootOutlined: css`
+     overflow: hidden;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadius};
+   `
+ }));
+diff --git a/es/base-ui/Toast/style.mjs b/es/base-ui/Toast/style.mjs
+--- a/es/base-ui/Toast/style.mjs
++++ b/es/base-ui/Toast/style.mjs
+@@ -42,7 +42,7 @@
+     ${focusRingColor(cssVar.colorError)};
+   `,
+ 	actionGhost: css`
+-    border: 1px solid ${cssVar.colorBorder};
++    border: 0.5px solid ${cssVar.colorBorder};
+     color: ${cssVar.colorText};
+     background: transparent;
+ 
+diff --git a/es/base-ui/FloatingSheet/style.mjs b/es/base-ui/FloatingSheet/style.mjs
+--- a/es/base-ui/FloatingSheet/style.mjs
++++ b/es/base-ui/FloatingSheet/style.mjs
+@@ -19,7 +19,7 @@
+     box-shadow: ${cssVar.boxShadowSecondary};
+   `,
+ 	embedded: css`
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     box-shadow: none;
+   `,
+ 	overlay: css`
+diff --git a/es/base-ui/Checkbox/style.mjs b/es/base-ui/Checkbox/style.mjs
+--- a/es/base-ui/Checkbox/style.mjs
++++ b/es/base-ui/Checkbox/style.mjs
+@@ -27,7 +27,7 @@
+ 
+     margin: 0;
+     padding: 0;
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     color: ${cssVar.colorBgLayout};
+ 
+diff --git a/es/base-ui/Popover/style.mjs b/es/base-ui/Popover/style.mjs
+--- a/es/base-ui/Popover/style.mjs
++++ b/es/base-ui/Popover/style.mjs
+@@ -59,7 +59,7 @@
+ 
+     min-width: 120px;
+     max-width: var(--available-width);
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: ${cssVar.borderRadius};
+ 
+     color: ${cssVar.colorText};
+diff --git a/es/base-ui/Button/style.mjs b/es/base-ui/Button/style.mjs
+--- a/es/base-ui/Button/style.mjs
++++ b/es/base-ui/Button/style.mjs
+@@ -19,7 +19,7 @@
+     justify-content: center;
+ 
+     box-sizing: border-box;
+-    border: 1px solid ${cssVar.colorBorder};
++    border: 0.5px solid ${cssVar.colorBorder};
+ 
+     font-weight: 500;
+     line-height: 1;
+@@ -357,7 +357,7 @@
+ 
+     width: 12px;
+     height: 12px;
+-    border: 1.5px solid currentcolor;
++    border: 0.5px solid currentcolor;
+     border-block-start-color: transparent;
+     border-radius: 50%;
+ 
+diff --git a/es/base-ui/FloatingPanel/style.mjs b/es/base-ui/FloatingPanel/style.mjs
+--- a/es/base-ui/FloatingPanel/style.mjs
++++ b/es/base-ui/FloatingPanel/style.mjs
+@@ -24,12 +24,12 @@
+   `,
+ 	footer: css`
+     flex: none;
+-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	header: css`
+     flex: none;
+     min-height: 48px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+   `,
+ 	headerActions: css`
+     display: flex;
+diff --git a/es/base-ui/Avatar/AvatarGroup/style.mjs b/es/base-ui/Avatar/AvatarGroup/style.mjs
+--- a/es/base-ui/Avatar/AvatarGroup/style.mjs
++++ b/es/base-ui/Avatar/AvatarGroup/style.mjs
+@@ -3,7 +3,7 @@
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	return {
+ 		avatar: css`
+-      border: 2px solid ${cssVar.colorBgContainer} !important;
++      border: 0.5px solid ${cssVar.colorBgContainer} !important;
+     `,
+ 		count: css`
+       font-size: 0.8em;
+diff --git a/es/base-ui/Select/style.mjs b/es/base-ui/Select/style.mjs
+--- a/es/base-ui/Select/style.mjs
++++ b/es/base-ui/Select/style.mjs
+@@ -140,7 +140,7 @@
+     margin-inline: -4px;
+     padding-block: 8px;
+     padding-inline: 12px;
+-    border-block-end: 1px solid ${cssVar.colorFillSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorFillSecondary};
+   `,
+ 	searchInput: css`
+     flex: 1;
+diff --git a/es/base-ui/Modal/style.mjs b/es/base-ui/Modal/style.mjs
+--- a/es/base-ui/Modal/style.mjs
++++ b/es/base-ui/Modal/style.mjs
+@@ -128,7 +128,7 @@
+     width: calc(100% - 32px);
+     max-width: 520px;
+     max-height: calc(100dvh - 64px);
+-    border: 1px solid ${cssVar.colorBorderSecondary};
++    border: 0.5px solid ${cssVar.colorBorderSecondary};
+     border-radius: 12px;
+ 
+     background: ${cssVar.colorBgElevated};
+@@ -169,7 +169,7 @@
+ 
+     width: 14px;
+     height: 14px;
+-    border: 2px solid currentcolor;
++    border: 0.5px solid currentcolor;
+     border-block-start-color: transparent;
+     border-radius: 50%;
+ 
+diff --git a/es/Highlighter/style.mjs b/es/Highlighter/style.mjs
+--- a/es/Highlighter/style.mjs
++++ b/es/Highlighter/style.mjs
+@@ -37,7 +37,7 @@
+     `,
+ 		headerOutlined: css`
+       & + .${expandCls} {
+-        border-block-start: 1px solid ${cssVar.colorFillQuaternary};
++        border-block-start: 0.5px solid ${cssVar.colorFillQuaternary};
+       }
+     `,
+ 		headerRoot: css`
+diff --git a/es/Highlighter/SyntaxHighlighter/style.mjs b/es/Highlighter/SyntaxHighlighter/style.mjs
+--- a/es/Highlighter/SyntaxHighlighter/style.mjs
++++ b/es/Highlighter/SyntaxHighlighter/style.mjs
+@@ -93,7 +93,7 @@
+           .highlighted-word {
+             padding-block: 0.1em;
+             padding-inline: 0.2em;
+-            border: 1px solid ${cssVar.colorBorderSecondary};
++            border: 0.5px solid ${cssVar.colorBorderSecondary};
+             border-radius: ${cssVar.borderRadius};
+ 
+             background: ${cssVar.colorFillTertiary};
+diff --git a/es/Modal/style.mjs b/es/Modal/style.mjs
+--- a/es/Modal/style.mjs
++++ b/es/Modal/style.mjs
+@@ -21,7 +21,7 @@
+       [class*='ant-modal-container'] {
+         overflow: hidden;
+         padding: 0;
+-        border: 1px solid ${cssVar.colorSplit};
++        border: 0.5px solid ${cssVar.colorSplit};
+         border-radius: ${cssVar.borderRadiusLG};
+       }
+     `,
+diff --git a/es/Header/style.mjs b/es/Header/style.mjs
+--- a/es/Header/style.mjs
++++ b/es/Header/style.mjs
+@@ -17,7 +17,7 @@
+         margin-block: 8px;
+         margin-inline: 16px;
+         padding-block-start: 24px;
+-        border-block-start: 1px solid ${cssVar.colorBorder};
++        border-block-start: 0.5px solid ${cssVar.colorBorder};
+       }
+     }
+   `,
+@@ -29,7 +29,7 @@
+     height: 64px;
+     padding-block: 0;
+     padding-inline: 24px;
+-    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+ 
+     background-color: color-mix(in srgb, ${cssVar.colorBgLayout} 40%, transparent);
+ 
+diff --git a/es/DraggablePanel/style.mjs b/es/DraggablePanel/style.mjs
+--- a/es/DraggablePanel/style.mjs
++++ b/es/DraggablePanel/style.mjs
+@@ -10,25 +10,25 @@
+ const styles = createStaticStyles(({ css, cssVar }) => {
+ 	const borderStyles = {
+ 		borderBottom: css`
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderBottomNone: css`
+       border-block-end-width: 0;
+     `,
+ 		borderLeft: css`
+-      border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderLeftNone: css`
+       border-inline-start-width: 0;
+     `,
+ 		borderRight: css`
+-      border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderRightNone: css`
+       border-inline-end-width: 0;
+     `,
+ 		borderTop: css`
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		borderTopNone: css`
+       border-block-start-width: 0;
+@@ -131,7 +131,7 @@
+ 
+         position: absolute;
+ 
+-        border: 1px solid ${cssVar.colorBorder};
++        border: 0.5px solid ${cssVar.colorBorder};
+ 
+         color: ${cssVar.colorTextTertiary};
+ 
+diff --git a/es/DraggablePanel/components/style.mjs b/es/DraggablePanel/components/style.mjs
+--- a/es/DraggablePanel/components/style.mjs
++++ b/es/DraggablePanel/components/style.mjs
+@@ -13,7 +13,7 @@
+ 		footer: css`
+       padding-block: 8px;
+       padding-inline: 16px;
+-      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+     `,
+ 		handlerIcon: css`
+       display: flex;
+@@ -24,7 +24,7 @@
+ 		header: css`
+       padding-block: 8px;
+       padding-inline: 16px;
+-      border-block-end: 1px solid ${cssVar.colorBorderSecondary};
++      border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+       font-weight: 500;
+     `
+ 	};

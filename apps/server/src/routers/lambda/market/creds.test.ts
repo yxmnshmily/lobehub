@@ -17,14 +17,28 @@ const {
   mockPersonalCredsPublish,
   mockPersonalCredsUnshare,
 } = vi.hoisted(() => ({
-  mockOrgCredsList: vi.fn(async (): Promise<{ data: MockOrgCredRow[] }> => ({
-    data: [{ id: 1, key: 'ORG_SECRET' }],
-  })),
-  mockPersonalCredsList: vi.fn(async () => ({ data: [{ id: 2, key: 'PERSONAL_SECRET' }] })),
-  mockPersonalCredsCreateKV: vi.fn(async () => ({ id: 3, key: 'NEW_SECRET' })),
-  mockPersonalCredsPublish: vi.fn(async (id: number) => ({ id, visibility: 'public' })),
-  mockPersonalCredsShare: vi.fn(async (id: number) => ({ id, visibility: 'private' })),
-  mockPersonalCredsUnshare: vi.fn(async (id: number) => ({ id, visibility: 'private' })),
+  mockOrgCredsList: vi.fn(async function (): Promise<{
+    data: MockOrgCredRow[];
+  }> {
+    return {
+      data: [{ id: 1, key: 'ORG_SECRET' }],
+    };
+  }),
+  mockPersonalCredsList: vi.fn(async function () {
+    return { data: [{ id: 2, key: 'PERSONAL_SECRET' }] };
+  }),
+  mockPersonalCredsCreateKV: vi.fn(async function () {
+    return { id: 3, key: 'NEW_SECRET' };
+  }),
+  mockPersonalCredsPublish: vi.fn(async function (id: number) {
+    return { id, visibility: 'public' };
+  }),
+  mockPersonalCredsShare: vi.fn(async function (id: number) {
+    return { id, visibility: 'private' };
+  }),
+  mockPersonalCredsUnshare: vi.fn(async function (id: number) {
+    return { id, visibility: 'private' };
+  }),
 }));
 const mockPlatformAdminGuard = vi.hoisted(() => vi.fn());
 
@@ -33,55 +47,67 @@ vi.mock('@/server/routers/lambda/_helpers/platformAdminGuard', () => ({
 }));
 
 vi.mock('@/business/server/trpc-middlewares/rbacPermission', () => ({
-  withRbacPermission: vi.fn(() => (opts: any) => opts.next(opts)),
+  withRbacPermission: vi.fn(function () {
+    return (opts: any) => opts.next(opts);
+  }),
 }));
 
 // Simulates the real `cloudWorkspaceAuth`: strips `workspaceId` off the
 // context unless the caller is flagged as a workspace member.
 vi.mock('@/business/server/trpc-middlewares/workspaceAuth', () => ({
-  cloudWorkspaceAuth: vi.fn((opts: any) =>
-    opts.next({
+  cloudWorkspaceAuth: vi.fn(function (opts: any) {
+    return opts.next({
       ctx: {
         ...opts.ctx,
         workspaceId: opts.ctx.isWorkspaceMember ? opts.ctx.workspaceId : undefined,
       },
-    }),
-  ),
+    });
+  }),
 }));
 
 vi.mock('@/libs/trpc/lambda/middleware', () => ({
-  marketUserInfo: vi.fn((opts: any) =>
-    opts.next({
+  marketUserInfo: vi.fn(function (opts: any) {
+    return opts.next({
       ctx: {
         ...opts.ctx,
         marketUserInfo: { email: 'actor@example.com', name: 'Actor', userId: 'user-1' },
       },
-    }),
-  ),
-  requireMarketAuth: vi.fn((opts: any) => opts.next(opts)),
-  serverDatabase: vi.fn((opts: any) => opts.next(opts)),
+    });
+  }),
+  requireMarketAuth: vi.fn(function (opts: any) {
+    return opts.next(opts);
+  }),
+  serverDatabase: vi.fn(function (opts: any) {
+    return opts.next(opts);
+  }),
 }));
 
 vi.mock('@/server/services/market', () => ({
-  MarketService: vi.fn(() => ({
-    market: {
-      creds: {
-        createKV: mockPersonalCredsCreateKV,
-        list: mockPersonalCredsList,
-        publish: mockPersonalCredsPublish,
-        share: mockPersonalCredsShare,
-        unshare: mockPersonalCredsUnshare,
+  MarketService: vi.fn(function () {
+    return {
+      market: {
+        creds: {
+          createKV: mockPersonalCredsCreateKV,
+          list: mockPersonalCredsList,
+          publish: mockPersonalCredsPublish,
+          share: mockPersonalCredsShare,
+          unshare: mockPersonalCredsUnshare,
+        },
+        organizations: {
+          creds: vi.fn(function () {
+            return { list: mockOrgCredsList };
+          }),
+        },
       },
-      organizations: {
-        creds: vi.fn(() => ({ list: mockOrgCredsList })),
-      },
-    },
-  })),
+    };
+  }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
+  mockPlatformAdminGuard.mockImplementation(function (opts: any) {
+    return opts.next();
+  });
 });
 
 describe('credsRouter is always personal-scoped', () => {

@@ -1,4 +1,4 @@
-import { type BuiltinSkill } from '@lobechat/types';
+import { type BuiltinSkillManifest } from '@lobechat/types';
 import { type TFunction } from 'i18next';
 
 type Translate = TFunction<'setting'>;
@@ -17,7 +17,7 @@ const stripOuterGuideTag = (content: string) => {
 };
 
 export const getLocalizedBuiltinSkillDetail = (
-  builtinSkill: BuiltinSkill | undefined,
+  builtinSkill: (BuiltinSkillManifest & { content?: string }) | undefined,
   identifier: string,
   t: Translate,
 ) => {

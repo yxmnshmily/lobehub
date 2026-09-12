@@ -27,7 +27,9 @@ const mocks = vi.hoisted(() => {
     clearMismatchedOIDCSession: vi.fn(),
     ensureTravelServiceReady: vi.fn(),
     emailOTP: vi.fn((options) => ({ id: 'email-otp', options })),
-    EnvHttpProxyAgent: vi.fn((options) => ({ options })),
+    EnvHttpProxyAgent: vi.fn(function (options) {
+      return { options };
+    }),
     getChangeEmailVerificationTemplate: vi.fn(() => ({ subject: 'change-email' })),
     getAuthEmailSender: vi.fn(() => '旅游群网 <mailer@example.test>'),
     getMagicLinkEmailTemplate: vi.fn(() => ({ subject: 'magic-link' })),

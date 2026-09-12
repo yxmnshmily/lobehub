@@ -1,3 +1,4 @@
+import { extractHtmlTitle } from '@lobechat/html-artifact';
 import { exportFile } from '@lobechat/utils/client';
 import { Block, Flexbox, Highlighter, HtmlPreview } from '@lobehub/ui';
 import { Button, Drawer, Tabs } from '@lobehub/ui/base-ui';
@@ -5,8 +6,6 @@ import { createStaticStyles } from 'antd-style';
 import { Code2, Download, Eye } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { extractHtmlTitle } from './htmlTagScanner';
 
 const styles = createStaticStyles(({ css }) => ({
   container: css`

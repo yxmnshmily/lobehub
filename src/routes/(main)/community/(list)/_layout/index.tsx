@@ -1,8 +1,6 @@
 import { Flexbox } from '@lobehub/ui';
 import { Outlet } from 'react-router';
-import { SWRConfig } from 'swr';
 
-import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { RouteSkeletonChromeProvider } from '@/spa/router/routeSkeletonChrome';
 
@@ -27,13 +25,9 @@ const Layout = () => {
           }}
         >
           <Flexbox className={styles.contentWrapper} data-community-list-content="" gap={16}>
-            <SWRConfig value={{ suspense: true }}>
-              <SuspenseRouteBoundary>
-                <RouteSkeletonChromeProvider>
-                  <Outlet />
-                </RouteSkeletonChromeProvider>
-              </SuspenseRouteBoundary>
-            </SWRConfig>
+            <RouteSkeletonChromeProvider>
+              <Outlet />
+            </RouteSkeletonChromeProvider>
           </Flexbox>
           <Footer />
         </WideScreenContainer>

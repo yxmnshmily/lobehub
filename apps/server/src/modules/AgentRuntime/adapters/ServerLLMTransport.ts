@@ -289,6 +289,7 @@ export class ServerLLMTransport implements LLMTransport {
           },
         },
         diagnostics: runtimeDiagnostics,
+        metadata: { topicId: this.ctx.topicId },
         user: this.ctx.userId,
       });
       const providerRequestId = runtimeDiagnostics.providerResponse?.requestId?.trim();

@@ -7,9 +7,9 @@ import isEqual from 'fast-deep-equal';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
+import { RouteLoading } from '@/components/Skeleton/RouteSegment';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import ModelSelect from '@/features/ModelSelect';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -105,7 +105,7 @@ const ModelAssignmentsForm = memo(() => {
           onRetry={() => refreshUserState()}
         />
       );
-    return <SkeletonText rows={8} />;
+    return <RouteLoading />;
   }
 
   const updateDefaultAgentModel = async ({

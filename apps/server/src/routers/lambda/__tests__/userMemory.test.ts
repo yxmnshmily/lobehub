@@ -39,7 +39,9 @@ const { mockComposeWriting, mockBuildPersona } = vi.hoisted(() => ({
   mockBuildPersona: vi.fn(),
 }));
 vi.mock('@/server/services/memory/userMemory/persona/service', () => ({
-  UserPersonaService: vi.fn(() => ({ composeWriting: mockComposeWriting })),
+  UserPersonaService: vi.fn(function () {
+    return { composeWriting: mockComposeWriting };
+  }),
   buildUserPersonaJobInput: mockBuildPersona,
 }));
 
@@ -48,44 +50,64 @@ vi.mock('../_helpers/platformAdminGuard', () => ({
 }));
 
 vi.mock('@/database/models/asyncTask', () => ({
-  AsyncTaskModel: vi.fn(() => ({
-    create: mockCreate,
-    findById: mockFindById,
-    findActiveByType: mockFindActiveByType,
-    update: mockUpdate,
-    transitionStatus: mockTransitionStatus,
-    incrementUserMemoryExtractionProgress: mockIncrementProgress,
-  })),
-  initUserMemoryExtractionMetadata: vi.fn((metadata) => metadata),
+  AsyncTaskModel: vi.fn(function () {
+    return {
+      create: mockCreate,
+      findById: mockFindById,
+      findActiveByType: mockFindActiveByType,
+      update: mockUpdate,
+      transitionStatus: mockTransitionStatus,
+      incrementUserMemoryExtractionProgress: mockIncrementProgress,
+    };
+  }),
+  initUserMemoryExtractionMetadata: vi.fn(function (metadata) {
+    return metadata;
+  }),
 }));
 
 vi.mock('@/database/models/topic', () => ({
-  TopicModel: vi.fn(() => ({
-    countTopicsForMemoryExtractor: mockCountTopicsForMemoryExtractor,
-    listTopicsForMemoryExtractor: mockListTopicsForMemoryExtractor,
-    resetMemoryExtractStatus: mockResetMemoryExtractStatus,
-  })),
+  TopicModel: vi.fn(function () {
+    return {
+      countTopicsForMemoryExtractor: mockCountTopicsForMemoryExtractor,
+      listTopicsForMemoryExtractor: mockListTopicsForMemoryExtractor,
+      resetMemoryExtractStatus: mockResetMemoryExtractStatus,
+    };
+  }),
 }));
 
 vi.mock('@/database/models/userMemory', () => ({
-  UserMemoryActivityModel: vi.fn(() => ({})),
-  UserMemoryContextModel: vi.fn(() => ({})),
-  UserMemoryExperienceModel: vi.fn(() => ({})),
-  UserMemoryIdentityModel: vi.fn(() => ({})),
-  UserMemoryModel: vi.fn(() => ({
-    deleteAll: mockDeleteAll,
-  })),
-  UserMemoryPreferenceModel: vi.fn(() => ({})),
+  UserMemoryActivityModel: vi.fn(function () {
+    return {};
+  }),
+  UserMemoryContextModel: vi.fn(function () {
+    return {};
+  }),
+  UserMemoryExperienceModel: vi.fn(function () {
+    return {};
+  }),
+  UserMemoryIdentityModel: vi.fn(function () {
+    return {};
+  }),
+  UserMemoryModel: vi.fn(function () {
+    return {
+      deleteAll: mockDeleteAll,
+    };
+  }),
+  UserMemoryPreferenceModel: vi.fn(function () {
+    return {};
+  }),
 }));
 
 vi.mock('@/database/models/userMemory/persona', () => ({
   UserPersonaVersionNotFoundError: class UserPersonaVersionNotFoundError extends Error {},
   UserPersonaVersionSnapshotMissingError: class UserPersonaVersionSnapshotMissingError extends Error {},
-  UserPersonaModel: vi.fn(() => ({
-    deletePersona: mockDeletePersona,
-    listVersions: mockListPersonaVersions,
-    restoreVersion: mockRestorePersonaVersion,
-  })),
+  UserPersonaModel: vi.fn(function () {
+    return {
+      deletePersona: mockDeletePersona,
+      listVersions: mockListPersonaVersions,
+      restoreVersion: mockRestorePersonaVersion,
+    };
+  }),
 }));
 
 vi.mock('@/envs/app', () => ({
@@ -96,10 +118,12 @@ vi.mock('@/envs/app', () => ({
 }));
 
 vi.mock('@/server/globalConfig/parseMemoryExtractionConfig', () => ({
-  parseMemoryExtractionConfig: vi.fn(() => ({
-    webhook: { baseUrl: 'https://internal.example.com' },
-    upstashWorkflowExtraHeaders: { 'x-test': 'ok' },
-  })),
+  parseMemoryExtractionConfig: vi.fn(function () {
+    return {
+      webhook: { baseUrl: 'https://internal.example.com' },
+      upstashWorkflowExtraHeaders: { 'x-test': 'ok' },
+    };
+  }),
 }));
 
 vi.mock('@/server/services/memory/userMemory/extract', () => ({
@@ -122,7 +146,9 @@ const createCaller = (ctxOverrides: Partial<any> = {}) => {
 };
 
 beforeEach(() => {
-  mockPlatformAdminGuard.mockImplementation((opts: any) => opts.next());
+  mockPlatformAdminGuard.mockImplementation(function (opts: any) {
+    return opts.next();
+  });
 });
 
 describe('userMemoryRouter.requestMemoryFromChatTopic', () => {

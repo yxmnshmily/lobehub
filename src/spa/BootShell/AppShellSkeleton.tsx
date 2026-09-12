@@ -64,7 +64,6 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     inset-inline-start: 50%;
 
     font-size: 13px;
-    color: ${cssVar.colorTextTertiary};
     white-space: nowrap;
 
     animation: ${slideUp} 0.42s ${cssVar.motionEaseOut} both;

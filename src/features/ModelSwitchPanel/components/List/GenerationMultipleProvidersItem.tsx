@@ -60,7 +60,6 @@ const GenerationMultipleProvidersItem = memo<GenerationMultipleProvidersItemProp
             <ModelItemComponent
               {...item.data.model}
               providerId={(activeProvider ?? item.data.providers[0]).id}
-              showBadge={false}
               showPopover={false}
             />
           </DropdownMenuSubmenuTrigger>

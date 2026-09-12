@@ -10,6 +10,7 @@ import { Plus, SquareArrowOutUpRight, Trash2, Unplug, Wrench } from 'lucide-reac
 import type { ReactNode } from 'react';
 import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import useSWR from 'swr';
 
 import SkeletonText from '@/components/Skeleton/Text';
 import { ConnectorDetail, CustomConnectorModal } from '@/features/Connectors';
@@ -18,6 +19,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { useResourceManageable } from '@/hooks/useResourceManageable';
 import { useToolStore } from '@/store/tool';
 import { builtinToolSelectors, lobehubSkillStoreSelectors } from '@/store/tool/selectors';
+import { loadBuiltinSkill } from '@/store/tool/slices/builtin/loadBuiltinSkills';
 import { connectorSelectors } from '@/store/tool/slices/connector';
 import { pluginSelectors } from '@/store/tool/slices/plugin/selectors';
 
@@ -253,6 +255,11 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
     isEqual,
   );
   const isBuiltinInstalled = useToolStore(builtinToolSelectors.isBuiltinToolInstalled(identifier));
+  const { data: loadedBuiltinSkillContent } = useSWR(
+    builtinSkill ? ['builtin-skill-content', identifier] : null,
+    async () => (await loadBuiltinSkill(identifier))?.content,
+    { revalidateOnFocus: false },
+  );
 
   const isConnectorType =
     type === 'builtin' ||
@@ -264,7 +271,11 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
     content: builtinSkillContent,
     title: builtinSkillTitle,
     description: builtinSkillDescription,
-  } = getLocalizedBuiltinSkillDetail(builtinSkill, identifier, ts);
+  } = getLocalizedBuiltinSkillDetail(
+    builtinSkill ? { ...builtinSkill, content: loadedBuiltinSkillContent } : undefined,
+    identifier,
+    ts,
+  );
   const noPermissionsTitle = getNoPermissionsTitle(identifier, type, ts);
 
   const renderLobehubConnectorAction = (onDisconnected?: () => void) => {

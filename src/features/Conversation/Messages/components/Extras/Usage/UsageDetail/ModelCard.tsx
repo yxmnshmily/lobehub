@@ -4,7 +4,6 @@ import {
   getTextOutputUnitRate,
   getWriteCacheInputUnitRate,
 } from '@lobechat/utils';
-import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, Icon, Tooltip } from '@lobehub/ui';
 import { Tabs } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
@@ -14,6 +13,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+import { ModelIcon } from '@/components/LobeIcons';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 

@@ -6,19 +6,25 @@ import { ServerLLMTransport } from './ServerLLMTransport';
 
 const mocks = vi.hoisted(() => ({
   attemptClearBuffers: vi.fn(),
-  attemptExecute: vi.fn(async () => {}),
-  attemptSnapshot: vi.fn(() => ({
-    content: 'settled answer',
-    usage: { cost: 0.0006, totalInputTokens: 100, totalOutputTokens: 50, totalTokens: 150 },
-  })),
-  consumeStreamUntilDone: vi.fn(async () => {}),
+  attemptExecute: vi.fn(async function () {}),
+  attemptSnapshot: vi.fn(function () {
+    return {
+      content: 'settled answer',
+      usage: { cost: 0.0006, totalInputTokens: 100, totalOutputTokens: 50, totalTokens: 150 },
+    };
+  }),
+  consumeStreamUntilDone: vi.fn(async function () {}),
   createServerCallLlmAttempt: vi.fn(),
   debugLog: vi.fn(),
   endSpan: vi.fn(),
   getSharedBudget: vi.fn(),
   getSharedBudgetLimit: vi.fn(),
-  hashProviderInput: vi.fn(() => 'provider-input-digest'),
-  initActorRuntime: vi.fn(async () => ({ chat: vi.fn() })),
+  hashProviderInput: vi.fn(function () {
+    return 'provider-input-digest';
+  }),
+  initActorRuntime: vi.fn(async function () {
+    return { chat: vi.fn() };
+  }),
   initPlatformRuntime: vi.fn(),
   prepareChatBounded: vi.fn(),
   recordException: vi.fn(),
@@ -30,15 +36,32 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@lobechat/observability-otel/api', () => ({
-  context: { active: vi.fn(() => ({})), with: vi.fn((_ctx, task) => task()) },
+  context: {
+    active: vi.fn(function () {
+      return {};
+    }),
+    with: vi.fn(function (_ctx, task) {
+      return task();
+    }),
+  },
   SpanKind: { CLIENT: 2 },
   SpanStatusCode: { ERROR: 2 },
-  trace: { setSpan: vi.fn(() => ({})) },
+  trace: {
+    setSpan: vi.fn(function () {
+      return {};
+    }),
+  },
 }));
 vi.mock('@lobechat/observability-otel/modules/agent-runtime', () => ({
-  buildChatRequestAttributes: vi.fn((input) => input),
-  buildChatResponseAttributes: vi.fn((input) => input),
-  chatSpanName: vi.fn((model) => `chat ${model}`),
+  buildChatRequestAttributes: vi.fn(function (input) {
+    return input;
+  }),
+  buildChatResponseAttributes: vi.fn(function (input) {
+    return input;
+  }),
+  chatSpanName: vi.fn(function (model) {
+    return `chat ${model}`;
+  }),
   tracer: { startSpan: mocks.startSpan },
 }));
 vi.mock('../executorHelpers', async (importOriginal) => ({
@@ -54,10 +77,12 @@ vi.mock('@/server/modules/ModelRuntime', () => ({
   initModelRuntimeFromDB: mocks.initActorRuntime,
 }));
 vi.mock('@/server/services/platformAiRuntime', () => ({
-  PlatformAiRuntime: vi.fn().mockImplementation(() => ({
-    init: mocks.initPlatformRuntime,
-    prepareChatBounded: mocks.prepareChatBounded,
-  })),
+  PlatformAiRuntime: vi.fn().mockImplementation(function () {
+    return {
+      init: mocks.initPlatformRuntime,
+      prepareChatBounded: mocks.prepareChatBounded,
+    };
+  }),
 }));
 vi.mock('@/server/services/platformUsageBilling/sharedBudget', () => ({
   getPlatformUsageSharedBudgetForOperation: mocks.getSharedBudget,
@@ -91,6 +116,24 @@ const attemptInput = {
 } as any;
 
 describe('ServerLLMTransport retry budget', () => {
+  it('preserves topic affinity across compression runtime recreation', async () => {
+    mocks.getSharedBudget.mockReturnValue(undefined);
+    mocks.initActorRuntime.mockResolvedValue({ chat: mocks.runtimeChat });
+    mocks.runtimeChat.mockResolvedValue(new Response(''));
+    for (const topicId of ['topic-1', 'topic-1', 'topic-2']) {
+      await new ServerLLMTransport({ topicId, userId: 'user-1' } as any).stream({
+        messages: [],
+        model: 'glm-5',
+        provider: 'opencodecodingplan',
+      });
+    }
+    expect(mocks.runtimeChat.mock.calls.map(([, options]) => options.metadata.topicId)).toEqual([
+      'topic-1',
+      'topic-1',
+      'topic-2',
+    ]);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSharedBudget.mockReturnValue(undefined);
@@ -105,7 +148,7 @@ describe('ServerLLMTransport retry budget', () => {
       execute: mocks.attemptExecute,
       snapshot: mocks.attemptSnapshot,
     });
-    mocks.runtimeChat.mockImplementation(async (_payload, options) => {
+    mocks.runtimeChat.mockImplementation(async function (_payload, options) {
       await options.callback.onText('compressed answer');
       await options.callback.onCompletion({
         usage: { cost: 0.0002, totalInputTokens: 20, totalOutputTokens: 5, totalTokens: 25 },
@@ -114,7 +157,7 @@ describe('ServerLLMTransport retry budget', () => {
     });
     mocks.initPlatformRuntime.mockResolvedValue({ chat: mocks.runtimeChat });
     mocks.prepareChatBounded.mockResolvedValue({ chat: mocks.runtimeChat });
-    mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
+    mocks.runSharedBudgetStep.mockImplementation(async function (_budget, input) {
       if (input.providerCall) return (await input.providerCall()).output;
       const call = await input.prepareProviderCall({
         pricing: { pricing: {} },
@@ -132,7 +175,9 @@ describe('ServerLLMTransport retry budget', () => {
   });
 
   it('does not serialize provider errors or internal routing identifiers to logs or traces', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
     const sensitiveError = Object.assign(
       new Error('provider failed for passenger@example.com sk-private-provider-key'),
       {
@@ -394,14 +439,16 @@ describe('ServerLLMTransport retry budget', () => {
   it('forwards runtime provider request identity to the claimed billing reservation', async () => {
     const recordProviderRequestId = vi.fn().mockResolvedValue(undefined);
     mocks.getSharedBudget.mockReturnValue({});
-    mocks.createServerCallLlmAttempt.mockImplementation((input) => ({
-      clearBuffers: mocks.attemptClearBuffers,
-      execute: async () => {
-        await input.onProviderRequestId?.('provider-request-transport-1');
-      },
-      snapshot: mocks.attemptSnapshot,
-    }));
-    mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
+    mocks.createServerCallLlmAttempt.mockImplementation(function (input) {
+      return {
+        clearBuffers: mocks.attemptClearBuffers,
+        execute: async () => {
+          await input.onProviderRequestId?.('provider-request-transport-1');
+        },
+        snapshot: mocks.attemptSnapshot,
+      };
+    });
+    mocks.runSharedBudgetStep.mockImplementation(async function (_budget, input) {
       const call = await input.prepareProviderCall({
         pricing: { pricing: {} },
         remainingCredits: 1000,
@@ -464,7 +511,7 @@ describe('ServerLLMTransport retry budget', () => {
   it('fails the completed attempt closed when post-call settlement fails', async () => {
     const settlementError = new Error('Platform-managed billing settlement failed');
     mocks.getSharedBudget.mockReturnValue({});
-    mocks.runSharedBudgetStep.mockImplementation(async (_budget, input) => {
+    mocks.runSharedBudgetStep.mockImplementation(async function (_budget, input) {
       const call = await input.prepareProviderCall({
         pricing: { pricing: {} },
         remainingCredits: 1000,

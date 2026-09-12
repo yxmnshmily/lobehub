@@ -1,11 +1,11 @@
 import { AGENT_CHAT_URL, GROUP_CHAT_URL } from '@lobechat/const';
-import { useAnalytics } from '@lobehub/analytics/react';
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 import LazyLoad from 'react-lazy-load';
 import { Link } from 'react-router';
 
 import { useNavigateToAgent } from '@/hooks/useNavigateToAgent';
+import { useAnalytics } from '@/libs/analytics/client';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { getSessionStoreState, useSessionStore } from '@/store/session';
 import { sessionGroupSelectors, sessionSelectors } from '@/store/session/selectors';

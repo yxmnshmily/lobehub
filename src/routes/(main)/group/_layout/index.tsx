@@ -1,11 +1,9 @@
 import { Flexbox } from '@lobehub/ui';
-import { type FC } from 'react';
+import { type FC, Suspense } from 'react';
 import { Outlet, useLocation, useParams } from 'react-router';
-import { SWRConfig } from 'swr';
 
 import AsyncError from '@/components/AsyncError';
 import SurfaceSkeleton from '@/components/Skeleton/Surface';
-import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import { isDesktop } from '@/const/version';
 import { GroupNotFound, GroupNotFoundGuard } from '@/features/GroupNotFound';
 import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
@@ -51,12 +49,14 @@ const Layout: FC = () => {
     content = <GroupNotFound />;
   } else if (access.kind === 'member') {
     const routedChild =
-      /\/group\/[^/]+\/(?:permission|members|topics|projects?|goals?|tasks?)(?:\/|$)/.test(pathname);
+      /\/group\/[^/]+\/(?:permission|members|topics|projects?|goals?|tasks?)(?:\/|$)/.test(
+        pathname,
+      );
     const memberProfile = /\/group\/[^/]+\/profile(?:\/|$)/.test(pathname);
     content = routedChild ? (
-      <SuspenseRouteBoundary>
+      <Suspense fallback={<SurfaceSkeleton variant="detail" />}>
         <Outlet />
-      </SuspenseRouteBoundary>
+      </Suspense>
     ) : memberProfile ? (
       <MemberProfile group={access.group} showDesktopSidebar={false} />
     ) : (
@@ -69,11 +69,9 @@ const Layout: FC = () => {
   } else if (gid) {
     content = (
       <GroupNotFoundGuard>
-        <SWRConfig value={{ suspense: true }}>
-          <SuspenseRouteBoundary>
-            <Outlet />
-          </SuspenseRouteBoundary>
-        </SWRConfig>
+        <Suspense fallback={<SurfaceSkeleton variant="detail" />}>
+          <Outlet />
+        </Suspense>
       </GroupNotFoundGuard>
     );
   }

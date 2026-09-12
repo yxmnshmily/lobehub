@@ -1,7 +1,6 @@
 'use client';
 
 import { agentDisplayName, type AgentItem } from '@lobechat/types';
-import { ModelIcon } from '@lobehub/icons';
 import { Flexbox, Icon, Popover } from '@lobehub/ui';
 import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
@@ -12,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import SkeletonBar from '@/components/Skeleton/Bar';
+import { ModelIcon } from '@/components/LobeIcons';
 import { ArticleSkeleton } from '@/components/Skeleton';
 import ModelSelect from '@/features/ModelSelect';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';

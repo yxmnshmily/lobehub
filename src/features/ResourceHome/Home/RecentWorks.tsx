@@ -59,6 +59,9 @@ const RecentWorks = memo(() => {
               item={item}
               key={item.id}
               onOpen={openWork}
+              onRemoved={async () => {
+                await reload();
+              }}
               onDeleted={() => {
                 void reload().catch(console.error);
               }}

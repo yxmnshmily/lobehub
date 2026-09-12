@@ -27,7 +27,7 @@ function Location() {
   );
 }
 
-it('opens member topic anchors from the persistent sidebar without conversation context', () => {
+it('opens member history topic routes from the persistent sidebar without conversation context', () => {
   render(
     <MemoryRouter initialEntries={['/group/joined/profile']}>
       <JoinedGroupSidebar groupId="joined" />
@@ -35,5 +35,5 @@ it('opens member topic anchors from the persistent sidebar without conversation 
     </MemoryRouter>,
   );
   fireEvent.click(screen.getByRole('button', { name: '历史话题' }));
-  expect(screen.getByRole('status')).toHaveTextContent('/group/joined#topic-latest%3Atopic-1');
+  expect(screen.getByRole('status')).toHaveTextContent('/group/joined/topic-1');
 });

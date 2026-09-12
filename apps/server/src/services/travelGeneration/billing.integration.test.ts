@@ -33,6 +33,7 @@ import {
 import {
   __INTERNAL_createTravelGenerationBillingOrchestrator as createTravelGenerationOrchestrator,
   createTravelGenerationRepository,
+  type TravelGenerationProductionDependencies,
 } from './production';
 
 const db = await getTestDB();
@@ -150,7 +151,9 @@ const imageAdapterFor = (
 });
 
 const orchestratorFor = (params: {
-  createDocumentPage?: ReturnType<typeof vi.fn>;
+  createDocumentPage?: ReturnType<
+    typeof vi.fn<NonNullable<TravelGenerationProductionDependencies['createDocumentPage']>>
+  >;
   groupId: string;
   key: string;
   provider: ReturnType<typeof providerFor>;

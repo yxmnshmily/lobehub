@@ -6,7 +6,11 @@ import { getTaskExecutionContext } from '@/server/services/taskRunner/hostedExec
 
 import { createTaskRuntime, taskRuntime } from '../task';
 
-const callerMocks = vi.hoisted(() => ({ createCaller: vi.fn((_context: unknown) => ({})) }));
+const callerMocks = vi.hoisted(() => ({
+  createCaller: vi.fn(function (_context: unknown) {
+    return {};
+  }),
+}));
 
 const verifyMocks = vi.hoisted(() => ({ createCriteriaFromDrafts: vi.fn() }));
 
@@ -34,15 +38,19 @@ vi.mock('@/database/models/user', () => ({
 }));
 
 vi.mock('@/database/models/workspaceMember', () => ({
-  WorkspaceMemberModel: vi.fn().mockImplementation(() => ({
-    searchAssignableMembers: memberMocks.searchAssignableMembers,
-  })),
+  WorkspaceMemberModel: vi.fn().mockImplementation(function () {
+    return {
+      searchAssignableMembers: memberMocks.searchAssignableMembers,
+    };
+  }),
 }));
 
 // Keep the role gate deterministic: only 'viewer' is excluded here.
 vi.mock('@lobechat/const/rbac', () => ({
   canWorkspaceRoleBeTaskAssignee: (role?: string | null) => !!role && role !== 'viewer',
 }));
+
+const routerMocks = vi.hoisted(() => ({ callerContexts: [] as unknown[] }));
 
 vi.mock('@/server/routers/lambda/task', () => ({
   taskRouter: { createCaller: callerMocks.createCaller },
@@ -63,7 +71,9 @@ vi.mock('@/server/services/task', () => ({
 }));
 
 vi.mock('@/server/services/verify/planGenerator', () => ({
-  VerifyPlanGeneratorService: vi.fn().mockImplementation(() => verifyMocks),
+  VerifyPlanGeneratorService: vi.fn().mockImplementation(function () {
+    return verifyMocks;
+  }),
 }));
 
 describe('taskRuntime inherited group budget', () => {
@@ -95,6 +105,38 @@ describe('taskRuntime inherited group budget', () => {
       expect(run).toHaveBeenCalledTimes(method === 'runTask' ? 1 : 2);
     },
   );
+});
+
+describe('taskRuntime.factory', () => {
+  beforeEach(() => {
+    routerMocks.callerContexts.length = 0;
+    callerMocks.createCaller.mockImplementation(function (ctx) {
+      routerMocks.callerContexts.push(ctx);
+      return { update: vi.fn().mockResolvedValue({ data: { id: 'task-1' } }) };
+    });
+  });
+
+  it('keeps agent attribution on the caller the wrapped methods actually use', async () => {
+    const runtime = taskRuntime.factory({
+      agentId: 'agt-manager',
+      serverDB: {} as never,
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+    } as never);
+
+    // Every exported method awaits `ensureModels()`, which REPLACES the caller
+    // built by the factory. A regression there is invisible from
+    // `createTaskRuntime` (which receives an already-built caller), so assert
+    // on the caller the method really runs against.
+    await (runtime as unknown as { editTask: (a: unknown) => Promise<unknown> })
+      .editTask({ identifier: 'T-1', name: 'Edited' })
+      .catch(() => undefined);
+
+    expect(routerMocks.callerContexts.length).toBeGreaterThan(0);
+    for (const ctx of routerMocks.callerContexts) {
+      expect(ctx).toMatchObject({ actingAgentId: 'agt-manager' });
+    }
+  });
 });
 
 describe('createTaskRuntime', () => {
@@ -591,6 +633,8 @@ describe('createTaskRuntime', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('name → "Edited"');
+      // The acting agent is NOT in the payload — attribution rides the
+      // caller's context so a client cannot forge it.
       expect(deps.taskCaller.update).toHaveBeenCalledWith({ id: 'task-1', name: 'Edited' });
     });
 
@@ -664,13 +708,15 @@ describe('createTaskRuntime', () => {
         resolve: vi.fn(),
       };
       const taskService = {
-        createTask: vi.fn().mockImplementation(async ({ name }) => ({
-          id: `db-${name}`,
-          identifier: `T-${name}`,
-          name,
-          priority: 0,
-          status: 'backlog',
-        })),
+        createTask: vi.fn().mockImplementation(async function ({ name }) {
+          return {
+            id: `db-${name}`,
+            identifier: `T-${name}`,
+            name,
+            priority: 0,
+            status: 'backlog',
+          };
+        }),
       };
       return {
         agentModel,

@@ -3,9 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { memo, use } from 'react';
 import { Outlet } from 'react-router';
-import { SWRConfig } from 'swr';
 
-import SuspenseRouteBoundary from '@/components/SuspenseRouteBoundary';
 import ProjectDisabled from '@/features/Projects/ProjectDisabled';
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors } from '@/store/user/selectors';
@@ -25,11 +23,7 @@ const ProjectLayout = memo(() => {
       {!groupScope && <ProjectSidebar />}
       <Flexbox flex={1} height="100%" style={{ minWidth: 0, minHeight: 0 }}>
         {groupScope && <ProjectToolbar />}
-        <SWRConfig value={{ suspense: true }}>
-          <SuspenseRouteBoundary>
-            <Outlet />
-          </SuspenseRouteBoundary>
-        </SWRConfig>
+        <Outlet />
       </Flexbox>
     </>
   );

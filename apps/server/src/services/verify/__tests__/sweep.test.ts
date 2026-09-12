@@ -30,21 +30,29 @@ const {
 
 vi.mock('@/database/models/verifyRun', () => ({
   VerifyRunModel: Object.assign(
-    vi.fn(() => ({ confirmPlan: vi.fn() })),
+    vi.fn(function () {
+      return { confirmPlan: vi.fn() };
+    }),
     { findStuckPlanned, findStuckVerifying },
   ),
 }));
 vi.mock('@/database/models/verifyCheckResult', () => ({
-  VerifyCheckResultModel: vi.fn(() => ({ listByRun: resultListByRun, upsertByCheckItem })),
+  VerifyCheckResultModel: vi.fn(function () {
+    return { listByRun: resultListByRun, upsertByCheckItem };
+  }),
 }));
 vi.mock('@/database/models/agentOperation', () => ({
-  AgentOperationModel: vi.fn(() => ({
-    findById: operationFindById,
-    settleStaleRunning: operationSettleStaleRunning,
-  })),
+  AgentOperationModel: vi.fn(function () {
+    return {
+      findById: operationFindById,
+      settleStaleRunning: operationSettleStaleRunning,
+    };
+  }),
 }));
 vi.mock('../statusService', () => ({
-  VerifyStatusService: vi.fn(() => ({ claimVerifying, recompute })),
+  VerifyStatusService: vi.fn(function () {
+    return { claimVerifying, recompute };
+  }),
 }));
 vi.mock('../settle', () => ({ finalizeVerifyRun }));
 vi.mock('../lifecycle', () => ({ runVerifyOnCompletion }));

@@ -21,12 +21,12 @@ const NavPanelFallback = memo<{ navKey: string }>(({ navKey }) => (
 const NavPanel = memo(() => {
   const activeNavKey = useActiveNavKey();
   const narrowViewport = useIsMobile();
-  const registry = useSyncExternalStore(
+  const getActiveContent = () => getNavPanelRegistrySnapshot().get(activeNavKey);
+  const registeredContent = useSyncExternalStore(
     subscribeNavPanelRegistry,
-    getNavPanelRegistrySnapshot,
-    getNavPanelRegistrySnapshot,
+    getActiveContent,
+    getActiveContent,
   );
-  const registeredContent = registry.get(activeNavKey);
   if (registeredContent?.hidden) return null;
   const activeContent = registeredContent
     ? { key: activeNavKey, node: registeredContent.node }

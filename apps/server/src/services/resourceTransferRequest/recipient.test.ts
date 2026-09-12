@@ -35,7 +35,9 @@ const baseParams = {
 beforeEach(() => {
   vi.clearAllMocks();
   assertDefaultTravelServiceMutationAllowed.mockResolvedValue(undefined);
-  vi.mocked(WorkspaceMemberModel).mockImplementation(() => ({ getMember }) as any);
+  vi.mocked(WorkspaceMemberModel).mockImplementation(function () {
+    return { getMember } as any;
+  });
 });
 
 describe('assertTransferRecipientValid', () => {

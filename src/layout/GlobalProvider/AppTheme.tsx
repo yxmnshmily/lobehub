@@ -35,7 +35,6 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   app: css`
     position: relative;
 
-    overscroll-behavior: none;
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -71,6 +71,7 @@ export interface RuntimeExecutorContext {
   hookDispatcher?: HookDispatcher;
   loadAgentState?: (operationId: string) => Promise<AgentState | null>;
   messageModel: MessageModel;
+  modelRuntimeConfig?: AgentState['modelRuntimeConfig'];
   operationId: string;
   /** Server-validated capability for platform-managed model and generation credentials. */
   platformManagedExecutionAuthorized?: true;

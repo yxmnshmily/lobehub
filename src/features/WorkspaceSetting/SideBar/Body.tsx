@@ -43,6 +43,7 @@ const Body = memo(() => {
           ),
         )}
         defaultExpandedKeys={[
+          WorkspaceSettingsGroupKey.Account,
           WorkspaceSettingsGroupKey.General,
           WorkspaceSettingsGroupKey.Subscription,
           WorkspaceSettingsGroupKey.Agent,
@@ -54,6 +55,8 @@ const Body = memo(() => {
             )
             .map((group) => group.key),
           WorkspaceSettingsGroupKey.Admin,
+          WorkspaceSettingsGroupKey.System,
+          WorkspaceSettingsGroupKey.Developer,
         ]}
       >
         {groups.map((group) => (

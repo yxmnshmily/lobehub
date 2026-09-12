@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 
 export interface SkeletonBarProps {
   className?: string;
-  height: number | string;
+  height?: number | string;
   radius?: number | string;
   style?: CSSProperties;
   width?: number | string;
@@ -15,7 +15,7 @@ export interface SkeletonBarProps {
 const SkeletonBar = ({ height, width = '100%', radius, className, style }: SkeletonBarProps) => (
   <Skeleton
     className={className}
-    height={28}
+    height={height ?? style?.height ?? 28}
     style={{
       borderRadius: radius ?? cssVar.borderRadiusSM,
       flexShrink: 1,

@@ -28,36 +28,46 @@ const mocks = vi.hoisted(() => ({
   pluginUpdate: vi.fn(),
 }));
 
-vi.mock('@/database/core/db-adaptor', () => ({ getServerDB: vi.fn(async () => ({})) }));
+vi.mock('@/database/core/db-adaptor', () => ({
+  getServerDB: vi.fn(async function () {
+    return {};
+  }),
+}));
 
 vi.mock('@/config/composio', () => ({
   getServerComposioAuthConfigId: mocks.getServerComposioAuthConfigId,
 }));
 
 vi.mock('@/database/models/plugin', () => ({
-  PluginModel: vi.fn().mockImplementation(() => ({
-    create: mocks.pluginCreate,
-    delete: mocks.pluginDelete,
-    findById: mocks.pluginFindById,
-    update: mocks.pluginUpdate,
-  })),
+  PluginModel: vi.fn().mockImplementation(function () {
+    return {
+      create: mocks.pluginCreate,
+      delete: mocks.pluginDelete,
+      findById: mocks.pluginFindById,
+      update: mocks.pluginUpdate,
+    };
+  }),
 }));
 
 vi.mock('@/database/models/connector', () => ({
-  ConnectorModel: vi.fn().mockImplementation(() => ({
-    create: mocks.connectorCreate,
-    delete: mocks.connectorDelete,
-    findComposioReferenceByConnectedAccountId: mocks.connectorFindByConnectedAccountId,
-    findScopedByIdentifier: mocks.connectorFindScopedByIdentifier,
-    update: mocks.connectorUpdate,
-  })),
+  ConnectorModel: vi.fn().mockImplementation(function () {
+    return {
+      create: mocks.connectorCreate,
+      delete: mocks.connectorDelete,
+      findComposioReferenceByConnectedAccountId: mocks.connectorFindByConnectedAccountId,
+      findScopedByIdentifier: mocks.connectorFindScopedByIdentifier,
+      update: mocks.connectorUpdate,
+    };
+  }),
 }));
 
 vi.mock('@/database/models/connectorTool', () => ({
-  ConnectorToolModel: vi.fn().mockImplementation(() => ({
-    deleteToolsNotIn: mocks.connectorToolDeleteToolsNotIn,
-    upsertMany: mocks.connectorToolUpsertMany,
-  })),
+  ConnectorToolModel: vi.fn().mockImplementation(function () {
+    return {
+      deleteToolsNotIn: mocks.connectorToolDeleteToolsNotIn,
+      upsertMany: mocks.connectorToolUpsertMany,
+    };
+  }),
 }));
 
 vi.mock('@/libs/composio', () => ({

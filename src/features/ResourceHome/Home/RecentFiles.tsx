@@ -140,7 +140,12 @@ const RecentFiles = memo(() => {
                     <span className={styles.meta}>{formatTime(item.createdAt)}</span>
                   </Flexbox>
                 </button>
-                <ResourceQuickActions {...item} filename={item.name} url={item.url || ''} />
+                <ResourceQuickActions
+                  {...item}
+                  parentId={item.parentId ?? undefined}
+                  filename={item.name}
+                  url={item.url || ''}
+                />
               </div>
             );
           })}

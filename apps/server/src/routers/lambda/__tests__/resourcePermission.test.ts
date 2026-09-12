@@ -48,7 +48,9 @@ describe('resourcePermissionRouter.setGeneralAccess', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     permissionModelMock = { setAccessLevel: vi.fn().mockResolvedValue(undefined) };
-    vi.mocked(ResourcePermissionModel).mockImplementation(() => permissionModelMock);
+    vi.mocked(ResourcePermissionModel).mockImplementation(function () {
+      return permissionModelMock;
+    });
   });
 
   const caller = () =>
@@ -179,7 +181,9 @@ describe('resourcePermissionRouter collaborators', () => {
       removeCollaborators: vi.fn().mockResolvedValue(undefined),
       upsertCollaborators: vi.fn().mockResolvedValue(undefined),
     };
-    vi.mocked(ResourcePermissionModel).mockImplementation(() => collaboratorModelMock);
+    vi.mocked(ResourcePermissionModel).mockImplementation(function () {
+      return collaboratorModelMock;
+    });
     getResourceMetaMock.mockResolvedValue({
       userId: 'user_creator',
       visibility: 'public',

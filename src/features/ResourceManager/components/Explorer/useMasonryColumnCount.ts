@@ -1,9 +1,9 @@
 import { useResponsive } from 'antd-style';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 
-export const resolveMasonryColumnCount = (width: number, mobile: boolean) => {
+export const resolveMasonryColumnCount = (width: number, mobile = false) => {
   if (width < 360) return 1;
   if (mobile || width < 768) return 2;
   if (width < 1024) return 3;
@@ -20,9 +20,11 @@ export const useMasonryColumnCount = () => {
   const { mobile: responsiveMobile = false } = useResponsive();
   const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
   const mobile = responsiveMobile || runtimeMobile;
-  const [columnCount, setColumnCount] = useState(() => (mobile ? 2 : 4));
+  const [columnCount, setColumnCount] = useState(() =>
+    resolveMasonryColumnCount(typeof window === 'undefined' ? 1024 : window.innerWidth, mobile),
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const updateColumnCount = () => {
       setColumnCount(resolveMasonryColumnCount(window.innerWidth, mobile));
     };

@@ -289,12 +289,11 @@ export class AiModelActionImpl {
   useFetchAiModelReasoningConfig = (
     id: string | undefined,
     provider: string | undefined,
-  ): SWRResponse<AiModelReasoningConfig | undefined> => {
-    return useClientDataSWR<AiModelReasoningConfig | undefined>(
+  ): SWRResponse<AiModelReasoningConfig | null> => {
+    return useClientDataSWR<AiModelReasoningConfig | null>(
       id && provider ? aiModelKeys.reasoningConfig(provider, id) : null,
       async ([, provider, id]) =>
-        // No custom defaults is a settled empty config, not SWR's "not loaded" sentinel.
-        (await aiModelService.getAiModelReasoningConfig(id as string, provider as string)) ?? {},
+        (await aiModelService.getAiModelReasoningConfig(id as string, provider as string)) ?? null,
       {
         // Optional preferences must not suspend the enclosing chat route.
         // The send pipeline awaits ensureModelReasoningConfig before resolving parameters.
@@ -303,11 +302,13 @@ export class AiModelActionImpl {
           const key = modelReasoningConfigKey(provider!, id!);
           // Don't clobber an in-flight optimistic value with a stale response
           if (this.#get().modelReasoningConfigUpdatingKeys.includes(key)) return;
-          if (isEqual(data, this.#get().modelReasoningConfigMap[key])) return;
+          // The store map keeps its `| undefined` shape — only SWR needs null.
+          const value = data ?? undefined;
+          if (isEqual(value, this.#get().modelReasoningConfigMap[key])) return;
 
           this.#set(
             (state) => ({
-              modelReasoningConfigMap: { ...state.modelReasoningConfigMap, [key]: data },
+              modelReasoningConfigMap: { ...state.modelReasoningConfigMap, [key]: value },
             }),
             false,
             `useFetchAiModelReasoningConfig/${key}`,

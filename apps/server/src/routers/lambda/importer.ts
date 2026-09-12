@@ -7,6 +7,7 @@ import { DataImporterRepos } from '@/database/repositories/dataImporter';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
+import { FileUploadService } from '@/server/services/fileUpload';
 import { type ImportPgDataStructure } from '@/types/export';
 import { type ImporterEntryData, type ImportResultData } from '@/types/importer';
 
@@ -20,6 +21,7 @@ const importProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
     ctx: {
       dataImporterService: new DataImporterRepos(ctx.serverDB, ctx.userId, wsId),
       fileService: new FileService(ctx.serverDB, ctx.userId, wsId),
+      fileUploadService: new FileUploadService(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });
@@ -100,6 +102,7 @@ export const importerRouter = router({
   importByFile: workspaceImportProcedure
     .input(z.object({ pathname: z.string() }))
     .mutation(async ({ input, ctx }): Promise<ImportResultData> => {
+      const upload = await ctx.fileUploadService.assertActiveOrLegacy(input.pathname);
       let data: ImporterEntryData | undefined;
 
       try {
@@ -110,6 +113,7 @@ export const importerRouter = router({
       }
 
       if (!data) {
+        if (upload) await ctx.fileUploadService.releaseBestEffort(input.pathname);
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: `Failed to read file at ${input.pathname}`,
@@ -118,16 +122,21 @@ export const importerRouter = router({
 
       await assertImportAllowed(ctx.serverDB, ctx.userId, data);
       let result: ImportResultData;
-      if ('schemaHash' in data) {
-        result = await ctx.dataImporterService.importPgData(
-          data as unknown as ImportPgDataStructure,
-        );
-      } else {
-        result = await ctx.dataImporterService.importData(data);
+      try {
+        if ('schemaHash' in data) {
+          result = await ctx.dataImporterService.importPgData(
+            data as unknown as ImportPgDataStructure,
+          );
+        } else {
+          result = await ctx.dataImporterService.importData(data);
+        }
+      } catch (error) {
+        if (upload) await ctx.fileUploadService.releaseBestEffort(input.pathname);
+        throw error;
       }
 
-      // clean file after upload
-      await ctx.fileService.deleteFile(input.pathname);
+      if (upload) await ctx.fileUploadService.releaseBestEffort(input.pathname);
+      else await ctx.fileService.deleteFile(input.pathname);
 
       return result;
     }),

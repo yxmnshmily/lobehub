@@ -6,6 +6,7 @@ import { type FC } from 'react';
 import { Fragment, memo, Suspense, useEffect } from 'react';
 import { useParams } from 'react-router';
 
+import { delayed } from '@/components/Skeleton/Delayed';
 import ProfileSkeleton from '@/components/Skeleton/Profile';
 import PlatformAdminRouteGuard from '@/features/PlatformAdminRouteGuard';
 import ResourceConfigAccessGate from '@/features/ResourcePermission/ResourceConfigAccessGate';
@@ -88,7 +89,7 @@ const GroupProfile: FC = () => {
       : Fragment;
 
   return (
-    <Suspense fallback={<ProfileSkeleton variant={'group'} />}>
+    <Suspense fallback={delayed(<ProfileSkeleton variant={'group'} />)}>
       <ManagementGuard>
         <ResourceConfigAccessGate
           loading={<ProfileSkeleton variant={'group'} />}

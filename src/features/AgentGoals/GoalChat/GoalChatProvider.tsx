@@ -17,6 +17,8 @@ interface GoalChatProviderProps {
   agentId: string;
   children: ReactNode;
   goalId: string;
+  /** Open a specific conversation when entering the panel (e.g. supervision). */
+  initialTopicId?: string;
 }
 
 /**
@@ -24,81 +26,92 @@ interface GoalChatProviderProps {
  * The context carries `viewedGoal`, which makes the send path inject the goal
  * progress overview into the request (see streamingExecutor).
  */
-export const GoalChatProvider = memo<GoalChatProviderProps>(({ agentId, children, goalId }) => {
-  const groupScope = use(GroupWorkScopeContext);
-  const subject = `${groupScope?.groupId ?? ''}:${goalId}`;
-  const [localTopic, setLocalTopic] = useState<{ subject: string; topicId: string | null }>();
-  const setActiveAgentId = useAgentStore((s) => s.setActiveAgentId);
-  const activeTopicId = useChatStore((s) => s.activeTopicId);
+export const GoalChatProvider = memo<GoalChatProviderProps>(
+  ({ agentId, children, goalId, initialTopicId }) => {
+    const groupScope = use(GroupWorkScopeContext);
+    const subject = `${groupScope?.groupId ?? ''}:${goalId}:${initialTopicId ?? ''}`;
+    const [localTopic, setLocalTopic] = useState<{ subject: string; topicId: string | null }>();
+    const setActiveAgentId = useAgentStore((s) => s.setActiveAgentId);
+    const activeTopicId = useChatStore((s) => s.activeTopicId);
+    const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    if (!agentId || groupScope) return;
+    useEffect(() => {
+      if (!agentId || groupScope) return;
 
-    if (useAgentStore.getState().activeAgentId !== agentId) {
-      setActiveAgentId(agentId);
-    }
-
-    const chatState = useChatStore.getState();
-    if (chatState.activeAgentId === agentId) return;
-
-    useChatStore.setState({ activeAgentId: agentId });
-    // Entering the goal page mid-way through another agent's conversation:
-    // start from a fresh topic rather than showing that unrelated thread.
-    void chatState.switchTopic(null, { skipRefreshMessage: true });
-  }, [agentId, goalId, groupScope, setActiveAgentId]);
-
-  const context = useMemo<ConversationContext>(
-    () => ({
-      agentId,
-      ...(groupScope
-        ? { groupId: groupScope.groupId, scope: 'group' as const, isolatedTopic: true }
-        : {}),
-      topicId: groupScope
-        ? localTopic?.subject === subject
-          ? localTopic.topicId
-          : null
-        : activeTopicId,
-      viewedGoal: { goalId },
-    }),
-    [activeTopicId, agentId, goalId, groupScope, localTopic, subject],
-  );
-
-  const chatKey = useMemo(() => messageMapKey(context), [context]);
-  const replaceMessages = useChatStore((s) => s.replaceMessages);
-  const messages = useChatStore((s) => s.dbMessagesMap[chatKey]);
-  const operationState = useOperationState(context);
-
-  return (
-    <GroupWorkConversationContext
-      value={
-        groupScope
-          ? {
-              groupId: groupScope.groupId,
-              topicId: context.topicId ?? null,
-              onTopicChange: (topicId) => setLocalTopic({ subject, topicId }),
-            }
-          : undefined
+      if (useAgentStore.getState().activeAgentId !== agentId) {
+        setActiveAgentId(agentId);
       }
-    >
-      <ConversationProvider
-        context={context}
-        hooks={
+
+      const chatState = useChatStore.getState();
+      if (chatState.activeAgentId === agentId && !initialTopicId) {
+        setInitialized(true);
+        return;
+      }
+
+      useChatStore.setState({ activeAgentId: agentId, activeGroupId: undefined });
+      // Explicit supervision targets win over whichever conversation was open.
+      // Ordinary entry into another agent starts a fresh topic.
+      void chatState.switchTopic(initialTopicId ?? null, {
+        skipRefreshMessage: true,
+        scope: 'main',
+      });
+      setInitialized(true);
+    }, [agentId, groupScope, initialTopicId, setActiveAgentId]);
+
+    const context = useMemo<ConversationContext>(
+      () => ({
+        agentId,
+        ...(groupScope
+          ? { groupId: groupScope.groupId, scope: 'group' as const, isolatedTopic: true }
+          : {}),
+        topicId: groupScope
+          ? localTopic?.subject === subject
+            ? localTopic.topicId
+            : (initialTopicId ?? null)
+          : activeTopicId,
+        viewedGoal: { goalId },
+      }),
+      [activeTopicId, agentId, goalId, groupScope, initialTopicId, localTopic, subject],
+    );
+
+    const chatKey = useMemo(() => messageMapKey(context), [context]);
+    const replaceMessages = useChatStore((s) => s.replaceMessages);
+    const messages = useChatStore((s) => s.dbMessagesMap[chatKey]);
+    const operationState = useOperationState(context);
+
+    if (!groupScope && !initialized) return null;
+    return (
+      <GroupWorkConversationContext
+        value={
           groupScope
-            ? { onTopicCreated: (topicId) => setLocalTopic({ subject, topicId }) }
+            ? {
+                groupId: groupScope.groupId,
+                topicId: context.topicId ?? null,
+                onTopicChange: (topicId) => setLocalTopic({ subject, topicId }),
+              }
             : undefined
         }
-        hasInitMessages={!!messages}
-        messages={messages}
-        operationState={operationState}
-        skipFetch={!!groupScope && !context.topicId}
-        onMessagesChange={(msgs, ctx, meta) => {
-          replaceMessages(msgs, { context: ctx, source: meta?.source });
-        }}
       >
-        {children}
-      </ConversationProvider>
-    </GroupWorkConversationContext>
-  );
-});
+        <ConversationProvider
+          context={context}
+          hooks={
+            groupScope
+              ? { onTopicCreated: (topicId) => setLocalTopic({ subject, topicId }) }
+              : undefined
+          }
+          hasInitMessages={!!messages}
+          messages={messages}
+          operationState={operationState}
+          skipFetch={!!groupScope && !context.topicId}
+          onMessagesChange={(msgs, ctx, meta) => {
+            replaceMessages(msgs, { context: ctx, source: meta?.source });
+          }}
+        >
+          {children}
+        </ConversationProvider>
+      </GroupWorkConversationContext>
+    );
+  },
+);
 
 GoalChatProvider.displayName = 'GoalChatProvider';

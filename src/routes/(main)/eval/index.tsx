@@ -6,7 +6,6 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { Database, FlaskConical, Plus } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SWRConfig } from 'swr';
 
 import SkeletonBar from '@/components/Skeleton/Bar';
 import AsyncBoundary from '@/components/AsyncBoundary';
@@ -90,7 +89,7 @@ const SkeletonGrid = memo(() => (
   </div>
 ));
 
-const EvalOverviewContent = memo(() => {
+const EvalOverview = memo(() => {
   const { t } = useTranslation('eval');
   const benchmarkList = useEvalStore((s) => s.benchmarkList);
   const useFetchBenchmarks = useEvalStore((s) => s.useFetchBenchmarks);
@@ -269,18 +268,5 @@ const EvalOverviewContent = memo(() => {
     </Flexbox>
   );
 });
-
-/**
- * The overview holds three independently gated sections — experiments,
- * benchmarks and datasets — each with its own `AsyncBoundary` and Retry. Under
- * route-wide `suspense` the first failing fetch throws past all of them and
- * replaces the healthy sections with a page-wide error, so the overview opts
- * out. The opt-out has to sit *above* the hooks it covers, hence the wrapper.
- */
-const EvalOverview = memo(() => (
-  <SWRConfig value={{ suspense: false }}>
-    <EvalOverviewContent />
-  </SWRConfig>
-));
 
 export default EvalOverview;

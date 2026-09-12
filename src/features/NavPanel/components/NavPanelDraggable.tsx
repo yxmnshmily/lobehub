@@ -1,6 +1,6 @@
 'use client';
 
-import { DraggablePanel } from '@lobehub/ui';
+import { DraggablePanel } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx, useResponsive } from 'antd-style';
 import { type ReactNode } from 'react';
 import { memo, Suspense, useMemo, useRef } from 'react';
@@ -371,10 +371,9 @@ export const NavPanelDraggable = memo<NavPanelDraggableProps>(({ activeContent, 
       defaultSize={defaultSize}
       expand={expand || compact}
       expandable={false}
-      maxWidth={NAV_PANEL_MAX_WIDTH}
+      maxWidth={compact ? 64 : NAV_PANEL_MAX_WIDTH}
       minWidth={compact ? 64 : NAV_PANEL_MIN_WIDTH}
       placement="left"
-      resize={compact ? false : undefined}
       showBorder={false}
       size={iconSidebar ? { width: compact ? 64 : panelWidth, height: '100%' } : undefined}
       style={styles}

@@ -63,7 +63,7 @@ export const messageSlice: StateCreator<
     const state = get();
     const { context, hooks } = state;
     if (hooks.onSendMessage) return undefined;
-    const { agentId, topicId, threadId } = context;
+    const { agentId, groupId, topicId, threadId } = context;
 
     // Get parent message ID
     const displayMessages = state.displayMessages;
@@ -71,6 +71,7 @@ export const messageSlice: StateCreator<
 
     const id = await state.createMessage({
       agentId,
+      ...(groupId ? { groupId } : {}),
       content,
       parentId,
       role: 'assistant',
@@ -109,7 +110,7 @@ export const messageSlice: StateCreator<
     const state = get();
     const { context, hooks } = state;
     if (hooks.onAddUserMessage) return hooks.onAddUserMessage({ message, fileList });
-    const { agentId, topicId, threadId } = context;
+    const { agentId, groupId, topicId, threadId } = context;
 
     // Get parent message ID
     const displayMessages = state.displayMessages;
@@ -117,6 +118,7 @@ export const messageSlice: StateCreator<
 
     const id = await state.createMessage({
       agentId,
+      ...(groupId ? { groupId } : {}),
       content: message,
       files: fileList,
       parentId,

@@ -1,7 +1,9 @@
 ---
 title: Connect LobeHub to Telegram
 description: >-
-  Learn how to create a Telegram bot and connect it to your LobeHub agent as a message channel, enabling your AI assistant to chat with users on Telegram private and group conversations.
+  Learn how to create a Telegram bot and connect it to your LobeHub agent as a
+  message channel, enabling your AI assistant to chat with users on Telegram
+  private and group conversations.
 tags:
   - Telegram
   - Message Channels
@@ -23,21 +25,20 @@ By connecting a Telegram channel to your LobeHub agent, users can interact with 
 <Steps>
   ### Open BotFather
 
-Open Telegram and search for **@BotFather** — the official Telegram bot for managing bots. Start a conversation and send the `/newbot` command.
+  Open Telegram and search for **@BotFather** — the official Telegram bot for managing bots. Start a conversation and send the `/newbot` command.
 
-### Set Bot Name and Username
+  ### Set Bot Name and Username
 
-BotFather will ask you to:
+  BotFather will ask you to:
 
-1. Choose a **display name** for your bot (e.g., "LobeHub Assistant")
-2. Choose a **username** — it must end with `bot` (e.g., `lobehub_assistant_bot`)
+  1. Choose a **display name** for your bot (e.g., "LobeHub Assistant")
+  2. Choose a **username** — it must end with `bot` (e.g., `lobehub_assistant_bot`)
 
-### Copy the Bot Token
+  ### Copy the Bot Token
 
-After creating the bot, BotFather will send you an **API token** (format: `123456789:ABCdefGhIjKlmNoPQRsTuVwXyZ`). Copy and save this token.
+  After creating the bot, BotFather will send you an **API token** (format: `123456789:ABCdefGhIjKlmNoPQRsTuVwXyZ`). Copy and save this token.
 
-> **Important:** Your bot token is a secret credential. Never share it publicly.
-
+  > **Important:** Your bot token is a secret credential. Never share it publicly.
 </Steps>
 
 ## Step 2: Configure Telegram in LobeHub
@@ -45,22 +46,21 @@ After creating the bot, BotFather will send you an **API token** (format: `12345
 <Steps>
   ### Open Channel Settings
 
-In LobeHub, navigate to your agent's settings, then select the **Channels** tab. Click **Telegram** from the platform list.
+  In LobeHub, navigate to your agent's settings, then select the **Channels** tab. Click **Telegram** from the platform list.
 
-### Enter the Bot Token
+  ### Enter the Bot Token
 
-Paste the bot token you received from BotFather into the **Bot Token** field.
+  Paste the bot token you received from BotFather into the **Bot Token** field.
 
-### Optional: Set a Webhook Secret
+  ### Optional: Set a Webhook Secret
 
-You can optionally enter a **Webhook Secret Token** for additional security. This is used to verify that incoming webhook requests originate from Telegram.
+  You can optionally enter a **Webhook Secret Token** for additional security. This is used to verify that incoming webhook requests originate from Telegram.
 
-### Save Configuration
+  ### Save Configuration
 
-Click **Save Configuration**. LobeHub will automatically register the webhook URL with Telegram — no manual URL copying is required.
+  Click **Save Configuration**. LobeHub will automatically register the webhook URL with Telegram — no manual URL copying is required.
 
-Your token will be encrypted and stored securely.
-
+  Your token will be encrypted and stored securely.
 </Steps>
 
 ## Step 3: Test the Connection
@@ -92,19 +92,26 @@ To use the bot in Telegram groups:
 3. Send a message mentioning the bot to start interacting
 
 <Callout type={'warning'}>
-  **About Group Privacy Mode:** Telegram bots have privacy mode enabled by default, which means they
-  only receive messages that @mention the bot, reply to the bot, or contain /commands. If you change
-  the privacy mode setting after creating the bot, you **must remove and re-add the bot to the
-  group** for the new setting to take effect in that group.
+  **About Group Privacy Mode:** Telegram bots have privacy mode enabled by default, which means they only receive messages that @mention the bot, reply to the bot, or contain /commands. If you change the privacy mode setting after creating the bot, you **must remove and re-add the bot to the group** for the new setting to take effect in that group.
 </Callout>
+
+## Guest Mode (summon without joining)
+
+Telegram [Guest Mode](https://core.telegram.org/bots/features#guest-bots) lets people `@mention` your bot in any group or private chat **without adding it as a member**. The bot sees only the summoning message (and the message it was replying to, if any) and can post one reply.
+
+1. Open [@BotFather](https://t.me/BotFather)'s Mini App → your bot → enable **Guest Mode**
+2. Anyone can then write `@your_bot_username …` in a chat the bot has never joined
+3. Replies to that guest message summon the bot again in the same chat
+
+Guest summons use their own **Guest Policy** and are not gated by **Group Policy**. Keyword watch and always-on group traffic still require adding the bot as a member.
 
 ## Access Policies
 
-Two independent policies gate inbound traffic. Both default to **Open**.
+Three independent policies gate inbound traffic. All default to **Open**.
 
 ### Allowed User IDs (global)
 
-A populated **Allowed User IDs** field acts as a global gate — DMs _and_ group `@mentions` are restricted to listed Telegram numeric user IDs. Empty means "no user-level filter". Grab a user's numeric ID via [@userinfobot](https://t.me/userinfobot), or read the `from.id` field from the bot's incoming update.
+A populated **Allowed User IDs** field acts as a global gate — DMs, group `@mentions`, and Guest Mode summons are restricted to listed Telegram numeric user IDs. Empty means "no user-level filter". Grab a user's numeric ID via [@userinfobot](https://t.me/userinfobot), or read the `from.id` field from the bot's incoming update.
 
 ### DM Policy
 
@@ -121,18 +128,28 @@ Controls which Telegram groups / channels the bot will respond in.
 - **Allowlist** — Respond only in chats whose ID is listed in **Allowed Channel IDs**. Forward a message from the chat to [@userinfobot](https://t.me/userinfobot) to grab the chat ID (group IDs are negative).
 - **Disabled** — Ignore all group traffic; the bot only responds to DMs.
 
+### Guest Policy
+
+Controls who can summon the bot through Telegram Guest Mode without adding it to the chat.
+
+- **Open (default)** — Accept Guest Mode summons from anyone. A populated **Allowed User IDs** list still acts as a global user gate.
+- **Allowlist** — Only users in **Allowed User IDs** can summon the bot. An empty list fails closed.
+- **Pairing** — Non-listed users receive a one-time pairing code in the Guest reply. Approve via `/approve <code>` and ask them to summon the bot again. Requires **Your Platform User ID** and Redis.
+- **Disabled** — Reject all Guest Mode summons. This does not affect DMs or groups the bot has joined.
+
 See the [Channels overview](/docs/usage/channels/overview#direct-message-policy) for cross-platform details.
 
 ## Configuration Reference
 
-| Field | Required | Description |
-| --- | --- | --- |
-| **Bot Token** | Yes | API token from BotFather |
-| **Webhook Secret Token** | No | Optional secret for verifying webhook requests |
-| **Allowed User IDs** | No | Comma- or whitespace-separated Telegram numeric user IDs. Global gate — applies to DMs and group @mentions |
-| **DM Policy** | No | `open` (default), `allowlist`, `pairing`, or `disabled` — who is allowed to DM the bot |
-| **Group Policy** | No | `open` (default), `allowlist`, or `disabled` — where the bot responds in groups |
-| **Allowed Channel IDs** | No | Comma- or whitespace-separated Telegram chat IDs (group IDs are negative). Used when Group Policy is Allowlist |
+| Field                    | Required | Description                                                                                                             |
+| ------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Bot Token**            | Yes      | API token from BotFather                                                                                                |
+| **Webhook Secret Token** | No       | Optional secret for verifying webhook requests                                                                          |
+| **Allowed User IDs**     | No       | Comma- or whitespace-separated Telegram numeric user IDs. Global gate — applies to DMs, group @mentions, and Guest Mode |
+| **DM Policy**            | No       | `open` (default), `allowlist`, `pairing`, or `disabled` — who is allowed to DM the bot                                  |
+| **Group Policy**         | No       | `open` (default), `allowlist`, or `disabled` — where the bot responds in groups                                         |
+| **Guest Policy**         | No       | `open` (default), `allowlist`, `pairing`, or `disabled` — who can use Telegram Guest Mode                               |
+| **Allowed Channel IDs**  | No       | Comma- or whitespace-separated Telegram chat IDs (group IDs are negative). Used when Group Policy is Allowlist          |
 
 ## Troubleshooting
 

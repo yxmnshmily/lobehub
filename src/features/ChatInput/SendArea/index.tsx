@@ -51,10 +51,10 @@ const SendArea = memo<SendAreaProps>(({ hideContextWindow = true }) => {
     <Flexbox
       horizontal
       align={'center'}
-      flex={mobile ? 1 : 'none'}
+      flex={mobile ? 1 : '0 1 auto'}
       gap={mobile ? 4 : 12}
       justify={mobile ? 'flex-end' : undefined}
-      style={mobile ? { minWidth: 0, maxWidth: '100%' } : undefined}
+      style={mobile ? { minWidth: 0, maxWidth: '100%' } : { minWidth: 0 }}
       wrap={mobile ? 'wrap' : undefined}
     >
       {canShowControls && allowExpand && !audioInputActive && <ContextWindow />}
