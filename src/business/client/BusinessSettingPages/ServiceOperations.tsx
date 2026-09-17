@@ -791,7 +791,7 @@ const UserAdminAuditSection = ({
 }) => {
   const translateTravel = useTravelTranslation();
   return (
-    <Block padding={0} variant={'borderless'}>
+    <Block padding={20} variant={'outlined'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <FileClock size={18} />
@@ -901,7 +901,7 @@ const UserContentCatalogSection = ({
   ];
 
   return (
-    <Block padding={0} variant={'borderless'}>
+    <Block padding={20} variant={'outlined'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <FileClock size={18} />
@@ -1172,7 +1172,7 @@ const UserTravelGroupHealthSection = ({
       padding={20}
       role={'region'}
       style={{ maxWidth: '100%', minWidth: 0 }}
-      variant={'borderless'}
+      variant={'outlined'}
     >
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
@@ -1377,7 +1377,7 @@ const UserSessionOverviewSection = ({
   };
 
   return (
-    <Block padding={0} style={{ width: '100%', minWidth: 0 }} variant={'borderless'}>
+    <Block padding={20} style={{ width: '100%', minWidth: 0 }} variant={'outlined'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
           <Flexbox horizontal align={'center'} gap={8}>
@@ -2162,7 +2162,7 @@ const UserAccountControls = ({
   );
 
   return (
-    <Block padding={0} variant={'borderless'}>
+    <Block padding={20} variant={'outlined'}>
       <Flexbox gap={14}>
         <Flexbox horizontal align={'center'} gap={8}>
           <UserRoundCog size={18} />
@@ -2357,7 +2357,7 @@ const UserBanControls = ({
   }
 
   return (
-    <Block padding={0} variant={'borderless'}>
+    <Block padding={20} variant={'outlined'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <Ban size={18} />
@@ -3364,7 +3364,7 @@ const ServiceOperations = () => {
 
               {customerDetailTab === 'credits' && (
                 <Flexbox gap={16} role={'tabpanel'}>
-                  <Block padding={0} variant={'borderless'}>
+                  <Block padding={16} variant={'outlined'}>
                     <Flexbox gap={16}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <WalletCards aria-hidden size={18} />
@@ -3471,7 +3471,7 @@ const ServiceOperations = () => {
                     </Flexbox>
                   </Block>
 
-                  <Block padding={0} variant={'borderless'}>
+                  <Block padding={16} variant={'outlined'}>
                     <Flexbox gap={12}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <ShieldAlert aria-hidden size={18} />
@@ -3557,7 +3557,7 @@ const ServiceOperations = () => {
                     </Flexbox>
                   </Block>
 
-                  <Block padding={0} variant={'borderless'}>
+                  <Block padding={16} variant={'outlined'}>
                     <Flexbox gap={12}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <FileClock size={18} />
