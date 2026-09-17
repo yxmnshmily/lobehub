@@ -42,7 +42,10 @@ const DevModal = memo<DevModalProps>(
 
     const [submitting, setSubmitting] = useState(false);
 
-    const { mobile } = useResponsive();
+    /* 统一 <768px 口径（antd-style 的 mobile 键 = xs/<576，太窄）：低于 iPad mini
+       竖屏即用窄屏抽屉（100% 宽 + 表单/预览纵向堆叠）。 */
+    const { md = true } = useResponsive();
+    const mobile = !md;
     const [form] = Form.useForm();
     const authType = Form.useWatch(['customParams', 'mcp', 'auth', 'type'], form);
 
@@ -187,9 +190,14 @@ const DevModal = memo<DevModalProps>(
           }}
         >
           <Flexbox
-            horizontal
             gap={0}
             height={'100%'}
+            style={{
+              /* 窄屏（<768px）表单与预览纵向堆叠：并排会把 MCP 类型卡片挤成
+                 竖排文字（440px 实测）。与设置页统一的 <768px 口径。 */
+              flexDirection: mobile ? 'column' : 'row',
+              overflow: mobile ? 'auto' : 'hidden',
+            }}
             onClick={(e) => {
               e.stopPropagation();
             }}
@@ -202,7 +210,7 @@ const DevModal = memo<DevModalProps>(
                 onAuthorizeOAuth={runOAuthFlow}
               />
             </Flexbox>
-            <PluginPreview form={form} />
+            {!mobile && <PluginPreview form={form} />}
           </Flexbox>
         </Drawer>
       </Form.Provider>

@@ -91,8 +91,8 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 interface AgentSkillDetailProps {
   /**
-   * 下钻模式（设置页使用）：文件树与文件内容不再左右并排，而是"树 → 点文件
-   * 进入内容（带返回）"。默认 false 保持原有的双栏并排（技能商店等场景）。
+   * 下钻模式（默认开启）：文件树与文件内容不再左右并排，而是"树 → 点文件
+   * 进入内容（带返回）"。传 false 可回到旧的双栏并排。
    */
   drilldown?: boolean;
   skillId: string;
@@ -113,7 +113,7 @@ const buildContentMap = (nodes: SkillResourceTreeNode[] = []): Record<string, st
   return map;
 };
 
-const AgentSkillDetail = memo<AgentSkillDetailProps>(({ drilldown = false, skillId }) => {
+const AgentSkillDetail = memo<AgentSkillDetailProps>(({ drilldown = true, skillId }) => {
   const { t } = useTranslation('setting');
   /* 下钻模式初始停在文件树层；双栏模式保持默认打开 SKILL.md 的原行为。 */
   const [selectedFile, setSelectedFile] = useState<string | null>(drilldown ? null : 'SKILL.md');

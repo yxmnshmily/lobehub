@@ -59,7 +59,8 @@ const Pagination = memo<PaginationProps>(({ tab, currentPage, total, pageSize })
       className={styles.page}
       current={page ? Number(page) : currentPage}
       data-testid="pagination"
-      pageSize={pageSize}
+      showSizeChanger={false}
+      total={total}
       itemRender={(_, type, element) =>
         (type === 'prev' || type === 'next') && isValidElement(element)
           ? cloneElement(element as ReactElement<{ 'aria-label'?: string }>, {
@@ -67,12 +68,14 @@ const Pagination = memo<PaginationProps>(({ tab, currentPage, total, pageSize })
             })
           : element
       }
-      showSizeChanger={false}
-      total={total}
       style={{
         alignSelf: 'flex-end',
       }}
       onChange={handlePageChange}
+      pageSize={pageSize}
+      /* 窄屏用 simple 模式（‹ 1/25 ›）：完整数字页码在 440px 下放不下，
+         "最后一页"会被挤到第二行。 */
+      simple={mobile}
     />
   );
 });

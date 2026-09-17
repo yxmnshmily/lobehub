@@ -49,12 +49,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   header: css`
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
 
     padding-block-end: 16px;
     padding-inline: 24px;
+
+    @media (width <= 767px) {
+      /* 与 SettingContainer 手机端 10px 边距对齐，避免双重缩进错位 */
+      padding-inline: 0;
+    }
   `,
   /* Dates and "never used / never expires" placeholders read as metadata, not
      content — keep them quieter than the name and key. */

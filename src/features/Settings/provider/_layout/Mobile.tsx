@@ -3,6 +3,7 @@
 import { type PropsWithChildren } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 
+import DesktopLayoutContainer from '../_layout/Desktop/Container';
 import ProviderMenu from '../ProviderMenu';
 
 interface LayoutProps extends PropsWithChildren {
@@ -15,7 +16,12 @@ const Layout = ({ children, onProviderSelect }: LayoutProps) => {
   const params = useParams<{ providerId?: string }>();
   const provider = searchParams.get('provider') ?? params.providerId;
   return provider === 'all' || !provider ? (
-    <ProviderMenu mobile={true} onProviderSelect={onProviderSelect} />
+    /* 列表本身不滚动（overflow 未设），外层 contentSurface 又是 overflow hidden
+       ——不包进 DesktopLayoutContainer（内含 overflowY auto 的 SettingContainer）
+       列表超高会被直接剪掉，且没有任何滚动条。 */
+    <DesktopLayoutContainer>
+      <ProviderMenu mobile={true} onProviderSelect={onProviderSelect} />
+    </DesktopLayoutContainer>
   ) : (
     children
   );

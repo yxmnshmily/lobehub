@@ -75,13 +75,10 @@ const CONTENT_CATALOG_LIMIT = 5;
 
 const styles = createStaticStyles(({ css }) => ({
   customerPage: css`
-    /* The shared settings container supplies the 48px page inset. */
-    /* stylelint-disable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
-    padding-top: 0;
-    padding-right: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    /* stylelint-enable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
+    /* 边距统一由 SettingContainer（<768px 为 10px）+ page 的 10px 方案接管，
+       这里不再叠加自己的填充（之前的 padding-right/bottom 会把右侧/底部
+       变成 18px，与左侧 10px 不对称——用户实测）。 */
+    padding: 0;
   `,
   auditPanel: css`
     padding: 0;
@@ -94,9 +91,10 @@ const styles = createStaticStyles(({ css }) => ({
   page: css`
     container-type: inline-size;
 
-    width: 100%;
+    /* 不能写 width: 100%——它会把宽度钉死在父容器内容宽，下面的负 margin
+       只能位移、无法扩宽（834px 实测正文被限成 621px）。去掉后 flex stretch
+       会按「容器宽 - 负 margin」计算出真正撑满的宽度。 */
     min-width: 0;
-
     font-size: 14px;
     line-height: 1.6;
 
@@ -136,10 +134,22 @@ const styles = createStaticStyles(({ css }) => ({
       min-height: 44px;
     }
 
-    @media (width <= 640px) {
-      padding-block: 12px;
-      padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
+    /* 页内所有 Block 的内建填充清零（卡片 padding 14px 等），避免与 10px
+       总边距叠加。 */
+    & [style*='--lobe-flex-padding'] {
+      padding: 0 !important;
+    }
 
+    /* 页面级 10px 总边距（用户要求）：共享 SettingContainer 有 48px 页面内边距，
+       这里用 -48px 完全抵消，再自绘 10px——内容到卡片边缘恒为 10px。
+       （之前 -38px + 10px = 实际 20px，算术错误，834px 实测发现。） */
+    @media (width >= 768px) {
+      margin-block: -48px;
+      margin-inline: -48px;
+      padding: 10px;
+    }
+
+    @media (width <= 767px) {
       h2 {
         font-size: 20px;
       }
@@ -156,7 +166,9 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   detail: css`
     min-width: 0;
-    padding: 20px;
+
+    /* 统一 10px 总边距口径：详情盒自身的填充清零（盒边框保留）。 */
+    padding: 0;
     border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
@@ -164,10 +176,6 @@ const styles = createStaticStyles(({ css }) => ({
 
     [role='tabpanel'] {
       min-width: 0;
-    }
-
-    @media (width <= 640px) {
-      padding: 12px;
     }
   `,
   detailTabs: css`

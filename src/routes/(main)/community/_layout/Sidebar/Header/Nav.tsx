@@ -16,19 +16,21 @@ import { isModifierClick } from '@/utils/navigation';
 
 const styles = createStaticStyles(({ css }) => ({
   nav: css`
+    scrollbar-width: none;
+
     overflow-x: auto;
-    display: flex;
-    flex: 1;
-    flex-wrap: nowrap;
-    min-width: 0;
-    align-items: center;
-    gap: 2px;
 
     /* Wrapping would grow past the fixed 64px header and overlap the content,
        so the tabs scroll horizontally instead (same pattern as the memory and
        group-profile tab strips). */
     overscroll-behavior-x: none;
-    scrollbar-width: none;
+    display: flex;
+    flex: 1;
+    flex-wrap: nowrap;
+    gap: 2px;
+    align-items: center;
+
+    min-width: 0;
 
     [data-nav-item] > :first-child {
       width: 20px;
@@ -41,14 +43,6 @@ const styles = createStaticStyles(({ css }) => ({
     }
   `,
 }));
-
-interface Item {
-  icon: NavItemProps['icon'];
-  key: string;
-  onClick?: () => void;
-  title: NavItemProps['title'];
-  url?: string;
-}
 
 const useActiveTabKey = () => {
   const { pathname } = useActiveLocation();
@@ -148,4 +142,14 @@ const Nav = memo(() => {
   );
 });
 
+Nav.displayName = 'CommunityNav';
+
 export default Nav;
+
+type Item = NavItemProps & {
+  icon: unknown;
+  key: string;
+  onClick?: () => void;
+  title: string;
+  url?: string;
+};

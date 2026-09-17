@@ -11,7 +11,9 @@ const popupClassName = createStaticStyles(
   ({ css }) => css`
     overflow: hidden;
     box-sizing: border-box;
-    width: 300px;
+
+    /* 自适应宽度：窄窗口不低于 300px，宽窗口最多长到 460px，不再固定 300 */
+    width: clamp(300px, 36vw, 460px);
     max-width: min(var(--available-width), calc(100vw - 88px));
   `,
 );

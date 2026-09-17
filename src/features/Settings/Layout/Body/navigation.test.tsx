@@ -23,8 +23,8 @@ vi.mock('../../hooks/useCategory', () => ({
       key: 'admin',
       title: '用户管理',
       items: [
-        { key: 'content-moderation', label: '内容审核' },
         { key: 'service-operations', label: '账户管理' },
+        { key: 'content-moderation', label: '内容审核' },
       ],
     },
   ],

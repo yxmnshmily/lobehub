@@ -56,28 +56,26 @@ const Header = memo(() => {
     '--header-border-color': cssVar.colorBorderSecondary,
   };
 
+  /* 两行结构（与列表页头部一致）：第一行返回+搜索+头像，第二行整排栏目导航，
+     避免窄屏下导航被搜索框挤压截断。 */
   return (
-    <NavHeader
-      className={styles.headerContainer}
-      height={64}
-      style={cssVariables}
-      left={
-        <Flexbox horizontal align={'center'} flex={1} gap={4} style={{ minWidth: 0 }}>
-          <ActionIcon icon={ArrowLeft} size={'small'} onClick={handleGoBack} />
-          <Nav />
-        </Flexbox>
-      }
-      right={
-        <>
-          <StoreSearchBar />
-          <UserAvatar avatarOverride={detailAvatar} />
-        </>
-      }
-      styles={{
-        left: { flex: 1, minWidth: 0 },
-        right: { flex: '0 1 360px', minWidth: 140 },
-      }}
-    />
+    <Flexbox className={styles.headerContainer} gap={0} style={cssVariables}>
+      <NavHeader
+        height={44}
+        left={<ActionIcon icon={ArrowLeft} size={'small'} onClick={handleGoBack} />}
+        paddingInline={16}
+        styles={{ right: { flex: 1, minWidth: 0, justifyContent: 'flex-end' } }}
+        right={
+          <>
+            <StoreSearchBar />
+            <UserAvatar avatarOverride={detailAvatar} />
+          </>
+        }
+      />
+      <Flexbox style={{ width: '100%', paddingBlock: '6px 8px', paddingInline: 16 }}>
+        <Nav />
+      </Flexbox>
+    </Flexbox>
   );
 });
 

@@ -194,16 +194,16 @@ export const useCategory = (): CategoryGroup[] => {
     groups.push({
       items: [
         {
-          href: '/settings/content-moderation',
-          icon: ShieldCheck,
-          key: SettingsTabs.ContentModeration,
-          label: translateTravel('内容审核'),
-        },
-        {
           href: '/settings/service-operations',
           icon: Users,
           key: SettingsTabs.ServiceOperations,
           label: translateTravel('账户管理'),
+        },
+        {
+          href: '/settings/content-moderation',
+          icon: ShieldCheck,
+          key: SettingsTabs.ContentModeration,
+          label: translateTravel('内容审核'),
         },
       ],
       key: SettingsGroupKey.Operations,

@@ -20,10 +20,11 @@ describe('buildAssistantListQuery', () => {
   });
 
   it('should preserve the browse path when there is no keyword search', () => {
+    // 计数始终随列表返回：侧栏数字与翻页列表保持同一过滤口径。
     expect(buildAssistantListQuery({})).toEqual({
       category: undefined,
       includeAgentGroup: true,
-      includeCategoryCounts: false,
+      includeCategoryCounts: true,
       order: undefined,
       page: undefined,
       pageSize: 21,

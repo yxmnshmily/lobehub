@@ -22,9 +22,16 @@ export interface SelectedTool {
 
 const styles = createStaticStyles(({ css }) => ({
   detail: css`
-    overflow-y: auto;
+    overflow: hidden;
+
+    /* 只让最内层（ConnectorDetail 的工具列表 / 文件内容）滚动——这里再滚一层
+       就会出现双滚动条（外层带着返回按钮一起滚，内层工具列表又滚）。 */
+    display: flex;
     flex: 1;
+    flex-direction: column;
+
     min-width: 0;
+    min-height: 0;
   `,
   mobileBack: css`
     display: flex;
