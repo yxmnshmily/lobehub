@@ -46,9 +46,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     flex-direction: column;
 
-    width: 300px;
-    min-width: 260px;
-    border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
+    /* 下钻栈的第一层：列表始终占满整屏宽（不再作为分栏的窄侧栏）。 */
+    width: 100%;
+    min-width: 0;
   `,
 }));
 

@@ -47,7 +47,7 @@ const FallbackFontList = ({
             gap={4}
             id={item.id}
             justify={'space-between'}
-            variant={'filled'}
+            variant={'borderless'}
           >
             <Text ellipsis style={{ flex: 1, fontFamily: item.id }}>
               {labelOf(item.id)}

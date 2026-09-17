@@ -91,6 +91,7 @@ import { projectRouter } from './project';
 import { pushTokenRouter } from './pushToken';
 import { ragEvalRouter } from './ragEval';
 import { recentRouter } from './recent';
+import { resourceDeletionRouter } from './resourceDeletion';
 import { resourcePermissionRouter } from './resourcePermission';
 import { resourceTransferRequestRouter } from './resourceTransferRequest';
 import { searchRouter } from './search';
@@ -191,6 +192,7 @@ export const lambdaRouter = router({
   ragEval: ragEvalRouter,
   recent: recentRouter,
   resourcePermission: resourcePermissionRouter,
+  resourceDeletion: resourceDeletionRouter,
   resourceTransferRequest: resourceTransferRequestRouter,
   search: searchRouter,
   session: sessionRouter,

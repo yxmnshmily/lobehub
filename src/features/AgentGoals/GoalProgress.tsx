@@ -4,7 +4,7 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
+import RunUsage from '@/features/RunUsage';
 
 /** `3m` · `2.1h` · `1.4d` — the coarse grain a list row can carry. */
 export const formatGoalDuration = (milliseconds: number) => {
@@ -28,11 +28,11 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   metrics: css`
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     column-gap: 12px;
     align-items: center;
 
-    width: min(100%, 390px);
+    width: min(100%, 470px);
     min-width: 0;
 
     @media (width <= 420px) {
@@ -55,9 +55,12 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   progressValue: css`
     transform-origin: left center;
+
     height: 100%;
     border-radius: inherit;
+
     background: ${cssVar.colorSuccess};
+
     transition: transform 0.2s ${cssVar.motionEaseOut};
   `,
 }));
@@ -79,7 +82,6 @@ export interface GoalProgressProps {
 export const GoalProgress = memo<GoalProgressProps>(
   ({ findingCount, pendingDecisions, totalRunCost, totalRunDuration, taskDone, taskTotal }) => {
     const { t } = useTranslation('chat');
-    const { format } = useMonthlyExchangeRate();
     const progress = taskTotal > 0 ? Math.round((taskDone / taskTotal) * 100) : 0;
 
     return (
@@ -110,12 +112,7 @@ export const GoalProgress = memo<GoalProgressProps>(
             {t('goalList.findings', { count: findingCount })}
           </Text>
         )}
-        <Text className={styles.metric} color={cssVar.colorTextTertiary} fontSize={12}>
-          {formatGoalDuration(totalRunDuration)}
-        </Text>
-        <Text className={styles.metric} color={cssVar.colorTextTertiary} fontSize={12}>
-          {totalRunCost > 0 ? format(totalRunCost, 6) : '—'}
-        </Text>
+        <RunUsage cost={totalRunCost} duration={totalRunDuration} />
       </div>
     );
   },

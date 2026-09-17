@@ -9,6 +9,8 @@ import {
   projects,
   projectWorks,
   tasks,
+  taskTopics,
+  topics,
   users,
   works,
   workspaces,
@@ -69,6 +71,46 @@ describe('ProjectModel', () => {
     expect(
       await serverDB.select().from(agents).where(eq(agents.id, project.coordinatorAgentId)),
     ).toHaveLength(0);
+  });
+
+  it('rolls up unique project conversations and descendant task runs without leaking another owner', async () => {
+    const project = await createProject(model, { name: 'Measured project' });
+    const empty = await createProject(model, { name: 'Empty project' });
+    const taskModel = new TaskModel(serverDB, userId);
+    const root = await taskModel.create({ instruction: 'Root', projectId: project.id });
+    const child = await taskModel.create({ instruction: 'Child', parentTaskId: root.id });
+    const start = new Date('2026-08-06T10:00:00Z');
+    await serverDB.insert(topics).values([
+      {
+        id: 'project-run',
+        userId,
+        projectId: project.id,
+        createdAt: start,
+        completedAt: new Date('2026-08-06T10:02:00Z'),
+        totalCost: 0.05,
+      },
+      {
+        id: 'project-chat',
+        userId,
+        projectId: project.id,
+        createdAt: start,
+        completedAt: new Date('2026-08-06T10:01:00Z'),
+        totalCost: 0.02,
+      },
+      { id: 'project-foreign', userId: otherUserId, projectId: project.id, totalCost: 100 },
+    ]);
+    await serverDB
+      .insert(taskTopics)
+      .values({ taskId: child.id, topicId: 'project-run', userId, seq: 1, createdAt: start });
+    const result = await model.list();
+    expect(result.find(({ id }) => id === project.id)).toMatchObject({
+      totalRunCost: 0.07,
+      totalRunDuration: 180_000,
+    });
+    expect(result.find(({ id }) => id === empty.id)).toMatchObject({
+      totalRunCost: 0,
+      totalRunDuration: 0,
+    });
   });
 
   it('resolves a project by slug without escaping the current scope', async () => {

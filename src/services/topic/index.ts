@@ -6,6 +6,7 @@ import type {
 
 import { INBOX_SESSION_ID } from '@/const/session';
 import { lambdaClient } from '@/libs/trpc/client';
+import { notifyFileCleanup } from '@/services/resourceDeletionCleanup';
 import { type BatchTaskResult } from '@/types/service';
 import {
   type ChatTopic,
@@ -194,8 +195,10 @@ export class TopicService {
     return lambdaClient.topic.disableSharing.mutate({ topicId });
   };
 
-  removeTopic = (id: string, removeFiles?: boolean) => {
-    return lambdaClient.topic.removeTopic.mutate({ id, removeFiles });
+  removeTopic = async (id: string, removeFiles?: boolean) => {
+    const result = await lambdaClient.topic.removeTopic.mutate({ id, removeFiles });
+    if (result && 'storageCleanup' in result) notifyFileCleanup(result.storageCleanup);
+    return result;
   };
 
   removeTopics = (sessionId: string, scope: TopicBatchDeleteScope = 'own') => {

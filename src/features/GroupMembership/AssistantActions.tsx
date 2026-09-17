@@ -50,6 +50,7 @@ export default function AssistantActions({
             border: `0.5px solid ${cssVar.colorBorder}`,
             borderRadius: cssVar.borderRadius,
             boxSizing: 'border-box',
+            color: cssVar.colorText,
             display: 'flex',
             justifyContent: 'center',
             minHeight: 44,

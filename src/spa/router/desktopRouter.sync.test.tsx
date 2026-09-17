@@ -38,7 +38,6 @@ import {
   desktopRoutes as electronDesktopRoutes,
 } from './desktopRouter.config.desktop';
 import { createMainAreaRouteFactory, ResourceCategorySkeleton } from './desktopRouter.shared';
-import { sharedMainAreaChildren as mobileMainAreaChildren } from './mobileRouter.config';
 
 type MainAreaFactory = () => RouteObject[];
 
@@ -82,10 +81,8 @@ async function readRouterSources() {
 
 describe('desktop router shared definition', () => {
   it('keeps goal and task lists/details in the group shell on web, desktop and mobile', () => {
-    const variants = [
-      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
-      [{ path: '/', children: mobileMainAreaChildren }],
-    ];
+    /* 2026-09-17：mobile 变体已随移动版整体删除，仅剩 Web / Electron。 */
+    const variants = [...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory))];
     for (const routes of variants) {
       for (const suffix of ['goals', 'tasks', 'goal/goal-1', 'task/T-4']) {
         const matched = matchRoutes(routes, `/group/travel/${suffix}`);
@@ -97,10 +94,8 @@ describe('desktop router shared definition', () => {
     }
   });
   it('keeps project pages and detail routes within the group on every client', () => {
-    const variants = [
-      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
-      [{ path: '/', children: mobileMainAreaChildren }],
-    ];
+    /* 2026-09-17：mobile 变体已随移动版整体删除，仅剩 Web / Electron。 */
+    const variants = [...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory))];
     for (const routes of variants) {
       for (const suffix of [
         'conversation',
@@ -126,10 +121,8 @@ describe('desktop router shared definition', () => {
   });
 
   it('matches the default-work-group entry before the dynamic group id on every client', () => {
-    const variants = [
-      ...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory)),
-      [{ path: '/', children: mobileMainAreaChildren }],
-    ];
+    /* 2026-09-17：mobile 变体已随移动版整体删除，仅剩 Web / Electron。 */
+    const variants = [...mainAreaVariants.map(([, factory]) => createMainAreaRoutes(factory))];
     for (const routes of variants) {
       const entry = matchRoutes(routes, '/group/default')?.at(-1);
       expect(entry?.route.path).toBe('default');

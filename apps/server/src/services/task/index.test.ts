@@ -10,6 +10,7 @@ import { UserModel } from '@/database/models/user';
 import { WorkspaceMemberModel } from '@/database/models/workspaceMember';
 import type { LobeChatDatabase } from '@/database/type';
 
+import { TaskRunnerService } from '../taskRunner';
 import { TaskService } from './index';
 
 const { cancelScheduled, scheduleNextTopic } = vi.hoisted(() => ({
@@ -27,6 +28,13 @@ vi.mock('@/database/models/task', () => ({
     actorAgentId: actor.agentId ?? null,
     actorKind: actor.agentId ? 'agent' : actor.userId ? 'user' : 'system',
     actorUserId: actor.agentId ? null : (actor.userId ?? null),
+  }),
+}));
+
+const settleRunningOperation = vi.hoisted(() => vi.fn().mockResolvedValue({ settled: true }));
+vi.mock('@/database/models/topic', () => ({
+  TopicModel: vi.fn(function () {
+    return { settleRunningOperation };
   }),
 }));
 
@@ -58,13 +66,23 @@ vi.mock('@/server/services/verify/taskAcceptance', () => ({ resolveTaskAcceptanc
 
 // AiAgentService pulls in ~14 sub-dependencies in its constructor; mock it so
 // the running-status branch in updateStatus doesn't drag them in.
-const { interruptTaskMock } = vi.hoisted(() => ({ interruptTaskMock: vi.fn() }));
+const { interruptTaskMock, execAgentMock } = vi.hoisted(() => ({
+  interruptTaskMock: vi.fn(),
+  execAgentMock: vi.fn(),
+}));
 vi.mock('@/server/services/aiAgent', () => ({
   AiAgentService: vi.fn().mockImplementation(function () {
     return {
       interruptTask: interruptTaskMock,
+      execAgent: execAgentMock,
     };
   }),
+}));
+
+vi.mock('@/server/services/taskRunner/buildTaskPrompt', () => ({
+  buildTaskPrompt: vi
+    .fn()
+    .mockResolvedValue({ acceptanceEnabled: false, fileIds: [], prompt: 'test' }),
 }));
 
 vi.mock('@/server/services/taskScheduler', () => ({
@@ -97,6 +115,10 @@ describe('TaskService', () => {
     findSubtasks: vi.fn(),
     lockForStatusChange: vi.fn(),
     updateStatusForIds: vi.fn(),
+    updateStatusIfCurrent: vi.fn(),
+    incrementTopicCount: vi.fn(),
+    updateCurrentTopic: vi.fn(),
+    updateHeartbeat: vi.fn(),
     updateWithLog: vi.fn(),
     create: vi.fn(),
     delete: vi.fn(),
@@ -122,6 +144,7 @@ describe('TaskService', () => {
 
   const mockTaskTopicModel = {
     cancelIfRunning: vi.fn(),
+    add: vi.fn(),
     cancelRunningByTaskIds: vi.fn(),
     findByTaskId: vi.fn(),
     findRunningByTaskIds: vi.fn().mockResolvedValue([]),
@@ -144,11 +167,14 @@ describe('TaskService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (db as any).transaction = async (fn: (tx: unknown) => Promise<void>) => fn(db);
     interruptTaskMock.mockReset().mockResolvedValue({ success: true });
     cancelScheduled.mockResolvedValue(undefined);
     scheduleNextTopic.mockResolvedValue('tick-new');
     resolveTaskAcceptance.mockResolvedValue(undefined);
     mockTaskTopicModel.findRunningByTaskIds.mockResolvedValue([]);
+    mockTaskModel.findAllDescendants.mockResolvedValue([]);
+    mockTaskTopicModel.findByTaskId.mockResolvedValue([]);
     mockTaskModel.getActivities.mockResolvedValue([]);
     (AgentModel as any).mockImplementation(function () {
       return mockAgentModel;
@@ -1466,7 +1492,165 @@ describe('TaskService', () => {
     });
   });
 
+  it('interrupts only the new operation when stop finishes during execution creation', async () => {
+    const task = {
+      id: 'p',
+      identifier: 'P',
+      status: 'running',
+      context: {},
+      assigneeAgentId: 'agt_test',
+      config: { model: 'test', provider: 'test' },
+    };
+    let current = task;
+    mockTaskModel.resolve.mockImplementation(async () => current);
+    mockTaskModel.findById.mockImplementation(async () => current);
+    mockTaskModel.getCheckpointConfig.mockReturnValue({});
+    mockTaskModel.getReviewConfig.mockReturnValue({});
+    mockTaskTopicModel.findByTaskId.mockResolvedValue([]);
+    execAgentMock.mockImplementation(async () => {
+      current = { ...task, status: 'paused', context: { manualStopAt: '2026-09-13T02:00:00Z' } };
+      return { success: true, operationId: 'new-op', topicId: 'new-topic' };
+    });
+    await expect(new TaskRunnerService(db, userId).runTask({ taskId: 'p' })).rejects.toThrow(
+      'Task was stopped while starting this run',
+    );
+    expect(interruptTaskMock).toHaveBeenCalledWith({ operationId: 'new-op' });
+    expect(mockTaskTopicModel.cancelIfRunning).toHaveBeenCalledWith('p', 'new-topic', 'new-op');
+    expect(mockTaskModel.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('rejects run-now while the user stop is in progress', async () => {
+    mockTaskModel.resolve.mockResolvedValue({
+      id: 'p',
+      status: 'paused',
+      context: { manualControl: 'stopping' },
+    });
+    await expect(new TaskRunnerService(db, userId).runTask({ taskId: 'p' })).rejects.toThrow(
+      'Task is stopping',
+    );
+    expect(mockTaskModel.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('restores a child to paused when restarting its schedule fails, allowing retry', async () => {
+    mockTaskModel.resolve.mockResolvedValue({
+      id: 'p',
+      status: 'paused',
+      automationMode: 'schedule',
+      context: { pausedTasks: [{ id: 'c', status: 'scheduled' }] },
+    });
+    mockTaskModel.findById.mockResolvedValue({ id: 'c', status: 'paused' });
+    mockTaskModel.updateStatusIfCurrent.mockResolvedValue({ id: 'c', status: 'backlog' });
+    const service = new TaskService(db, userId);
+    vi.spyOn(service, 'updateStatus').mockRejectedValueOnce(new Error('scheduler unavailable'));
+    await expect(service.resume('p')).rejects.toThrow('scheduler unavailable');
+    expect(mockTaskModel.updateStatusIfCurrent).toHaveBeenCalledWith('c', 'backlog', 'paused');
+    expect(mockTaskModel.updateContext).not.toHaveBeenCalledWith('p', { pausedTasks: [] });
+  });
+
+  it('rejects resume while a stop is still awaiting execution cancellation', async () => {
+    mockTaskModel.resolve.mockResolvedValue({
+      id: 'p',
+      status: 'paused',
+      context: { manualControl: 'stopping' },
+    });
+    await expect(new TaskService(db, userId).resume('p')).rejects.toThrow(
+      'Task control is still in progress',
+    );
+    expect(mockTaskModel.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('resumes only recorded family members still paused and retains scheduled timing', async () => {
+    mockTaskModel.resolve.mockResolvedValue({
+      id: 'p',
+      status: 'paused',
+      automationMode: 'schedule',
+      context: {
+        pausedTasks: [
+          { id: 'c', status: 'scheduled' },
+          { id: 'g', status: 'running' },
+        ],
+      },
+    });
+    mockTaskModel.findById.mockImplementation(async (id) => ({
+      id,
+      status: id === 'g' ? 'canceled' : 'paused',
+    }));
+    mockTaskModel.updateStatusIfCurrent.mockResolvedValue({ id: 'c', status: 'scheduled' });
+    const service = new TaskService(db, userId);
+    const update = vi
+      .spyOn(service, 'updateStatus')
+      .mockResolvedValue({ task: { id: 'p' }, paused: [], unlocked: [] } as any);
+    await service.resume('p');
+    expect(mockTaskModel.updateStatusIfCurrent).toHaveBeenCalledWith('c', 'paused', 'backlog');
+    expect(mockTaskModel.updateStatusIfCurrent).not.toHaveBeenCalledWith(
+      'g',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(update).toHaveBeenCalledWith({ id: 'c', status: 'scheduled' }, undefined);
+    expect(update).toHaveBeenCalledWith({ id: 'p', status: 'scheduled' }, undefined);
+  });
+
   describe('confirmed execution stop', () => {
+    it('clears the matching topic operation marker after a confirmed stop', async () => {
+      mockTaskModel.resolve.mockResolvedValue({ id: 'p', status: 'running', context: {} });
+      mockTaskTopicModel.findByTaskId.mockResolvedValue([
+        { topicId: 'topic', operationId: 'op', status: 'running' },
+      ]);
+      mockTaskModel.updateStatus.mockResolvedValue({ id: 'p', status: 'paused' });
+      await new TaskService(db, userId).updateStatus({ id: 'p', status: 'paused' });
+      expect(settleRunningOperation).toHaveBeenCalledWith('topic', 'op', 'active');
+    });
+
+    it('pauses the active family but preserves independently paused children', async () => {
+      const root = { id: 'p', status: 'running', context: {} };
+      const child = { id: 'c', status: 'scheduled', context: {} };
+      mockTaskModel.resolve.mockImplementation(async (id) => (id === 'p' ? root : child));
+      mockTaskModel.findAllDescendants.mockResolvedValue([
+        child,
+        { id: 'independent', status: 'paused' },
+      ]);
+      mockTaskTopicModel.findByTaskId.mockResolvedValue([]);
+      mockTaskModel.updateStatus.mockImplementation(async (id, status) => ({ id, status }));
+      await new TaskService(db, userId).updateStatus({ id: 'p', status: 'paused' });
+      expect(mockTaskModel.updateStatus).toHaveBeenCalledWith('c', 'paused', expect.anything());
+      expect(mockTaskModel.updateStatus).not.toHaveBeenCalledWith(
+        'independent',
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(mockTaskModel.updateStatus).toHaveBeenCalledWith(
+        'p',
+        'paused',
+        expect.objectContaining({
+          context: expect.objectContaining({ pausedTasks: [{ id: 'c', status: 'scheduled' }] }),
+        }),
+      );
+    });
+
+    it.each(['paused', 'canceled'] as const)(
+      'fences %s tasks and cancels pending heartbeat delivery',
+      async (status) => {
+        const task = {
+          id: 'task-live',
+          status: 'scheduled',
+          context: { scheduler: { tickMessageId: 'tick-old' } },
+        };
+        mockTaskModel.resolve.mockResolvedValue(task);
+        mockTaskTopicModel.findByTaskId.mockResolvedValue([]);
+        mockTaskModel.updateStatus.mockResolvedValue({ ...task, status });
+        await new TaskService(db, userId).updateStatus({ id: task.id, status });
+        expect(mockTaskModel.updateStatus).toHaveBeenCalledWith(
+          task.id,
+          status,
+          expect.objectContaining({
+            context: expect.objectContaining({ manualStopAt: expect.any(String) }),
+          }),
+        );
+        expect(cancelScheduled).toHaveBeenCalledWith('tick-old');
+      },
+    );
+
     it.each([{ success: true, deviceCancellationConfirmed: false }, { success: false }])(
       'keeps a live Task and topic unchanged when cancellation is unconfirmed: %j',
       async (result) => {
@@ -1663,7 +1847,10 @@ describe('TaskService', () => {
       const service = new TaskService(db, userId);
       await service.updateStatus({ id: 'T-1', status: 'paused' as any });
 
-      expect(mockTaskModel.updateContext).not.toHaveBeenCalled();
+      expect(mockTaskModel.updateContext).not.toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({ scheduler: expect.anything() }),
+      );
     });
 
     it('stamps on user-initiated restart (paused → scheduled)', async () => {
@@ -1816,13 +2003,30 @@ describe('TaskService', () => {
       parentTaskId: null,
       ...overrides,
     });
+    it('cancels unfinished grandchildren as well as direct children', async () => {
+      const parent = baseTask({ id: 'p', identifier: 'P', status: 'paused' });
+      const child = baseTask({ id: 'c', parentTaskId: 'p', status: 'paused' });
+      const grandchild = baseTask({ id: 'g', parentTaskId: 'c', status: 'scheduled' });
+      mockTaskModel.resolve.mockResolvedValue(parent);
+      mockTaskModel.findSubtasks.mockResolvedValue([child]);
+      mockTaskModel.findAllDescendants.mockResolvedValue([child, grandchild]);
+      mockTaskModel.updateStatusForIds.mockResolvedValue([{ ...parent, status: 'canceled' }]);
+      mockTaskTopicModel.cancelRunningByTaskIds.mockResolvedValue([]);
+      (db as any).transaction = async (fn: (tx: unknown) => Promise<void>) => fn(db);
+      await new TaskService(db, userId).updateStatusCascade({ id: 'P', status: 'canceled' });
+      expect(mockTaskModel.updateStatusForIds).toHaveBeenCalledWith(
+        ['p', 'c', 'g'],
+        'canceled',
+        expect.anything(),
+      );
+    });
     it('writes one status row per family member a person cascaded', async () => {
       const parent = baseTask({ id: 'task-p', identifier: 'P-1', status: 'running' });
       const openChild = baseTask({ id: 'task-c1', identifier: 'C-1', status: 'backlog' });
       // Already finished: not part of the cascade, so no row.
       const doneChild = baseTask({ id: 'task-c2', identifier: 'C-2', status: 'completed' });
       mockTaskModel.resolve.mockResolvedValue(parent);
-      mockTaskModel.findSubtasks.mockResolvedValue([openChild, doneChild]);
+      mockTaskModel.findAllDescendants.mockResolvedValue([openChild, doneChild]);
       mockTaskModel.updateStatusForIds.mockResolvedValue([
         { ...parent, status: 'canceled' },
         { ...openChild, status: 'canceled' },
@@ -1865,14 +2069,13 @@ describe('TaskService', () => {
     it('stays silent for a system cascade', async () => {
       const parent = baseTask({ id: 'task-p', identifier: 'P-1', status: 'running' });
       mockTaskModel.resolve.mockResolvedValue(parent);
-      mockTaskModel.findSubtasks.mockResolvedValue([]);
+      mockTaskModel.findAllDescendants.mockResolvedValue([]);
       mockTaskModel.updateStatusForIds.mockResolvedValue([{ ...parent, status: 'canceled' }]);
       mockTaskTopicModel.cancelRunningByTaskIds.mockResolvedValue([]);
       (db as any).transaction = async (fn: (tx: unknown) => Promise<void>) => fn(db);
 
       await new TaskService(db, userId).updateStatusCascade({ id: 'P-1', status: 'canceled' });
 
-      expect(mockTaskModel.lockForStatusChange).not.toHaveBeenCalled();
       expect(mockTaskModel.addActivities).not.toHaveBeenCalled();
     });
   });

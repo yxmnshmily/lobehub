@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useChatStore } from '@/store/chat';
 
 import { dataSelectors, useConversationStore } from '../../store';
+import GroupProcessDetails from '../components/GroupProcessDetails';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   card: css`
@@ -88,7 +89,11 @@ const TaskCallbackMessage = memo<TaskCallbackMessageProps>(({ id }) => {
           </Flexbox>
           {viewTaskButton}
         </Flexbox>
-        {content ? <Markdown variant={'chat'}>{content}</Markdown> : null}
+        {content ? (
+          <GroupProcessDetails>
+            <Markdown variant={'chat'}>{content}</Markdown>
+          </GroupProcessDetails>
+        ) : null}
       </Flexbox>
     </Flexbox>
   );

@@ -32,6 +32,7 @@ import {
 } from '@/features/Acceptance/Viewer/AcceptanceScope';
 import AcceptanceCheckInventory from '@/features/Acceptance/Viewer/Checks/AcceptanceCheckInventory';
 import AcceptanceDecision from '@/features/Acceptance/Viewer/Review/AcceptanceDecision';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { usePermission } from '@/hooks/usePermission';
 import { verifyService } from '@/services/verify';
 import { useChatStore } from '@/store/chat';
@@ -121,7 +122,7 @@ interface TaskAcceptanceProps {
 }
 
 const TaskAcceptance = memo<TaskAcceptanceProps>(({ variant = 'default' }) => {
-  const { t } = useTranslation(['chat', 'verify']);
+  const { t, i18n } = useTranslation(['chat', 'verify']);
   const openAcceptance = useChatStore((state) => state.openAcceptance);
   const openAcceptanceCheck = useChatStore((state) => state.openAcceptanceCheck);
   const showTaskAgentPanel = useGlobalStore((state) => state.toggleTaskAgentPanel);
@@ -151,9 +152,9 @@ const TaskAcceptance = memo<TaskAcceptanceProps>(({ variant = 'default' }) => {
   // count may grow when later rounds introduce checks; that history is part of
   // the delivery record rather than a mismatch with the original configuration.
   const checks = useMemo(() => bundle?.checks ?? [], [bundle?.checks]);
-  const requirement = resolveTaskAcceptanceRequirement(
-    verify?.requirement,
-    bundle?.acceptance.requirement,
+  const requirement = localizeGoalTemplate(
+    resolveTaskAcceptanceRequirement(verify?.requirement, bundle?.acceptance.requirement) ?? '',
+    i18n.resolvedLanguage || i18n.language,
   );
   const openCheck = (acceptanceId: string, checkId: string) => {
     showTaskAgentPanel(true);

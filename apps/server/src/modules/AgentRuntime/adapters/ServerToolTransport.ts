@@ -6,6 +6,7 @@ import type {
   ToolWorkRegistration,
 } from '@lobechat/agent-runtime';
 import { executeToolWithRetry } from '@lobechat/agent-runtime';
+import type { OperationSkillSet } from '@lobechat/context-engine';
 import { SpanStatusCode } from '@lobechat/observability-otel/api';
 import {
   buildExecuteToolAttributes,
@@ -227,8 +228,23 @@ export class ServerToolTransport implements ToolTransport {
                 workspaceId: context.state.metadata?.workspaceId ?? this.ctx.workspaceId,
               })
             : undefined;
+        // Eagerly loaded operation skills have no activateSkill message in
+        // history. Include them for the existing scoped archive resolver;
+        // available-only entries must not be mounted. Later activations stay
+        // last so the native execScript working-directory selection is kept.
+        const operationSkills: OperationSkillSet | undefined =
+          context.state.metadata?.operationSkillSet;
+        const pinnedSkills =
+          operationSkills?.skills
+            .filter(
+              (skill) =>
+                operationSkills.enabledPluginIds.includes(skill.identifier) &&
+                skill.content?.trim(),
+            )
+            .map((skill) => ({ name: skill.name })) ?? [];
+        const activatedSkills = [...pinnedSkills, ...(context.activatedSkills ?? [])];
         const toolExecutionContext = {
-          activatedSkills: context.activatedSkills as any,
+          activatedSkills: activatedSkills.length ? (activatedSkills as any) : undefined,
           activeDeviceId: resolveRunActiveDeviceId(context.state.metadata),
           activeDeviceScope: context.state.metadata?.activeDeviceScope,
           agentId: context.state.metadata?.agentId,
@@ -300,7 +316,7 @@ export class ServerToolTransport implements ToolTransport {
           () =>
             toolExecutionService.executeTool(
               chatToolPayload,
-              platformUsageSharedBudget
+              platformUsageSharedBudget && billingActorUserId
                 ? grantPlatformManagedExecution(toolExecutionContext, {
                     actorUserId: billingActorUserId,
                     maxCredits: getPlatformUsageSharedBudgetLimit(platformUsageSharedBudget, {

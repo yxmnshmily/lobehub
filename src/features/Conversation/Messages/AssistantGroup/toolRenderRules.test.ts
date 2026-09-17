@@ -4,7 +4,7 @@ import {
 } from '@lobechat/builtin-tool-web-onboarding';
 import { describe, expect, it } from 'vitest';
 
-import { isImageBearingTool, shouldRenderToolCall } from './toolRenderRules';
+import { isDeliveryBearingTool, isImageBearingTool, shouldRenderToolCall } from './toolRenderRules';
 
 describe('shouldRenderToolCall', () => {
   it('hides the onboarding completion tool call', () => {
@@ -68,6 +68,42 @@ describe('isImageBearingTool', () => {
         id: 't',
         identifier: 'lobe-image-generation',
         result: { content: 'x', id: 'r', state: { generations: [{ asset: null }] } },
+      } as any),
+    ).toBe(false);
+  });
+});
+
+describe('isDeliveryBearingTool', () => {
+  it.each(['lobe-agent-documents', 'lobe-notebook'])(
+    'recognizes document creation from %s',
+    (identifier) => {
+      expect(
+        isDeliveryBearingTool({
+          identifier,
+          apiName: 'createDocument',
+          arguments: '{"title":"Draft"',
+        } as any),
+      ).toBe(true);
+    },
+  );
+  it.each(['readDocument', 'listDocuments', 'removeDocument'])(
+    'keeps %s in execution details',
+    (apiName) => {
+      expect(
+        isDeliveryBearingTool({
+          identifier: 'lobe-agent-documents',
+          apiName,
+          arguments: '{"id":"doc-1"}',
+        } as any),
+      ).toBe(false);
+    },
+  );
+  it('does not expose unrelated tools with a matching method name', () => {
+    expect(
+      isDeliveryBearingTool({
+        identifier: 'other-service',
+        apiName: 'createDocument',
+        arguments: '{}',
       } as any),
     ).toBe(false);
   });

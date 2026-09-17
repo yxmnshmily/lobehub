@@ -163,8 +163,8 @@ const AiHeatmaps = memo<
 
   const dayTags = (
     <Flexbox horizontal gap={8}>
-      <Tag variant={'filled'}>{[days, t('stats.days')].join(' ')}</Tag>
-      <Tag color={'success'} icon={<Icon icon={FlameIcon} />} variant={'filled'}>
+      <Tag variant={'borderless'}>{[days, t('stats.days')].join(' ')}</Tag>
+      <Tag color={'success'} icon={<Icon icon={FlameIcon} />} variant={'borderless'}>
         {[hotDays, t('stats.days')].join(' ')}
       </Tag>
     </Flexbox>

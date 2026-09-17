@@ -155,10 +155,10 @@ export default function AssistantMenu({
               }
             },
           };
-        if (entry?.key === 'moveGroup' && 'children' in entry)
+        if (entry?.key === 'moveGroup' && 'children' in entry && entry.children)
           return {
             ...entry,
-            children: entry.children?.map((child) => {
+            children: entry.children.map((child) => {
               if (!child || !('onClick' in child) || child.key === 'createGroup') return child;
               return {
                 ...child,

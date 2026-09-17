@@ -7,8 +7,8 @@ import SettingContainer from '@/features/Setting/SettingContainer';
 import SettingsPageHeader from '@/features/Settings/features/SettingsPageHeader';
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
-import SurfaceSkeleton, { type SurfaceSkeletonVariant } from '../Surface';
 import SkeletonBar from '../Bar';
+import SurfaceSkeleton, { type SurfaceSkeletonVariant } from '../Surface';
 import SettingsProfileSkeleton from './Profile';
 import SettingsSectionSkeleton from './Section';
 
@@ -19,23 +19,23 @@ import SettingsSectionSkeleton from './Section';
  */
 const TAB_SURFACE: Record<string, SurfaceSkeletonVariant | 'section'> = {
   // list-style pages
-  creds: 'list',
-  devices: 'list',
-  labels: 'list',
+  'creds': 'list',
+  'devices': 'list',
+  'labels': 'list',
   // two-column / detail pages
-  connector: 'detail',
+  'connector': 'detail',
   'content-moderation': 'detail',
-  skill: 'detail',
-  usage: 'detail',
+  'skill': 'detail',
+  'usage': 'detail',
   // grid-style pages
-  community: 'grid',
-  provider: 'grid',
+  'community': 'grid',
+  'provider': 'grid',
   // form-style pages (default section skeleton)
-  appearance: 'section',
-  hotkey: 'section',
-  memory: 'section',
-  messenger: 'section',
-  notification: 'section',
+  'appearance': 'section',
+  'hotkey': 'section',
+  'memory': 'section',
+  'messenger': 'section',
+  'notification': 'section',
   'service-model': 'section',
 };
 
@@ -57,7 +57,7 @@ const SettingsPageSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => {
         ) : (TAB_SURFACE[tab] ?? 'section') === 'section' ? (
           <SettingsSectionSkeleton />
         ) : (
-          <SurfaceSkeleton variant={TAB_SURFACE[tab] as SurfaceSkeletonVariant} />
+          <SurfaceSkeleton header={false} variant={TAB_SURFACE[tab] as SurfaceSkeletonVariant} />
         )}
       </SettingContainer>
     </Flexbox>

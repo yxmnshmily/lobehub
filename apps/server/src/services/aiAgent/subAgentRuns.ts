@@ -1,3 +1,4 @@
+import { formatGroupHandoff } from '@lobechat/prompts';
 import type {
   ExecAgentResult,
   ExecSubAgentParams,
@@ -71,6 +72,7 @@ export interface ExecAgentThreadRunOptions {
   orchestrationRole?: 'member';
   provider?: string;
   resumeParentOnComplete?: boolean;
+  skillIdentifiers?: string[];
 }
 
 /**
@@ -203,6 +205,7 @@ export const execAgentThreadRun = async (
     appContext,
     autoStart: true,
     chatConfigOverride: options.chatConfig,
+    skillIdentifiers: options.skillIdentifiers,
     hooks,
     // Explicit sub-agent model override resolved at the spawn site.
     model: options.model,
@@ -328,7 +331,7 @@ export const execAgentMember = async (
   }
 
   const speakerInstruction = instruction
-    ? `<speaker name="Supervisor" />\n${instruction}`
+    ? formatGroupHandoff(instruction)
     : 'Please respond to the group conversation based on the current context.';
 
   const appContext: NonNullable<InternalExecAgentParams['appContext']> = {
@@ -366,6 +369,7 @@ export const execAgentMember = async (
     autoStart: true,
     disableTools,
     ephemeralUserMessage: speakerInstruction,
+    skillIdentifiers: params.skillIdentifiers,
     hooks: [
       createGroupActionMemberBridgeHook(deps.agentRuntimeService, {
         anchorMessageId,

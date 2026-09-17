@@ -48,8 +48,8 @@ export class S3StaticFileImpl implements FileServiceImpl {
     return this.s3.deleteFile(key);
   }
 
-  async deleteFiles(keys: string[]) {
-    return this.s3.deleteFiles(keys);
+  async deleteFiles(keys: string[], signal?: AbortSignal) {
+    return signal ? this.s3.deleteFiles(keys, signal) : this.s3.deleteFiles(keys);
   }
 
   async getFileContent(key: string, byteLength?: number): Promise<string> {

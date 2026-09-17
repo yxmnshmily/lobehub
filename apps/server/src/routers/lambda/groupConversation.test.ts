@@ -25,9 +25,11 @@ vi.mock('@/libs/trpc/lambda/middleware', () => ({
 
 vi.mock('@/server/services/groupConversationAccess/repository', () => {
   return {
-    GroupConversationAccessRepository: vi.fn(() => ({
-      listAccessibleGroupSummaries: repositoryMocks.listAccessibleGroupSummaries,
-    })),
+    GroupConversationAccessRepository: vi.fn(function () {
+      return {
+        listAccessibleGroupSummaries: repositoryMocks.listAccessibleGroupSummaries,
+      };
+    }),
   };
 });
 
@@ -38,15 +40,17 @@ vi.mock('@/server/services/groupConversationAccess/conversationRepository', () =
   return {
     GROUP_CONVERSATION_IDEMPOTENCY_CONFLICT: 'GROUP_CONVERSATION_IDEMPOTENCY_CONFLICT',
     GROUP_CONVERSATION_INVALID_INPUT: 'GROUP_CONVERSATION_INVALID_INPUT',
-    GroupConversationAccessRepository: vi.fn(() => ({
-      createAccessibleTextMessage: repositoryMocks.createAccessibleTextMessage,
-      createAccessibleTopic: repositoryMocks.createAccessibleTopic,
-      listAccessiblePublishedAssistantMessages:
-        repositoryMocks.listAccessiblePublishedAssistantMessages,
-      listAccessibleTextMessages: repositoryMocks.listAccessibleTextMessages,
-      listAccessibleTopics: repositoryMocks.listAccessibleTopics,
-      listAccessibleTasks: repositoryMocks.listAccessibleTasks,
-    })),
+    GroupConversationAccessRepository: vi.fn(function () {
+      return {
+        createAccessibleTextMessage: repositoryMocks.createAccessibleTextMessage,
+        createAccessibleTopic: repositoryMocks.createAccessibleTopic,
+        listAccessiblePublishedAssistantMessages:
+          repositoryMocks.listAccessiblePublishedAssistantMessages,
+        listAccessibleTextMessages: repositoryMocks.listAccessibleTextMessages,
+        listAccessibleTopics: repositoryMocks.listAccessibleTopics,
+        listAccessibleTasks: repositoryMocks.listAccessibleTasks,
+      };
+    }),
     GroupConversationIdempotencyConflictError: IdempotencyConflictError,
     GroupConversationInvalidInputError: InvalidInputError,
   };
@@ -100,6 +104,7 @@ it.each([undefined, false, true])(
       undefined,
       undefined,
       includeInProgress,
+      undefined,
     );
   },
 );
@@ -305,6 +310,30 @@ describe('groupConversationRouter', () => {
     );
   });
 
+  it('preserves authorized topic associations and cost through the response allowlist', async () => {
+    repositoryMocks.listAccessibleTopics.mockResolvedValueOnce({
+      items: [
+        {
+          id: topicId,
+          title: '行程',
+          createdAt,
+          cost: 0.015301,
+          businessAssociations: [{ id: 't1', kind: 'task', title: '写文案', secret: 'hidden' }],
+          model: 'private',
+        },
+      ],
+      nextCursor: null,
+    });
+    const result = await callerFor(memberId).listTopics({ groupId });
+    expect(result.items[0]).toEqual({
+      id: topicId,
+      title: '行程',
+      createdAt,
+      cost: 0.015301,
+      businessAssociations: [{ id: 't1', kind: 'task', title: '写文案' }],
+    });
+  });
+
   it('passes only the topic page status and dates, without private model metadata', async () => {
     repositoryMocks.listAccessibleTopics.mockResolvedValueOnce({
       items: [
@@ -369,6 +398,7 @@ describe('groupConversationRouter', () => {
       memberId,
       groupId,
       topicId,
+      undefined,
       undefined,
       undefined,
     );

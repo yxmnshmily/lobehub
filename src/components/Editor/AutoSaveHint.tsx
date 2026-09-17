@@ -1,10 +1,10 @@
 'use client';
 
-import { Icon } from '@lobehub/ui';
+import { Flexbox, Icon } from '@lobehub/ui';
 import { Tag } from '@lobehub/ui/base-ui';
 import dayjs from 'dayjs';
 import { CloudIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react';
-import { type CSSProperties } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,21 +19,28 @@ interface AutoSaveHintProps {
 }
 
 /**
- * AutoSaveHint - Unified save status indicator for editors
- *
- * Displays real-time save status for document/config changes. The `failed`
- * state renders an error tag with an inline Retry so a
- * silent save failure can never masquerade as "Latest version loaded".
+ * Neutral states render as bare icon + text (no Tag chrome at all — the base-ui
+ * Tag keeps a filled background/border that survived style overrides in dark
+ * mode). Only the failed state keeps the error Tag so the retry affordance
+ * stays visually loud.
  */
 const AutoSaveHint = memo<AutoSaveHintProps>(({ style, saveStatus, lastUpdatedTime, onRetry }) => {
   const { t } = useTranslation('editor');
 
+  const renderBare = (icon: ReactNode, text: ReactNode) => (
+    <Flexbox
+      horizontal
+      align={'center'}
+      gap={4}
+      style={{ background: 'transparent', color: 'var(--ant-color-text-secondary)', ...style }}
+    >
+      {icon}
+      {text}
+    </Flexbox>
+  );
+
   if (saveStatus === 'saving')
-    return (
-      <Tag icon={<Icon spin icon={Loader2Icon} />} style={style}>
-        {t('autoSave.saving')}
-      </Tag>
-    );
+    return renderBare(<Icon spin icon={Loader2Icon} />, t('autoSave.saving'));
 
   if (saveStatus === 'failed')
     return (
@@ -49,17 +56,14 @@ const AutoSaveHint = memo<AutoSaveHintProps>(({ style, saveStatus, lastUpdatedTi
     );
 
   if (saveStatus === 'saved' && lastUpdatedTime)
-    return (
-      <Tag icon={<Icon icon={CloudIcon} />} style={style}>
+    return renderBare(
+      <Icon icon={CloudIcon} />,
+      <>
         {t('autoSave.saved')} {dayjs(lastUpdatedTime).fromNow()}
-      </Tag>
+      </>,
     );
 
-  return (
-    <Tag icon={<Icon icon={CloudIcon} />} style={style}>
-      {t('autoSave.latest')}
-    </Tag>
-  );
+  return renderBare(<Icon icon={CloudIcon} />, t('autoSave.latest'));
 });
 
 export default AutoSaveHint;

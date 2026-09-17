@@ -4,11 +4,14 @@ import { memo, useEffect } from 'react';
 
 import { useGlobalStore } from '@/store/global';
 
-const WideScreenButton = memo(() => {
+const WideScreenButton = memo<{ wide?: boolean }>(({ wide = false }) => {
   useEffect(() => {
-    // Also reset a previously saved wide-screen preference on these pages.
-    useGlobalStore.getState().toggleWideScreen(false);
-  }, []);
+    // Reset the persisted wide-screen preference on mount: memory pages pass
+    // nothing (back to the capped narrow column); the group chat header passes
+    // `wide` so the conversation column fills the window instead of leaving
+    // all the leftover space on the right.
+    useGlobalStore.getState().toggleWideScreen(wide);
+  }, [wide]);
 
   return null;
 });

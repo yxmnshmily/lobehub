@@ -1,7 +1,9 @@
 import { getBuiltinRender } from '@lobechat/builtin-tools/renders';
 import { Accordion, AccordionItem, Flexbox } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { type CSSProperties } from 'react';
 import { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import SkeletonBar from '@/components/Skeleton/Bar';
 import Actions from '@/features/Conversation/Messages/AssistantGroup/Tool/Actions';
@@ -9,6 +11,8 @@ import dynamic from '@/libs/next/dynamic';
 
 import { dataSelectors, messageStateSelectors, useConversationStore } from '../../../store';
 import Inspectors from '../../AssistantGroup/Tool/Inspector';
+import { isDeliveryBearingTool } from '../../AssistantGroup/toolRenderRules';
+import GroupProcessDetails from '../../components/GroupProcessDetails';
 
 const Debug = dynamic(() => import('../../AssistantGroup/Tool/Debug'), {
   loading: () => <SkeletonBar height={300} width={'100%'} />,
@@ -46,6 +50,8 @@ const Tool = memo<InspectorProps>(
     identifier,
     type,
   }) => {
+    const groupId = useConversationStore((s) => s.context?.groupId);
+    const { t } = useTranslation('common');
     const [showDebug, setShowDebug] = useState(false);
     const [showCustomToolRender, setShowCustomToolRender] = useState(true);
     const [expand, setExpand] = useState(true);
@@ -72,6 +78,30 @@ const Tool = memo<InspectorProps>(
     if (loading && !toolMessage) return null;
 
     const hasCustomRender = !!getBuiltinRender(identifier, apiName);
+
+    const keepResultVisible =
+      !result?.error &&
+      isDeliveryBearingTool({
+        id: toolCallId,
+        apiName,
+        identifier,
+        arguments: requestArgs ?? '',
+        type: toolMessage?.plugin?.type ?? 'builtin',
+        result,
+      });
+    const detail = (
+      <Detail
+        apiName={apiName}
+        arguments={requestArgs}
+        disableEditing={disableEditing}
+        identifier={identifier}
+        messageId={messageId}
+        result={result}
+        showCustomToolRender={showCustomToolRender}
+        toolCallId={toolCallId}
+        type={type}
+      />
+    );
 
     return (
       <Accordion
@@ -116,17 +146,8 @@ const Tool = memo<InspectorProps>(
                 type={type}
               />
             )}
-            <Detail
-              apiName={apiName}
-              arguments={requestArgs}
-              disableEditing={disableEditing}
-              identifier={identifier}
-              messageId={messageId}
-              result={result}
-              showCustomToolRender={showCustomToolRender}
-              toolCallId={toolCallId}
-              type={type}
-            />
+            {groupId && result?.error && <Text role="status">{t('operationFailed')}</Text>}
+            {keepResultVisible ? detail : <GroupProcessDetails>{detail}</GroupProcessDetails>}
           </Flexbox>
         </AccordionItem>
       </Accordion>

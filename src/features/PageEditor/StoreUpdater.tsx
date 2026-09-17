@@ -33,6 +33,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
     knowledgeBaseId,
     metaReadOnly,
     onDocumentIdChange,
+    draftVisibility,
     onEmojiChange,
     onSave,
     onTitleChange,
@@ -81,6 +82,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
 
     // Update store with props
     useStoreUpdater('documentId', pageId);
+    useStoreUpdater('draftVisibility', draftVisibility);
     useStoreUpdater('isWorkspacePage', isWorkspacePage);
     useStoreUpdater('isWorkspaceScopedPage', isWorkspaceScopedPage);
     useStoreUpdater('knowledgeBaseId', knowledgeBaseId);

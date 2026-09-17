@@ -1,4 +1,11 @@
 export default {
+  'goalProcess.graph.controls': 'Graph controls',
+  'goalProcess.graph.zoomIn': 'Zoom in',
+  'goalProcess.graph.zoomOut': 'Zoom out',
+  'goalProcess.graph.fitView': 'Fit view',
+
+  'groupProcess.details': 'View work details',
+  'groupProcess.running': 'Working · View details',
   'groupDiscussion.maxRounds': 'Maximum discussion rounds',
   'groupDiscussion.hint':
     'One member reply or one parallel group counts as a round. Applies to new group discussions; background tasks keep their own limits. Stop the discussion before sending changed requirements.',
@@ -966,6 +973,11 @@ export default {
   'minimap.previousMessage': 'Previous message',
   'minimap.senderAssistant': 'Agent',
   'minimap.senderUser': 'You',
+  'modelSelector.supervisor': 'Supervisor model',
+  'modelSelector.supervisorTopicHint':
+    'Used by the supervisor in this topic. Other group members keep their own model settings.',
+  'modelSelector.supervisorDefaultHint':
+    'Set the supervisor\u2019s default model. Existing topics can select their own model; other group members are unchanged.',
   'modelSelector.model': 'Model',
   'createModal.createBlank': 'Start Blank',
   'createModal.groupPlaceholder': 'Describe what this Group should do...',

@@ -80,7 +80,7 @@ GuardBanner.displayName = 'GuardBanner';
  * In cloud (web) mode, shows a configuration prompt and disables the input
  * until the user sets up their cloud credentials in agent profile.
  */
-const HeterogeneousChatInput = memo(() => {
+const HeterogeneousChatInput = memo<{ leftContent?: ReactNode }>(({ leftContent }) => {
   const { t } = useTranslation('chat');
   // Scope every hetero check to the conversation's agent. Passing `agentId`
   // into the cloud-credential and device guards keeps them validating the same
@@ -323,6 +323,7 @@ const HeterogeneousChatInput = memo(() => {
         controlBarSlot={<HeteroControlBar />}
         extraActionItems={extraActionItems}
         leftActions={leftActions}
+        leftContent={leftContent}
         sendAreaPrefix={sendAreaPrefix}
         sendButtonProps={{ disabled: inputDisabled, shape: 'round' }}
         skipScrollMarginWithList={!hasGuard}

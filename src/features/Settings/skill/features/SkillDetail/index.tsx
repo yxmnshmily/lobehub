@@ -405,7 +405,7 @@ const SkillDetail = memo<SkillDetailProps>(({ identifier, type, onDelete }) => {
               </div>
             }
           >
-            <AgentSkillDetail skillId={identifier} />
+            <AgentSkillDetail drilldown skillId={identifier} />
           </Suspense>
         </div>
       </div>

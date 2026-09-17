@@ -2,7 +2,7 @@
 
 import { type FlexboxProps } from '@lobehub/ui';
 import { Flexbox } from '@lobehub/ui';
-import { createStaticStyles, cssVar, cx } from 'antd-style';
+import { createStaticStyles, cx } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { type CSSProperties } from 'react';
 import { memo, useEffect } from 'react';
@@ -15,7 +15,9 @@ const styles = createStaticStyles(({ css }) => ({
   container: css`
     flex-grow: 1;
     align-self: center;
-    padding-inline: var(--wide-screen-container-padding-inline, 16px);
+
+    /* 页面统一左右边距：桌面端 20px；手机端由 shell 提供 10px gutter（见下方媒体查询） */
+    padding-inline: var(--wide-screen-container-padding-inline, 20px);
 
     /*
      * No width transition here. The column starts from the narrow default and
@@ -26,7 +28,7 @@ const styles = createStaticStyles(({ css }) => ({
     @media (width <= 767px) {
       padding-inline: var(
         --mobile-page-inner-gutter,
-        var(--wide-screen-container-padding-inline, 16px)
+        var(--wide-screen-container-padding-inline, 10px)
       ) !important;
     }
   `,
@@ -64,7 +66,7 @@ const WideScreenContainer = memo<WideScreenContainerProps>(
     }, [onChange, wideScreen]);
 
     return (
-      <Flexbox style={wrapperStyle} width={'100%'} onClick={onClick}>
+      <Flexbox style={{ alignItems: 'center', ...wrapperStyle }} width={'100%'} onClick={onClick}>
         <Flexbox
           className={cx(styles.container, className)}
           style={
@@ -72,7 +74,7 @@ const WideScreenContainer = memo<WideScreenContainerProps>(
               '--wide-screen-container-padding-inline':
                 typeof paddingInline === 'number'
                   ? `${paddingInline}px`
-                  : (paddingInline ?? (fullWidth ? '0px' : '16px')),
+                  : (paddingInline ?? (fullWidth ? '0px' : '20px')),
               ...style,
             } as CSSProperties
           }

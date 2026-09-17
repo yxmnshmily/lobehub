@@ -8,6 +8,7 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import {
   CircleDot,
   Clock3,
+  Coins,
   FolderIcon,
   MessageSquare,
   MoreHorizontal,
@@ -26,6 +27,7 @@ import type { ChatTopic } from '@/types/topic';
 
 import StatusDot from './StatusDot';
 import { useTopicsViewStore } from './store';
+import { TopicAssociations, TopicCredits } from './TopicBusinessInfo';
 import type { GroupBy, TriggerFilter } from './types';
 import { getProjectGroupTitle, getProjectLabel, getTimeGroupTitle } from './utils';
 
@@ -65,10 +67,11 @@ const styles = createStaticStyles(({ css }) => ({
     inset-block-start: 0;
 
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) 120px 100px 80px 100px 32px;
+    grid-template-columns: 24px minmax(180px, 1fr) 160px 64px 54px 100px 90px 24px;
     gap: 12px;
     align-items: center;
 
+    min-width: 850px;
     padding-block: 10px;
     padding-inline: 16px;
     border-block-end: 0.5px solid ${cssVar.colorSplit};
@@ -83,6 +86,7 @@ const styles = createStaticStyles(({ css }) => ({
     @media (width <= 479.98px) {
       grid-template-columns: 24px minmax(0, 1fr) max-content 32px;
       gap: 8px;
+      min-width: 0;
       padding-inline: 12px;
     }
   `,
@@ -98,7 +102,7 @@ const styles = createStaticStyles(({ css }) => ({
   list: css`
     position: relative;
 
-    overflow: hidden;
+    overflow: auto;
 
     border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
@@ -130,10 +134,11 @@ const styles = createStaticStyles(({ css }) => ({
     cursor: pointer;
 
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) 120px 100px 80px 100px 32px;
+    grid-template-columns: 24px minmax(180px, 1fr) 160px 64px 54px 100px 90px 24px;
     gap: 12px;
     align-items: center;
 
+    min-width: 850px;
     padding-block: 10px;
     padding-inline: 16px;
     border-block-end: 0.5px solid ${cssVar.colorSplit};
@@ -156,6 +161,7 @@ const styles = createStaticStyles(({ css }) => ({
     @media (width <= 479.98px) {
       grid-template-columns: 24px minmax(0, 1fr) max-content 32px;
       gap: 8px;
+      min-width: 0;
       padding-inline: 12px;
     }
   `,
@@ -309,6 +315,14 @@ const Row = memo<RowProps>(({ topic, agentId, mobile, onOpen, readOnly = !!onOpe
             {topic.title || t('defaultTitle')}
           </Text>
         </Flexbox>
+        {mobile && topic.businessAssociations !== undefined && (
+          <Flexbox gap={4} style={{ fontSize: 11, color: cssVar.colorTextTertiary, minWidth: 0 }}>
+            <TopicAssociations topic={topic} />
+            <span>
+              {t('management.columns.credits')}：<TopicCredits topic={topic} />
+            </span>
+          </Flexbox>
+        )}
         {topic.historySummary && (
           <Text className={styles.sub} fontSize={11} type={'secondary'}>
             {topic.historySummary}
@@ -317,7 +331,9 @@ const Row = memo<RowProps>(({ topic, agentId, mobile, onOpen, readOnly = !!onOpe
       </div>
       {!mobile && (
         <div className={styles.cell}>
-          {projectLabel ? (
+          {topic.businessAssociations !== undefined ? (
+            <TopicAssociations topic={topic} />
+          ) : projectLabel ? (
             <Tag icon={<Icon icon={FolderIcon} size={11} />} size={'small'}>
               {projectLabel}
             </Tag>
@@ -340,6 +356,9 @@ const Row = memo<RowProps>(({ topic, agentId, mobile, onOpen, readOnly = !!onOpe
             title={updatedAt.title}
           >
             {updatedAt.text}
+          </Text>
+          <Text fontSize={12} style={{ color: cssVar.colorTextTertiary, textAlign: 'end' }}>
+            <TopicCredits topic={topic} />
           </Text>
         </>
       )}
@@ -365,6 +384,7 @@ const TopicListView = memo<TopicListViewProps>(
     const clearSelected = useTopicsViewStore((s) => s.clearSelected);
     const toggleSelectMode = useTopicsViewStore((s) => s.toggleSelectMode);
 
+    const firstGroup = groups.find((group) => group.children.length > 0);
     const allIds = groups.flatMap((g) => g.children.map((c) => c.id));
     const selectedSet = new Set(selectedIds);
     const selectedInListCount = allIds.reduce((acc, id) => acc + (selectedSet.has(id) ? 1 : 0), 0);
@@ -409,11 +429,26 @@ const TopicListView = memo<TopicListViewProps>(
           <span className={styles.headerCell}>
             <Icon aria-hidden icon={Type} size={14} />
             {t('management.columns.title')}
+            {showGroupTitles && firstGroup && (
+              <span className={styles.groupCount} style={{ marginInlineStart: 12 }}>
+                {groupBy === 'byProject'
+                  ? getProjectGroupTitle(firstGroup.id, firstGroup.title, t)
+                  : firstGroup.title || getTimeGroupTitle(firstGroup.id, t)}{' '}
+                {firstGroup.children.length}
+              </span>
+            )}
           </span>
           {!mobile && (
             <span className={styles.headerCell}>
               <Icon aria-hidden icon={FolderIcon} size={14} />
-              {t('management.columns.project')}
+              {t(
+                onOpen ||
+                  groups.some((group) =>
+                    group.children.some((topic) => topic.businessAssociations !== undefined),
+                  )
+                  ? 'management.columns.association'
+                  : 'management.columns.project',
+              )}
             </span>
           )}
           <span className={styles.headerCell}>
@@ -430,6 +465,10 @@ const TopicListView = memo<TopicListViewProps>(
                 <Icon aria-hidden icon={Clock3} size={14} />
                 {t('management.columns.updated')}
               </span>
+              <span className={`${styles.headerCell} ${styles.headerCellEnd}`}>
+                <Icon aria-hidden icon={Coins} size={14} />
+                {t('management.columns.credits')}
+              </span>
             </>
           )}
           {!onOpen && <span />}
@@ -442,7 +481,7 @@ const TopicListView = memo<TopicListViewProps>(
               : group.title || getTimeGroupTitle(group.id, t);
           return (
             <Fragment key={group.id}>
-              {showGroupTitles && (
+              {showGroupTitles && group !== firstGroup && (
                 <div className={styles.groupBar}>
                   <span>{title}</span>
                   <span className={styles.groupCount}>{group.children.length}</span>

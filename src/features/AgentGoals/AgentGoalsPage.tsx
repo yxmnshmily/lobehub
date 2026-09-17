@@ -2,19 +2,35 @@
 
 import type { GoalStatus } from '@lobechat/const/goal';
 import { Block, Empty, Flexbox } from '@lobehub/ui';
-import { ActionIcon, Button, Segmented, Text } from '@lobehub/ui/base-ui';
+import { ActionIcon, Button, Checkbox, Segmented, Text, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { LayoutGridIcon, ListIcon, PlusIcon, RefreshCwIcon } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import {
+  CircleCheck,
+  Clock3,
+  History,
+  House,
+  LayoutGridIcon,
+  ListIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  Target,
+} from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import GoalSkeleton from '@/components/Skeleton/Goal';
 import AgentBreadcrumb from '@/features/AgentBreadcrumb';
+import BulkSelectionBar from '@/features/AgentTopicManager/BulkSelectionBar';
 import NavHeader from '@/features/NavHeader';
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
 import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
+import { useGroupWorkHistory } from '@/features/SuperGroup/useGroupWorkHistory';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { usePermission } from '@/hooks/usePermission';
 import { goalSelectors, useGoalStore } from '@/store/goal';
+import type { GoalListFilter } from '@/store/goal/initialState';
 
 import { createGoalModal } from './CreateGoalModal';
 import { GoalCardItem } from './GoalCardItem';
@@ -52,6 +68,10 @@ const styles = createStaticStyles(({ css }) => ({
     display: flex;
     flex-direction: column;
     border-block: 0.5px solid ${cssVar.colorBorderSecondary};
+
+    & > * + * {
+      border-block-start: 0.5px dashed ${cssVar.colorBorder};
+    }
   `,
   metric: css`
     min-width: 88px;
@@ -75,7 +95,12 @@ interface AgentGoalsPageProps {
 }
 
 const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId }) => {
-  const { t } = useTranslation('chat');
+  const { t } = useTranslation(['chat', 'common']);
+  const { allowed: canEdit } = usePermission('create_content');
+  const { canDelete, checkDeletePermission } = useGroupDeletePermission(canEdit, groupId);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const { isHome, toggleView } = useGroupWorkHistory(groupId);
   const navigate = useWorkspaceAwareNavigate();
   const scopeId = groupId ? `group:${groupId}` : projectId ? `project:${projectId}` : agentId!;
   const useFetchGoals = useGoalStore((s) => s.useFetchGoals);
@@ -92,9 +117,38 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
   const summary = useMemo(() => summarizeGoals(goals), [goals]);
   const filteredGoals = useMemo(() => {
     if (filter === 'all') return goals;
+    if (filter === 'canceled') return goals.filter(({ goal }) => goal.status === 'canceled');
 
     return goals.filter(({ goal }) => !TERMINAL_GOAL_STATUSES.has(goal.status));
   }, [filter, goals]);
+  const selectionScope = `${scopeId}|${filter}|${isHome}`;
+  const currentScope = useRef(selectionScope);
+  currentScope.current = selectionScope;
+  useEffect(() => setSelected([]), [selectionScope]);
+  const visibleGoals = filteredGoals.slice(0, visibleLimit);
+  const selectedGoals = visibleGoals.filter(({ goal }) => selected.includes(goal.id));
+  const toggleGoal = (id: string) =>
+    setSelected((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]));
+  const confirmDelete = () => {
+    if (!canDelete || deleting || !selectedGoals.length) return;
+    const targets = [...selectedGoals];
+    const scope = selectionScope;
+    void confirmResourceDeletion({
+      onBusyChange: setDeleting,
+      resource: 'goal',
+      ids: targets.map(({ goal }) => goal.id),
+      canProceed: () => checkDeletePermission() && currentScope.current === scope,
+
+      title: t('bulkDelete.confirmTitle', { ns: 'common', count: targets.length }),
+
+      onOk: (cleanupPending) => {
+        if (!checkDeletePermission() || currentScope.current !== scope) return;
+        setSelected([]);
+        if (!cleanupPending)
+          toast.success(t('bulkDelete.success', { ns: 'common', count: targets.length }));
+      },
+    });
+  };
   const visibleGoalCount = filteredGoals.length;
   const GoalItem = viewMode === 'list' ? GoalListItem : GoalCardItem;
   const openCreateGoal = (seed?: GoalExampleSeed) => {
@@ -129,9 +183,23 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
           )
         }
         right={
-          <Button icon={PlusIcon} size={'small'} type={'fill'} onClick={() => openCreateGoal()}>
-            {t('goalPage.create')}
-          </Button>
+          <Flexbox horizontal align="center" gap={8}>
+            {groupId && (
+              <Button
+                icon={isHome ? History : House}
+                size="small"
+                onClick={() => {
+                  if (isHome) setFilter('all');
+                  toggleView();
+                }}
+              >
+                {isHome ? '历史目标' : '目标首页'}
+              </Button>
+            )}
+            <Button icon={PlusIcon} size={'small'} type={'fill'} onClick={() => openCreateGoal()}>
+              {t('goalPage.create')}
+            </Button>
+          </Flexbox>
         }
       />
       <WideScreenContainer
@@ -142,7 +210,9 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
         paddingInline={16}
         wrapperStyle={{ flex: 1, overflowY: 'auto' }}
       >
-        {isLoading && !isInitialized ? (
+        {isHome ? (
+          <GoalEmptyState hasGoals={goals.length > 0} onCreate={openCreateGoal} />
+        ) : isLoading && !isInitialized ? (
           <GoalSkeleton chrome={'body'} />
         ) : error ? (
           <Block padding={32} variant={'outlined'}>
@@ -161,7 +231,11 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
             </Flexbox>
           </Block>
         ) : goals.length === 0 ? (
-          <GoalEmptyState onCreate={openCreateGoal} />
+          groupId ? (
+            <Empty title="暂无历史目标" />
+          ) : (
+            <GoalEmptyState onCreate={openCreateGoal} />
+          )
         ) : (
           <>
             <Flexbox className={styles.overview}>
@@ -177,7 +251,12 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
                     <Text fontSize={20} weight={600}>
                       {summary.total}
                     </Text>
-                    <Text fontSize={12} type={'secondary'}>
+                    <Text
+                      fontSize={12}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      type={'secondary'}
+                    >
+                      <Target aria-hidden size={14} />
                       {t('goalPage.metrics.total')}
                     </Text>
                   </Flexbox>
@@ -185,7 +264,12 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
                     <Text fontSize={20} weight={600}>
                       {summary.pursuing}
                     </Text>
-                    <Text fontSize={12} type={'secondary'}>
+                    <Text
+                      fontSize={12}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      type={'secondary'}
+                    >
+                      <Clock3 aria-hidden size={14} />
                       {t('goalPage.metrics.pursuing')}
                     </Text>
                   </Flexbox>
@@ -193,7 +277,12 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
                     <Text fontSize={20} weight={600}>
                       {summary.delivered}
                     </Text>
-                    <Text fontSize={12} type={'secondary'}>
+                    <Text
+                      fontSize={12}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      type={'secondary'}
+                    >
+                      <CircleCheck aria-hidden size={14} />
                       {t('goalPage.metrics.delivered')}
                     </Text>
                   </Flexbox>
@@ -201,7 +290,7 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
               </Flexbox>
             </Flexbox>
             <Flexbox gap={10}>
-              <Flexbox horizontal align={'center'} justify={'space-between'}>
+              <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
                 <Flexbox horizontal align={'center'} gap={8}>
                   <Text fontSize={16} weight={600}>
                     {t('goalPage.listTitle')}
@@ -221,8 +310,12 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
                         label: t('goalPage.filter.all'),
                         value: 'all',
                       },
+                      {
+                        label: t('goalList.status.canceled'),
+                        value: 'canceled',
+                      },
                     ]}
-                    onChange={(value) => setFilter(value as 'active' | 'all')}
+                    onChange={(value) => setFilter(value as GoalListFilter)}
                   />
                   <ActionIcon
                     icon={ListIcon}
@@ -242,20 +335,50 @@ const AgentGoalsPage = memo<AgentGoalsPageProps>(({ agentId, groupId, projectId 
                   />
                 </Flexbox>
               </Flexbox>
+              {canDelete && (
+                <BulkSelectionBar
+                  busy={deleting}
+                  selectedCount={selectedGoals.length}
+                  total={visibleGoals.length}
+                  onClear={() => setSelected([])}
+                  onDelete={confirmDelete}
+                  onSelectAll={() => setSelected(visibleGoals.map(({ goal }) => goal.id))}
+                />
+              )}
               <div className={viewMode === 'card' ? styles.list : styles.listRows}>
                 {filteredGoals.length === 0 ? (
                   <Block padding={32} variant={'outlined'}>
                     <Empty
-                      description={t('goalPage.filteredEmptyDescription')}
-                      title={t('goalPage.filteredEmptyTitle')}
+                      description={
+                        filter === 'canceled' ? undefined : t('goalPage.filteredEmptyDescription')
+                      }
+                      title={
+                        filter === 'canceled' ? '暂无已取消目标' : t('goalPage.filteredEmptyTitle')
+                      }
                     />
                   </Block>
                 ) : (
-                  filteredGoals
-                    .slice(0, visibleLimit)
-                    .map((item) => (
-                      <GoalItem goal={item} key={item.goal.id} projectId={projectId} />
-                    ))
+                  visibleGoals.map((item) => (
+                    <Flexbox
+                      horizontal
+                      align="center"
+                      gap={8}
+                      key={item.goal.id}
+                      style={{ minWidth: 0 }}
+                    >
+                      {canDelete && (
+                        <Checkbox
+                          aria-label={item.goal.title || item.goal.id}
+                          checked={selected.includes(item.goal.id)}
+                          disabled={deleting}
+                          onChange={() => toggleGoal(item.goal.id)}
+                        />
+                      )}
+                      <Flexbox flex={1} style={{ minWidth: 0 }}>
+                        <GoalItem goal={item} projectId={projectId} />
+                      </Flexbox>
+                    </Flexbox>
+                  ))
                 )}
               </div>
               {visibleLimit < filteredGoals.length && (

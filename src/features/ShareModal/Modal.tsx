@@ -24,6 +24,7 @@ export interface OpenShareModalOptions {
   afterClose?: () => void;
   context?: Partial<ConversationContext>;
   snapshot?: ShareSnapshot;
+  title?: string;
 }
 
 const ShareModalContent = memo(() => {
@@ -145,6 +146,7 @@ export const openShareModal = ({
   afterClose,
   context,
   snapshot,
+  title,
 }: OpenShareModalOptions = {}): ModalInstance =>
   createModal({
     content: (
@@ -160,7 +162,7 @@ export const openShareModal = ({
     styles: {
       content: { height: 'min(80vh, 800px)' },
     },
-    title: t('shareModal.archive.title', { ns: 'chat' }),
+    title: title ?? t('shareModal.archive.title', { ns: 'chat' }),
     width: 'min(90vw, 1024px)',
   });
 

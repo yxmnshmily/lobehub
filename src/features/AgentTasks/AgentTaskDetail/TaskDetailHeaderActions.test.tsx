@@ -214,3 +214,10 @@ describe('TaskDetailHeaderActions', () => {
     expect(opts.okText).toBe('taskDetail.publishToWorkspace.confirmOk');
   });
 });
+
+vi.mock('@/features/SuperGroup/useGroupDeletePermission', () => ({
+  useGroupDeletePermission: (allowed: boolean) => ({
+    canDelete: allowed,
+    checkDeletePermission: () => allowed,
+  }),
+}));

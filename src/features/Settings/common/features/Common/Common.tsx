@@ -10,8 +10,8 @@ import { useTheme as useNextThemesTheme } from 'next-themes';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { imageUrl } from '@/const/url';
 import { isDesktop } from '@/const/version';
@@ -41,6 +41,9 @@ const Common = memo(() => {
 
   const handleLangChange = (value: LocaleMode) => {
     switchLocale(value);
+    save(() =>
+      setSettings({ general: { responseLanguage: /^en(?:-|$)/i.test(value) ? 'en-US' : 'zh-CN' } }),
+    );
   };
 
   if (!(isStatusInit && isUserStateInit)) return <SkeletonText rows={5} />;
@@ -213,7 +216,7 @@ const Common = memo(() => {
       initialValues={general}
       items={[themeFormGroup]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       onValuesChange={(v) => save(() => setSettings({ general: v }))}
       {...FORM_STYLE}
     />

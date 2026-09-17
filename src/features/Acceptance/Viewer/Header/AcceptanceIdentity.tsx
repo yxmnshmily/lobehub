@@ -8,6 +8,7 @@ import { GitPullRequest } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useIsHydrated } from '@/hooks/useIsHydrated';
 
 import { useAcceptanceScope } from '../AcceptanceScope';
@@ -57,7 +58,7 @@ interface AcceptanceIdentityProps {
  */
 
 const AcceptanceIdentity = ({ focusSlot, statusSlot, topicSlot }: AcceptanceIdentityProps) => {
-  const { t } = useTranslation('verify');
+  const { t, i18n } = useTranslation('verify');
   const hydrated = useIsHydrated();
   const { acceptanceId, embedded } = useAcceptanceScope();
   const { data } = useAcceptanceBundle(acceptanceId);
@@ -98,7 +99,10 @@ const AcceptanceIdentity = ({ focusSlot, statusSlot, topicSlot }: AcceptanceIden
           should carry. */}
       <Flexbox horizontal align={'center'} gap={10} wrap={'wrap'}>
         <Text ellipsis as={'h1'} style={{ fontSize: 18, margin: 0, minWidth: 0 }}>
-          {subject.title ?? subject.id}
+          {localizeGoalTemplate(
+            subject.title ?? subject.id,
+            i18n.resolvedLanguage || i18n.language,
+          )}
         </Text>
       </Flexbox>
 

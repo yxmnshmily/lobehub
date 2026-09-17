@@ -89,7 +89,7 @@ const ShellSection = memo(() => {
       collapsible={false}
       items={[shellGroup]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

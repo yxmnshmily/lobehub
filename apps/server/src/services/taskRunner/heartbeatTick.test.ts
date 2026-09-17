@@ -68,6 +68,25 @@ describe('runHeartbeatTick', () => {
     });
   });
 
+  it('does not restart a task manually paused by the user', async () => {
+    mockSelectTask.mockResolvedValue([
+      baseTask({ status: 'paused', context: { manualStopAt: '2026-09-13T01:00:00Z' } }),
+    ]);
+    expect(await runHeartbeatTick(taskId, userId)).toEqual({ ran: false, reason: 'paused' });
+    expect(mockRunner.runTask).not.toHaveBeenCalled();
+  });
+
+  it('keeps automatic retries available after a newer manual resume', async () => {
+    mockSelectTask.mockResolvedValue([
+      baseTask({
+        status: 'paused',
+        startedAt: new Date('2026-09-13T02:00:00Z'),
+        context: { manualStopAt: '2026-09-13T01:00:00Z' },
+      }),
+    ]);
+    expect(await runHeartbeatTick(taskId, userId)).toEqual({ ran: true, taskIdentifier: 'T-1' });
+  });
+
   it('runs the task and excludes transient error briefs from tick gating', async () => {
     mockSelectTask.mockResolvedValue([baseTask()]);
     mockRunner.runTask.mockResolvedValue(undefined);

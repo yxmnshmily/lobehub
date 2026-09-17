@@ -2,6 +2,7 @@ import { Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { CheckCircle2, Circle, CircleAlert, LoaderCircle, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import type { VerifyCheckResultItem } from '@/database/schemas/verify';
 import { useVerifyResults, useVerifyState } from '@/features/Acceptance/hooks';
@@ -48,6 +49,7 @@ const statusMeta = (
 };
 
 const Title = () => {
+  const { t } = useTranslation('verify');
   const operationId = useChatStore(chatPortalSelectors.verifyResultOperationId);
   const checkItemId = useChatStore(chatPortalSelectors.verifyResultCheckItemId);
   const { data: state } = useVerifyState(operationId ?? null);
@@ -73,7 +75,7 @@ const Title = () => {
           }}
         >
           <Icon icon={sIcon.icon} size={13} spin={result?.status === 'running'} />
-          {label}
+          {t(`report.verdict.${label}`, { defaultValue: label })}
         </span>
       )}
     </Flexbox>

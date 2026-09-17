@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // @ts-expect-error The upstream internal entry has no declaration file.
 import Image from '../../node_modules/@lobehub/ui/es/Image/Image.mjs';
-// @ts-expect-error The upstream internal entry has no declaration file.
 import PreviewGroup from '../../node_modules/@lobehub/ui/es/Image/PreviewGroup.mjs';
 // Exercise the installed dependency that our persisted patch changes.
 // @ts-expect-error The upstream internal hook has no declaration file.

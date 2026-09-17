@@ -2,6 +2,7 @@ import { isHeterogeneousAgentModelId, LOADING_FLAT } from '@lobechat/const';
 import type { LobeChatDatabase } from '@lobechat/database';
 import type { HeterogeneousAgentType } from '@lobechat/heterogeneous-agents';
 import type {
+  AgentDispatchMetadata,
   ChatAudioItem,
   ChatFileItem,
   ChatTopicMetadata,
@@ -16,6 +17,7 @@ import {
 } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 
+import { TopicTrigger } from '@/const/topic';
 import { AiModelModel } from '@/database/models/aiModel';
 import type { MessageModel } from '@/database/models/message';
 import type { TopicModel } from '@/database/models/topic';
@@ -356,7 +358,7 @@ export interface TurnSetupResult {
   pinnedHeterogeneousTopicModel?: HeterogeneousTopicPin;
   provider: string;
   requestTriggerMetadata: {
-    agentDispatch?: { kind: 'callAgent'; visibility: 'internal' };
+    agentDispatch?: AgentDispatchMetadata;
     trigger?: RequestTrigger;
   };
   runAttachments: RunAttachments;
@@ -643,6 +645,11 @@ export const setupTurn = async (
       : undefined),
     ...(appContext?.conversationAgentId && appContext.scope === 'sub_agent'
       ? { agentDispatch: { kind: 'callAgent' as const, visibility: 'internal' as const } }
+      : undefined),
+    // TaskRunner supplies a generated instruction envelope, not a human chat turn.
+    // Keep it in model history while letting the UI show it as internal details.
+    ...(operationTaskId && trigger === TopicTrigger.RunTask
+      ? { agentDispatch: { kind: 'taskRun' as const, visibility: 'internal' as const } }
       : undefined),
     // Bot-channel turns are inserted under the OWNER's userId; keep the real
     // platform author alongside so the UI can attribute the bubble correctly.

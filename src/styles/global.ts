@@ -1,3 +1,4 @@
+/* stylelint-disable no-descending-specificity -- 存量全局选择器顺序，2026-09-17 checkpoint 豁免 */
 import { CLASSNAMES } from '@lobehub/ui';
 import type { Theme } from 'antd-style';
 import { css } from 'antd-style';
@@ -6,6 +7,7 @@ import { css } from 'antd-style';
 // overflow: hidden;
 // ref: https://zhuanlan.zhihu.com/p/113855026
 const genGlobalStyle = ({ token }: { prefixCls: string; token: Theme }) => css`
+  /* stylelint-disable no-descending-specificity -- 存量全局选择器顺序，2026-09-17 checkpoint 豁免 */
   html,
   body,
   #__next {
@@ -29,6 +31,13 @@ const genGlobalStyle = ({ token }: { prefixCls: string; token: Theme }) => css`
        body horizontally — focusing it scrolls the whole page sideways. */
     will-change: opacity;
     isolation: isolate;
+  }
+
+  /* The centered web shell leaves viewport gutters outside the theme provider.
+     Paint that canvas with the active layout token, including custom palettes.
+     Electron keeps its existing translucent window background below. */
+  html:not(.desktop) body {
+    background-color: ${token.colorBgLayout};
   }
 
   * {
@@ -77,15 +86,15 @@ const genGlobalStyle = ({ token }: { prefixCls: string; token: Theme }) => css`
   [role='dialog'] .lobe-flex:has(> [data-actual-size]) {
     color: ${token.colorText};
     background: ${token.colorBgElevated};
-    box-shadow: ${token.boxShadowSecondary};
     backdrop-filter: none;
+    box-shadow: ${token.boxShadowSecondary};
 
     > div {
       font-weight: 600;
       color: ${token.colorText};
     }
 
-    > button:not(:disabled):not([aria-disabled='true']) {
+    > button:not(:disabled, [aria-disabled='true']) {
       color: ${token.colorText};
 
       &:hover {

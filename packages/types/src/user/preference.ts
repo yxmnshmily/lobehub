@@ -130,6 +130,7 @@ export interface LobeUser {
   id: string;
   interests?: string[];
   latestName?: string | null;
+  phone?: string | null;
   username?: string | null;
 }
 
@@ -296,6 +297,7 @@ export interface UserInitializationState {
   isOnboard?: boolean;
   lastName?: string;
   onboarding?: UserOnboarding;
+  phone?: string;
   preference: UserPreference;
   /**
    * Referral lifecycle status for the current user (invitee side).

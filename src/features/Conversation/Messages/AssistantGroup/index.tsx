@@ -342,6 +342,7 @@ const GroupMessage = memo<GroupMessageProps>(
             <Group
               enableProcessFold
               blocks={children}
+              compactProcess={!!groupId}
               content={lastAssistantMsg?.content}
               contentId={contentId}
               // Folding a finished turn's process is the default behavior now
@@ -359,6 +360,7 @@ const GroupMessage = memo<GroupMessageProps>(
           {taskCompletions && taskCompletions.length > 0 && (
             <Group
               blocks={taskCompletions}
+              compactProcess={!!groupId}
               content={children?.length ? undefined : lastAssistantMsg?.content}
               contentId={contentId}
               defaultWorkflowExpandLevel={workflowExpandLevel}

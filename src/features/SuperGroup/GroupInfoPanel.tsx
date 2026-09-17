@@ -4,7 +4,17 @@ import { GROUP_CHAT_URL } from '@lobechat/const';
 import { Flexbox } from '@lobehub/ui';
 import { Alert, Avatar, Button, confirmModal, createModal, Popover } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ChevronRight, FolderOpen, LogOut } from 'lucide-react';
+import {
+  ChevronRight,
+  FolderOpen,
+  History,
+  LogOut,
+  Logs,
+  Megaphone,
+  StickyNote,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import SkeletonBar from '@/components/Skeleton/Bar';
@@ -83,6 +93,16 @@ const styles = createStaticStyles(({ css }) => ({
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
+  `,
+  rowLabel: css`
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+
+    > svg {
+      flex-shrink: 0;
+      color: ${cssVar.colorTextSecondary};
+    }
   `,
   row: css`
     display: flex;
@@ -394,7 +414,10 @@ export default function GroupInfoPanel({
             </div>
           )}
           <div className={styles.row}>
-            <span>群名称</span>
+            <span className={styles.rowLabel}>
+              <UsersRound aria-hidden size={16} />
+              群名称
+            </span>
             <span className={styles.value} title={data.name || ''}>
               {data.name || '未命名群'}
             </span>
@@ -412,7 +435,10 @@ export default function GroupInfoPanel({
               });
             }}
           >
-            <span>群日志</span>
+            <span className={styles.rowLabel}>
+              <Logs aria-hidden size={16} />
+              群日志
+            </span>
             <span className={styles.value} />
             <ChevronRight size={16} />
           </button>
@@ -443,22 +469,34 @@ export default function GroupInfoPanel({
               });
             }}
           >
-            <span>群历史记录</span>
+            <span className={styles.rowLabel}>
+              <History aria-hidden size={16} />
+              群历史记录
+            </span>
             <span className={styles.value}>最近 20 条话题</span>
             <ChevronRight size={16} />
           </button>
           <button className={styles.row} type="button" onClick={() => edit('announcement')}>
-            <span>群公告</span>
+            <span className={styles.rowLabel}>
+              <Megaphone aria-hidden size={16} />
+              群公告
+            </span>
             <span className={styles.value}>{data.announcement || '未设置'}</span>
             <ChevronRight size={16} />
           </button>
           <button className={styles.row} type="button" onClick={() => edit('remark')}>
-            <span>备注</span>
+            <span className={styles.rowLabel}>
+              <StickyNote aria-hidden size={16} />
+              备注
+            </span>
             <span className={styles.value}>{data.remark || '仅自己可见'}</span>
             <ChevronRight size={16} />
           </button>
           <div className={styles.row}>
-            <span>我在本群的昵称</span>
+            <span className={styles.rowLabel}>
+              <UserRound aria-hidden size={16} />
+              我在本群的昵称
+            </span>
             <span className={styles.value} title={data.nickname}>
               {data.nickname || '未设置'}
             </span>
@@ -474,7 +512,7 @@ export default function GroupInfoPanel({
                 if (!shareOptions || !canShare || openingFiles) return;
                 setOpeningFiles(true);
                 try {
-                  await openShareModal(shareOptions);
+                  await openShareModal({ ...shareOptions, title: '群文件' });
                   onClose();
                 } catch {
                   setError('群文件面板加载失败，请重试');

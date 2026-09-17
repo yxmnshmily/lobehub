@@ -524,8 +524,11 @@ export const savePublishedSuperGroupAgent = async (
   userId: string,
   agentId: string,
   value: Parameters<AgentModel['updateConfig']>[1],
-): Promise<boolean> =>
-  db
+): Promise<boolean> => {
+  // Match AgentModel.updateConfig: an absent patch is a no-op, not a publication.
+  if (value === null || value === undefined) return false;
+
+  return db
     .transaction(async (transaction) => {
       const tx = transaction as LobeChatDatabase;
       await lockSuperGroupTemplate(tx);
@@ -689,6 +692,7 @@ export const savePublishedSuperGroupAgent = async (
         message: '模板自动同步失败：保存未完成，请重试。',
       });
     });
+};
 
 /** Text-skill edits and re-imports republish all bound members in the same transaction. */
 export const saveSkillWithSuperGroupTemplate = async (

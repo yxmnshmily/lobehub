@@ -426,6 +426,7 @@ export class ChatGroupUserMembershipModel {
     const viewerMembership = alias(chatGroupUserMemberships, 'viewer_membership');
     const rows = await this.db
       .select({
+        totalCount: sql<number>`count(*) over ()`.mapWith(Number),
         avatar: users.avatar,
         displayName: sql<
           string | null
@@ -476,7 +477,8 @@ export class ChatGroupUserMembershipModel {
       .limit(limit + 1);
     const hasMore = rows.length > limit;
     return {
-      items: hasMore ? rows.slice(0, limit) : rows,
+      totalCount: rows[0]?.totalCount ?? 0,
+      items: (hasMore ? rows.slice(0, limit) : rows).map(({ totalCount, ...item }) => item),
       nextOffset: hasMore ? offset + limit : null,
     };
   };

@@ -139,7 +139,7 @@ const AdvancedActions = () => {
       <Form
         collapsible={false}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         items={[
           ...(hideDocs ? [analytics] : []),
           ...(dataMigration ? [dataMigration] : []),

@@ -3,8 +3,10 @@ import type {
   GenerateObjectPayload,
   GenerateObjectSchema,
 } from '@lobechat/model-runtime';
+import { outputLanguageInstruction } from '@lobechat/prompts';
 import type { OpenAIChatMessage } from '@lobechat/types';
 
+import { UserModel } from '@/database/models/user';
 import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 
@@ -77,9 +79,13 @@ export class AiGenerationService {
     const runtime = this.workspaceId
       ? await initModelRuntimeFromDB(this.db, this.userId, input.provider, this.workspaceId)
       : await initModelRuntimeFromDB(this.db, this.userId, input.provider);
+    const userInfo = await UserModel.getInfoForAIGeneration(this.db, this.userId);
     return (await runtime.generateObject(
       {
-        messages: input.messages as GenerateObjectPayload['messages'],
+        messages: [
+          ...input.messages,
+          { role: 'system', content: outputLanguageInstruction(userInfo.responseLanguage) },
+        ] as GenerateObjectPayload['messages'],
         model: input.model,
         schema: input.schema,
         thinking: input.thinking,

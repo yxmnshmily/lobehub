@@ -19,7 +19,7 @@ const wrapperStyle: React.CSSProperties = {
   width: '100%',
 };
 
-const ChatConversation = memo(() => {
+const ChatConversation = memo<{ inputLeftContent?: React.ReactNode }>(({ inputLeftContent }) => {
   const { agentId, topicId } = useAgentContext();
   const model = useAgentStore(agentByIdSelectors.getAgentModelById(agentId));
   const provider = useAgentStore(agentByIdSelectors.getAgentModelProviderById(agentId));
@@ -41,7 +41,7 @@ const ChatConversation = memo(() => {
   const content = (
     <Flexbox flex={1} height={'100%'} style={{ minWidth: 0 }}>
       <TooltipGroup>
-        <ConversationArea />
+        <ConversationArea inputLeftContent={inputLeftContent} />
       </TooltipGroup>
     </Flexbox>
   );

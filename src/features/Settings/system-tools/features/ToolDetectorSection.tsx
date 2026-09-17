@@ -193,7 +193,7 @@ const ToolDetectorSection = memo(() => {
       collapsible={false}
       items={formItems}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       footer={
         <Flexbox
           horizontal

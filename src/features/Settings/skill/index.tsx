@@ -1,21 +1,19 @@
 'use client';
 
 import { Button } from '@lobehub/ui/base-ui';
-import { createStaticStyles, useResponsive } from 'antd-style';
+import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { ChevronLeft } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
-import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useToolStore } from '@/store/tool';
-import { agentSkillsSelectors, builtinToolSelectors } from '@/store/tool/selectors';
+import { agentSkillsSelectors } from '@/store/tool/selectors';
 
 import LeftPanel from './features/LeftPanel';
 import SkillDetail, { type ToolDetailType } from './features/SkillDetail';
 import { type SkillViewMode } from './features/SkillList';
-import { shouldUseMobileToolLayout } from './mobileLayout';
 
 export interface SelectedTool {
   identifier: string;
@@ -42,9 +40,10 @@ const styles = createStaticStyles(({ css }) => ({
     display: flex;
     flex: 1;
     min-height: 0;
+
     /* Gutter comes from the shared settings container. */
 
-    @media (max-width: 575px) {
+    @media (width <= 575px) {
       padding: 0;
     }
   `,
@@ -65,56 +64,14 @@ interface ToolSettingsProps {
   viewMode: SkillViewMode;
 }
 
-export const ToolSettings = memo<ToolSettingsProps>(({ mobile: routeMobile, viewMode }) => {
+export const ToolSettings = memo<ToolSettingsProps>(({ viewMode }) => {
   const { t } = useTranslation('common');
-  const { t: tSetting } = useTranslation('setting');
-  const { mobile: responsiveMobile = false } = useResponsive();
-  const runtimeMobile = useServerConfigStore(serverConfigSelectors.isMobile);
-  const mobileViewport =
-    routeMobile === undefined &&
-    typeof window !== 'undefined' &&
-    window.matchMedia('(max-width: 575px)').matches;
-  const mobile =
-    routeMobile ?? shouldUseMobileToolLayout(responsiveMobile, runtimeMobile, mobileViewport);
   const [searchParams] = useSearchParams();
   const querySkillIdentifier = searchParams.get('skill');
   const [selected, setSelected] = useState<SelectedTool | null>(null);
 
-  const builtinTools = useToolStore((s) => s.builtinTools, isEqual);
-  const builtinSkills = useToolStore((s) => s.builtinSkills, isEqual);
   const marketAgentSkills = useToolStore(agentSkillsSelectors.getMarketAgentSkills, isEqual);
   const userAgentSkills = useToolStore(agentSkillsSelectors.getUserAgentSkills, isEqual);
-  const installedBuiltinIds = useToolStore(
-    (s) => builtinToolSelectors.installedAllMetaList(s).map((tool) => tool.identifier),
-    isEqual,
-  );
-
-  useEffect(() => {
-    if (selected) return;
-    if (mobile) return;
-    if (viewMode === 'skill' && querySkillIdentifier) return;
-    if (viewMode === 'connector') {
-      const firstTool = builtinTools.find(
-        (tool) => !tool.hidden && installedBuiltinIds.includes(tool.identifier),
-      );
-      if (firstTool) {
-        setSelected({ identifier: firstTool.identifier, type: 'builtin' });
-      }
-    } else {
-      const firstSkill = builtinSkills[0];
-      if (firstSkill) {
-        setSelected({ identifier: firstSkill.identifier, type: 'builtin-skill' });
-      }
-    }
-  }, [
-    builtinTools,
-    builtinSkills,
-    installedBuiltinIds,
-    mobile,
-    querySkillIdentifier,
-    selected,
-    viewMode,
-  ]);
 
   useEffect(() => {
     if (viewMode !== 'skill' || !querySkillIdentifier) return;
@@ -129,41 +86,35 @@ export const ToolSettings = memo<ToolSettingsProps>(({ mobile: routeMobile, view
     setSelected({ identifier, type });
   };
 
+  /* 统一的"下钻栈"布局（所有宽度一致）：列表占满整屏 → 点击进入整屏详情
+     （顶部带返回）→ 返回回到列表。不再使用左右分栏——列表 | 详情、甚至
+     列表 | 文件树 | 内容 的多层并排，在窄屏会被挤扁，在宽屏也要来回扫视。 */
   return (
-    <>
-      <div className={styles.root}>
-        {(!mobile || !selected) && (
-          <LeftPanel
-            mobile={mobile}
-            selectedIdentifier={selected?.identifier}
-            viewMode={viewMode}
-            onDeleteSelected={() => setSelected(null)}
-            onSelect={handleSelect}
-          />
-        )}
+    <div className={styles.root}>
+      {!selected && (
+        <LeftPanel
+          mobile
+          viewMode={viewMode}
+          onDeleteSelected={() => setSelected(null)}
+          onSelect={handleSelect}
+        />
+      )}
 
-        {selected && (
-          <div className={styles.detail}>
-            {mobile && (
-              <div className={styles.mobileBack}>
-                <Button
-                  icon={ChevronLeft}
-                  style={{ minHeight: 44 }}
-                  onClick={() => setSelected(null)}
-                >
-                  {t('back')}
-                </Button>
-              </div>
-            )}
-            <SkillDetail
-              identifier={selected.identifier}
-              type={selected.type}
-              onDelete={() => setSelected(null)}
-            />
+      {selected && (
+        <div className={styles.detail}>
+          <div className={styles.mobileBack}>
+            <Button icon={ChevronLeft} style={{ minHeight: 44 }} onClick={() => setSelected(null)}>
+              {t('back')}
+            </Button>
           </div>
-        )}
-      </div>
-    </>
+          <SkillDetail
+            identifier={selected.identifier}
+            type={selected.type}
+            onDelete={() => setSelected(null)}
+          />
+        </div>
+      )}
+    </div>
   );
 });
 

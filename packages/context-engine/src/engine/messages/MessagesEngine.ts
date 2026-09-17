@@ -245,9 +245,16 @@ export class MessagesEngine {
       isAgentMode && (skillsConfig?.enabledSkills?.length ?? 0) > 0
         ? selectActivatedSkills(skillsConfig?.enabledSkills)
         : [];
+    // A catalog may include activatable tools whose APIs are not in this call.
+    // Their discovery entries stay available, but full instructions belong only
+    // to the explicit executable set. Omitted lists retain legacy behavior.
+    const promptManifests =
+      toolsConfig?.tools === undefined
+        ? toolsConfig?.manifests
+        : toolsConfig?.manifests?.filter((manifest) => toolIds.includes(manifest.identifier));
     const injectedToolManifests =
-      (toolsConfig?.manifests?.length ?? 0) > 0 && !!canUseFC(model, provider)
-        ? selectToolPromptManifests(toolsConfig?.manifests)
+      (promptManifests?.length ?? 0) > 0 && !!canUseFC(model, provider)
+        ? selectToolPromptManifests(promptManifests)
         : [];
 
     // The skill-import route is only actionable when the Skill Store is reachable this
@@ -333,9 +340,9 @@ export class MessagesEngine {
       }),
       // Tool system role (tool manifests and API definitions)
       new ToolSystemRoleProvider({
-        enabled: !!(toolsConfig?.manifests && toolsConfig.manifests.length > 0),
+        enabled: !!promptManifests?.length,
         isCanUseFC: capabilities?.isCanUseFC || (() => true),
-        manifests: toolsConfig?.manifests,
+        manifests: promptManifests,
         model,
         provider,
       }),

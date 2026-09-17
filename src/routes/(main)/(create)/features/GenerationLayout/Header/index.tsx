@@ -5,12 +5,10 @@ import { ImagePlus, SearchIcon, Video } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getRouteById } from '@/config/routes';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { useMobileNavPanelController } from '@/features/NavPanel/MobileNavPanel';
 import SideBarHeaderLayout from '@/features/NavPanel/SideBarHeaderLayout';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
-import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { useGlobalStore } from '@/store/global';
 
@@ -30,13 +28,6 @@ const Header = memo<GenerationLayoutCommonProps>((props) => {
     <>
       <SideBarHeaderLayout breadcrumb={breadcrumb} />
       <Flexbox paddingInline={4}>
-        <WorkspaceLink to="/page">
-          <NavItem
-            active={/(?:^|\/)page(?:\/|$)/.test(pathname)}
-            icon={getRouteById('page')!.icon}
-            title={t('tab.pages')}
-          />
-        </WorkspaceLink>
         <NavItem
           icon={props.namespace === 'image' ? ImagePlus : Video}
           key={'new-topic'}

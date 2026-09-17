@@ -3,7 +3,16 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import { agents, goalEdges, goalNodeDecisions, goalNodes, goals, users } from '../../schemas';
+import {
+  agents,
+  goalEdges,
+  goalNodeDecisions,
+  goalNodes,
+  goals,
+  taskTopics,
+  topics,
+  users,
+} from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import { GoalModel } from '../goal';
 import { GoalGraphModel } from '../goalGraph';
@@ -163,6 +172,35 @@ describe('GoalModel', () => {
   });
 
   describe('list', () => {
+    it('counts one conversation once when parent and child are both graph nodes', async () => {
+      const taskModel = new TaskModel(serverDB, userId);
+      const root = await taskModel.create({ instruction: 'Root' });
+      const child = await taskModel.create({ instruction: 'Child', parentTaskId: root.id });
+      const goal = await goalModel.create({ title: 'Measured', subjectType: 'standalone' });
+      for (const task of [root, child]) {
+        const node = await graphModel.createNode(goal.id, { kind: 'task', title: task.id });
+        await serverDB.update(goalNodes).set({ taskId: task.id }).where(eq(goalNodes.id, node!.id));
+      }
+      const start = new Date('2026-08-06T10:00:00Z');
+      await serverDB.insert(topics).values({
+        id: 'shared-goal-run',
+        userId,
+        totalCost: 0.05,
+        completedAt: new Date('2026-08-06T10:02:00Z'),
+      });
+      await serverDB.insert(taskTopics).values(
+        [root, child].map((task) => ({
+          taskId: task.id,
+          topicId: 'shared-goal-run',
+          userId,
+          seq: 1,
+          createdAt: start,
+        })),
+      );
+      const result = (await goalModel.list()).goals.find((row) => row.goal.id === goal.id);
+      expect(result).toMatchObject({ totalRunCost: 0.05, totalRunDuration: 120000 });
+    });
+
     it('lists goals the caller owns, newest first, with the graph roll-up', async () => {
       const goal = await goalModel.create({ subjectType: 'standalone', title: 'Reproduce it' });
       const problem = await graphModel.createNode(goal.id, { kind: 'problem', title: 'P1' });

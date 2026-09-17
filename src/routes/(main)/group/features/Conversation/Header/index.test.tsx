@@ -170,9 +170,9 @@ describe('Group conversation header', () => {
     mocks.clientId = 'ordinary-group';
     render(<Header />);
 
-    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
+    fireEvent.click(screen.getByRole('button', { name: '查看历史话题' }));
 
-    expect(mocks.toggleMobileTopic).toHaveBeenCalledWith(true);
+    expect(mocks.push).toHaveBeenCalledWith('/group/group-1/topics');
   });
 
   it('exposes the current group member panel on mobile', () => {
@@ -211,8 +211,8 @@ describe('Group conversation header', () => {
     expect(screen.getByRole('button', { name: /backToHome|返回/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '群聊更多操作' }));
     expect(screen.getByRole('button', { name: '群成员' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '历史会话' }));
-    expect(mocks.toggleMobileTopic).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: '查看历史话题' }));
+    expect(mocks.push).toHaveBeenCalledWith('/group/group-1/topics');
   });
 
   it.each([true, false])(

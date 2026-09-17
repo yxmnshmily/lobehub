@@ -22,7 +22,9 @@ export const getRegistrationCredits = async (db: LobeChatDatabase, userId: strin
         left join platform_credit_entries original on original.id = consumed.reversal_of_entry_id
         where consumed.account_id = ${platformCreditEntries.accountId}
           and consumed.created_at >= ${platformCreditEntries.createdAt}
-          and (consumed.type = 'usage_charge' or (consumed.type = 'reversal' and original.type = 'usage_charge'))
+          and (consumed.type = 'usage_charge'
+            or (consumed.type = 'adjustment' and consumed.amount_credits < 0)
+            or (consumed.type = 'reversal' and (original.type = 'usage_charge' or (original.type = 'adjustment' and original.amount_credits < 0))))
       ), 0)
     )) end`.mapWith(Number),
     })

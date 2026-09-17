@@ -31,6 +31,7 @@ import Billboard from '@/features/Billboard';
 import { useBillboardMenuItems } from '@/features/Billboard/MenuItems';
 import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
 import ThemeButton from '@/features/User/UserPanel/ThemeButton';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useNavLayout } from '@/hooks/useNavLayout';
 import { useAnalytics } from '@/libs/analytics/client';
@@ -46,6 +47,13 @@ import { userGeneralSettingsSelectors } from '@/store/user/slices/settings/selec
 import { useTravelTranslation } from '@/utils/i18n/travel';
 
 type FooterMenuItems = NonNullable<MenuProps['items']>;
+
+// Native links own text clicks; the row also handles icons, padding and keyboard activation.
+const onMenuRowClick =
+  (action: () => void) => (info: { domEvent: { target: EventTarget | null } }) => {
+    if (info.domEvent.target instanceof Element && info.domEvent.target.closest('a')) return;
+    action();
+  };
 
 /**
  * Wrap each clickable menu item with a unified click tracker, preserving any
@@ -86,6 +94,7 @@ const collectMenuKeys = (items: FooterMenuItems): string[] =>
 
 const Footer = memo(() => {
   const translateTravel = useTravelTranslation();
+  const navigate = useWorkspaceAwareNavigate();
   const { t } = useTranslation('common');
   const { t: tAuth } = useTranslation('auth');
   const { t: tSetting } = useTranslation('setting');
@@ -155,6 +164,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={Info} />,
               key: 'about',
+              onClick: onMenuRowClick(() => navigate('/settings/about', { escape: true })),
               label: (
                 <WorkspaceLink escape to="/settings/about">
                   {tSetting('tab.about')}
@@ -168,6 +178,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={Settings2} />,
               key: 'setting',
+              onClick: onMenuRowClick(() => navigate(settingsHref)),
               label: <WorkspaceLink to={settingsHref}>{t(settingLabelKey)}</WorkspaceLink>,
             },
             {
@@ -180,6 +191,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={Send} />,
               key: 'inviteFriend',
+              onClick: onMenuRowClick(() => navigate('/settings/referral')),
               label: (
                 <WorkspaceLink to="/settings/referral">{t('userPanel.inviteFriend')}</WorkspaceLink>
               ),
@@ -189,6 +201,9 @@ const Footer = memo(() => {
       {
         icon: <Icon icon={Book} />,
         key: 'docs',
+        onClick: onMenuRowClick(() =>
+          window.open(DOCUMENTS_REFER_URL, '_blank', 'noopener,noreferrer'),
+        ),
         label: (
           <a
             href={DOCUMENTS_REFER_URL}
@@ -209,6 +224,9 @@ const Footer = memo(() => {
       {
         icon: <Icon icon={DiscordIcon} />,
         key: 'discord',
+        onClick: onMenuRowClick(() =>
+          window.open(SOCIAL_URL.discord, '_blank', 'noopener,noreferrer'),
+        ),
         label: (
           <a
             href={SOCIAL_URL.discord}
@@ -234,6 +252,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={Download} />,
               key: 'get-app',
+              onClick: onMenuRowClick(() => navigate('/apps', { escape: true })),
               label: (
                 <WorkspaceLink escape to="/apps">
                   {t('getApp')}
@@ -247,6 +266,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={GithubIcon} />,
               key: 'github',
+              onClick: onMenuRowClick(() => window.open(GITHUB, '_blank', 'noopener,noreferrer')),
               label: (
                 <a
                   href={GITHUB}
@@ -265,6 +285,7 @@ const Footer = memo(() => {
             {
               icon: <Icon icon={FlaskConical} />,
               key: 'eval',
+              onClick: onMenuRowClick(() => navigate('/eval')),
               label: <WorkspaceLink to="/eval">{translateTravel('评测实验室')}</WorkspaceLink>,
             },
           ]
@@ -281,6 +302,7 @@ const Footer = memo(() => {
       trackedMenuKeys: collectMenuKeys(ownItems),
     };
   }, [
+    navigate,
     translateTravel,
     isPlatformAdmin,
     hideDocs,

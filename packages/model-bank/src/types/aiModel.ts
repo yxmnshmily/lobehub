@@ -741,6 +741,7 @@ export interface AiProviderModelListItem {
   generation?: string;
   id: string;
   knowledgeCutoff?: string;
+  maxOutput?: number;
   parameters?: ModelParamsSchema;
   pricing?: Pricing;
   releasedAt?: string;

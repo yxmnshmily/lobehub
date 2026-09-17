@@ -193,7 +193,7 @@ const ModelTitle = memo<ModelFetcherProps>(
         {mobile && (
           <Search
             value={searchKeyword}
-            variant={'filled'}
+            variant={'borderless'}
             onChange={(value) => {
               useAiInfraStore.setState({ modelSearchKeyword: value });
             }}

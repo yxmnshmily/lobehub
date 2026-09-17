@@ -630,6 +630,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
           : DEFAULT_BASE_URL;
       const isNativeArkSeed =
         provider === 'volcengine' &&
+        typeof runtimeBaseURL === 'string' &&
         /^https:\/\/ark\.cn-beijing\.volces\.com\/api\/v3\/?$/.test(runtimeBaseURL) &&
         typeof model === 'string' &&
         /^doubao-seed-2-1-(?:turbo|pro)-260628$/.test(model) &&

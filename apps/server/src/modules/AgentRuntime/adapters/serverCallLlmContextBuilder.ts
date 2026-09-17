@@ -29,6 +29,7 @@ import {
   CONTEXT_ENGINEERING_SPAN_NAME,
   tracer as agentRuntimeTracer,
 } from '@lobechat/observability-otel/modules/agent-runtime';
+import { outputLanguageInstruction } from '@lobechat/prompts';
 import { getActivePluginIds, getDisabledPluginIds } from '@lobechat/types';
 
 import { composioEnv } from '@/config/composio';
@@ -731,7 +732,9 @@ export const buildServerCallLlmContext = async ({
     modelKnowledgeCutoff,
     provider,
     ...(planTodo && { planTodo }),
-    systemRole: agentConfig.systemRole ?? undefined,
+    systemRole: [agentConfig.systemRole, outputLanguageInstruction(serverLanguage)]
+      .filter(Boolean)
+      .join('\n\n'),
     toolDiscoveryConfig,
     toolsConfig: {
       manifests: Object.values(resolved.promptManifestMap),

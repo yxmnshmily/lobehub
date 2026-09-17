@@ -93,12 +93,12 @@ const CreateNewProviderContent = memo(() => {
           <Input
             autoFocus
             placeholder={t('createNewAiProvider.id.placeholder')}
-            variant={'filled'}
+            variant={'borderless'}
           />
         </Form.Item>
 
         <Form.Item label={t('createNewAiProvider.name.title')} name={'name'} style={itemStyle}>
-          <Input placeholder={t('createNewAiProvider.name.placeholder')} variant={'filled'} />
+          <Input placeholder={t('createNewAiProvider.name.placeholder')} variant={'borderless'} />
         </Form.Item>
 
         <Form.Item
@@ -109,7 +109,7 @@ const CreateNewProviderContent = memo(() => {
           <TextArea
             placeholder={t('createNewAiProvider.description.placeholder')}
             style={{ minHeight: 72 }}
-            variant={'filled'}
+            variant={'borderless'}
           />
         </Form.Item>
 
@@ -117,7 +117,7 @@ const CreateNewProviderContent = memo(() => {
           <Input
             allowClear
             placeholder={t('createNewAiProvider.logo.placeholder')}
-            variant={'filled'}
+            variant={'borderless'}
           />
         </Form.Item>
 
@@ -134,7 +134,7 @@ const CreateNewProviderContent = memo(() => {
           <Select
             options={CUSTOM_PROVIDER_SDK_OPTIONS}
             placeholder={t('createNewAiProvider.sdkType.placeholder')}
-            variant={'filled'}
+            variant={'borderless'}
             optionRender={({ label, value }) => {
               const iconProvider = value === 'router' ? 'newapi' : (value as string);
               return (
@@ -164,7 +164,7 @@ const CreateNewProviderContent = memo(() => {
           <Input
             allowClear
             placeholder={t('createNewAiProvider.proxyUrl.placeholder')}
-            variant={'filled'}
+            variant={'borderless'}
           />
         </Form.Item>
 
@@ -176,7 +176,7 @@ const CreateNewProviderContent = memo(() => {
           <InputPassword
             autoComplete={'new-password'}
             placeholder={t('createNewAiProvider.apiKey.placeholder')}
-            variant={'filled'}
+            variant={'borderless'}
           />
         </Form.Item>
 

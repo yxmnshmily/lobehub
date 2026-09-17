@@ -7,6 +7,7 @@ import { ExternalLink, FileDown, FileText, Link2 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { isSafeExternalUrl } from '@/features/Work/descriptors';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { useChatStore } from '@/store/chat';
@@ -95,7 +96,7 @@ const DeliverableRow = memo<{
   onOpen: (artifact: GoalArtifactView) => void;
   producerTitle?: string;
 }>(({ artifact, onOpen, producerTitle }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const { text, title } = useActivityTime(artifact.createdAt);
   // A document opens inside the app; a generated file downloads; an external
   // resource leaves for its own site.
@@ -127,7 +128,9 @@ const DeliverableRow = memo<{
         <Flexbox horizontal align={'center'} className={styles.producer} gap={6}>
           <KindDot kind={'task'} />
           <Text ellipsis fontSize={12} type={'secondary'}>
-            {t('goalProcess.deliverables.from', { title: producerTitle })}
+            {t('goalProcess.deliverables.from', {
+              title: localizeGoalTemplate(producerTitle, i18n.resolvedLanguage || i18n.language),
+            })}
           </Text>
         </Flexbox>
       )}

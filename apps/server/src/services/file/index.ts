@@ -50,8 +50,8 @@ export class FileService {
   /**
    * Delete files in batch
    */
-  public async deleteFiles(keys: string[]) {
-    return this.impl.deleteFiles(keys);
+  public async deleteFiles(keys: string[], signal?: AbortSignal) {
+    return signal ? this.impl.deleteFiles(keys, signal) : this.impl.deleteFiles(keys);
   }
 
   /**

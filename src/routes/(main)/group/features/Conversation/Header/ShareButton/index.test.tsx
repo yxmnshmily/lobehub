@@ -3,8 +3,11 @@
  */
 import type * as BaseUI from '@lobehub/ui/base-ui';
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps } from 'react';
+import { createPortal } from 'react-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import ConversationFrame from '@/features/SuperGroup/ConversationFrame';
 
 import ShareButton from './index';
 
@@ -15,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     allowed: true,
     reason: 'requires member',
   },
+  modal: vi.fn(),
   messages: [
     {
       id: 'old-message',
@@ -41,6 +45,8 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => {
   const actual = await importOriginal<typeof BaseUI>();
   return {
     ...actual,
+    createModal: mocks.modal,
+    useModalContext: () => ({ close: vi.fn() }),
     ActionIcon: (props: ComponentProps<typeof actual.ActionIcon>) => {
       actionIconPropsSpy(props);
       return <actual.ActionIcon {...props} />;
@@ -48,24 +54,17 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => {
   };
 });
 
-vi.mock('@/libs/next/dynamic', () => ({
-  default: () =>
-    function DynamicComponent({
-      children,
-      ...props
-    }: {
-      children?: ReactNode;
-      topicId?: string;
-      onOpenChange?: (open: boolean) => void;
-      open?: boolean;
-    }) {
-      sharePropsSpy(props);
-      return (
-        <div data-testid="share-popover" onClick={() => props.onOpenChange?.(!props.open)}>
-          {children}
-        </div>
-      );
-    },
+vi.mock('@/features/SharePopover', () => ({
+  SharePopoverContent: (props: any) => {
+    sharePropsSpy(props);
+    return <p>{props.topicTitle}</p>;
+  },
+}));
+vi.mock('@/features/GroupMembership/GroupShareButton', () => ({
+  GroupLinkPanel: () => <p>invitation link</p>,
+}));
+vi.mock('@/services/topic', () => ({
+  topicService: { getTopicDetail: vi.fn().mockResolvedValue(undefined) },
 }));
 
 vi.mock('@/features/ShareModal', () => ({
@@ -113,6 +112,16 @@ vi.mock('@/store/serverConfig/selectors', () => ({
 }));
 
 describe('Group Conversation ShareButton', () => {
+  it('keeps one share action and opens group files from the document action', async () => {
+    render(<ShareButton />);
+    expect(screen.getByRole('button', { name: 'groupInvitation.share' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: '群文件' }));
+    expect(exportSpy).toHaveBeenCalledWith({
+      context: expect.objectContaining({ groupId: 'group-1' }),
+      title: '群文件',
+    });
+    expect(screen.queryByRole('button', { name: '分享聊天记录' })).toBeNull();
+  });
   it('keeps group link sharing available before any topic is created', () => {
     mocks.activeTopicId = undefined;
     render(<ShareButton />);
@@ -122,6 +131,12 @@ describe('Group Conversation ShareButton', () => {
     mocks.activeTopicId = 'topic-1';
     mocks.enableBusinessFeatures = true;
     mocks.permission.allowed = true;
+    mocks.modal.mockReset();
+    mocks.modal.mockImplementation(({ content }) => {
+      const mounted = render(content);
+      return { close: mounted.unmount };
+    });
+    exportSpy.mockClear();
     actionIconPropsSpy.mockClear();
     sharePropsSpy.mockClear();
   });
@@ -129,7 +144,8 @@ describe('Group Conversation ShareButton', () => {
   it.each([false, true])('offers a topic link on self-hosted groups (mobile=%s)', (mobile) => {
     mocks.enableBusinessFeatures = false;
     render(<ShareButton mobile={mobile} />);
-    expect(screen.getByRole('button', { name: '分享聊天记录' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'groupInvitation.share' }));
+    expect(screen.getByRole('tab', { name: 'shareModal.popover.title' })).toBeEnabled();
   });
 
   it('shares the visible historical topic, freezes it while open, then resolves again on reopen', async () => {
@@ -156,7 +172,8 @@ describe('Group Conversation ShareButton', () => {
     const newRect = vi
       .spyOn(rows[1], 'getBoundingClientRect')
       .mockReturnValue({ top: 350, bottom: 650, height: 300, width: 600 } as DOMRect);
-    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
+    fireEvent.click(screen.getByRole('button', { name: 'groupInvitation.share' }));
+    fireEvent.click(screen.getAllByRole('tab', { name: 'shareModal.popover.title' }).at(-1)!);
     expect(sharePropsSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({ topicId: 'old-topic', topicTitle: '昨天的话题' }),
     );
@@ -182,9 +199,33 @@ describe('Group Conversation ShareButton', () => {
     expect(sharePropsSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({ topicId: 'old-topic' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
-    fireEvent.click(screen.getByRole('button', { name: '分享聊天记录' }));
+    mocks.modal.mock.results[0].value.close();
+    fireEvent.click(screen.getByRole('button', { name: 'groupInvitation.share' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'shareModal.popover.title' }));
     expect(sharePropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({ topicId: 'topic-1' }));
+  });
+
+  it('resolves the visible topic when the mobile shortcut is rendered in a portal', () => {
+    const { container } = render(
+      <ConversationFrame header={createPortal(<ShareButton mobile />, document.body)}>
+        <div data-conversation-viewport>
+          <div data-share-topic-id="old-topic" />
+        </div>
+      </ConversationFrame>,
+    );
+    for (const element of container.querySelectorAll(
+      '[data-conversation-viewport], [data-share-topic-id]',
+    )) {
+      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+        top: 100,
+        bottom: 500,
+        height: 400,
+        width: 600,
+      } as DOMRect);
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'groupInvitation.share' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'shareModal.popover.title' }));
+    expect(sharePropsSpy).toHaveBeenCalledWith(expect.objectContaining({ topicId: 'old-topic' }));
   });
 
   it('does not open share popover for workspace viewers', () => {
@@ -198,6 +239,7 @@ describe('Group Conversation ShareButton', () => {
         title: 'requires member',
       }),
     );
+    expect(screen.getByRole('button', { name: '群文件' })).toBeDisabled();
     expect(queryByTestId('share-popover')).toBeNull();
   });
 });

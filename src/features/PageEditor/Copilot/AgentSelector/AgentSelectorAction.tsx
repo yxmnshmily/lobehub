@@ -18,11 +18,16 @@ import AgentItem from './AgentItem';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   chevron: css`
+    flex: none;
     color: ${cssVar.colorTextQuaternary};
   `,
   container: css`
     cursor: pointer;
 
+    flex: none;
+
+    inline-size: max-content;
+    min-inline-size: max-content;
     border-radius: 12px;
     border-start-start-radius: 8px;
     border-end-start-radius: 8px;
@@ -132,7 +137,7 @@ const AgentSelectorAction = memo<AgentSelectorActionProps>(({ onAgentChange }) =
       onOpenChange={setOpen}
     >
       <Center horizontal className={cx(styles.container)} height={28} paddingInline={6}>
-        <Flexbox horizontal align={'center'} gap={4}>
+        <Flexbox horizontal align={'center'} flex={'none'} gap={4}>
           <AgentAvatar
             avatar={typeof activeAgent?.avatar === 'string' ? activeAgent.avatar : undefined}
           />

@@ -1007,7 +1007,7 @@ describe('Message Router Integration Tests', () => {
             userId,
           })
           .returning();
-        const [message] = await serverDB
+        const insertedMessages = await serverDB
           .insert(messages)
           .values({
             content: 'Owner may delete this message',
@@ -1016,6 +1016,10 @@ describe('Message Router Integration Tests', () => {
             userId,
           })
           .returning();
+        const [message] = Array.isArray(insertedMessages)
+          ? insertedMessages
+          : insertedMessages.rows;
+        expect(message).toBeDefined();
 
         if (method === 'single') await caller.removeMessage({ id: message.id });
         else if (method === 'batch') await caller.removeMessages({ ids: [message.id] });

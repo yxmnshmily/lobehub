@@ -48,6 +48,8 @@ const VIEW_MIN_WIDTH: PortalWidths = {
  * the portal narrow still get a readable pane the first time they open it.
  */
 const VIEW_DEFAULT_WIDTH: PortalWidths = {
+  [PortalViewType.VerifyResult]: CHAT_PORTAL_WIDE_WIDTH,
+  [PortalViewType.VerifyReport]: CHAT_PORTAL_WIDE_WIDTH,
   [PortalViewType.Acceptance]: CHAT_PORTAL_WIDE_WIDTH,
   [PortalViewType.AcceptanceCheck]: CHAT_PORTAL_WIDE_WIDTH,
   // Task / goal-node detail pack status, instruction, sub-tasks and the
@@ -79,7 +81,12 @@ const normalizeViewType = (viewType?: PortalViewType | null): string =>
  * conversation. The chat surface (no scope) keeps the unprefixed legacy keys.
  */
 export const portalWidthStorageKey = (viewType?: PortalViewType | null, scope?: string): string => {
-  const key = normalizeViewType(viewType);
+  // Reset only verification panes' old 400px memory once; subsequent drags
+  // use the new key and remain user-controlled, including narrower widths.
+  const key =
+    viewType === PortalViewType.VerifyResult || viewType === PortalViewType.VerifyReport
+      ? `${viewType}:wide-v2`
+      : normalizeViewType(viewType);
   return scope ? `${scope}:${key}` : key;
 };
 

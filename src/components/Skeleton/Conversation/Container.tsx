@@ -1,47 +1,21 @@
 'use client';
 
-import { type FlexboxProps } from '@lobehub/ui';
-import { Flexbox } from '@lobehub/ui';
-import { createStaticStyles, cx } from 'antd-style';
+import type { ComponentProps } from 'react';
 
-import { CONVERSATION_MIN_WIDTH } from '@/const/layoutTokens';
-import { useGlobalStore } from '@/store/global';
-import { systemStatusSelectors } from '@/store/global/selectors';
+import WideScreenContainer from '@/features/WideScreenContainer';
 
-const styles = createStaticStyles(({ css }) => ({
-  container: css`
-    flex-grow: 1;
-    align-self: center;
-  `,
-}));
-
+// Reuse the live column's width, mobile gutters and persisted wide-screen setting.
 const ConversationSkeletonContainer = ({
-  children,
-  className,
   flex,
   height,
   ...rest
-}: FlexboxProps) => {
-  const wideScreen = useGlobalStore(systemStatusSelectors.wideScreen);
-
-  return (
-    <Flexbox aria-busy flex={flex} height={height} style={{ minHeight: 0 }} width={'100%'}>
-      <Flexbox
-        className={cx(styles.container, className)}
-        flex={flex}
-        height={height}
-        paddingInline={16}
-        width={
-          wideScreen
-            ? '100%'
-            : `min(var(--conversation-column-width, ${CONVERSATION_MIN_WIDTH}px), 100%)`
-        }
-        {...rest}
-      >
-        {children}
-      </Flexbox>
-    </Flexbox>
-  );
-};
-
+}: ComponentProps<typeof WideScreenContainer>) => (
+  <WideScreenContainer
+    aria-busy
+    flex={flex}
+    height={height}
+    wrapperStyle={{ flex, height, minHeight: 0, minWidth: 0 }}
+    {...rest}
+  />
+);
 export default ConversationSkeletonContainer;

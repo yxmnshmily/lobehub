@@ -30,6 +30,13 @@ vi.mock('@/features/HomeSidebar/Footer', () => ({ default: () => null }));
 vi.mock('@/business/client/features/NavPanelUpgradeEntry', () => ({ default: () => null }));
 vi.mock('@/features/NavPanel/ToggleLeftPanelButton', () => ({ TOGGLE_BUTTON_ID: 'toggle' }));
 vi.mock('./BackButton', () => ({ BACK_BUTTON_ID: 'back' }));
+// The "restore the saved width" flow is a desktop-width behavior: pin the
+// responsive query above the auto-compact breakpoint (xl = 1200px) because the
+// happy-dom viewport (1024px) would otherwise force the always-compact rail.
+vi.mock('antd-style', async (importOriginal) => ({
+  ...((await importOriginal()) as any),
+  useResponsive: () => ({ xl: true }),
+}));
 // The resize widget is the browser boundary; assert the dimensions/visibility we give it.
 vi.mock('@lobehub/ui', () => ({
   DraggablePanel: ({

@@ -16,10 +16,13 @@ import type {
   VerifySurface,
 } from '@lobechat/types';
 import debug from 'debug';
+import { sql } from 'drizzle-orm';
 
 import { AcceptanceModel } from '@/database/models/acceptance';
 import { AgentModel } from '@/database/models/agent';
+import { AgentOperationModel } from '@/database/models/agentOperation';
 import { DocumentModel } from '@/database/models/document';
+import { GoalModel } from '@/database/models/goal';
 import { ProjectModel } from '@/database/models/project';
 import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
@@ -769,6 +772,25 @@ export class AcceptanceService {
    */
   recomputeStatus = async (acceptanceId: string): Promise<AcceptanceStatus | null> => {
     const acceptance = await this.acceptanceModel.findPolicyById(acceptanceId);
+    const goal =
+      acceptance?.subjectType === 'task'
+        ? await new GoalModel(this.db, this.userId, this.workspaceId).findByGraphTask(
+            acceptance.subjectId,
+          )
+        : undefined;
+    if (!goal) return this.recomputeStatusLocked(acceptanceId);
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${0x67_6f_64_69}, hashtext(${goal.id}))`);
+      return new AcceptanceService(tx, this.userId, this.workspaceId).recomputeStatusLocked(
+        acceptanceId,
+      );
+    });
+  };
+
+  private recomputeStatusLocked = async (
+    acceptanceId: string,
+  ): Promise<AcceptanceStatus | null> => {
+    const acceptance = await this.acceptanceModel.findPolicyById(acceptanceId);
     if (!acceptance) return null;
     if (acceptance.status === 'accepted' || acceptance.status === 'closed') {
       return acceptance.status;
@@ -777,6 +799,27 @@ export class AcceptanceService {
     const runs = await this.runModel.listByAcceptance(acceptanceId);
     const current = runs.at(-1);
     if (!current) return acceptance.status as AcceptanceStatus;
+
+    const revisionAt = (acceptance.metadata as { goalRevisionAt?: string } | null)?.goalRevisionAt;
+    if (revisionAt) {
+      // A verifier can be created after the revision for an old task run.
+      // Compare the owning task operation, not just the verifier timestamp.
+      let startedAt = current.createdAt;
+      if (current.operationId) {
+        const operations = new AgentOperationModel(this.db, this.userId, this.workspaceId);
+        let operation = await operations.findById(current.operationId);
+        for (
+          let depth = 0;
+          operation && !operation.taskId && operation.parentOperationId && depth < 10;
+          depth++
+        )
+          operation = await operations.findById(operation.parentOperationId);
+        if (!operation?.taskId) return acceptance.status as AcceptanceStatus;
+        startedAt = operation.createdAt;
+      }
+      if (!(+new Date(startedAt) >= +new Date(revisionAt)))
+        return acceptance.status as AcceptanceStatus;
+    }
 
     // The rejected round stays rejected; only a NEWER round re-opens the loop.
     if (acceptance.status === 'rejected' && current.userDecision === 'reject') return 'rejected';

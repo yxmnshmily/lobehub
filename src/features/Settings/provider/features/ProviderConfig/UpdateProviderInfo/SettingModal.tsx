@@ -126,7 +126,7 @@ const SettingContent = memo<SettingContentProps>(({ initialValues, id }) => {
             rules={[{ message: t('createNewAiProvider.name.required'), required: true }]}
             style={itemStyle}
           >
-            <Input placeholder={t('createNewAiProvider.name.placeholder')} variant={'filled'} />
+            <Input placeholder={t('createNewAiProvider.name.placeholder')} variant={'borderless'} />
           </Form.Item>
 
           <Form.Item
@@ -137,12 +137,12 @@ const SettingContent = memo<SettingContentProps>(({ initialValues, id }) => {
             <TextArea
               placeholder={t('createNewAiProvider.description.placeholder')}
               style={{ minHeight: 72 }}
-              variant={'filled'}
+              variant={'borderless'}
             />
           </Form.Item>
 
           <Form.Item label={t('createNewAiProvider.logo.title')} name={'logo'} style={itemStyle}>
-            <Input allowClear placeholder={'https://logo-url'} variant={'filled'} />
+            <Input allowClear placeholder={'https://logo-url'} variant={'borderless'} />
           </Form.Item>
 
           <div style={{ marginBlockStart: 8 }}>
@@ -158,7 +158,7 @@ const SettingContent = memo<SettingContentProps>(({ initialValues, id }) => {
             <Select
               options={CUSTOM_PROVIDER_SDK_OPTIONS}
               placeholder={t('createNewAiProvider.sdkType.placeholder')}
-              variant={'filled'}
+              variant={'borderless'}
               optionRender={({ label, value }) => {
                 const iconProvider = value === 'router' ? 'newapi' : (value as string);
                 return (

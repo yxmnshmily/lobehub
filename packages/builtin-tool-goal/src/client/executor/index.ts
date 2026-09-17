@@ -33,6 +33,98 @@ class GoalExecutor extends BaseExecutor<typeof GoalApiName> {
     await taskExecutor.onAfterCall(context);
   };
 
+  viewGoal = async (
+    params: { goalId: string },
+    ctx?: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> => {
+    try {
+      const graph = await goalService.getGraph(params.goalId, ctx?.groupId);
+      if (ctx?.groupId && graph.goal.config?.groupId !== ctx.groupId)
+        return { content: 'Goal not found in this conversation.', success: false };
+      const state = {
+        goalId: graph.goal.id,
+        status: graph.goal.status,
+        title: graph.goal.title,
+        requirement: graph.goal.requirement,
+        work: graph.nodes
+          .filter((node) => node.kind === 'task')
+          .map((node) => ({
+            nodeId: node.id,
+            taskId: node.taskId,
+            title: node.title,
+            instruction: node.description,
+            status: node.status,
+          })),
+        results: graph.workVersions,
+      };
+      return { content: JSON.stringify(state), state, success: true };
+    } catch (error) {
+      return {
+        content:
+          error instanceof Error &&
+          error.message.startsWith('Multiple goals share this exact name:')
+            ? error.message
+            : 'Could not read this goal. Check its identifier and access.',
+        success: false,
+      };
+    }
+  };
+
+  reviseGoal = async (
+    params: { goalId: string; nodeId: string; instruction: string; requirement?: string },
+    ctx?: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> => {
+    try {
+      const { goalId, ...revision } = params;
+      const result = await goalService.revise({
+        id: goalId,
+        ...revision,
+        ...(ctx?.groupId && ctx?.agentId && ctx?.topicId
+          ? { origin: { agentId: ctx.agentId, topicId: ctx.topicId } }
+          : {}),
+        groupId: ctx?.groupId ?? undefined,
+      });
+      return {
+        content: result.message,
+        state: { goalId, status: result.data.goal.status, taskIds: result.data.taskIds },
+        success: true,
+      };
+    } catch {
+      return {
+        content:
+          'Could not apply the revision. Inspect the existing goal; interrupted work remains paused.',
+        success: false,
+      };
+    }
+  };
+
+  resumeGoal = async (
+    params: { goalId: string },
+    ctx?: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> => {
+    try {
+      const graph = await goalService.getGraph(params.goalId);
+      if (ctx?.groupId && graph.goal.config?.groupId !== ctx.groupId)
+        return { content: 'Goal not found in this conversation.', success: false };
+      if (graph.goal.status !== 'paused')
+        return {
+          content: `Goal status: ${graph.goal.status}. Use reviseGoal for changes to completed work.`,
+          success: true,
+        };
+      const result = await goalService.resume(params.goalId, ctx?.groupId ?? undefined);
+      return {
+        content: result.message,
+        state: { goalId: params.goalId, status: result.data.status },
+        success: true,
+      };
+    } catch {
+      return {
+        content: 'Could not resume this goal. Inspect its current status before retrying.',
+        success: false,
+      };
+    }
+  };
+
   createGoal = async (
     params: CreateGoalParams,
     ctx?: BuiltinToolContext,
@@ -61,6 +153,16 @@ class GoalExecutor extends BaseExecutor<typeof GoalApiName> {
         createdByAgentId: ctx.agentId,
         config: {
           ...(ctx.groupId ? { groupId: ctx.groupId } : {}),
+          ...(ctx.groupId && ctx.topicId
+            ? {
+                origin: {
+                  agentId: ctx.agentId,
+                  topicId: ctx.topicId,
+                  operationId: ctx.operationId,
+                  toolCallId: ctx.toolCallId,
+                },
+              }
+            : {}),
           recovery: { maxAttemptsPerTask: resolveGoalAttemptBudget(params.maxIterations) },
           ...(scheduleConfig ? { schedule: scheduleConfig } : {}),
         },
@@ -102,7 +204,7 @@ class GoalExecutor extends BaseExecutor<typeof GoalApiName> {
     criteriaCount: number,
     name: string,
   ): Promise<BuiltinToolResult> => {
-    const created = `Goal "${graph.goal.title}" created with ${criteriaCount} acceptance criteria.`;
+    const created = `Goal "${graph.goal.title}" (${graph.goal.id}) created with ${criteriaCount} acceptance criteria.`;
     const tail =
       'Execution continues in its own task; do not perform or reproduce the work in this conversation.';
 

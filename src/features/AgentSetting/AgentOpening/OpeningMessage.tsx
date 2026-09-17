@@ -3,9 +3,9 @@
 import { Flexbox } from '@lobehub/ui';
 import { Button } from '@lobehub/ui/base-ui';
 import { EditableMessage } from '@lobehub/ui/chat';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useTheme } from 'antd-style';
 import { PencilLine } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
+import { type CSSProperties, memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useStore } from '../store';
@@ -21,7 +21,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
-    background: ${cssVar.colorBgContainerSecondary};
+    background: var(--opening-message-background);
 
     transition:
       border-color 160ms ${cssVar.motionEaseOut},
@@ -36,6 +36,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
 const OpeningMessage = memo(() => {
   const { t } = useTranslation('setting');
+  const theme = useTheme();
 
   const openingMessage = useStore(selectors.openingMessage);
   const [disabled, updateConfig] = useStore((s) => [s.disabled, s.setAgentConfig]);
@@ -63,7 +64,10 @@ const OpeningMessage = memo(() => {
   );
 
   return (
-    <div className={styles.wrapper}>
+    <div
+      className={styles.wrapper}
+      style={{ '--opening-message-background': theme.colorBgContainerSecondary } as CSSProperties}
+    >
       <Flexbox direction={'horizontal'}>
         <EditableMessage
           editButtonSize={'small'}

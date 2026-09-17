@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getMonochromeCustomTheme,
+  getThemeErrorTokens,
   getThemeSurfaceTokens,
   shouldUseThemeSurfaceTokens,
 } from './themeSurfaceTokens';
@@ -68,5 +69,16 @@ describe('getMonochromeCustomTheme', () => {
   it('keeps the site accent monochrome while preserving the selected neutral palette', () => {
     expect(getMonochromeCustomTheme('slate', 'mauve')).toEqual({ neutralColor: 'slate' });
     expect(getMonochromeCustomTheme(undefined, 'mauve')).toEqual({ neutralColor: 'mauve' });
+  });
+});
+
+describe('semantic error palette', () => {
+  it.each([false, true])('keeps text and solid danger controls legible (dark=%s)', (dark) => {
+    const error = getThemeErrorTokens(dark);
+    const surface = getThemeSurfaceTokens(dark);
+    for (const color of [error.colorError, error.colorErrorHover, error.colorErrorActive]) {
+      expect(contrastRatio(color, surface.colorBgLayout)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(color, error.colorErrorBgHover)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

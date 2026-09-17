@@ -5,6 +5,7 @@ import { Flexbox, Tooltip } from '@lobehub/ui';
 import { Badge } from 'antd';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { isUndefined } from 'es-toolkit/compat';
+import { Hash, MessageSquare, UsersRound } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -39,10 +40,19 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     white-space: nowrap;
   `,
   title: css`
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+
     font-size: 12px;
     line-height: 1.2;
     color: ${cssVar.colorTextDescription};
     white-space: nowrap;
+
+    svg {
+      flex-shrink: 0;
+    }
   `,
   today: css`
     font-size: 12px;
@@ -78,17 +88,20 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
   const items = [
     {
       count: agentsLoading || isUndefined(agents) ? loading : agents,
+      icon: UsersRound,
       key: 'sessions',
       title: t('dataStatistics.sessions'),
     },
     {
       count: topicsLoading || isUndefined(topics) ? loading : topics,
+      icon: Hash,
       key: 'topics',
       title: t('dataStatistics.topics'),
     },
     {
       count: messagesLoading || isUndefined(messages) ? loading : messages,
       countToady: messagesToday,
+      icon: MessageSquare,
       key: 'messages',
       title: t('dataStatistics.messages'),
     },
@@ -119,7 +132,10 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
             >
               <Flexbox align={'center'} flex={'none'} gap={2}>
                 <div className={styles.count}>{formatShortenNumber(item.count)}</div>
-                <div className={styles.title}>{item.title}</div>
+                <div className={styles.title}>
+                  <item.icon aria-hidden size={12} />
+                  {item.title}
+                </div>
               </Flexbox>
               {showBadge && (
                 <Tooltip title={t('dataStatistics.today')}>
@@ -142,7 +158,10 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
             <Flexbox horizontal>
               <div className={styles.count}>{formatShortenNumber(item.count)}</div>
             </Flexbox>
-            <div className={styles.title}>{item.title}</div>
+            <div className={styles.title}>
+              <item.icon aria-hidden size={12} />
+              {item.title}
+            </div>
           </Flexbox>
         );
       })}

@@ -7,8 +7,10 @@ import {
   agentOperations,
   agents,
   chatGroups,
+  messagePlugins,
   messages,
   sessions,
+  threads,
   topics,
   users,
   workspaces,
@@ -1097,6 +1099,77 @@ describe('TopicModel', () => {
 
       const remaining = await topicModel.queryTopics();
       expect(remaining.map((t) => t.id)).toEqual(['b3']);
+    });
+
+    it('hard deletes selected group conversations and dependent messages while preserving neighbours', async () => {
+      await serverDB.insert(chatGroups).values({ id: 'delete-group', userId });
+      await serverDB.insert(topics).values([
+        { id: 'delete-a', userId, groupId: 'delete-group' },
+        { id: 'delete-b', userId, groupId: 'delete-group' },
+        { id: 'keep-topic', userId, groupId: 'delete-group' },
+        { id: 'foreign-topic', userId: otherUserId },
+      ]);
+      await serverDB
+        .insert(threads)
+        .values({ id: 'delete-thread', userId, topicId: 'delete-a', type: 'standalone' });
+      await serverDB.insert(messages).values([
+        {
+          id: 'delete-user',
+          userId,
+          groupId: 'delete-group',
+          topicId: 'delete-a',
+          role: 'user',
+          content: 'deleted conversation',
+        },
+        {
+          id: 'delete-tool',
+          userId,
+          groupId: 'delete-group',
+          topicId: 'delete-a',
+          threadId: 'delete-thread',
+          role: 'tool',
+          content: 'deleted tool result',
+        },
+        {
+          id: 'delete-assistant',
+          userId,
+          groupId: 'delete-group',
+          topicId: 'delete-b',
+          role: 'assistant',
+          content: 'deleted answer',
+        },
+        {
+          id: 'keep-message',
+          userId,
+          groupId: 'delete-group',
+          topicId: 'keep-topic',
+          role: 'user',
+          content: 'keep',
+        },
+        {
+          id: 'foreign-message',
+          userId: otherUserId,
+          topicId: 'foreign-topic',
+          role: 'user',
+          content: 'foreign',
+        },
+      ]);
+      await serverDB
+        .insert(messagePlugins)
+        .values({ id: 'delete-tool', userId, arguments: 'sensitive args' });
+
+      await topicModel.batchDelete(['delete-a', 'delete-b', 'foreign-topic']);
+      expect(
+        (await serverDB.select({ id: topics.id }).from(topics)).map((row) => row.id).sort(),
+      ).toEqual(['foreign-topic', 'keep-topic']);
+      expect(
+        (await serverDB.select({ id: messages.id }).from(messages)).map((row) => row.id).sort(),
+      ).toEqual(['foreign-message', 'keep-message']);
+      expect(await serverDB.select().from(threads)).toEqual([]);
+      expect(await serverDB.select().from(messagePlugins)).toEqual([]);
+      // Repeated deletion is a no-op; no topic or message is resurrected.
+      await topicModel.batchDelete(['delete-a', 'delete-b']);
+      expect(await serverDB.select().from(messages)).toHaveLength(2);
     });
 
     it('deleteAll removes only the calling user rows', async () => {

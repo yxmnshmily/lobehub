@@ -128,6 +128,33 @@ describe('group work status', () => {
     ]);
   });
 
+  it('shows a manually paused goal as paused even with pending decisions', async () => {
+    vi.mocked(goalService.list).mockResolvedValue({
+      goals: [{ goal: { id: 'g', title: '目标', status: 'paused' }, pendingDecisions: 1 }],
+      total: 1,
+    } as any);
+    vi.mocked(taskService.list).mockResolvedValue({ data: [], total: 0, success: true });
+    expect((await loadGroupWorkStatus('group-a'))[0]).toMatchObject({
+      status: '已暂停',
+      rawStatus: 'paused',
+    });
+  });
+  it('uses the newer task detail status for both its label and controls', async () => {
+    vi.mocked(taskService.list).mockResolvedValue({
+      data: [{ id: 't', status: 'running', participants: [] }],
+      total: 1,
+      success: true,
+    } as any);
+    vi.mocked(taskService.getDetail).mockResolvedValue({
+      data: { status: 'paused' },
+      success: true,
+    } as any);
+    expect((await loadGroupWorkStatus('group-a'))[0]).toMatchObject({
+      status: '已暂停',
+      rawStatus: 'paused',
+    });
+  });
+
   it.each([false, true])(
     'uses the goal operation heartbeat as execution evidence: %s',
     async (live) => {

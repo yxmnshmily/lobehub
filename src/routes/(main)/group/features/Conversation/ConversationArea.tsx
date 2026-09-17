@@ -35,7 +35,7 @@ import {
   ForwardMessageDispatcher,
   MessageForwardFooter,
 } from '@/features/Conversation/MessageForward';
-import GroupHistoryNotice from '@/features/SuperGroup/GroupHistoryNotice';
+import GroupHistoryNotice, { GroupRecentNotice } from '@/features/SuperGroup/GroupHistoryNotice';
 import GroupWorkPage from '@/features/SuperGroup/GroupWorkPage';
 import GroupWorkPanel from '@/features/SuperGroup/GroupWorkPanel';
 import { useGroupWorkRequest } from '@/features/SuperGroup/useGroupWorkRequest';
@@ -67,6 +67,7 @@ export function GroupConversationBody({
   listContent,
   composer,
   beforeInput,
+  showRecentNotice = false,
   runtimeProps,
   children,
 }: {
@@ -76,6 +77,7 @@ export function GroupConversationBody({
   listContent?: ReactNode;
   composer?: ReactNode;
   beforeInput?: ReactNode;
+  showRecentNotice?: boolean;
   runtimeProps?: ChatInputProps;
   children?: ReactNode;
 }) {
@@ -101,7 +103,12 @@ export function GroupConversationBody({
         aria-hidden={listOpen}
         flex={1}
         inert={listOpen}
-        style={{ minHeight: 0, minWidth: 0, visibility: listOpen ? 'hidden' : undefined }}
+        style={{
+          minHeight: 0,
+          minWidth: 0,
+          position: 'relative',
+          visibility: listOpen ? 'hidden' : undefined,
+        }}
       >
         <Flexbox
           flex={1}
@@ -110,6 +117,7 @@ export function GroupConversationBody({
         >
           {listContent ?? <ChatList {...listProps} />}
         </Flexbox>
+        {showRecentNotice && !listOpen && <GroupRecentNotice />}
         {beforeInput}
         {groupId && <GroupWorkPanel groupId={groupId} key={groupId} />}
         {composer ?? (
@@ -135,7 +143,7 @@ export function GroupConversationBody({
           }}
         >
           {detailOpen && (
-            <Flexbox horizontal justify="flex-end" gap={8} padding={8}>
+            <Flexbox horizontal gap={8} justify="flex-end" padding={8}>
               <Button
                 onClick={() => {
                   navigate(
@@ -309,8 +317,9 @@ const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
       <GroupConversationBody
         groupId={context.groupId}
         mobile={mobile}
+        showRecentNotice={managed && !context.threadId && !historyTopicId}
         beforeInput={
-          context.groupId && !context.threadId && (managed || historyTopicId) ? (
+          context.groupId && !context.threadId && historyTopicId ? (
             <GroupHistoryNotice groupId={context.groupId} history={!!historyTopicId} />
           ) : undefined
         }

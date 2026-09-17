@@ -22,6 +22,9 @@ vi.mock('@/business/server/trpc-middlewares/workspaceAuth', async (importOrigina
 vi.mock('@/server/services/aiAgent', () => ({ AiAgentService: vi.fn() }));
 
 const mockCreate = vi.fn();
+const mockRevise = vi.fn();
+const mockGraph = vi.fn();
+const mockResume = vi.fn();
 const mockSetMetricCriteria = vi.fn();
 const mockRecordObservation = vi.fn();
 const mockFindById = vi.fn();
@@ -30,6 +33,9 @@ vi.mock('@/server/services/goal', () => ({
   GoalService: vi.fn(function () {
     return {
       create: mockCreate,
+      revise: mockRevise,
+      graph: mockGraph,
+      resume: mockResume,
       recordObservation: mockRecordObservation,
       setMetricCriteria: mockSetMetricCriteria,
     };
@@ -151,5 +157,28 @@ describe('goalRouter numeric acceptance', () => {
       // `shouldAdvance` is coordination bookkeeping, not part of the response.
       expect(result.data).not.toHaveProperty('shouldAdvance');
     });
+  });
+});
+
+describe('goalRouter conversational follow-ups', () => {
+  const caller = goalRouter.createCaller({
+    serverDB: {},
+    userId: 'user-1',
+    workspaceId: null,
+  } as any);
+  it('forwards group scope to native revision and reports committed scheduling failure', async () => {
+    mockRevise.mockResolvedValue({ goal: { status: 'running' }, taskIds: ['t'] });
+    mockScheduleGoalAdvance.mockRejectedValueOnce(new Error('offline'));
+    const input = { id: 'g', groupId: 'group', nodeId: 'n', instruction: 'updated' };
+    const result = await caller.revise(input);
+    expect(mockRevise).toHaveBeenCalledWith('g', input);
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('scheduling failed');
+  });
+  it('rejects resume from another group on the server', async () => {
+    mockGraph.mockResolvedValue({ goal: { config: { groupId: 'other' } } });
+    mockResume.mockClear();
+    await expect(caller.resume({ id: 'g', groupId: 'group' })).rejects.toThrow('Goal not found');
+    expect(mockResume).not.toHaveBeenCalled();
   });
 });

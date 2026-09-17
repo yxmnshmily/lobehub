@@ -1,12 +1,14 @@
 'use client';
 
-import { Flexbox, Icon, Markdown } from '@lobehub/ui';
+import { Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { ChevronRight } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useActivityTime } from '@/hooks/useActivityTime';
 
 import type { GoalGraphView, GoalNodeView } from './goalGraphViewModel';
@@ -56,7 +58,7 @@ const styles = createStaticStyles(({ css }) => ({
 
 const FindingRow = memo<{ onSelect: (nodeId: string) => void; view: GoalNodeView }>(
   ({ onSelect, view }) => {
-    const { t } = useTranslation('chat');
+    const { t, i18n } = useTranslation('chat');
     const [open, setOpen] = useState(false);
     const { text, title } = useActivityTime(view.node.resolvedAt ?? view.node.createdAt);
     const answered = view.answers[0];
@@ -87,7 +89,12 @@ const FindingRow = memo<{ onSelect: (nodeId: string) => void; view: GoalNodeView
             {answered
               ? t('goalProcess.findings.answers', { title: answered.title })
               : view.producedBy
-                ? t('goalProcess.findings.from', { title: view.producedBy.title })
+                ? t('goalProcess.findings.from', {
+                    title: localizeGoalTemplate(
+                      view.producedBy.title,
+                      i18n.resolvedLanguage || i18n.language,
+                    ),
+                  })
                 : ''}
           </Text>
           <Text className={styles.time} fontSize={12} title={title} type={'secondary'}>
@@ -128,7 +135,12 @@ const FindingRow = memo<{ onSelect: (nodeId: string) => void; view: GoalNodeView
               >
                 <KindDot kind={'task'} />
                 <Text fontSize={12} type={'secondary'}>
-                  {t('goalProcess.findings.from', { title: view.producedBy.title })}
+                  {t('goalProcess.findings.from', {
+                    title: localizeGoalTemplate(
+                      view.producedBy.title,
+                      i18n.resolvedLanguage || i18n.language,
+                    ),
+                  })}
                 </Text>
               </Flexbox>
             )}

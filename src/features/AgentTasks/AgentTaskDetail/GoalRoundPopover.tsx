@@ -4,6 +4,7 @@ import { formatLocalizedTokens } from '@lobechat/utils/format';
 import { Flexbox, Popover } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
+import { ClipboardCheck, Cpu, type LucideIcon, Timer, Wallet } from 'lucide-react';
 import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -11,6 +12,10 @@ import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExch
 
 const styles = createStaticStyles(({ css }) => ({
   label: css`
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+
     font-size: 12px;
     color: ${cssVar.colorTextTertiary};
   `,
@@ -56,19 +61,26 @@ const GoalRoundPopover = memo<GoalRoundPopoverProps>(
       return undefined;
     })();
 
-    const rows: { label: string; value: string }[] = [
-      { label: t('taskDetail.goalTimeline.hover.duration'), value: duration },
+    const rows: { icon: LucideIcon; label: string; value: string }[] = [
+      { icon: Timer, label: t('taskDetail.goalTimeline.hover.duration'), value: duration },
       // A verdict is the report's own word; `status` is the run's. Both are
       // enum-ish and neither is user-facing copy, so map them rather than
       // leaking a raw `passed` into a Chinese UI.
       ...(verdictLabel
-        ? [{ label: t('taskDetail.goalTimeline.hover.verdict'), value: verdictLabel }]
+        ? [
+            {
+              icon: ClipboardCheck,
+              label: t('taskDetail.goalTimeline.hover.verdict'),
+              value: verdictLabel,
+            },
+          ]
         : []),
       // Absent for a round that never reported usage (still running, or an
       // older row) — an audit should see nothing rather than a fabricated 0.
       ...(usage?.cost
         ? [
             {
+              icon: Wallet,
               label: t('taskDetail.goalTimeline.hover.cost'),
               value: format(usage.cost, 6),
             },
@@ -77,6 +89,7 @@ const GoalRoundPopover = memo<GoalRoundPopoverProps>(
       ...(usage?.tokens
         ? [
             {
+              icon: Cpu,
               label: t('taskDetail.goalTimeline.hover.tokens'),
               value: formatTokens(usage.tokens),
             },
@@ -102,7 +115,10 @@ const GoalRoundPopover = memo<GoalRoundPopoverProps>(
                 justify={'space-between'}
                 key={row.label}
               >
-                <span className={styles.label}>{row.label}</span>
+                <span className={styles.label}>
+                  <row.icon aria-hidden size={14} />
+                  {row.label}
+                </span>
                 <span className={styles.value}>{row.value}</span>
               </Flexbox>
             ))}

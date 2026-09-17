@@ -42,6 +42,11 @@ export const matchesStatus = (topic: ChatTopic, status: StatusFilter): boolean =
 
 export const matchesGroup = (topic: ChatTopic, groupIds: string[]): boolean => {
   if (groupIds.length === 0) return true;
+  if (topic.businessAssociations !== undefined) {
+    return topic.businessAssociations.length
+      ? topic.businessAssociations.some((item) => groupIds.includes(`${item.kind}:${item.id}`))
+      : groupIds.includes('unlinked');
+  }
   // ChatTopic doesn't surface groupId on the client type; fall back to the
   // working-directory source path as the project bucket key (matches sidebar
   // ByProjectMode). A selected git worktree still belongs to its source repo.

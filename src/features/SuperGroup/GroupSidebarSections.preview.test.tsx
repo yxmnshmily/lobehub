@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import GroupSidebarSections from './GroupSidebarSections';
 
-vi.mock('@/const/version', () => ({ isDesktop: true }));
+vi.mock('@/const/version', () => ({ isDesktop: true, CURRENT_VERSION: 'test' }));
 vi.mock('@/hooks/useActiveLocation', () => ({
   useActiveLocation: () => ({ pathname: window.location.pathname }),
 }));
@@ -45,6 +45,8 @@ describe('group member preview', () => {
     state.count = count;
     state.nextOffset = null;
     render(<GroupSidebarSections groupId="current-group" />);
+    expect(screen.getByText(`（${count}）`)).toBeInTheDocument();
+    expect(screen.queryByText('（…）')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '展开成员' }));
     expect(screen.getByText('Owner')).toBeVisible();
     expect(screen.getByRole('button', { name: 'AI 8' })).toBeVisible();

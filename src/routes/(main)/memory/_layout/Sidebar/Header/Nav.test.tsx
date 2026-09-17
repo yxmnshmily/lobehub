@@ -50,7 +50,9 @@ describe('mobile memory navigation', () => {
       configurable: true,
       value: mocks.scrollIntoView,
     });
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
       if (this.getAttribute('aria-current') === 'page') {
         return {
           bottom: 44,

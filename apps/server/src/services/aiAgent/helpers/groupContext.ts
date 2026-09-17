@@ -27,7 +27,12 @@ export const buildGroupAgentContext = (
         title?: string | null;
       }
     | undefined,
-  roster: Array<{ agentId: string; role: string | null; title: string | null }>,
+  roster: Array<{
+    agentId: string;
+    description?: string | null;
+    role: string | null;
+    title: string | null;
+  }>,
 ): AgentGroupConfig | undefined => {
   if (roster.length === 0) return undefined;
 
@@ -40,7 +45,7 @@ export const buildGroupAgentContext = (
     const role = member.role === 'supervisor' ? 'supervisor' : 'participant';
     const name = member.title?.trim() || 'Untitled Agent';
     agentMap[member.agentId] = { name, role };
-    members.push({ id: member.agentId, name, role });
+    members.push({ id: member.agentId, name, role, description: member.description });
 
     if (member.agentId === currentAgentId) {
       currentAgentName = name;

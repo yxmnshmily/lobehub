@@ -2,6 +2,7 @@
 
 import { HotkeyEnum } from '@lobechat/const/hotkeys';
 import { ActionIcon, type ActionIconProps } from '@lobehub/ui/base-ui';
+import { useResponsive } from 'antd-style';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { memo } from 'react';
@@ -16,6 +17,8 @@ import { settingsSelectors } from '@/store/user/selectors';
 import { isMacOS } from '@/utils/platform';
 
 import { useMobileNavPanelController } from './MobileNavPanel';
+import { supportsCompactNavRail } from './presentation';
+import { useActiveNavKey } from './useActiveNavKey';
 
 export const TOGGLE_BUTTON_ID = 'toggle_left_panel_button';
 
@@ -51,8 +54,17 @@ const ToggleLeftPanelButton = memo<ToggleLeftPanelButtonProps>(
     const hotkey = useUserStore(settingsSelectors.getHotkeyById(HotkeyEnum.ToggleLeftPanel));
 
     const { t } = useTranslation(['chat', 'hotkey']);
+    const { xl } = useResponsive();
+    const navKey = useActiveNavKey();
 
     if (isMacDesktop && !forceVisible) return null;
+
+    /* 视口 <1200px 时支持图标栏的侧栏被强制收窄（automaticCompact），展开偏好
+       不再生效——这个按钮会变成无效操作，直接隐藏。移动端抽屉控制、桌面壳
+       持久按钮与不支持图标栏的侧栏不受影响。 */
+    if (xl === false && !mobilePanel && !forceVisible && supportsCompactNavRail(navKey)) {
+      return null;
+    }
 
     const displayedExpand = mobilePanel?.open ?? expand;
 

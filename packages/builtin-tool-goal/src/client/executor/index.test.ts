@@ -1,9 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ advance: vi.fn(), create: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  advance: vi.fn(),
+  create: vi.fn(),
+  getGraph: vi.fn(),
+  revise: vi.fn(),
+  resume: vi.fn(),
+}));
 
 vi.mock('@/services/goal', () => ({
-  goalService: { advance: mocks.advance, create: mocks.create },
+  goalService: {
+    advance: mocks.advance,
+    create: mocks.create,
+    getGraph: mocks.getGraph,
+    revise: mocks.revise,
+    resume: mocks.resume,
+  },
 }));
 vi.mock('@lobechat/builtin-tool-task/client/executor', () => ({
   taskExecutor: { onAfterCall: vi.fn() },
@@ -50,4 +62,34 @@ describe('goalExecutor.createGoal', () => {
     expect(result.success).toBe(false);
     expect(result.error?.type).toBe('GoalCreateFailed');
   });
+});
+
+it('executes follow-up APIs on the original goal through the remote service', async () => {
+  mocks.getGraph.mockResolvedValue({
+    goal: { id: 'g', status: 'paused', config: { groupId: 'group' } },
+    nodes: [],
+    workVersions: [],
+  });
+  mocks.revise.mockResolvedValue({
+    data: { goal: { status: 'paused' }, taskIds: ['t'] },
+    message: 'Saved',
+  });
+  mocks.resume.mockResolvedValue({ data: { status: 'running' }, message: 'Resumed' });
+  const ctx = { groupId: 'group' } as never;
+  expect((await goalExecutor.viewGoal({ goalId: 'g' }, ctx)).success).toBe(true);
+  await goalExecutor.reviseGoal({ goalId: 'g', nodeId: 'n', instruction: 'new' }, ctx);
+  expect(mocks.revise).toHaveBeenCalledWith({
+    id: 'g',
+    nodeId: 'n',
+    instruction: 'new',
+    groupId: 'group',
+  });
+  await goalExecutor.resumeGoal({ goalId: 'g' }, ctx);
+  expect(mocks.resume).toHaveBeenCalledWith('g', 'group');
+});
+it('refuses a goal belonging to another group', async () => {
+  mocks.getGraph.mockResolvedValue({ goal: { config: { groupId: 'other' } } });
+  expect(
+    (await goalExecutor.viewGoal({ goalId: 'g' }, { groupId: 'group' } as never)).success,
+  ).toBe(false);
 });

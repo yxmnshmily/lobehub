@@ -13,6 +13,7 @@ import {
   getActivePluginIds,
   getWorkingDirEffectivePath,
 } from '@lobechat/types';
+import { TRPCError } from '@trpc/server';
 
 import type { AgentModel } from '@/database/models/agent';
 import { AgentSkillModel } from '@/database/models/agentSkill';
@@ -202,6 +203,7 @@ export interface OperationPrepInput {
   operationId: string;
   runAttachments: RunAttachments;
   runFromHistory: boolean;
+  skillIdentifiers?: string[];
   throwIfExecutionAborted: (stage: string) => Promise<void>;
 }
 
@@ -879,12 +881,22 @@ export const prepareOperation = async (
     // Content lives in the DB `content` column already (SKILL.md body), so no
     // zip unpack is needed; mirror `activateSkill` by appending the resource
     // tree so pinned ZIP/GitHub skills keep their `readReference` paths.
-    const pinnedSkillIds = new Set(getActivePluginIds(agentConfig.plugins));
+    const requestedSkillIds = new Set(input.skillIdentifiers ?? []);
+    const pinnedSkillIds = new Set([
+      ...getActivePluginIds(agentConfig.plugins),
+      ...requestedSkillIds,
+    ]);
     const pinnedDbSkillIds = dbSkills
       .filter((s) => pinnedSkillIds.has(s.identifier))
       .map((s) => s.id);
     const pinnedDbContent = new Map(
       (await skillModel.findByIds(pinnedDbSkillIds)).map((s) => {
+        if (requestedSkillIds.has(s.identifier) && !s.content?.trim()) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Requested skill is unavailable for this run',
+          });
+        }
         const hasResources = !!(s.resources && Object.keys(s.resources).length > 0);
         const content =
           hasResources && s.resources
@@ -1010,8 +1022,25 @@ export const prepareOperation = async (
         }),
       skills,
     });
-    operationSkillSet = skillEngine.generate(agentPlugins ?? []);
+    for (const identifier of requestedSkillIds) {
+      const skill = skills.find((candidate) => candidate.identifier === identifier);
+      if (
+        !skill ||
+        !('content' in skill) ||
+        !skill.content?.trim() ||
+        !shouldEnableBuiltinSkill(identifier, {
+          canExecuteOnDevice: executionPlan ? isDeviceCapablePlan(executionPlan) : false,
+        })
+      ) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Requested skill is unavailable for this run',
+        });
+      }
+    }
+    operationSkillSet = skillEngine.generate([...(agentPlugins ?? []), ...requestedSkillIds]);
   } catch (error) {
+    if (input.skillIdentifiers?.length) throw error;
     log('execAgent: failed to build operationSkillSet: %O', error);
   }
 

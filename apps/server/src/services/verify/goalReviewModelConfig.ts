@@ -60,13 +60,9 @@ export const resolveGoalReviewModelConfig = async (
     const configured = await usable(await agents.getAgentModelConfig(params.verifierAgentId));
     if (configured) return configured;
   }
-  const pinned = await usable(REVIEW_PREDICT_MODEL_CONFIG);
-  if (pinned) return pinned;
-  const builtin = await usable(await agents.getAgentModelConfig(BUILTIN_AGENT_SLUGS.verifyAgent));
-  if (builtin) return builtin;
-
-  // Program checks may never have needed a verifier model. Fall back to the
-  // task's configured model, then the user's Goal system-agent configuration.
+  // Prefer the model configured for this work before deployment defaults.
+  // Runtime construction alone cannot detect provider location/project denial,
+  // so an unrelated default must not displace the task owner's chosen provider.
   const task = await new TaskModel(db, userId, workspaceId).findById(params.taskId);
   const taskConfig = toRecord(task?.config);
   const taskModel = await usable({
@@ -78,5 +74,10 @@ export const resolveGoalReviewModelConfig = async (
     const assigned = await usable(await agents.getAgentModelConfig(task.assigneeAgentId));
     if (assigned) return assigned;
   }
+  const pinned = await usable(REVIEW_PREDICT_MODEL_CONFIG);
+  if (pinned) return pinned;
+  const builtin = await usable(await agents.getAgentModelConfig(BUILTIN_AGENT_SLUGS.verifyAgent));
+  if (builtin) return builtin;
+
   return usable(await resolveGoalModelConfig(db, userId));
 };

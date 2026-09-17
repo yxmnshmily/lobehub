@@ -48,8 +48,8 @@ const ListViewSkeleton = ({
             horizontal
             align={'center'}
             style={{
+              flexGrow: 1,
               flexShrink: 0,
-              maxWidth: columnWidths.name,
               minWidth: columnWidths.name,
               paddingInline: 8,
               width: columnWidths.name,

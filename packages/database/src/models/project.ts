@@ -4,6 +4,8 @@ import { and, asc, desc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
 
 import { agents } from '../schemas/agent';
 import { knowledgeBases } from '../schemas/file';
+import { goals } from '../schemas/goal';
+import { goalNodes } from '../schemas/goalGraph';
 import {
   projectAgents,
   projectCompletionReviews,
@@ -11,9 +13,11 @@ import {
   projects,
 } from '../schemas/project';
 import { projectWorks } from '../schemas/projectWork';
-import { tasks } from '../schemas/task';
+import { tasks, taskTopics } from '../schemas/task';
+import { topics } from '../schemas/topic';
 import { works } from '../schemas/work';
 import type { LobeChatDatabase } from '../type';
+import { groupWorkVisibility } from '../utils/groupWork';
 import { buildWorkspacePayload, buildWorkspaceWhere } from '../utils/workspace';
 import { AgentModel } from './agent';
 
@@ -163,13 +167,76 @@ export class ProjectModel {
   async list(options: { limit?: number; offset?: number; statuses?: ProjectStatus[] } = {}) {
     const { limit = 50, offset = 0, statuses } = options;
     const statusWhere = statuses?.length ? inArray(projects.status, statuses) : undefined;
-    return this.db
+    const rows = await this.db
       .select()
       .from(projects)
       .where(and(this.readable(), statusWhere))
       .orderBy(desc(projects.updatedAt))
       .limit(limit)
       .offset(offset);
+    const stats = await this.runStats(rows.map(({ id }) => id));
+    return rows.map((project) => ({
+      ...project,
+      totalRunCost: Number(stats.get(project.id)?.cost ?? 0),
+      totalRunDuration: Number(stats.get(project.id)?.duration ?? 0),
+    }));
+  }
+
+  /** One batch per page; shared goal/task/topic paths count each conversation once. */
+  private async runStats(ids: string[]) {
+    if (!ids.length) return new Map<string, { cost: number; duration: number }>();
+    const scope = { userId: this.userId, workspaceId: this.workspaceId };
+    const readableTasks = and(
+      buildWorkspaceWhere(scope, {
+        userId: tasks.createdByUserId,
+        workspaceId: tasks.workspaceId,
+        visibility: tasks.visibility,
+      }),
+      groupWorkVisibility(sql`${tasks.config}`, this.userId, this.workspaceId),
+    );
+    const { rows } = await this.db.execute<{
+      project_id: string;
+      cost: number;
+      duration: number;
+    }>(sql`
+      WITH RECURSIVE readable_tasks AS (
+        SELECT ${tasks.id} AS id, ${tasks.projectId} AS project_id, ${tasks.parentTaskId} AS parent_task_id
+        FROM ${tasks} WHERE ${readableTasks}
+      ), seeds AS (
+        SELECT project_id, id AS task_id FROM readable_tasks
+        WHERE ${inArray(sql`project_id`, ids)}
+        UNION
+        SELECT ${goals.projectId}, ${goalNodes.taskId}
+        FROM ${goals} JOIN ${goalNodes} ON ${goalNodes.goalId} = ${goals.id}
+        JOIN readable_tasks ON readable_tasks.id = ${goalNodes.taskId}
+        WHERE ${inArray(goals.projectId, ids)} AND ${buildWorkspaceWhere(scope, goals)}
+          AND ${groupWorkVisibility(sql`${goals.config}`, this.userId, this.workspaceId)}
+      ), task_tree AS (
+        SELECT project_id, task_id FROM seeds
+        UNION
+        SELECT task_tree.project_id, child.id FROM readable_tasks child
+        JOIN task_tree ON child.parent_task_id = task_tree.task_id
+      ), task_runs AS (
+        SELECT task_tree.project_id, ${taskTopics.topicId} AS topic_id, min(${taskTopics.createdAt}) AS started_at
+        FROM task_tree JOIN ${taskTopics} ON ${taskTopics.taskId} = task_tree.task_id
+        WHERE ${buildWorkspaceWhere(scope, taskTopics)}
+        GROUP BY task_tree.project_id, ${taskTopics.topicId}
+      ), project_topics AS (
+        SELECT project_id, topic_id FROM task_runs
+        UNION
+        SELECT ${topics.projectId}, ${topics.id} FROM ${topics}
+        WHERE ${inArray(topics.projectId, ids)}
+      )
+      SELECT project_topics.project_id,
+        coalesce(sum(${topics.totalCost}), 0) AS cost,
+        coalesce(sum(greatest(0, extract(epoch FROM (${topics.completedAt} - coalesce(task_runs.started_at, ${topics.createdAt}))) * 1000))
+          FILTER (WHERE ${topics.completedAt} IS NOT NULL), 0) AS duration
+      FROM project_topics JOIN ${topics} ON ${topics.id} = project_topics.topic_id
+      LEFT JOIN task_runs ON task_runs.project_id = project_topics.project_id AND task_runs.topic_id = project_topics.topic_id
+      WHERE ${buildWorkspaceWhere(scope, topics)}
+      GROUP BY project_topics.project_id
+    `);
+    return new Map(rows.map((row) => [row.project_id, row]));
   }
 
   async update(id: string, input: UpdateProjectInput) {

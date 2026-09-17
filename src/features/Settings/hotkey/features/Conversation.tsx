@@ -3,13 +3,12 @@
 import { HotkeyGroupEnum } from '@lobechat/const/hotkeys';
 import { type FormGroupItemType } from '@lobehub/ui';
 import { Form } from '@lobehub/ui';
-
 import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
+import SkeletonText from '@/components/Skeleton/Text';
 import { HOTKEYS_REGISTRATION } from '@/const/hotkeys';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -87,7 +86,7 @@ const HotkeySetting = memo(() => {
       initialValues={hotkey}
       items={[conversation]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       onValuesChange={(values) => save(() => setSettings({ hotkey: values }))}
       {...FORM_STYLE}
     />

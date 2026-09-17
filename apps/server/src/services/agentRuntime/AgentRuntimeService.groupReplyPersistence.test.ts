@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { AgentRuntime } from '@lobechat/agent-runtime';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,9 +15,9 @@ const callbackDeps = vi.hoisted(() => ({
 
 vi.mock('@/database/core/db-adaptor', () => ({ getServerDB: vi.fn(async () => ({})) }));
 vi.mock('@/server/services/aiAgent', () => ({
-  AiAgentService: vi.fn(() => ({
-    completeGroupActionMember: callbackDeps.completeGroupActionMember,
-  })),
+  AiAgentService: vi.fn(function () {
+    return { completeGroupActionMember: callbackDeps.completeGroupActionMember };
+  }),
 }));
 
 // Keep the real completion bridge and message normalization. No constructor,
@@ -39,9 +40,9 @@ vi.mock('@/server/modules/ModelRuntime', () => ({
   ApiKeyManager: vi.fn(),
 }));
 vi.mock('@/server/modules/AgentRuntime', () => ({
-  AgentRuntimeCoordinator: vi.fn(() => ({
-    getOperationMetadata: callbackDeps.getOperationMetadata,
-  })),
+  AgentRuntimeCoordinator: vi.fn(function () {
+    return { getOperationMetadata: callbackDeps.getOperationMetadata };
+  }),
   createStreamEventManager: vi.fn(),
 }));
 vi.mock('@/server/modules/AgentRuntime/RuntimeExecutors', () => ({
@@ -64,11 +65,12 @@ const createFixture = () => {
   const params: GroupActionMemberBridgeParams = {
     anchorMessageId: 'group-tool',
     expectedMembers: 1,
-    finalState: {
+    finalState: AgentRuntime.createInitialState({
+      operationId: 'review-operation',
       messages: [{ id: 'review-message', content: '请补充亲子互动的画面。', role: 'assistant' }],
       metadata: { agentId: 'reviewer' },
       status: 'done',
-    } as GroupActionMemberBridgeParams['finalState'],
+    }),
     groupToolMessageId: 'group-tool',
     mode: 'in_group',
     onComplete: 'resume',

@@ -8,11 +8,12 @@ import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { usePermission } from '@/hooks/usePermission';
 
 export interface GenerationMediaModeSegmentProps {
   /** `hero`: large labeled headline select. `toolbar`: compact icon-only toggle group. */
-  layout?: 'hero' | 'toolbar';
-  mode: 'image' | 'video';
+  layout?: 'hero' | 'toolbar' | 'sidebar';
+  mode: 'image' | 'video' | 'page';
 }
 
 const styles = createStaticStyles(({ css }) => ({
@@ -20,6 +21,18 @@ const styles = createStaticStyles(({ css }) => ({
     width: auto;
     font-size: inherit;
     line-height: 1.2;
+  `,
+  sidebarSelect: css`
+    gap: 4px;
+
+    width: auto;
+    height: 32px;
+    min-height: 32px;
+    padding-block: 3px;
+    padding-inline: 6px;
+
+    font-size: 14px;
+    line-height: 20px;
   `,
   heroText: css`
     font-size: 24px;
@@ -42,17 +55,19 @@ const styles = createStaticStyles(({ css }) => ({
 
 const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
   ({ mode, layout = 'toolbar' }) => {
-    const { t } = useTranslation('common');
+    const { t } = useTranslation(['common', 'file']);
     const { mobile = false } = useResponsive();
     const navigate = useWorkspaceAwareNavigate();
     const isHero = layout === 'hero';
+    const isSidebar = layout === 'sidebar';
+    const { allowed: canCreate } = usePermission('create_content');
 
     const heroOptions = useMemo<SelectProps['options']>(
       () => [
         {
           label: (
             <Flexbox horizontal align="center" gap={8}>
-              <span className={styles.heroText}>{t('tab.image')}</span>
+              <span className={isHero ? styles.heroText : undefined}>{t('tab.image')}</span>
             </Flexbox>
           ),
           value: 'image',
@@ -60,17 +75,17 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
         {
           label: (
             <Flexbox horizontal align="center" gap={8}>
-              <span className={styles.heroText}>{t('tab.video')}</span>
+              <span className={isHero ? styles.heroText : undefined}>{t('tab.video')}</span>
             </Flexbox>
           ),
           value: 'video',
         },
         {
-          label: <span className={styles.heroText}>{t('tab.pages')}</span>,
+          label: <span className={isHero ? styles.heroText : undefined}>{t('tab.pages')}</span>,
           value: 'page',
         },
       ],
-      [t],
+      [isHero, t],
     );
 
     const toolbarOptions = useMemo<SegmentedOptions<'image' | 'video' | 'page'>>(
@@ -100,31 +115,42 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
     const labelRender: SelectProps['labelRender'] = useCallback(
       (props: any) => {
         const v = String((props as { value?: string }).value ?? '');
-        const text = v === 'video' ? t('tab.video') : t('tab.image');
+        const text =
+          v === 'page' ? t('tab.pages') : v === 'video' ? t('tab.video') : t('tab.image');
         return (
           <span
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               fontSize: 'inherit',
-              fontWeight: 600,
+              fontWeight: isSidebar ? 500 : 600,
               whiteSpace: 'nowrap',
             }}
           >
+            {isSidebar && (
+              <Icon
+                icon={v === 'page' ? FilePenLine : v === 'video' ? Video : ImageIcon}
+                size={18}
+                style={{ display: 'inline-flex', width: 18, height: 18, flex: 'none' }}
+              />
+            )}
             {text}
           </span>
         );
       },
-      [t],
+      [isSidebar, t],
     );
 
     const handleChange = useCallback(
       (value: string) => {
-        if (value === mode) return;
-        navigate(value === 'page' ? '/page' : value === 'video' ? '/video' : '/image');
+        if (value === mode || (value === 'page' && !canCreate)) return;
+        navigate(value === 'page' ? '/page/new' : value === 'video' ? '/video' : '/image');
       },
-      [mode, navigate],
+      [canCreate, mode, navigate],
     );
 
-    if (!isHero)
+    if (layout === 'toolbar')
       return (
         <Segmented<'image' | 'video' | 'page'>
           options={toolbarOptions}
@@ -140,11 +166,11 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
 
     return (
       <Select
-        className={styles.heroSelect}
+        className={isSidebar ? styles.sidebarSelect : styles.heroSelect}
         labelRender={labelRender}
         options={heroOptions}
         popupMatchSelectWidth={false}
-        size={'large'}
+        size={isSidebar ? 'small' : 'large'}
         value={mode}
         variant={'borderless'}
         onChange={handleChange}

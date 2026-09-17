@@ -39,64 +39,11 @@ export class CrudActionImpl {
   }
 
   createNewPage = async (title: string, visibility?: 'private' | 'public'): Promise<string> => {
-    const { createOptimisticPage, createPage, replaceTempPageWithReal } = this.#get();
-
-    // Create optimistic page immediately in the requested bucket so the item
-    // shows up under the correct accordion before the server responds. The
-    // real row will replace it and confirm the visibility a moment later.
-    const tempPageId = createOptimisticPage(title, visibility);
-    this.#set({ isCreatingNew: true, selectedPageId: tempPageId }, false, n('createNewPage/start'));
-
-    try {
-      // Create real page
-      const newPage = await createPage({ content: '', title, visibility });
-
-      // Convert to LobeDocument. `visibility` and `workspaceId` MUST come from
-      // the server response so the sidebar bucketing selector keeps the row in
-      // the same accordion the user clicked "+" from — omitting them makes the
-      // row silently fall back to the workspace bucket.
-      const realPage: LobeDocument = {
-        content: newPage.content || '',
-        createdAt: newPage.createdAt ? new Date(newPage.createdAt) : new Date(),
-        editorData:
-          typeof newPage.editorData === 'string'
-            ? JSON.parse(newPage.editorData)
-            : newPage.editorData || null,
-        fileType: CUSTOM_DOCUMENT_FILE_TYPE,
-        filename: newPage.title || title,
-        id: newPage.id,
-        metadata: newPage.metadata || {},
-        source: 'document',
-        sourceType: DocumentSourceType.EDITOR,
-        title: newPage.title || title,
-        totalCharCount: newPage.content?.length || 0,
-        totalLineCount: 0,
-        updatedAt: newPage.updatedAt ? new Date(newPage.updatedAt) : new Date(),
-        userId: newPage.userId,
-        visibility: newPage.visibility ?? visibility ?? null,
-        workspaceId: newPage.workspaceId ?? null,
-      };
-
-      // Replace optimistic with real
-      replaceTempPageWithReal(tempPageId, realPage);
-      this.#set(
-        { isCreatingNew: false, selectedPageId: newPage.id },
-        false,
-        n('createNewPage/success'),
-      );
-
-      // Navigate to the new page
-      this.#get().navigateToPage(newPage.id);
-
-      return newPage.id;
-    } catch (error) {
-      console.error('Failed to create page:', error);
-      this.#get().removeTempPage(tempPageId);
-      this.#set({ isCreatingNew: false, selectedPageId: null }, false, n('createNewPage/error'));
-      this.#get().navigate?.('/page');
-
-      throw error;
-    }
+    // A navigation is not a document. The editor saves the draft on first input.
+    void title;
+    const target = `new${visibility ? `?visibility=${visibility}` : ''}`;
+    this.#get().navigate?.(`/page/${target}`);
+    return target;
   };
 
   createOptimisticPage = (

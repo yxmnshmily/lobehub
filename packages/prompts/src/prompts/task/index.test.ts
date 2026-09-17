@@ -81,6 +81,39 @@ describe('task deep-links', () => {
 });
 
 describe('buildTaskRunPrompt', () => {
+  it('requests native completion only after an ordinary task has delivered all requirements', () => {
+    const result = buildTaskRunPrompt({
+      task: { ...baseTask, identifier: 'T-1', instruction: 'Write two captions' },
+    });
+    expect(result).toContain('updateTaskStatus');
+    expect(result).toContain('status="completed"');
+    expect(result).toContain('explicit checkpoint or request to wait');
+    expect(result).toContain('activateTools');
+  });
+
+  it.each(['heartbeat', 'schedule'] as const)(
+    'does not request completion for %s ticks',
+    (automationMode) => {
+      const result = buildTaskRunPrompt({
+        task: { ...baseTask, identifier: 'T-1', instruction: 'Monitor', automationMode },
+      });
+      expect(result).toContain('NEVER set this task to completed');
+      expect(result).not.toContain('status="completed"');
+    },
+  );
+
+  it.each([{ task: { verify: { enabled: true } } }, { goalLoop: { round: 2 }, task: {} }])(
+    'leaves acceptance decisions to the existing coordinator',
+    (input) => {
+      const result = buildTaskRunPrompt({
+        ...input,
+        task: { ...baseTask, identifier: 'T-1', instruction: 'Write', ...input.task },
+      });
+      expect(result).not.toContain('status="completed"');
+      expect(result).toContain('Leave completion to the existing verifier or Goal coordinator');
+    },
+  );
+
   it('should build prompt with only task instruction', () => {
     const result = buildTaskRunPrompt(
       {

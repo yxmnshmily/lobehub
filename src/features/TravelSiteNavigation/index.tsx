@@ -22,6 +22,7 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 0;
     margin-inline: auto;
     padding-block-start: 72px;
+
     /* Share the header's symmetric gutters, including when the sidebar is collapsed. */
     padding-inline: var(--site-shell-gutter, 16px);
 
@@ -147,6 +148,12 @@ const TravelSiteNavigationBridge: FC = () => {
 
   useEffect(() => {
     window.__siteShellNavigationOnly = true;
+    /* 2026-09-17 修复制作平台右侧"竖带"：共享 shell 注入的 site-navigation.css 带
+       html { scrollbar-gutter: stable }（官网为防栏目切换时滚动条占位翻转布局而设）。
+       本平台滚动发生在内部容器，html 永不滚动，stable 的预留位只会变成视口右侧一条
+       谁也选不中的背景竖带。加载共享脚本前先在 html 上打标记，CSS 用 :not 排除本平台；
+       同步设置保证 CSS 注入时属性已就位，不会闪。卸载时移除，恢复官网行为。 */
+    document.documentElement.setAttribute('data-travel-shell-embed', '');
     void loadSharedScript(
       '/assets/js/theme-switcher.js?v=20260905-lobehub-shared-shell-2',
       'travel-theme',
@@ -161,6 +168,10 @@ const TravelSiteNavigationBridge: FC = () => {
         loadSharedScript('/assets/js/site-shell.js?v=20260907-centered-shell', 'travel-site-shell'),
       )
       .catch((error) => console.error('[Travel Site Shell]', error));
+
+    return () => {
+      document.documentElement.removeAttribute('data-travel-shell-embed');
+    };
   }, []);
 
   return (

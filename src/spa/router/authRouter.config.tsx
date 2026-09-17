@@ -132,14 +132,14 @@ const AuthErrorBoundary = () => {
     notifyChunkError(error);
   }
 
-  // index.auth.html paints the body black in dark mode before React mounts
+  // Match the initial full-width canvas in index.auth.html.
   const isDark = resolvedTheme === 'dark';
 
   return (
     <div
       style={{
         alignItems: 'center',
-        background: isDark ? '#000' : '#f8f8f8',
+        background: isDark ? '#151517' : '#f5f6f7',
         color: isDark ? '#e6e6e6' : '#1a1a1a',
         display: 'flex',
         flexDirection: 'column',

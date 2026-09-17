@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import LocalizedGeneratedText from '@/features/Acceptance/components/LocalizedGeneratedText';
 import {
   useVerifierTracing,
   useVerifyInstruction,
@@ -29,6 +30,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   `,
+  field: css`
+    padding-block-end: 12px;
+    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
+  `,
   fill: css`
     height: 100%;
     border-radius: 999px;
@@ -48,6 +53,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     gap: 12px;
     align-items: center;
     justify-content: space-between;
+
+    padding-block-end: 8px;
+    border-block-end: 1px dashed ${cssVar.colorBorderSecondary};
 
     font-size: 13px;
   `,
@@ -92,7 +100,7 @@ const formatDuration = (started?: Date | string | null, completed?: Date | strin
 
 const Field = memo<{ children: ReactNode; label: string }>(({ label, children }) => {
   return (
-    <Flexbox>
+    <Flexbox className={styles.field}>
       <div className={styles.label}>{label}</div>
       {children}
     </Flexbox>
@@ -162,9 +170,8 @@ const Body = () => {
     <Flexbox
       gap={16}
       height={'100%'}
-      paddingBlock={'4px 16px'}
-      paddingInline={8}
-      style={{ overflow: 'auto' }}
+      padding={16}
+      style={{ overflow: 'auto', paddingLeft: '16px', paddingRight: '16px', paddingBottom: '16px' }}
     >
       {ratio !== undefined && (
         <div className={styles.confidenceCard}>
@@ -223,7 +230,12 @@ const Body = () => {
       )}
 
       {canOpenTrace && (
-        <Button block icon={ListTree} onClick={openTrace}>
+        <Button
+          block
+          icon={ListTree}
+          style={{ flexShrink: 0, height: 'auto', minHeight: 40, padding: '8px 12px' }}
+          onClick={openTrace}
+        >
           {t('detail.openTrace')}
         </Button>
       )}
@@ -233,9 +245,13 @@ const Body = () => {
       {/* Judgment outcome */}
       {sections.map((s) => (
         <Field key={s.key} label={t(`detail.${s.key}` as any)}>
-          <Markdown className={styles.text} variant={'chat'}>
-            {s.value!}
-          </Markdown>
+          <LocalizedGeneratedText text={s.value!}>
+            {(value) => (
+              <Markdown className={styles.text} variant={'chat'}>
+                {value}
+              </Markdown>
+            )}
+          </LocalizedGeneratedText>
         </Field>
       ))}
     </Flexbox>

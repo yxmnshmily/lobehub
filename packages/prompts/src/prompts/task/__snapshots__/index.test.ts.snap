@@ -6,6 +6,7 @@ exports[`buildTaskRunPrompt > should build prompt with only task instruction 1`]
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 帮我写一本 AI Agent 技术书籍
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 </task>"
@@ -17,6 +18,7 @@ exports[`buildTaskRunPrompt > should build prompt with task description + instru
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 帮我写一本 AI Agent 技术书籍，目标 8 章
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 Description: 面向开发者的技术书籍
 
 Review: (not configured)
@@ -29,6 +31,7 @@ exports[`buildTaskRunPrompt > should handle empty activities gracefully 1`] = `
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 </task>"
@@ -48,6 +51,7 @@ exports[`buildTaskRunPrompt > should handle full scenario with all sections 1`] 
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写一本 AI Agent 书，目标 8 章
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 Description: 面向开发者的 AI Agent 技术书籍
 Topics: 1
 
@@ -68,6 +72,7 @@ exports[`buildTaskRunPrompt > should include activity history with topics and br
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 Topics: 2
 
 Review: (not configured)
@@ -92,6 +97,7 @@ exports[`buildTaskRunPrompt > should include agent comments with author label an
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 
@@ -107,6 +113,7 @@ exports[`buildTaskRunPrompt > should include parentTask context for subtasks 1`]
 TASK-4 第2章 核心架构
 Status: ● running     Priority: -
 Instruction: 撰写第2章
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 Parent: TASK-1
 
 Review: (not configured)
@@ -127,6 +134,7 @@ exports[`buildTaskRunPrompt > should include subtasks in task section 1`] = `
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Subtasks:
   TASK-2 ✓ completed 第1章 Agent 概述
@@ -142,6 +150,7 @@ exports[`buildTaskRunPrompt > should include subtasks in task tag when provided 
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写一本 AI Agent 书，目标 8 章
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Subtasks:
   TASK-2 ● running 第1章 AI Agent 概述
@@ -162,6 +171,7 @@ exports[`buildTaskRunPrompt > should only include user comments in user_feedback
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 
@@ -185,6 +195,7 @@ exports[`buildTaskRunPrompt > should place high_priority_instruction first, then
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 
@@ -204,6 +215,7 @@ exports[`buildTaskRunPrompt > should prioritize user feedback at the top 1`] = `
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 
@@ -219,6 +231,7 @@ exports[`buildTaskRunPrompt > should show resolved action and comment on briefs 
 TASK-2 第2章
 Status: ● running     Priority: -
 Instruction: 写第2章
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 
@@ -237,6 +250,7 @@ exports[`buildTaskRunPrompt > should truncate comments to 80 chars in activities
 TASK-1 写一本书
 Status: ● running     Priority: -
 Instruction: 写书
+Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.
 
 Review: (not configured)
 

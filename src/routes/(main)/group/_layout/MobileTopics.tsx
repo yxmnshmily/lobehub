@@ -41,10 +41,10 @@ const MobileTopics = memo(() => {
         centered
         footer={null}
         open={open}
+        width="min(480px, calc(100vw - 32px))"
         styles={{
           body: { padding: 0, maxHeight: '75dvh', overflowY: 'auto', overflowX: 'hidden' },
         }}
-        width="min(480px, calc(100vw - 32px))"
         title={
           <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} width={'100%'}>
             <span>{`${t('title')} ${topicCount > 0 ? topicCount : ''}`.trim()}</span>
@@ -59,7 +59,7 @@ const MobileTopics = memo(() => {
         onCancel={() => setOpen(false)}
       >
         <div ref={setOverlayContainer} style={{ minHeight: 0 }}>
-          <Flexbox minHeight={0} padding={'8px 8px 0'} style={{ overflowX: 'hidden' }}>
+          <Flexbox padding={'8px 8px 0'} style={{ minHeight: 0, overflowX: 'hidden' }}>
             {managedGroupId ? (
               <RecentTopicLinks
                 defaultExpanded

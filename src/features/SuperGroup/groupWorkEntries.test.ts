@@ -76,6 +76,7 @@ describe('group work panel entries', () => {
       role: 'task',
       plugin: {
         apiName: 'executeAgentTask',
+        arguments: '{}',
         identifier: 'lobe-group-management',
         type: 'builtin',
       },

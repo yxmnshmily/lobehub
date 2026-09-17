@@ -8,6 +8,7 @@ import { memo, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useVerifyResults } from '@/features/Acceptance';
+import LocalizedGeneratedText from '@/features/Acceptance/components/LocalizedGeneratedText';
 
 const styles = createStaticStyles(({ css }) => ({
   check: css`
@@ -105,7 +106,7 @@ const RunVerifyDetail = memo<{
                 </Flexbox>
                 {reasoning && (
                   <Text className={styles.reason} style={{ whiteSpace: 'pre-wrap' }}>
-                    {reasoning}
+                    <LocalizedGeneratedText text={reasoning} />
                   </Text>
                 )}
               </Flexbox>

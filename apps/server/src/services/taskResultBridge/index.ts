@@ -3,6 +3,7 @@ import { RequestTrigger } from '@lobechat/types';
 import debug from 'debug';
 import { sql } from 'drizzle-orm';
 
+import { ChatGroupModel } from '@/database/models/chatGroup';
 import { MessageModel } from '@/database/models/message';
 import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
@@ -55,6 +56,11 @@ const renderHandoff = (params: {
     return detail ? `${lead}\n\n${truncate(detail)}` : lead;
   }
 
+  // Carry the deliverable itself. A summary saying "copy is ready" forces the
+  // coordinator to retrieve it again and can trigger duplicate paid work.
+  const finalContent = fallbackContent?.trim() || handoff?.content?.trim();
+  if (finalContent) return finalContent;
+
   const parts: string[] = [];
   if (handoff?.title) parts.push(`### ${handoff.title}`);
   const body = handoff?.summary?.trim() || fallbackContent?.trim();
@@ -69,7 +75,7 @@ const renderHandoff = (params: {
 export interface DeliverTaskResultParams {
   /** Error text when the run failed. */
   errorMessage?: string;
-  /** Raw final assistant text from the run — fallback when the handoff isn't ready. */
+  /** Actual final assistant text, preferred over the generated handoff summary. */
   lastAssistantContent?: string;
   operationId: string;
   /** Terminal reason from the lifecycle hook: 'done' | 'error' | 'interrupted' | … */
@@ -131,6 +137,11 @@ export class TaskResultBridgeService {
       return;
     }
 
+    const originTopic = await new TopicModel(this.db, this.userId, this.workspaceId).findById(
+      originTopicId,
+    );
+    if (!originTopic) return;
+
     const reason = normalizeReason(params.reason);
 
     const handoff = topicId
@@ -145,10 +156,9 @@ export class TaskResultBridgeService {
       reason,
     });
 
-    // Idempotency: a deterministic id keyed on (task, completed topic). QStash
-    // can redeliver the `on-topic-complete` webhook (which drives this bridge) —
-    // the second create loses the PK race and we skip.
-    const messageId = `task-cb-${taskId}-${topicId ?? params.operationId}`;
+    // A topic can be continued for a revision. Deduplicate webhook redelivery
+    // for this operation without suppressing the next result in the same topic.
+    const messageId = `task-cb-${taskId}-${params.operationId}`;
     // Pass workspaceId: a workspace-scoped task's origin topic lives under the
     // team workspace, so the leaf lookup + create must use the matching
     // ownership predicate — a personal-mode model (workspace_id IS NULL) finds
@@ -167,6 +177,7 @@ export class TaskResultBridgeService {
           {
             agentId: originAgentId,
             content,
+            groupId: originTopic.groupId ?? undefined,
             metadata: {
               taskCallback: { identifier: taskIdentifier, reason, taskId, topicId },
             },
@@ -208,7 +219,11 @@ export class TaskResultBridgeService {
     const receiptIds = receipts.map((item) => item.id);
     const topicModel = new TopicModel(this.db, this.userId, this.workspaceId);
     const topic = await topicModel.findById(originTopicId);
-    const botContext = topic?.metadata?.bot as ChatTopicBotContext | undefined;
+    if (!topic) {
+      await callbackStore.settle(receiptIds);
+      return;
+    }
+    const botContext = topic.metadata?.bot as ChatTopicBotContext | undefined;
     const hooks: AgentHook[] = [
       this.createCreatorCompletionHook(receiptIds, agentId, originTopicId, botContext),
     ];
@@ -234,16 +249,32 @@ export class TaskResultBridgeService {
         this.workspaceId,
       ).getLastMainThreadSpineMessageId(originTopicId);
 
+      const members = topic.groupId
+        ? await new ChatGroupModel(this.db, this.userId, this.workspaceId).getGroupAgentsWithMeta(
+            topic.groupId,
+          )
+        : [];
+      const orchestrationRole =
+        members.find((member) => member.agentId === agentId)?.role === 'supervisor'
+          ? ('supervisor' as const)
+          : ('member' as const);
       const result = await new AiAgentService(this.db, this.userId, {
         workspaceId: this.workspaceId,
       }).execAgent({
         agentId,
-        appContext: { topicId: originTopicId },
+        appContext: {
+          topicId: originTopicId,
+          ...(topic.groupId
+            ? { groupId: topic.groupId, scope: 'group' as const, orchestrationRole }
+            : {}),
+        },
         autoStart: true,
         botContext,
         hooks,
         parentMessageId,
-        prompt: `Process ${receipts.length} completed task result${receipts.length === 1 ? '' : 's'}`,
+        prompt: topic.groupId
+          ? 'Deliver the completed result in the user’s language, using the existing task result and original request. Continue only work already required by that request; otherwise finish with the usable result and any essential limitation. Do not start unrelated memory maintenance, research, extra variants or a new approval round.'
+          : `Process ${receipts.length} completed task result${receipts.length === 1 ? '' : 's'}`,
         suppressUserMessage: true,
         topicStartReservationId: reservationId,
         trigger: RequestTrigger.AgentSignal,

@@ -4,7 +4,7 @@ import { t } from 'i18next';
 import { type UserStore } from '@/store/user';
 
 const nickName = (s: UserStore) => {
-  const defaultNickName = s.user?.fullName || s.user?.username;
+  const defaultNickName = s.user?.fullName?.trim() || s.user?.phone?.trim() || s.user?.username;
   if (s.isSignedIn) return defaultNickName;
 
   return t('userPanel.anonymousNickName', { ns: 'common' });
@@ -17,7 +17,8 @@ const username = (s: UserStore) => {
 };
 
 export const userProfileSelectors = {
-  displayUserName: (s: UserStore): string => s.user?.fullName || username(s) || s.user?.email || '',
+  displayUserName: (s: UserStore): string =>
+    s.user?.fullName?.trim() || s.user?.phone?.trim() || username(s) || s.user?.email || '',
   email: (s: UserStore): string => s.user?.email || '',
   fullName: (s: UserStore): string => s.user?.fullName || '',
   interests: (s: UserStore): string[] => s.user?.interests || [],

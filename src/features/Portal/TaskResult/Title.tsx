@@ -4,13 +4,14 @@ import { cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/selectors';
 import { useTaskStore } from '@/store/task';
 import { oneLineEllipsis } from '@/styles';
 
 const Title = memo(() => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const taskId = useChatStore(chatPortalSelectors.taskResultId);
   const detail = useTaskStore((state) => (taskId ? state.taskDetailMap[taskId] : undefined));
 
@@ -25,7 +26,10 @@ const Title = memo(() => {
           fontSize={13}
           style={{ color: cssVar.colorTextSecondary, flex: 1, minWidth: 0 }}
         >
-          {[detail.identifier, detail.name].filter(Boolean).join(' · ')}
+          {localizeGoalTemplate(
+            [detail.identifier, detail.name].filter(Boolean).join(' · '),
+            i18n.resolvedLanguage || i18n.language,
+          )}
         </Text>
       )}
     </Flexbox>

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createTask: vi.fn(),
+  find: vi.fn(),
+  run: vi.fn(),
   getActiveWorkspaceSlug: vi.fn(),
   getWorkspaceMembers: vi.fn(),
   updateTask: vi.fn(),
@@ -30,14 +32,19 @@ vi.mock('@/store/user/selectors', () => ({
 vi.mock('@/store/chat', () => ({ getChatStoreState: vi.fn() }));
 
 vi.mock('@/store/task', () => ({
-  getTaskStoreState: () => ({ createTask: mocks.createTask, updateTask: mocks.updateTask }),
+  getTaskStoreState: () => ({
+    createTask: mocks.createTask,
+    updateTask: mocks.updateTask,
+    internal_refreshTaskDetail: vi.fn(),
+    refreshTaskList: vi.fn(),
+  }),
 }));
 
 vi.mock('@/store/task/slices/detail/reducer', () => ({
   findSubtaskParentId: vi.fn(() => undefined),
 }));
 
-vi.mock('@/services/task', () => ({ taskService: {} }));
+vi.mock('@/services/task', () => ({ taskService: { find: mocks.find, run: mocks.run } }));
 
 // Keep the role gate deterministic: only 'viewer' is excluded here.
 vi.mock('@lobechat/const/rbac', () => ({
@@ -73,6 +80,81 @@ describe('TaskExecutor — human assignee (assigneeUserId)', () => {
   });
 
   describe('createTask', () => {
+    it('preserves the same creator origin for every task in a batch', async () => {
+      await taskExecutor.createTasks(
+        {
+          tasks: [
+            { instruction: 'Copy', name: 'Copy' },
+            { instruction: 'Poster', name: 'Poster' },
+          ],
+        },
+        { agentId: 'supervisor', topicId: 'topic', groupId: 'group' } as any,
+      );
+      expect(mocks.createTask).toHaveBeenCalledTimes(2);
+      for (const [params] of mocks.createTask.mock.calls) {
+        expect(params.context.origin).toMatchObject({ agentId: 'supervisor', topicId: 'topic' });
+        expect(params.config).toEqual({ groupId: 'group' });
+      }
+    });
+    it('preserves creator conversation separately from the assigned member', async () => {
+      await taskExecutor.createTask(
+        { instruction: 'Make a poster', name: 'Poster', assigneeAgentId: 'designer' },
+        {
+          agentId: 'supervisor',
+          groupId: 'group-1',
+          topicId: 'topic-1',
+          anchorMessageId: 'assistant-1',
+          sourceMessageId: 'user-1',
+          rootOperationId: 'root-1',
+          operationId: 'operation-1',
+          toolCallId: 'call-1',
+          messageId: 'tool-1',
+        } as any,
+      );
+      expect(mocks.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assigneeAgentId: 'designer',
+          config: { groupId: 'group-1' },
+          context: {
+            origin: {
+              agentId: 'supervisor',
+              topicId: 'topic-1',
+              messageId: 'assistant-1',
+              operationId: 'root-1',
+              toolCallId: 'call-1',
+            },
+          },
+        }),
+      );
+    });
+    it('uses the current operation when no root operation is supplied', async () => {
+      await taskExecutor.createTask({ instruction: 'Write', name: 'Copy' }, {
+        agentId: 'agent',
+        topicId: 'topic',
+        operationId: 'operation',
+      } as any);
+      expect(mocks.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: {
+            origin: {
+              agentId: 'agent',
+              topicId: 'topic',
+              messageId: undefined,
+              operationId: 'operation',
+              toolCallId: undefined,
+            },
+          },
+        }),
+      );
+    });
+    it.each([{ agentId: 'agent' }, { topicId: 'topic' }, {}])(
+      'does not invent an incomplete origin: %j',
+      async (ctx) => {
+        await taskExecutor.createTask({ instruction: 'Write', name: 'Copy' }, ctx as any);
+        expect(mocks.createTask.mock.calls[0][0].context).toBeUndefined();
+      },
+    );
+
     it('assigns the member alongside the defaulted executing agent and labels the result', async () => {
       const result = await taskExecutor.createTask(
         { assigneeUserId: 'usr_2', instruction: 'Review', name: 'Review' },
@@ -218,4 +300,28 @@ describe('TaskExecutor — human assignee (assigneeUserId)', () => {
       expect(result.content).toContain('- Me  (you)  id=usr_1');
     });
   });
+});
+
+describe('TaskExecutor automatic result return', () => {
+  it.each(['runTask', 'runTasks'] as const)(
+    'matches the creator conversation for %s',
+    async (method) => {
+      mocks.run.mockResolvedValue({ topicId: 'child' });
+      mocks.find.mockResolvedValue({
+        data: { context: { origin: { agentId: 'agent', topicId: 'topic' } } },
+      });
+      const ctx = { agentId: 'agent', topicId: 'topic' } as any;
+      const run = () =>
+        method === 'runTask'
+          ? taskExecutor.runTask({ identifier: 'T-1' }, ctx)
+          : taskExecutor.runTasks({ identifiers: ['T-1'] }, ctx);
+      expect((await run()).content).toContain('automatically return');
+      mocks.find.mockResolvedValue({
+        data: { context: { origin: { agentId: 'other', topicId: 'topic' } } },
+      });
+      expect((await run()).content).not.toContain('automatically return');
+      mocks.find.mockRejectedValue(new Error('lookup unavailable'));
+      expect(await run()).toMatchObject({ success: true });
+    },
+  );
 });

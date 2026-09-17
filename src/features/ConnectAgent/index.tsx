@@ -164,7 +164,7 @@ const styles = createStaticStyles(({ css }) => ({
     align-items: center;
     justify-content: center;
 
-    width: 52px;
+    width: 42px;
     height: 52px;
     border-radius: ${cssVar.borderRadiusLG};
 

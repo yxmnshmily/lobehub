@@ -124,3 +124,18 @@ it('rolls back on invalid balance and can safely retry later', async () => {
     [{ balance_credits: 5_000_012 }],
   );
 });
+
+it('keeps an exhausted gift at zero after balance adjustments and a recharge', async () => {
+  await grantRegistrationCredits(db, 'new-user');
+  await client.exec(`INSERT INTO platform_credit_entries
+    (account_id, user_id_snapshot, type, amount_credits, balance_after_credits, reason, idempotency_key)
+    SELECT id, 'new-user', 'adjustment', -5000000, 0, 'balance correction', 'correction' FROM platform_credit_accounts;
+    INSERT INTO platform_credit_entries
+    (account_id, user_id_snapshot, type, amount_credits, balance_after_credits, reason, idempotency_key)
+    SELECT id, 'new-user', 'top_up', 1168000, 1168000, 'recharge', 'recharge' FROM platform_credit_accounts;
+    UPDATE platform_credit_accounts SET balance_credits = 1168000;`);
+  expect(await getRegistrationCredits(db, 'new-user')).toEqual({
+    remainingCredits: 0,
+    totalCredits: 5000000,
+  });
+});

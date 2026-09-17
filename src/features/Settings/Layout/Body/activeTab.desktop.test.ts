@@ -33,8 +33,8 @@ vi.mock('../../hooks/useCategory', () => ({
           label: 'Appearance',
         },
       ],
-      key: 'account',
-      title: 'Account',
+      key: 'general',
+      title: 'General',
     },
   ],
 }));
@@ -66,13 +66,8 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('@lobehub/ui', () => ({
-  Accordion: ({
-    children,
-    defaultExpandedKeys,
-  }: {
-    children?: ReactNode;
-    defaultExpandedKeys?: string[];
-  }) => h('div', { 'data-expanded-keys': defaultExpandedKeys?.join(',') }, children),
+  Accordion: ({ children, expandedKeys }: { children?: ReactNode; expandedKeys?: string[] }) =>
+    h('div', { 'data-expanded-keys': expandedKeys?.join(',') }, children),
   AccordionItem: ({ children, title }: { children?: ReactNode; title?: ReactNode }) =>
     h('div', null, title, children),
   Flexbox: ({ children }: { children?: ReactNode }) => h('div', null, children),

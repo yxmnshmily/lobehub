@@ -2,7 +2,6 @@ import { Tag } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, type ReactNode } from 'react';
 
-import Statistic from '@/components/Statistic';
 import StatisticCard, { type StatisticConfig } from '@/components/StatisticCard';
 import { calcGrowthPercentage } from '@/components/StatisticCard/growthPercentage';
 import TitleWithPercentage from '@/components/StatisticCard/TitleWithPercentage';
@@ -50,7 +49,7 @@ const OverviewMetricCard = memo<OverviewMetricCardProps>(
         loading={loading}
         padding={mobile ? 12 : undefined}
         statistic={{
-          description: mobile ? (
+          description: (
             <div
               style={{
                 alignItems: 'baseline',
@@ -62,13 +61,11 @@ const OverviewMetricCard = memo<OverviewMetricCardProps>(
                 minWidth: 0,
               }}
             >
+              <span style={{ whiteSpace: 'nowrap' }}>{previousTitle}</span>
               <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 {previousValue}
               </strong>
-              <span style={{ whiteSpace: 'nowrap' }}>{previousTitle}</span>
             </div>
-          ) : (
-            <Statistic title={previousTitle} value={previousValue} />
           ),
           precision,
           style: mobile ? { gap: 8, minWidth: 0 } : undefined,

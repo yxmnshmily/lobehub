@@ -16,7 +16,10 @@ interface SegmentedCapture {
 }
 
 const componentMocks = vi.hoisted(() => ({
+  createPage: vi.fn().mockResolvedValue({ id: 'docs_new-page' }),
   navigate: vi.fn(),
+  toastError: vi.fn(),
+  select: undefined as SegmentedCapture | undefined,
   segmented: undefined as SegmentedCapture | undefined,
 }));
 
@@ -35,7 +38,11 @@ vi.mock('@lobehub/ui/base-ui', async (importOriginal) => ({
       </div>
     );
   },
-  Select: () => <div data-testid="mode-select" />,
+  toast: { error: componentMocks.toastError },
+  Select: (props: SegmentedCapture) => {
+    componentMocks.select = props;
+    return <div data-testid="mode-select" />;
+  },
 }));
 
 vi.mock('antd-style', async (importOriginal) => ({
@@ -50,6 +57,10 @@ vi.mock('antd-style', async (importOriginal) => ({
 
 vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
   useWorkspaceAwareNavigate: () => componentMocks.navigate,
+}));
+
+vi.mock('@/store/page', () => ({
+  usePageStore: (selector: any) => selector({ createPage: componentMocks.createPage }),
 }));
 
 vi.mock('@/features/ChatInput/ActionBar/components/ActionDropdown', () => ({
@@ -71,7 +82,7 @@ vi.mock('@/store/serverConfig', () => ({
 }));
 
 describe('GenerationMediaModeSegment', () => {
-  it('uses an icon-only toggle group in the composer toolbar', () => {
+  it('uses an icon-only toggle group in the composer toolbar', async () => {
     render(<GenerationMediaModeSegment mode="image" />);
 
     const toggleGroup = screen.getByTestId('mode-toggle-group');
@@ -90,17 +101,44 @@ describe('GenerationMediaModeSegment', () => {
       itemLabel: 'toolbar-label',
     });
 
-    act(() => componentMocks.segmented?.onChange?.('video'));
+    await act(async () => componentMocks.segmented?.onChange?.('video'));
     expect(componentMocks.navigate).toHaveBeenCalledWith('/video');
-    act(() => componentMocks.segmented?.onChange?.('page'));
-    expect(componentMocks.navigate).toHaveBeenCalledWith('/page');
+    await act(async () => componentMocks.segmented?.onChange?.('page'));
+    expect(componentMocks.navigate).toHaveBeenCalledWith('/page/new');
   });
 
-  it('keeps the labeled select in the hero title', () => {
+  it('keeps the labeled select in the hero title', async () => {
     render(<GenerationMediaModeSegment layout="hero" mode="image" />);
 
     expect(screen.getByTestId('mode-select')).toBeInTheDocument();
     expect(screen.queryByTestId('mode-toggle-group')).not.toBeInTheDocument();
+    await act(async () => componentMocks.select?.onChange?.('page'));
+    expect(componentMocks.navigate).toHaveBeenCalledWith('/page/new');
+  });
+  it.each(['image', 'video', 'page'] as const)(
+    'switches from the %s sidebar without recreating the current mode',
+    async (mode) => {
+      render(<GenerationMediaModeSegment layout="sidebar" mode={mode} />);
+      expect(screen.getByTestId('mode-select')).toBeInTheDocument();
+      await act(async () => componentMocks.select?.onChange?.(mode));
+      expect(componentMocks.createPage).not.toHaveBeenCalled();
+      expect(componentMocks.navigate).not.toHaveBeenCalled();
+      const target = mode === 'image' ? 'video' : 'image';
+      await act(async () => componentMocks.select?.onChange?.(target));
+      expect(componentMocks.navigate).toHaveBeenCalledWith(`/${target}`);
+      if (mode !== 'page') {
+        await act(async () => componentMocks.select?.onChange?.('page'));
+        expect(componentMocks.navigate).toHaveBeenCalledWith('/page/new');
+      }
+    },
+  );
+
+  it('does not save blank documents when switching repeatedly', async () => {
+    render(<GenerationMediaModeSegment mode="video" />);
+    await act(async () => componentMocks.segmented?.onChange?.('page'));
+    await act(async () => componentMocks.segmented?.onChange?.('page'));
+    expect(componentMocks.createPage).not.toHaveBeenCalled();
+    expect(componentMocks.navigate).toHaveBeenCalledWith('/page/new');
   });
 });
 

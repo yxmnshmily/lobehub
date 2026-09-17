@@ -14,6 +14,34 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgContainer};
 
     /*
+     * FormGroup 的移动端分支（<768px）给标题条写死 colorBgLayout 填充（库样式，
+     * 不随 variant 变化）。用结构化选择器只透明化标题条本身——不能整体覆盖
+     * color-bg-layout token，因为切换胶囊（Tabs 分段控件）的轨道背景用的也是
+     * 同一个 token，误杀会丢掉黑胶囊。
+     */
+
+    /*
+     * FormGroup 移动端分支的标题条自带 colorBgLayout 填充（库样式，不随
+     * variant 变化），深色下就是那条黑底。分组可能渲染在 Form 外（如
+     * ChatAppearance 的独立组），所以不能用 .ant-form 前缀；改用标题条特征
+     * （justify: space-between 的行内样式）定位。必须用 :not([style*='padding'])
+     * 排除自带行内 padding 的元素——如服务商列表的吸顶搜索行（padding=8、
+     * borderless 变体），否则会把它的背景也打成透明，列表文字透上来。
+     */
+    .lobe-flex[style*='justify: space-between']:not([style*='padding']) {
+      background: transparent !important;
+    }
+
+    /*
+     * 分段切换（Tabs）的轨道底色显式化：库默认用 color-bg-layout token，
+     * 在不同宽度/覆盖下会退化成透明（黑胶囊消失）。这里固定为
+     * colorFillQuaternary，保证所有设置页的切换控件都是图 1 的胶囊观感。
+     */
+    [role='tablist'] {
+      background: ${cssVar.colorFillQuaternary};
+    }
+
+    /*
      * Settings-only visual layer. The legacy filled FormGroup draws a tinted
      * shell, an outlined inner panel and a shadow at the same time. Flatten
      * that triple frame once here so every personal settings page inherits the

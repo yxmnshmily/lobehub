@@ -75,6 +75,7 @@ interface SelectorMenuProps {
   displayName: string;
   effort: ReasoningEffortControl;
   model: string;
+  modelLabel?: string;
   onModelChange: (params: { model: string; provider: string }) => Promise<void>;
   openOnHover?: boolean;
   placement?: DropdownPlacement;
@@ -94,6 +95,7 @@ const SelectorMenu = memo<SelectorMenuProps>(
     displayName,
     effort,
     model,
+    modelLabel,
     onModelChange,
     openOnHover = false,
     placement = 'topLeft',
@@ -167,9 +169,14 @@ const SelectorMenu = memo<SelectorMenuProps>(
             <DropdownMenuPopup className={styles.popup}>
               {canSelectModel ? (
                 <DropdownMenuSubmenuRoot>
-                  <DropdownMenuSubmenuTrigger label={t('modelSelector.model')}>
+                  <DropdownMenuSubmenuTrigger
+                    label={modelLabel ?? t('modelSelector.model')}
+                    openOnHover={false}
+                  >
                     <DropdownMenuItemContent>
-                      <DropdownMenuItemLabel>{t('modelSelector.model')}</DropdownMenuItemLabel>
+                      <DropdownMenuItemLabel>
+                        {modelLabel ?? t('modelSelector.model')}
+                      </DropdownMenuItemLabel>
                       {modelMeta}
                       <DropdownMenuSubmenuArrow>
                         <SubmenuArrow />
@@ -188,7 +195,9 @@ const SelectorMenu = memo<SelectorMenuProps>(
                 // since reasoning effort below stays the user's to change.
                 <DropdownMenuItem disabled closeOnClick={false}>
                   <DropdownMenuItemContent>
-                    <DropdownMenuItemLabel>{t('modelSelector.model')}</DropdownMenuItemLabel>
+                    <DropdownMenuItemLabel>
+                      {modelLabel ?? t('modelSelector.model')}
+                    </DropdownMenuItemLabel>
                     {modelMeta}
                   </DropdownMenuItemContent>
                 </DropdownMenuItem>

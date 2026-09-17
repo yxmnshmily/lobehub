@@ -78,6 +78,19 @@ const styles = createStaticStyles(({ css }) => {
         opacity: 1;
       }
     `,
+    openTarget: css`
+      display: flex;
+      flex: 1;
+      align-items: center;
+
+      min-width: 0;
+      min-height: 40px;
+
+      &:focus-visible {
+        outline: 2px solid ${cssVar.colorPrimary};
+        outline-offset: -2px;
+      }
+    `,
     item: css`
       padding-block: 0;
       padding-inline: 0 24px;
@@ -312,27 +325,40 @@ const FileListItem = ({
           className={styles.item}
           distribution={'space-between'}
           style={{
+            flexGrow: 1,
             flexShrink: 0,
-            maxWidth: columnWidths.name,
             minWidth: columnWidths.name,
             paddingInline: 8,
             width: columnWidths.name,
           }}
         >
-          <FileListItemName
-            emoji={emoji}
-            fallbackName={t('file:pageList.untitled')}
-            fileType={fileType}
-            inputRef={inputRef}
-            isFolder={isFolder}
-            isPage={isPage}
-            isRenaming={isRenaming}
-            name={name}
-            renamingValue={renamingValue}
-            onRenameCancel={handleRenameCancel}
-            onRenameConfirm={handleRenameConfirm}
-            onRenamingValueChange={setRenamingValue}
-          />
+          <div
+            aria-label={name || t('file:pageList.untitled')}
+            className={styles.openTarget}
+            role={isRenaming ? undefined : 'button'}
+            tabIndex={isRenaming ? -1 : 0}
+            onKeyDown={(e) => {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleItemClick();
+              }
+            }}
+          >
+            <FileListItemName
+              emoji={emoji}
+              fallbackName={t('file:pageList.untitled')}
+              fileType={fileType}
+              inputRef={inputRef}
+              isFolder={isFolder}
+              isPage={isPage}
+              isRenaming={isRenaming}
+              name={name}
+              renamingValue={renamingValue}
+              onRenameCancel={handleRenameCancel}
+              onRenameConfirm={handleRenameConfirm}
+              onRenamingValueChange={setRenamingValue}
+            />
+          </div>
           <FileListItemActions
             chunkCount={chunkCount}
             chunkingError={chunkingError}
@@ -390,7 +416,11 @@ const FileListItem = ({
                 )}
               </Flexbox>
             )}
-            <Flexbox className={styles.item} style={{ flexShrink: 0 }} width={columnWidths.size}>
+            <Flexbox
+              className={styles.item}
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+              width={columnWidths.size}
+            >
               {isFolder || isPage ? '-' : formatSize(size)}
             </Flexbox>
           </>

@@ -7,6 +7,7 @@
 export { type AgentProfileInfo, formatAgentProfile } from './agentProfile';
 export {
   buildGroupMembersXml,
+  formatGroupHandoff,
   formatGroupMembers,
   type GroupContextMemberInfo,
   groupContextTemplate,

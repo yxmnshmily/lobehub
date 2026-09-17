@@ -13,6 +13,8 @@ import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwar
 import { useActiveLocation } from '@/hooks/useActiveLocation';
 import { FilesTabs } from '@/types/files';
 
+import CategoryCount from './CategoryCount';
+
 const CategoryMenu = memo(() => {
   const { t } = useTranslation('file');
   const setMode = useResourceManagerStore((s) => s.setMode);
@@ -43,6 +45,7 @@ const CategoryMenu = memo(() => {
       {items.map((item) => (
         <Link
           aria-current={isActive(item.url) ? 'page' : undefined}
+          aria-label={item.title}
           key={item.key}
           to={item.url}
           onClick={(event) => {
@@ -51,7 +54,16 @@ const CategoryMenu = memo(() => {
             navigate(item.url, { replace: true });
           }}
         >
-          <NavItem active={isActive(item.url)} icon={item.icon} title={item.title} />
+          <NavItem
+            active={isActive(item.url)}
+            icon={item.icon}
+            title={
+              <>
+                {item.title}
+                <CategoryCount category={item.key as FilesTabs} />
+              </>
+            }
+          />
         </Link>
       ))}
     </Flexbox>

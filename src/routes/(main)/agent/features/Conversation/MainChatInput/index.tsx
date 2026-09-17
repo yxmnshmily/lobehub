@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, type ReactNode, useMemo } from 'react';
 
 import { type ActionKeys } from '@/features/ChatInput';
 import { ChatInput } from '@/features/Conversation';
@@ -31,7 +31,7 @@ const promptTransformRightActions: ActionKeys[] = [
  * including error alerts display.
  * Only adds MessageFromUrl for desktop mode.
  */
-const MainChatInput = memo(() => {
+const MainChatInput = memo<{ leftContent?: ReactNode }>(({ leftContent }) => {
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
   const sendMenuItems = useSendMenuItems();
 
@@ -55,6 +55,7 @@ const MainChatInput = memo(() => {
         skipScrollMarginWithList
         isConfigLoading={isAgentConfigLoading}
         leftActions={leftActions}
+        leftContent={leftContent}
         rightActions={rightActions}
         {...(isDevMode
           ? { sendMenu: { items: sendMenuItems } }

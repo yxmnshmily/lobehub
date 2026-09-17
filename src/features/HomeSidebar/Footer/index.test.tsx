@@ -5,6 +5,10 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const analyticsTrack = vi.fn();
+const navigate = vi.fn();
+vi.mock('@/features/Workspace/useWorkspaceAwareNavigate', () => ({
+  useWorkspaceAwareNavigate: () => navigate,
+}));
 vi.mock('@/libs/trpc/client', () => ({
   lambdaQuery: { platformAccess: { isPlatformAdmin: { useQuery: () => ({ data: true }) } } },
 }));
@@ -303,3 +307,44 @@ it('opens external help links from the first click', async () => {
     );
   }
 }, 30000);
+
+it.each([
+  ['About the system', '/settings/about', true],
+  ['Settings', '/settings/appearance', false],
+  ['Get App', '/apps', true],
+  ['Invite a friend', '/settings/referral', false],
+])('navigates on the first %s row click outside the text link', async (name, path, escape) => {
+  const user = userEvent.setup();
+  await renderFooter({ enableBusinessFeatures: true });
+  navigate.mockClear();
+  await user.click(screen.getByRole('button', { name: 'Help' }));
+  await user.click(await screen.findByRole('menuitem', { name }));
+  if (escape) expect(navigate).toHaveBeenCalledExactlyOnceWith(path, { escape: true });
+  else expect(navigate).toHaveBeenCalledExactlyOnceWith(path);
+});
+
+it('activates the About menu row once with Enter', async () => {
+  const user = userEvent.setup();
+  await renderFooter();
+  navigate.mockClear();
+  await user.click(screen.getByRole('button', { name: 'Help' }));
+  const row = await screen.findByRole('menuitem', { name: 'About the system' });
+  row.focus();
+  await user.keyboard('{Enter}');
+  expect(navigate).toHaveBeenCalledExactlyOnceWith('/settings/about', { escape: true });
+});
+
+it('opens external links once when the row padding is clicked', async () => {
+  const user = userEvent.setup();
+  await renderFooter({ hideGitHub: false });
+  const openSpy = vi.fn();
+  vi.stubGlobal('open', openSpy);
+  for (const name of ['Docs', 'Discord', 'GitHub']) {
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    const row = await screen.findByRole('menuitem', { name });
+    const href = row.querySelector('a')?.getAttribute('href');
+    openSpy.mockClear();
+    await user.click(row);
+    expect(openSpy).toHaveBeenCalledExactlyOnceWith(href, '_blank', 'noopener,noreferrer');
+  }
+});

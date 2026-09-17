@@ -180,7 +180,9 @@ it.each([
   const close = vi.fn();
   render(<GroupInfoPanel groupId="g" shareOptions={shareOptions} onClose={close} />);
   fireEvent.click(screen.getByRole('button', { name: '群文件' }));
-  await waitFor(() => expect(mocks.share).toHaveBeenCalledWith(shareOptions));
+  await waitFor(() =>
+    expect(mocks.share).toHaveBeenCalledWith({ ...shareOptions, title: '群文件' }),
+  );
   expect(close).toHaveBeenCalled();
   expect(mocks.modal).not.toHaveBeenCalled();
 });

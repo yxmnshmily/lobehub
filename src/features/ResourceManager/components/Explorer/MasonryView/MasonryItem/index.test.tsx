@@ -67,14 +67,19 @@ describe('MasonryFileItem', () => {
   it('opens the resource from the keyboard through the card click surface', () => {
     render(
       <MasonryFileItem
+        chunkCount={null}
+        chunkingError={null}
         createdAt={new Date('2026-09-09')}
+        embeddingError={null}
         fileType="text/plain"
+        finishEmbedding={false}
         id="resource-1"
         name="Trip plan.txt"
-        onSelectedChange={vi.fn()}
         size={1024}
         sourceType="file"
         updatedAt={new Date('2026-09-09')}
+        url="/trip-plan.txt"
+        onSelectedChange={vi.fn()}
       />,
     );
 

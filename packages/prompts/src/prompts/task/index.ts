@@ -707,6 +707,13 @@ export const buildTaskRunPrompt = (input: TaskRunPromptInput, now?: Date): strin
     );
   }
   taskLines.push(`Instruction: ${task.instruction}`);
+  if (!task.automationMode) {
+    taskLines.push(
+      task.verify?.enabled || goalLoop
+        ? 'Completion: Submit the deliverable and evidence. Leave completion to the existing verifier or Goal coordinator; do not bypass acceptance by changing the task status yourself.'
+        : 'Completion: Once all requirements for this run are fulfilled, with no unfinished work or explicit checkpoint or request to wait, call updateTaskStatus with this task identifier and status="completed", then give the usable result. If needed, use activateTools to activate lobe-task.updateTaskStatus. Do not add a review round or ask for confirmation just to close ordinary finished work. If completion cannot be recorded, report that briefly rather than claiming it succeeded.',
+    );
+  }
   if (task.description) taskLines.push(`Description: ${task.description}`);
   if (task.files && task.files.length > 0) {
     taskLines.push('Attachments (contents provided separately as multimodal inputs):');

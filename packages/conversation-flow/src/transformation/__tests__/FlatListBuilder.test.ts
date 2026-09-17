@@ -66,79 +66,83 @@ describe('FlatListBuilder', () => {
       expect(result[1].id).toBe('msg-2');
     });
 
-    it('should hide cross-agent dispatch user envelope while preserving target reply', () => {
-      const messages: Message[] = [
-        {
-          agentId: 'parent-agent',
-          content: '@Target please handle this',
-          createdAt: 0,
-          id: 'user-parent',
-          role: 'user',
-          updatedAt: 0,
-        },
-        {
-          agentId: 'parent-agent',
-          content: '',
-          createdAt: 1,
-          id: 'assistant-parent',
-          parentId: 'user-parent',
-          role: 'assistant',
-          tools: [
-            {
-              apiName: 'callAgent',
-              arguments: '{"agentId":"target-agent"}',
-              id: 'call-agent-1',
-              identifier: 'lobe-agent-management',
-              type: 'default',
-            },
-          ],
-          updatedAt: 1,
-        },
-        {
-          content: 'Called agent "target-agent" to respond.',
-          createdAt: 2,
-          id: 'tool-call-agent',
-          parentId: 'assistant-parent',
-          role: 'tool',
-          tool_call_id: 'call-agent-1',
-          updatedAt: 2,
-        },
-        {
-          agentId: 'target-agent',
-          content: '@Target please handle this',
-          createdAt: 3,
-          id: 'user-dispatch-envelope',
-          metadata: { agentDispatch: { kind: 'callAgent', visibility: 'internal' } },
-          parentId: 'assistant-parent',
-          role: 'user',
-          updatedAt: 3,
-        },
-        {
+    it.each(['callAgent', 'taskRun'] as const)(
+      'preserves %s instruction envelopes for runtime rehydration',
+      (kind) => {
+        const messages: Message[] = [
+          {
+            agentId: 'parent-agent',
+            content: '@Target please handle this',
+            createdAt: 0,
+            id: 'user-parent',
+            role: 'user',
+            updatedAt: 0,
+          },
+          {
+            agentId: 'parent-agent',
+            content: '',
+            createdAt: 1,
+            id: 'assistant-parent',
+            parentId: 'user-parent',
+            role: 'assistant',
+            tools: [
+              {
+                apiName: 'callAgent',
+                arguments: '{"agentId":"target-agent"}',
+                id: 'call-agent-1',
+                identifier: 'lobe-agent-management',
+                type: 'default',
+              },
+            ],
+            updatedAt: 1,
+          },
+          {
+            content: 'Called agent "target-agent" to respond.',
+            createdAt: 2,
+            id: 'tool-call-agent',
+            parentId: 'assistant-parent',
+            role: 'tool',
+            tool_call_id: 'call-agent-1',
+            updatedAt: 2,
+          },
+          {
+            agentId: 'target-agent',
+            content: '@Target please handle this',
+            createdAt: 3,
+            id: 'user-dispatch-envelope',
+            metadata: { agentDispatch: { kind, visibility: 'internal' } },
+            parentId: 'assistant-parent',
+            role: 'user',
+            updatedAt: 3,
+          },
+          {
+            agentId: 'target-agent',
+            content: 'Target result',
+            createdAt: 4,
+            id: 'assistant-target',
+            parentId: 'user-dispatch-envelope',
+            role: 'assistant',
+            updatedAt: 4,
+          },
+        ];
+
+        const builder = createBuilder(messages);
+        const result = builder.flatten(messages);
+
+        expect(result.map((message) => message.id)).toEqual([
+          'user-parent',
+          'assistant-parent',
+          'user-dispatch-envelope',
+          'assistant-target',
+        ]);
+        expect(result.filter((message) => message.role === 'user')).toHaveLength(2);
+        expect(result.at(-1)).toMatchObject({
           agentId: 'target-agent',
           content: 'Target result',
-          createdAt: 4,
-          id: 'assistant-target',
-          parentId: 'user-dispatch-envelope',
           role: 'assistant',
-          updatedAt: 4,
-        },
-      ];
-
-      const builder = createBuilder(messages);
-      const result = builder.flatten(messages);
-
-      expect(result.map((message) => message.id)).toEqual([
-        'user-parent',
-        'assistant-parent',
-        'assistant-target',
-      ]);
-      expect(result.filter((message) => message.role === 'user')).toHaveLength(1);
-      expect(result.at(-1)).toMatchObject({
-        agentId: 'target-agent',
-        content: 'Target result',
-        role: 'assistant',
-      });
-    });
+        });
+      },
+    );
 
     it('should not hide an unmarked cross-agent user turn', () => {
       const messages: Message[] = [

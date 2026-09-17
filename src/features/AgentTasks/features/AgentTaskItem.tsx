@@ -7,6 +7,8 @@ import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
+import RunUsage from '@/features/RunUsage';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useTaskStore } from '@/store/task';
 import type { TaskListItem } from '@/store/task/slices/list/initialState';
@@ -124,7 +126,7 @@ const AgentTaskItem = memo<TaskItemProps>(({ task, routeScope = 'agent', variant
             {task.identifier}
           </Text>
           <Text ellipsis style={{ minWidth: 0 }} weight={500}>
-            {task.name}
+            {localizeGoalTemplate(task.name || '', i18n.resolvedLanguage || i18n.language)}
           </Text>
         </>
       ) : (
@@ -212,7 +214,10 @@ const AgentTaskItem = memo<TaskItemProps>(({ task, routeScope = 'agent', variant
           <Flexbox horizontal align={'center'} gap={8} style={{ minWidth: 0 }}>
             <TaskStatusTag status={status} taskIdentifier={task.identifier} />
             <Text ellipsis style={{ minWidth: 0 }} weight={500}>
-              {hasName ? task.name : task.identifier}
+              {localizeGoalTemplate(
+                hasName ? task.name! : task.identifier,
+                i18n.resolvedLanguage || i18n.language,
+              )}
             </Text>
             {scheduledBadge}
             <TaskSubtaskProgressTag
@@ -228,6 +233,7 @@ const AgentTaskItem = memo<TaskItemProps>(({ task, routeScope = 'agent', variant
             {scheduleNode}
             {timeNode}
           </Flexbox>
+          <RunUsage cost={task.totalRunCost} duration={task.totalRunDuration} />
         </Block>
       </ContextMenuTrigger>
     );
@@ -236,9 +242,22 @@ const AgentTaskItem = memo<TaskItemProps>(({ task, routeScope = 'agent', variant
   return (
     <ContextMenuTrigger items={contextMenuItems} onContextMenu={handleContextMenuOpen}>
       <Block clickable gap={4} padding={12} variant={'borderless'} onClick={handleClick}>
-        <Flexbox horizontal align={'center'} gap={4} justify={'space-between'}>
+        <Flexbox
+          horizontal
+          align={'center'}
+          gap={8}
+          justify={'space-between'}
+          style={{ flexWrap: 'wrap' }}
+        >
           {titleRow}
-          <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
+          <Flexbox
+            horizontal
+            align={'center'}
+            flex={'none'}
+            gap={8}
+            style={{ marginInlineStart: 'auto', flexWrap: 'wrap' }}
+          >
+            <RunUsage cost={task.totalRunCost} duration={task.totalRunDuration} />
             {scheduleNode}
             {assigneeNode}
             {timeNode}

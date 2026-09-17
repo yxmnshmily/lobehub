@@ -20,17 +20,21 @@ vi.mock('@/server/services/monthlyExchangeRate', () => ({
 }));
 
 vi.mock('@/database/repositories/aiInfra', () => ({
-  AiInfraRepos: vi.fn().mockImplementation(() => ({
-    getAiProviderModelList: mocks.getAiProviderModelList,
-  })),
+  AiInfraRepos: vi.fn().mockImplementation(function () {
+    return {
+      getAiProviderModelList: mocks.getAiProviderModelList,
+    };
+  }),
 }));
 vi.mock('@/server/globalConfig', () => ({
   getServerGlobalConfig: mocks.getServerGlobalConfig,
 }));
 vi.mock('@/server/services/platformAiRuntime', () => ({
-  PlatformCredentialResolver: vi.fn().mockImplementation(() => ({
-    resolveOwnerId: mocks.resolveOwnerId,
-  })),
+  PlatformCredentialResolver: vi.fn().mockImplementation(function () {
+    return {
+      resolveOwnerId: mocks.resolveOwnerId,
+    };
+  }),
 }));
 
 const pricing = {
@@ -92,6 +96,27 @@ describe('platform model pricing contract', () => {
     mocks.getServerGlobalConfig.mockResolvedValue({ aiProvider: { custom: { enabled: true } } });
   });
 
+  it.each([2048, undefined])(
+    'preserves optional catalog output limit (%s) in the pricing snapshot',
+    async (maxOutput) => {
+      mocks.getAiProviderModelList.mockResolvedValue([
+        {
+          enabled: true,
+          id: 'admin-custom-model',
+          type: 'chat',
+          contextWindowTokens: 8192,
+          ...(maxOutput === undefined ? {} : { maxOutput }),
+          pricing,
+        },
+      ]);
+      const snapshot = await resolvePlatformModelPricing({} as LobeChatDatabase, {
+        model: 'admin-custom-model',
+        provider: 'custom-provider',
+      });
+      expect(snapshot).toMatchObject({ contextWindowTokens: 8192, maxOutput });
+    },
+  );
+
   it('freezes the latest FX for CNY admission and charges that quote after it changes', async () => {
     mocks.getBillingExchangeRate.mockResolvedValue({
       month: '2026-09',
@@ -129,16 +154,21 @@ describe('platform model pricing contract', () => {
   });
 
   it('charges the default domestic Kimi K3 input in CNY, not USD', () => {
+    const kimiPricing = moonshotModels.find((model) => model.id === 'kimi-k3')!.pricing!;
+    const inputUnit = kimiPricing.units.find((unit) => unit.name === 'textInput');
+    expect(kimiPricing.currency).toBe('CNY');
+    expect(inputUnit).toMatchObject({ strategy: 'fixed', unit: 'millionTokens' });
+    if (inputUnit?.strategy !== 'fixed') throw new Error('Expected fixed input pricing');
     const result = pricePlatformTextUsage(
       {
         model: 'kimi-k3',
         provider: 'moonshot',
-        pricing: moonshotModels[0].pricing!,
+        pricing: kimiPricing,
         exchangeRate: { rate: 7.12, rateDate: '2026-09-04', updatedAt: '2026-09-07T00:00:00Z' },
       },
       { totalInputTokens: 1_000_000 },
     );
-    expect(result.cost).toBe(2.808989);
+    expect(result.cost).toBe(Math.ceil((inputUnit.rate / 7.12) * 1_000_000) / 1_000_000);
   });
 
   it.each([

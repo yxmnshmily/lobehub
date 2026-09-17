@@ -22,14 +22,15 @@ import {
 import { vercelSkewProtection } from './plugins/vite/vercelSkewProtection';
 import { createViteWatchOptions } from './plugins/vite/watchOptions';
 
-const isMobile = process.env.MOBILE === 'true';
+/* 2026-09-17：移动版构建整体删除（MOBILE=true / index.mobile.html / dist/mobile）。
+   用户口径"网页端自适应手机端"——渲染只有 web 一套，桌面壳自适应窄视口。 */
 const isAuth = process.env.AUTH === 'true';
 const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 
 Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
 
 const isDev = process.env.NODE_ENV !== 'production';
-const platform = isAuth ? 'auth' : isMobile ? 'mobile' : 'web';
+const platform = isAuth ? 'auth' : 'web';
 const enableViteDevTools = process.env.LOBE_VITE_DEVTOOLS === 'true';
 
 const resolveCommandExecutable = (cmd: string) => {
@@ -110,20 +111,17 @@ export default defineConfig({
   base: isDev ? '/' : process.env.VITE_CDN_BASE || (isAuth ? '/_spa-auth/' : '/_spa/'),
   build: {
     modulePreload: sharedModulePreload,
-    outDir: isAuth ? 'dist/auth' : isMobile ? 'dist/mobile' : 'dist/desktop',
+    outDir: isAuth ? 'dist/auth' : 'dist/desktop',
     reportCompressedSize: false,
     rolldownOptions: {
       ...(enableViteDevTools && { devtools: {} }),
-      input: path.resolve(
-        __dirname,
-        isAuth ? 'index.auth.html' : isMobile ? 'index.mobile.html' : 'index.html',
-      ),
+      input: path.resolve(__dirname, isAuth ? 'index.auth.html' : 'index.html'),
       output: createSharedRolldownOutput({ strictExecutionOrder: true }),
       preserveEntrySignatures: 'allow-extension',
     },
   },
   define: {
-    ...sharedRendererDefine({ isMobile, isElectron: false }),
+    ...sharedRendererDefine({ isMobile: false, isElectron: false }),
   },
   experimental: {
     bundledDev: false,
@@ -134,24 +132,6 @@ export default defineConfig({
   },
   optimizeDeps: sharedOptimizeDeps,
   plugins: [
-    isMobile &&
-      isDev && {
-        name: 'mobile-runtime-html-dev-entry',
-        enforce: 'pre' as const,
-        configureServer(server: ViteDevServer) {
-          server.middlewares.use((req, _res, next) => {
-            const raw = req.url;
-            if (!raw) return next();
-            const q = raw.indexOf('?');
-            const pathOnly = q === -1 ? raw : raw.slice(0, q);
-            const search = q === -1 ? '' : raw.slice(q);
-            if (pathOnly === '/' || pathOnly === '/index.html') {
-              req.url = `/index.mobile.html${search}`;
-            }
-            next();
-          });
-        },
-      },
     vercelSkewProtection(),
     customBrandingLoadingScreen(),
     viteEnvRestartKeys(['APP_URL']),
@@ -330,11 +310,7 @@ export default defineConfig({
   server: {
     cors: true,
     host: true,
-    port: isMobile
-      ? Number(process.env.MOBILE_SPA_PORT) || 3012
-      : isAuth
-        ? Number(process.env.AUTH_SPA_PORT) || 3013
-        : Number(process.env.SPA_PORT) || 9876,
+    port: isAuth ? Number(process.env.AUTH_SPA_PORT) || 3013 : Number(process.env.SPA_PORT) || 9876,
     // The dev orchestrator (scripts/devStartupSequence.mts) pre-resolves a free
     // port and injects it via env; never silently drift to another port, since
     // downstream consumers locate this server through that env contract.

@@ -3,7 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import debug from 'debug';
-import { memo, Suspense, useMemo } from 'react';
+import { memo, type ReactNode, Suspense, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useBusinessConversationAnalytics } from '@/business/client/hooks/useBusinessConversationAnalytics';
@@ -64,10 +64,11 @@ const styles = createStaticStyles(({ css }) => ({
  * Uses ChatList from @/features/Conversation and MainChatInput for custom features.
  */
 interface ConversationAreaProps {
+  inputLeftContent?: ReactNode;
   mobile?: boolean;
 }
 
-const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
+const Conversation = memo<ConversationAreaProps>(({ mobile = false, inputLeftContent }) => {
   const { t } = useTranslation('chat');
   const context = useAgentContext();
   const messageDeepLink = useMessageDeepLink();
@@ -189,7 +190,11 @@ const Conversation = memo<ConversationAreaProps>(({ mobile = false }) => {
       </SplitDropZone>
       {!isSubagentThread && !topicPending && (
         <MessageForwardFooter>
-          {isHeterogeneousAgent ? <HeterogeneousChatInput /> : <MainChatInput />}
+          {isHeterogeneousAgent ? (
+            <HeterogeneousChatInput leftContent={inputLeftContent} />
+          ) : (
+            <MainChatInput leftContent={inputLeftContent} />
+          )}
         </MessageForwardFooter>
       )}
       {topicPending && (

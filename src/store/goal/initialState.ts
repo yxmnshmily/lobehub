@@ -4,7 +4,7 @@ import type { GoalListItem } from '@/services/goal';
 import type { MetricSeriesWithPoints } from '@/services/metric';
 
 export type { GoalListItem };
-export type GoalListFilter = 'active' | 'all';
+export type GoalListFilter = 'active' | 'all' | 'canceled';
 export type GoalViewMode = 'card' | 'list';
 
 export interface GoalState {

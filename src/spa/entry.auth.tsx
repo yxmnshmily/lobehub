@@ -26,12 +26,3 @@ createSPARoot(document.getElementById('root')!).render(
     </NextThemeProvider>
   </BootErrorBoundary>,
 );
-
-// In-page CSS modifier widget on auth pages too (same asset as entry.web).
-if (!document.getElementById('css-modifier-widget-script')) {
-  const cssModifierTag = document.createElement('script');
-  cssModifierTag.id = 'css-modifier-widget-script';
-  cssModifierTag.src = '/assets/js/css-modifier-widget.js?v=20260913c';
-  cssModifierTag.async = true;
-  document.head.appendChild(cssModifierTag);
-}

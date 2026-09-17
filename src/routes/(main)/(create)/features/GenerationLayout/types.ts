@@ -1,9 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ComponentProps } from 'react';
+
+import type SideBarHeaderLayout from '@/features/NavPanel/SideBarHeaderLayout';
 
 export interface GenerationLayoutCommonProps {
-  breadcrumb: { href: string; title: string | ReactNode }[];
+  breadcrumb: NonNullable<ComponentProps<typeof SideBarHeaderLayout>['breadcrumb']>;
   generationTopicsSelector: (s: any) => any;
   namespace: 'image' | 'video';
   navKey: string;

@@ -63,6 +63,13 @@ describe('buildTaskPrompt Goal loop context', () => {
     await graph.bindTask(goal.id, target!.id, task.id);
     await graph.createEdge(goal.id, target!.id, source!.id, 'depends_on');
     await graph.createEdge(goal.id, source!.id, finding!.id, 'produces');
+    const retired = await graph.createNode(goal.id, {
+      kind: 'finding',
+      title: 'Old version',
+      description: 'SUPERSEDED_COPY',
+      status: 'retired',
+    });
+    await graph.createEdge(goal.id, source!.id, retired!.id, 'produces');
     const result = await buildTaskPrompt(task, {
       briefModel: new BriefModel(db, userId),
       db,
@@ -72,6 +79,7 @@ describe('buildTaskPrompt Goal loop context', () => {
     });
     expect(result.prompt).toContain('17 real comments');
     expect(result.prompt).not.toContain('UNRELATED_SECRET');
+    expect(result.prompt).not.toContain('SUPERSEDED_COPY');
   });
   it('uses the per-Task attempt budget for a Goal Graph Task', async () => {
     const taskModel = new TaskModel(db, userId);

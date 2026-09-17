@@ -1,9 +1,10 @@
 import type { GoalGraphSnapshot } from '@lobechat/types';
-import { Accordion, AccordionItem, Flexbox, Markdown } from '@lobehub/ui';
+import { Accordion, AccordionItem, Flexbox } from '@lobehub/ui';
 import { Button, Tag, Text } from '@lobehub/ui/base-ui';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useChatStore } from '@/store/chat';
 
 import {

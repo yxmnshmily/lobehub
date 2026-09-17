@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiAgentService } from '../index';
 
+// Identity verification has separate coverage; this fixture exercises message persistence.
+vi.mock('../verifiedPhone', () => ({ assertGroupAiPhoneVerified: vi.fn() }));
+
 const {
   mockGetLatestNonToolMessageId,
   mockGetLatestSpineMessageId,
@@ -298,6 +301,32 @@ describe('AiAgentService.execAgent - user turn spine anchoring', () => {
       parentId: 'user-msg-1',
       role: 'assistant',
     });
+  });
+
+  it('marks generated task-run instructions as internal while keeping them in history', async () => {
+    vi.spyOn(service as any, 'resolveOperationTaskId').mockResolvedValue('task-1');
+    await service.execAgent({
+      agentId: 'agent-1',
+      appContext: { topicId: 'topic-1' },
+      prompt: 'Generated task instructions',
+      trigger: 'task',
+    });
+    expect(userMessageCall()![0]).toMatchObject({
+      content: 'Generated task instructions',
+      metadata: { agentDispatch: { kind: 'taskRun', visibility: 'internal' } },
+      role: 'user',
+    });
+  });
+
+  it('does not mark a real user follow-up as internal merely because the topic has a task', async () => {
+    vi.spyOn(service as any, 'resolveOperationTaskId').mockResolvedValue('task-1');
+    await service.execAgent({
+      agentId: 'agent-1',
+      appContext: { topicId: 'topic-1' },
+      prompt: 'Make the cover warmer',
+      trigger: 'chat',
+    });
+    expect(userMessageCall()![0].metadata.agentDispatch).toBeUndefined();
   });
 
   it('scopes the anchor lookup to the thread when one is active', async () => {

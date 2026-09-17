@@ -23,6 +23,9 @@ const execParams = (): any => {
   return call![0];
 };
 
+vi.mock('@/database/models/user', () => ({
+  UserModel: { getInfoForAIGeneration: vi.fn(async () => ({ responseLanguage: 'zh-CN' })) },
+}));
 vi.mock('@/database/models/agent', () => ({
   AgentModel: vi.fn().mockImplementation(function () {
     return {

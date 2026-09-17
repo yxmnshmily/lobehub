@@ -21,6 +21,7 @@ import { useCurrentProjectDetail, useProjectStore } from '@/store/project';
 
 import { GroupProjectScopeContext } from '../Layout/GroupProjectScope';
 import { getProjectConversationPath } from '../Layout/navigation';
+import ProjectAssistantAction from './ProjectAssistantAction';
 import ProjectProgress from './ProjectProgress';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -31,12 +32,14 @@ const styles = createStaticStyles(({ css }) => ({
     --conversation-column-width: 100%;
   `,
   body: css`
+    overflow: hidden;
     display: grid;
     grid-template-columns: minmax(0, 1fr) clamp(280px, 28%, 360px);
     flex: 1;
-    min-height: 0;
+
     min-width: 0;
-    overflow: hidden;
+    min-height: 0;
+
     @container project-conversation (max-width: 840px) {
       display: flex;
       flex-direction: column-reverse;
@@ -146,7 +149,9 @@ const ProjectConversation = memo(() => {
               {topicTitle || '在这里说明需求、补充资料，或反馈修改意见。'}
             </Text>
           </Flexbox>
-          <ChatConversation />
+          <ChatConversation
+            inputLeftContent={<ProjectAssistantAction assistantId={coordinatorAgentId} />}
+          />
         </Flexbox>
         <ProjectProgress detail={detail} stale={!!detailSWR.error} />
       </div>

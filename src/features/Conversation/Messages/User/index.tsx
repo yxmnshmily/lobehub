@@ -20,6 +20,7 @@ import { userProfileSelectors } from '@/store/user/selectors';
 
 import { useDoubleClickEdit } from '../../hooks/useDoubleClickEdit';
 import { dataSelectors, messageStateSelectors, useConversationStore } from '../../store';
+import GroupProcessDetails from '../components/GroupProcessDetails';
 import {
   useSetMessageItemActionElementPortialContext,
   useSetMessageItemActionTypeContext,
@@ -153,7 +154,13 @@ const UserMessage = memo<UserMessageProps>(({ id, disableEditing, index }) => {
       onDoubleClick={onDoubleClick}
       onMouseEnter={onMouseEnter}
     >
-      <UserMessageContent {...displayItem} />
+      {item.metadata?.agentDispatch?.visibility === 'internal' ? (
+        <GroupProcessDetails>
+          <UserMessageContent {...displayItem} />
+        </GroupProcessDetails>
+      ) : (
+        <UserMessageContent {...displayItem} />
+      )}
     </ChatItem>
   );
 }, isEqual);

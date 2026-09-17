@@ -35,13 +35,15 @@ describe('AI agent diagnostic privacy', () => {
     logDeviceToolAudit({
       apiName: 'read_file',
       botContext: {
+        applicationId: 'test-bot',
+        platformThreadId: 'test-thread',
         isOwner: false,
         platform: 'telegram',
         senderExternalUserId: 'sender-private',
-      } as any,
+      },
       canUseDevice: false,
       operationId: 'operation-private',
-      reason: 'external-sender-denied',
+      reason: 'bot-external-sender',
       toolIdentifier: 'lobe-local-system',
       topicId: 'topic-private',
       userId: 'user-private',
@@ -49,7 +51,7 @@ describe('AI agent diagnostic privacy', () => {
 
     const output = JSON.stringify(debugLog.mock.calls);
     expect(output).not.toMatch(/sender-private|operation-private|topic-private|user-private/);
-    expect(output).toContain('external-sender-denied');
+    expect(output).toContain('bot-external-sender');
   });
 
   it('does not log attachment names, storage keys, URLs, or raw failures', async () => {

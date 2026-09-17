@@ -89,7 +89,7 @@ export const DesktopNotificationSettings = () => {
           itemMinWidth={FORM_STYLE.itemMinWidth}
           itemsType={'group'}
           style={FORM_STYLE.style}
-          variant={'filled'}
+          variant={'borderless'}
           items={[
             {
               children: [

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import UploadCard from './UploadCard';
@@ -27,6 +27,15 @@ vi.mock('@/store/file', () => ({
 }));
 
 describe('UploadCard', () => {
+  it('preserves focus when a collapsed add button expands into a card', () => {
+    const props = { onRemove: vi.fn(), onUpload: vi.fn() };
+    const { rerender } = render(<UploadCard {...props} variant="circle" />);
+    const button = screen.getByRole('button', { name: 'addNew' });
+    act(() => button.focus());
+    rerender(<UploadCard {...props} variant="card" />);
+    expect(screen.getByRole('button', { name: 'addNew' })).toHaveFocus();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('URL', {

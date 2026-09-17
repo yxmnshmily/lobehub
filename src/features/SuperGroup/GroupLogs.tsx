@@ -4,6 +4,16 @@ import { formatLocalizedTokens } from '@lobechat/utils';
 import { Flexbox } from '@lobehub/ui';
 import { Alert, Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
+import {
+  ChartNoAxesColumn,
+  CircleCheck,
+  CirclePlay,
+  CircleX,
+  Download,
+  Logs,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,12 +22,12 @@ import { useQueryRoute } from '@/hooks/useQueryRoute';
 import { lambdaClient, lambdaQuery } from '@/libs/trpc/client';
 
 const categories = [
-  ['all', '全部日志'],
-  ['running', '执行中'],
-  ['success', '成功日志'],
-  ['failed', '失败／中断'],
-  ['error', '异常日志'],
-  ['usage', '消耗统计'],
+  ['all', '全部日志', Logs],
+  ['running', '执行中', CirclePlay],
+  ['success', '成功日志', CircleCheck],
+  ['failed', '失败／中断', CircleX],
+  ['error', '异常日志', TriangleAlert],
+  ['usage', '消耗统计', ChartNoAxesColumn],
 ] as const;
 type Category = (typeof categories)[number][0];
 const statusNames: Record<string, string> = {
@@ -133,10 +143,11 @@ export default function GroupLogs({
   return (
     <Flexbox gap={16} style={{ minWidth: 0, maxHeight: '72dvh', overflowY: 'auto' }}>
       <Flexbox horizontal gap={8} wrap="wrap">
-        {categories.map(([key, label]) => (
+        {categories.map(([key, label, icon]) => (
           <Button
             aria-pressed={page.category === key}
             disabled={exporting}
+            icon={icon}
             key={key}
             type={page.category === key ? 'primary' : 'default'}
             onClick={() => setPage({ category: key, offset: 0 })}
@@ -144,11 +155,12 @@ export default function GroupLogs({
             {label}
           </Button>
         ))}
-        <Button disabled={query.isFetching} onClick={() => void query.refetch()}>
+        <Button disabled={query.isFetching} icon={RefreshCw} onClick={() => void query.refetch()}>
           刷新
         </Button>
         <Button
           disabled={exporting || query.isLoading || query.isError || !rows.length}
+          icon={Download}
           onClick={() => void exportLogs()}
         >
           {exporting ? '正在导出…' : '导出 JSON'}

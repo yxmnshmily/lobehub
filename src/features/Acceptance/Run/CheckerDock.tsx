@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 
 import RingLoadingIcon from '@/components/RingLoading';
 import type { VerifyCheckResultItem } from '@/database/schemas/verify';
+import LocalizedGeneratedText from '@/features/Acceptance/components/LocalizedGeneratedText';
+import ProcessFold from '@/features/Conversation/Messages/AssistantGroup/components/ProcessFold';
 import { verifyService } from '@/services/verify';
 import { useChatStore } from '@/store/chat';
 
@@ -136,6 +138,7 @@ const statusIcon = (
 };
 
 interface CheckerDockProps {
+  compactDetails?: boolean;
   /** Render only the checker body (items + actions), no dock chrome / header — for the merged verify card. */
   embedded?: boolean;
   operationId: string;
@@ -146,9 +149,10 @@ interface CheckerDockProps {
  * the reference mock: a collapsible card driving the plan state machine
  * (draft → verifying → failed/repairing → passed) with confirm / edit / skip.
  */
-const CheckerDock = memo<CheckerDockProps>(({ operationId, embedded }) => {
+const CheckerDock = memo<CheckerDockProps>(({ operationId, embedded, compactDetails }) => {
   const { isDarkMode } = useThemeMode();
   const { t } = useTranslation('verify');
+  const { t: chatT } = useTranslation('chat');
   const { data: state, mutate: mutateState } = useVerifyState(operationId);
   const { data: results, mutate: mutateResults } = useVerifyResults(operationId);
   const openVerifyResult = useChatStore((s) => s.openVerifyResult);
@@ -230,7 +234,20 @@ const CheckerDock = memo<CheckerDockProps>(({ operationId, embedded }) => {
           <span className={styles.title} style={{ fontWeight: 600 }}>
             {item.title}
           </span>
-          {evidence && <span className={styles.desc}>{evidence}</span>}
+          {evidence &&
+            (compactDetails ? (
+              <div onClick={(event) => event.stopPropagation()}>
+                <ProcessFold stepCount={0} title={chatT('groupProcess.details')}>
+                  <span className={styles.desc}>
+                    <LocalizedGeneratedText text={evidence} />
+                  </span>
+                </ProcessFold>
+              </div>
+            ) : (
+              <span className={styles.desc}>
+                <LocalizedGeneratedText text={evidence} />
+              </span>
+            ))}
         </Flexbox>
         <Icon
           className={styles.chevron}

@@ -15,11 +15,13 @@ export default function ConversationHeader({
   onBack,
   right,
   title,
+  subtitle,
 }: {
   mobile?: boolean;
   onBack?: () => void;
   right: ReactNode;
   title: string;
+  subtitle?: ReactNode;
 }) {
   const sidebar = useMobileGroupSidebar();
   const { t } = useTranslation('common');
@@ -42,6 +44,18 @@ export default function ConversationHeader({
                 }}
               >
                 <GroupBrandTitle title={title} />
+                {subtitle && (
+                  <span
+                    style={{
+                      display: 'block',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {subtitle}
+                  </span>
+                )}
               </span>
             }
           />
@@ -69,12 +83,14 @@ export default function ConversationHeader({
     );
   return (
     <NavHeader
-      height={56}
+      height={subtitle ? 'auto' : 56}
+      paddingBlock={subtitle ? 6 : 8}
       paddingInline={16}
       right={right}
-      styles={{ center: { minWidth: 0 }, right: { flexShrink: 0 } }}
+      styles={{ center: { minWidth: 0, gap: 0 }, right: { flexShrink: 0 } }}
       style={{
         background: cssVar.colorBgContainer,
+        minHeight: 56,
         borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,
       }}
     >
@@ -82,9 +98,11 @@ export default function ConversationHeader({
         title={title}
         style={{
           color: cssVar.colorText,
+          display: 'flex',
+          alignItems: 'center',
           fontSize: 18,
           fontWeight: 600,
-          lineHeight: 1.5,
+          lineHeight: '24px',
           margin: 0,
           overflow: 'hidden',
           whiteSpace: 'nowrap',
@@ -92,6 +110,7 @@ export default function ConversationHeader({
       >
         <GroupBrandTitle title={title} />
       </h1>
+      {subtitle}
     </NavHeader>
   );
 }

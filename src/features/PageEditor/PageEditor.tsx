@@ -104,6 +104,7 @@ const overrideStyles = createStaticStyles(({ css }) => ({
 interface PageEditorProps {
   /** Composer that receives selections created by the Ask Copilot toolbar item. */
   askCopilotTarget?: ComposerTarget;
+  draftVisibility?: 'private' | 'public';
   emoji?: string;
   /**
    * When true, the header spans the full editor width above the body and the
@@ -365,6 +366,7 @@ export const PageEditor: FC<PageEditorProps> = ({
   metaReadOnly,
   onDelete,
   onDocumentIdChange,
+  draftVisibility,
   onEmojiChange,
   onSave,
   onTitleChange,
@@ -381,6 +383,7 @@ export const PageEditor: FC<PageEditorProps> = ({
     <PageAgentProvider pageId={pageId} syncActiveAgent={syncPageAgentActiveState}>
       <EditorProvider>
         <PageEditorProvider
+          draftVisibility={draftVisibility}
           emoji={emoji}
           knowledgeBaseId={knowledgeBaseId}
           metaReadOnly={metaReadOnly}

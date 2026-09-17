@@ -324,7 +324,7 @@ const ProxyForm = () => {
         initialValues={proxySettings}
         items={[enableProxyGroup, basicSettingsGroup, authGroup, testGroup]}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         onValuesChange={handleValuesChange}
         {...FORM_STYLE}
       />

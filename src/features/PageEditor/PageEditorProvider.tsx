@@ -22,6 +22,7 @@ export const PageEditorProvider = memo<PageEditorProviderProps>(
     knowledgeBaseId,
     metaReadOnly,
     onDocumentIdChange,
+    draftVisibility,
     onEmojiChange,
     onSave,
     onTitleChange,
@@ -37,6 +38,7 @@ export const PageEditorProvider = memo<PageEditorProviderProps>(
       <Provider
         createStore={() =>
           createStore({
+            draftVisibility,
             documentId: pageId,
             editor,
             emoji,
@@ -54,6 +56,7 @@ export const PageEditorProvider = memo<PageEditorProviderProps>(
         }
       >
         <StoreUpdater
+          draftVisibility={draftVisibility}
           emoji={emoji}
           knowledgeBaseId={knowledgeBaseId}
           metaReadOnly={metaReadOnly}

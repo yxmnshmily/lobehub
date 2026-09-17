@@ -1,7 +1,6 @@
-import { type ConversationContext } from '@lobechat/types';
-
 import { mutate } from '@/libs/swr';
-import { isMessageListKey } from '@/libs/swr/keys';
+import { isMessageListKey, type MessageListQueryContext } from '@/libs/swr/keys';
+import { invalidateMessageListClientState } from '@/services/message/cache';
 
 /**
  * Evict persisted `message:list` cache entries whose conversation context
@@ -25,6 +24,27 @@ import { isMessageListKey } from '@/libs/swr/keys';
  * void evictMessageCache(() => true);
  */
 export const evictMessageCache = (
-  predicate: (ctx: ConversationContext) => boolean,
-): Promise<unknown> =>
-  mutate((key) => isMessageListKey(key, predicate), undefined, { revalidate: false });
+  predicate: (ctx: MessageListQueryContext) => boolean,
+): Promise<unknown> => {
+  // Advance the generation before awaiting anything, so older requests cannot
+  // restore the deleted messages after eviction.
+  invalidateMessageListClientState(predicate);
+  return import('@/store/chat').then(async ({ useChatStore }) => {
+    useChatStore.setState((state) => {
+      const removedKeys = new Set(
+        Object.entries(state.dbMessagesMap)
+          .filter(([, messages]) => messages.some((message) => predicate(message)))
+          .map(([key]) => key),
+      );
+      return {
+        dbMessagesMap: Object.fromEntries(
+          Object.entries(state.dbMessagesMap).filter(([key]) => !removedKeys.has(key)),
+        ),
+        messagesMap: Object.fromEntries(
+          Object.entries(state.messagesMap).filter(([key]) => !removedKeys.has(key)),
+        ),
+      };
+    });
+    return mutate((key) => isMessageListKey(key, predicate), undefined, { revalidate: false });
+  });
+};

@@ -8,8 +8,8 @@ import isEqual from 'fast-deep-equal';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import LevelSlider from '@/features/ModelSwitchPanel/components/ControlsForm/LevelSlider';
 import { usePermission } from '@/hooks/usePermission';
@@ -86,16 +86,16 @@ const MemorySetting = memo(() => {
     <div>
       <Form
         collapsible={false}
-      form={form}
-      initialValues={{ ...memory, enabled: memoryEnabled }}
-      items={[memorySettings]}
-      itemsType={'group'}
-      variant={'filled'}
-      onValuesChange={(values) => {
-        if (!canManageMemory) return;
+        form={form}
+        initialValues={{ ...memory, enabled: memoryEnabled }}
+        items={[memorySettings]}
+        itemsType={'group'}
+        variant={'borderless'}
+        onValuesChange={(values) => {
+          if (!canManageMemory) return;
 
-        save(() => setSettings({ memory: values }));
-      }}
+          save(() => setSettings({ memory: values }));
+        }}
         {...FORM_STYLE}
       />
     </div>

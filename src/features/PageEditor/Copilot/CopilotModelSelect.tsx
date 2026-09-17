@@ -15,11 +15,13 @@ import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   chevron: css`
+    flex: none;
     color: ${cssVar.colorTextQuaternary};
   `,
   name: css`
     overflow: hidden;
 
+    min-width: 0;
     max-width: 120px;
 
     font-size: 12px;
@@ -30,6 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   trigger: css`
     cursor: pointer;
+    min-width: 0;
     border-radius: 6px;
 
     :hover {
@@ -68,7 +71,7 @@ const CopilotModelSelect = memo(() => {
   );
 
   return (
-    <Flexbox horizontal align={'center'}>
+    <Flexbox horizontal align={'center'} style={{ minWidth: 0 }}>
       <ModelSwitchPanel
         model={model}
         openOnHover={false}
@@ -84,7 +87,7 @@ const CopilotModelSelect = memo(() => {
             canEdit ? undefined : { cursor: 'not-allowed', opacity: 0.5, pointerEvents: 'none' }
           }
         >
-          <Flexbox horizontal align={'center'} gap={2}>
+          <Flexbox horizontal align={'center'} gap={2} style={{ minWidth: 0 }}>
             <span className={styles.name}>{displayName}</span>
             <ChevronDownIcon className={styles.chevron} size={12} />
           </Flexbox>

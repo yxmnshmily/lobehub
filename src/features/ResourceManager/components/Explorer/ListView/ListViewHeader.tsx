@@ -13,7 +13,6 @@ import {
 } from '../hooks/useExplorerSelection';
 import ColumnResizeHandle from './ColumnResizeHandle';
 import { getListViewMinWidth } from './ListItem/constants';
-import ListViewSelectAllHint from './ListViewSelectAllHint';
 import { styles } from './styles';
 
 interface ListViewHeaderProps {
@@ -37,19 +36,11 @@ const ListViewHeader = ({
   const { t } = useTranslation(['components', 'file']);
   const updateColumnWidth = useGlobalStore((s) => s.updateResourceManagerColumnWidth);
   const { handleSelectAll, handleSelectAllResources } = useExplorerSelectionActions(data);
-  const {
-    allSelected,
-    hasSelectableItems,
-    indeterminate,
-    selectAllState,
-    selectableCount,
-    selectedCount,
-    showSelectAllHint,
-    total,
-  } = useExplorerSelectionSummary({
-    data,
-    hasMore,
-  });
+  const { allSelected, hasSelectableItems, indeterminate, selectAllState, selectedCount, total } =
+    useExplorerSelectionSummary({
+      data,
+      hasMore,
+    });
   const isAllResultsSelected = selectAllState === 'all' && total === selectedCount;
   const selectedLabelKey =
     selectAllState === 'all'
@@ -96,8 +87,8 @@ const ListViewHeader = ({
           className={styles.headerItem}
           justify={'center'}
           style={{
+            flexGrow: 1,
             flexShrink: 0,
-            maxWidth: columnWidths.name,
             minWidth: columnWidths.name,
             paddingInline: 20,
             paddingInlineEnd: 16,
@@ -167,15 +158,6 @@ const ListViewHeader = ({
           />
         </Flexbox>
       </Flexbox>
-      <ListViewSelectAllHint
-        dataLength={selectableCount}
-        selectAllState={selectAllState}
-        selectedCount={selectedCount}
-        showSelectAllHint={showSelectAllHint}
-        showUploader={showUploader}
-        total={total}
-        onSelectAllResources={handleSelectAllResources}
-      />
     </>
   );
 };

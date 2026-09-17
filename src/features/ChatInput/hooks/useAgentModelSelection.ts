@@ -32,6 +32,7 @@ export type AgentModelSelectionLockReason = 'fixedByAgent' | 'useOnly';
 export interface UseAgentModelSelectionResult extends ModelSelection {
   canDisplayModel: boolean;
   canSelectModel: boolean;
+  isGroupContext: boolean;
   isPreferenceLoading: boolean;
   /** Set only while the model is displayed but locked (see the type doc). */
   selectionLockReason?: AgentModelSelectionLockReason;
@@ -54,6 +55,7 @@ export const useAgentModelSelection = (agentId: string): UseAgentModelSelectionR
   const {
     canConfigureResource,
     canUseResource,
+    isGroupContext,
     isAccessLoading: isResourceAccessLoading,
   } = useChatInputResourceAccess();
   const agent = useAgentStore(agentByIdSelectors.getAgentById(agentId));
@@ -148,6 +150,7 @@ export const useAgentModelSelection = (agentId: string): UseAgentModelSelectionR
   return {
     canDisplayModel,
     canSelectModel,
+    isGroupContext,
     isPreferenceLoading,
     model: effectiveModel.model,
     provider: effectiveModel.provider ?? sharedProvider,

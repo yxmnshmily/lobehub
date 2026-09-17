@@ -10,8 +10,8 @@ import { Loader2Icon } from 'lucide-react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import SettingHeader from '@/features/Settings/features/SettingHeader';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -159,7 +159,7 @@ const Page = memo(({ showSettingHeader = true }: { showSettingHeader?: boolean }
         initialValues={general}
         items={items}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         onValuesChange={async (v) => {
           setLoading(true);
           await setSettings({ general: v });

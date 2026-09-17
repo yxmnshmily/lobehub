@@ -23,6 +23,7 @@ export type HeartbeatTickSkipReason =
   | 'mode-changed'
   | 'no-interval'
   | 'not-found'
+  | 'paused'
   | 'stale-tick'
   | 'terminal';
 
@@ -65,6 +66,14 @@ export async function runHeartbeatTick(
   if (isTerminal(task.status)) {
     log('skip task=%s reason=terminal (status=%s)', taskId, task.status);
     return { ran: false, reason: 'terminal' };
+  }
+  const manualStopAt = (task.context as { manualStopAt?: string } | null)?.manualStopAt;
+  if (
+    task.status === 'paused' &&
+    manualStopAt &&
+    (!task.startedAt || +new Date(manualStopAt) >= +new Date(task.startedAt))
+  ) {
+    return { ran: false, reason: 'paused' };
   }
   if (!task.heartbeatInterval || task.heartbeatInterval <= 0) {
     log('skip task=%s reason=no-interval', taskId);

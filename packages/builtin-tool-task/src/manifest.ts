@@ -394,7 +394,7 @@ export const TaskManifest: BuiltinToolManifest = {
     },
     {
       description:
-        'Configure (or clear) a task\'s delivery-acceptance (verify) gate — the evidence-driven check that runs when the task\'s topic completes, so the assigned agent\'s "done" is verified by a separate reviewer instead of blindly trusted. STRONGLY RECOMMENDED whenever you dispatch an executable task to another agent (assigneeAgentId set): turn the gate on with enabled=true and state a one-sentence `requirement` describing what "done" means; the server synthesizes acceptance criteria from it. Pass verifyRubricId to reuse a saved rubric, or verifyCriteriaIds for explicit criteria. Pass null to any field to clear it; omitted fields are left untouched.',
+        "Configure (or clear) a task's delivery-acceptance (verify) gate — the evidence-driven check that runs when the task's topic completes, so the assigned agent's \"done\" is verified by a separate reviewer instead of blindly trusted. Use when formal acceptance is requested or consequential, objectively checkable work needs independent verification. Routine creative work does not need a separate gate by default. Preserve existing required gates. When enabling a gate, state a focused one-sentence `requirement`; the server synthesizes acceptance criteria from it. Pass verifyRubricId to reuse a saved rubric, or verifyCriteriaIds for explicit criteria. Pass null to any field to clear it; omitted fields are left untouched.",
       name: TaskApiName.setTaskVerify,
       parameters: {
         properties: {

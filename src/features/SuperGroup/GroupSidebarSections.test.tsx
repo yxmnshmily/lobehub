@@ -4,8 +4,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import GroupSidebarSections from './GroupSidebarSections';
 
 const navigate = vi.hoisted(() => vi.fn());
-const platform = vi.hoisted(() => ({ isDesktop: true }));
+const platform = vi.hoisted(() => ({ isDesktop: true, CURRENT_VERSION: 'test' }));
 vi.mock('@/const/version', () => platform);
+vi.mock('@/services/agent', () => ({
+  agentService: { getAgentConfigById: vi.fn().mockResolvedValue(null) },
+}));
+vi.mock('@/features/ModelSelect', () => ({
+  default: ({ value, disabled }: { value: { model: string }; disabled?: boolean }) => (
+    <select aria-label="成员模型" disabled={disabled} value={value.model} onChange={() => {}}>
+      <option value={value.model}>{value.model}</option>
+    </select>
+  ),
+}));
+
 vi.mock('@/hooks/useActiveLocation', () => ({
   useActiveLocation: () => ({ pathname: window.location.pathname }),
 }));
@@ -60,7 +71,7 @@ afterEach(() => {
 
 describe('shared group assistant navigation', () => {
   it.each([false, true])(
-    'opens the shared card without navigating and shows the read-only model (management=%s)',
+    'opens the shared card without navigating and preserves the administrator model control (management=%s)',
     async (manageDefaultGroup) => {
       window.history.replaceState({}, '', '/group/previous?topic=old-topic&tab=old-agent');
       render(<GroupSidebarSections groupId="joined" manageDefaultGroup={manageDefaultGroup} />);
@@ -72,14 +83,15 @@ describe('shared group assistant navigation', () => {
       await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
       expect(await screen.findByText('group-model')).toBeInTheDocument();
       expect(navigate).not.toHaveBeenCalled();
-      expect(screen.queryByRole('combobox')).toBeNull();
+      expect(screen.getByLabelText('成员模型')).toBeEnabled();
+      expect(screen.getByLabelText('成员模型')).toHaveValue('group-model');
     },
   );
 });
 
 it('opens the member management page without toggling the member list', () => {
   render(<GroupSidebarSections groupId="joined" />);
-  fireEvent.click(screen.getByRole('button', { name: '成员', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: '成员' }));
   expect(navigate).toHaveBeenCalledWith('/group/joined/members');
   expect(screen.getByRole('button', { name: '展开成员' })).toHaveAttribute(
     'aria-expanded',
@@ -94,7 +106,7 @@ it.each([false, true])(
     render(<GroupSidebarSections compact={compact} groupId="joined" />);
     expect(screen.queryByRole('button', { name: /展开成员|收起成员/ })).toBeNull();
     expect(screen.queryByRole('button', { name: '旅游助手' })).toBeNull();
-    const button = screen.getByRole('button', { name: '成员', exact: true });
+    const button = screen.getByRole('button', { name: '成员' });
     expect(button.querySelector('[data-nav-chevron]')).toBeNull();
     fireEvent.click(button);
     expect(navigate).toHaveBeenCalledWith('/group/joined/members');

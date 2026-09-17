@@ -7,8 +7,8 @@ import { Select } from '@lobehub/ui/base-ui';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonBar from '@/components/Skeleton/Bar';
 import AutoSaveHint from '@/components/Editor/AutoSaveHint';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
 import { useSaveState } from '@/hooks/useSaveState';
@@ -115,7 +115,7 @@ const FontSettings = memo(() => {
         collapsible={false}
         items={[loadingFont]}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         {...FORM_STYLE}
       />
     );
@@ -244,7 +244,7 @@ const FontSettings = memo(() => {
       collapsible={false}
       items={[font]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

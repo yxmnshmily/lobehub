@@ -43,10 +43,17 @@ const buildDbSkillContent = (detail: SkillItem): string | undefined => {
 export const resolveClientSkills = async (
   pluginIds?: string[],
   disabledIds?: string[],
+  skillIdentifiers?: string[],
 ): Promise<OperationSkillSet> => {
   const toolState = getToolStoreState();
-  const pinnedIds = new Set(pluginIds ?? []);
+  const selectedIds = new Set(skillIdentifiers ?? []);
+  const effectiveIds = [...new Set([...(pluginIds ?? []), ...selectedIds])];
+  const pinnedIds = new Set(effectiveIds);
   const disabledIdSet = new Set(disabledIds ?? []);
+
+  if ([...selectedIds].some((id) => disabledIdSet.has(id))) {
+    throw new Error('A selected Skill is disabled for this member.');
+  }
 
   // Pinned skills are marked `activated` so SkillContextProvider injects their
   // content directly; non-pinned ones stay in <available_skills>. Disabled
@@ -83,7 +90,7 @@ export const resolveClientSkills = async (
         // which operation-level pinning does not populate. Pre-injecting their
         // content would instruct the model to run scripts from an unmounted bundle,
         // so leave bundled skills in <available_skills> and let the model activate them.
-        if (s.zipFileHash) return meta;
+        if (s.zipFileHash && !selectedIds.has(s.identifier)) return meta;
 
         try {
           const detail =
@@ -106,5 +113,11 @@ export const resolveClientSkills = async (
     skills: [...builtinMetas, ...dbMetas],
   });
 
-  return skillEngine.generate(pluginIds ?? []);
+  const result = skillEngine.generate(effectiveIds);
+  for (const identifier of selectedIds) {
+    if (!result.skills.some((skill) => skill.identifier === identifier && skill.content)) {
+      throw new Error(`Selected Skill is unavailable or has no instructions: ${identifier}`);
+    }
+  }
+  return result;
 };

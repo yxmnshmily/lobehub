@@ -1,7 +1,6 @@
 'use client';
 
-import { Center, Flexbox } from '@lobehub/ui';
-import { Button, Checkbox } from '@lobehub/ui/base-ui';
+import { Center } from '@lobehub/ui';
 import { VirtuosoMasonry } from '@virtuoso.dev/masonry';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { type UIEvent } from 'react';
@@ -14,12 +13,8 @@ import { useFileStore } from '@/store/file';
 import { type FileListItem } from '@/types/files';
 import type { ResourceQueryParams } from '@/types/resource';
 
-import {
-  useExplorerSelectionActions,
-  useExplorerSelectionSummary,
-} from '../hooks/useExplorerSelection';
+import { useExplorerSelectionActions } from '../hooks/useExplorerSelection';
 import { isQueryNavigation } from '../isQueryNavigation';
-import SourceFilter from '../ToolBar/SourceFilter';
 import { useMasonryColumnCount } from '../useMasonryColumnCount';
 import MasonryItemWrapper from './MasonryItem/MasonryItemWrapper';
 import MasonryViewSkeleton from './Skeleton';
@@ -33,32 +28,6 @@ const styles = createStaticStyles(({ css }) => ({
     @media (width <= 767px) {
       padding-inline: var(--mobile-page-inner-gutter, var(--mobile-page-gutter, 10px));
     }
-  `,
-  selectAllHint: css`
-    position: sticky;
-    z-index: 1;
-    inset-block-start: 53px;
-
-    padding-block: 8px;
-    padding-inline: 4px;
-    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
-
-    font-size: 12px;
-    color: ${cssVar.colorTextDescription};
-
-    background: ${cssVar.colorFillTertiary};
-  `,
-  toolbar: css`
-    position: sticky;
-    z-index: 1;
-    inset-block-start: 0;
-
-    margin-block-end: 8px;
-    padding-block: 12px;
-    padding-inline: 4px;
-    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
-
-    background: ${cssVar.colorBgContainer};
   `,
 }));
 
@@ -87,7 +56,6 @@ const MasonryView = memo(function MasonryView({
 
   // NEW: Read from resource store instead of fetching independently
   const resourceList = useFileStore((s) => s.resourceList);
-  const resourceTotal = useFileStore((s) => s.total);
 
   const { queryParams: currentQueryParams, hasMore, loadMoreResources } = useFileStore();
 
@@ -131,39 +99,8 @@ const MasonryView = memo(function MasonryView({
     isValidating: effectiveIsValidating,
     viewMode,
   });
-  const {
-    handleSelectAll,
-    handleSelectAllResources,
-    isItemSelectable,
-    selectAllState,
-    selectedFileIds,
-    toggleItemSelection,
-  } = useExplorerSelectionActions(data);
-  const {
-    allSelected,
-    hasSelectableItems,
-    indeterminate,
-    selectableCount,
-    selectedCount,
-    showSelectAllHint,
-    total,
-  } = useExplorerSelectionSummary({
-    data,
-    hasMore,
-  });
-  const isAllResultsSelected = selectAllState === 'all' && total === selectedCount;
-  const handleSelectAllResults = useCallback(
-    (checked?: boolean) => {
-      if (checked !== false && !hasMore) {
-        void handleSelectAllResources();
-        return;
-      }
-
-      handleSelectAll(checked);
-    },
-    [handleSelectAll, handleSelectAllResources, hasMore],
-  );
-
+  const { isItemSelectable, selectAllState, selectedFileIds, toggleItemSelection } =
+    useExplorerSelectionActions(data);
   // Handle automatic load more when scrolling to bottom
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || isLoadingMore) return;
@@ -224,74 +161,6 @@ const MasonryView = memo(function MasonryView({
       onScroll={handleScroll}
     >
       <div className={styles.content}>
-        <Flexbox horizontal align={'center'} className={styles.toolbar} gap={8}>
-          <Checkbox
-            checked={allSelected}
-            disabled={!hasSelectableItems}
-            indeterminate={indeterminate}
-            onChange={handleSelectAllResults}
-          />
-          <span>
-            {selectedCount > 0 || selectAllState === 'all'
-              ? t(
-                  selectAllState === 'all'
-                    ? total
-                      ? isAllResultsSelected
-                        ? 'FileManager.total.allSelectedCount'
-                        : 'FileManager.total.selectedCount'
-                      : 'FileManager.total.allSelectedFallback'
-                    : 'FileManager.total.selectedCount',
-                  {
-                    count: selectedCount,
-                    ns: 'components',
-                  },
-                )
-              : t('FileManager.total.fileCount', {
-                  count: resourceTotal || dataLength,
-                  ns: 'components',
-                })}
-          </span>
-          <Flexbox flex={1} />
-          <SourceFilter />
-        </Flexbox>
-        {showSelectAllHint && (
-          <Flexbox
-            horizontal
-            align={'center'}
-            className={styles.selectAllHint}
-            gap={6}
-            paddingInline={4}
-            wrap={'wrap'}
-          >
-            <span>
-              {t(
-                selectAllState === 'all'
-                  ? total
-                    ? isAllResultsSelected
-                      ? 'FileManager.total.allSelectedCount'
-                      : 'FileManager.total.selectedCount'
-                    : 'FileManager.total.allSelectedFallback'
-                  : 'FileManager.total.loadedSelectedCount',
-                {
-                  count: selectedCount,
-                  ns: 'components',
-                },
-              )}
-            </span>
-            {selectAllState !== 'all' && (
-              <Button size={'small'} type={'link'} onClick={handleSelectAllResources}>
-                {total && total > selectableCount
-                  ? t('FileManager.total.selectAll', {
-                      count: total,
-                      ns: 'components',
-                    })
-                  : t('FileManager.total.selectAllFallback', {
-                      ns: 'components',
-                    })}
-              </Button>
-            )}
-          </Flexbox>
-        )}
         <VirtuosoMasonry
           ItemContent={MasonryItemWrapper}
           columnCount={columnCount}

@@ -44,7 +44,7 @@ const ChatAppearance = memo(() => {
         collapsible={false}
         gap={16}
         title={t('settingChatAppearance.transitionMode.title')}
-        variant={'filled'}
+        variant={'borderless'}
         extra={
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('transitionMode')}
@@ -75,7 +75,7 @@ const ChatAppearance = memo(() => {
       <Form
         collapsible={false}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         items={[
           {
             children: [
@@ -136,7 +136,7 @@ const ChatAppearance = memo(() => {
         collapsible={false}
         gap={16}
         title={t('settingChatAppearance.highlighterTheme.title')}
-        variant={'filled'}
+        variant={'borderless'}
         extra={
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('highlighterTheme')}
@@ -160,7 +160,7 @@ const ChatAppearance = memo(() => {
       <FormGroup
         gap={16}
         title={t('settingChatAppearance.mermaidTheme.title')}
-        variant={'filled'}
+        variant={'borderless'}
         extra={
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('mermaidTheme')}

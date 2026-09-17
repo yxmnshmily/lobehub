@@ -8,8 +8,6 @@ describe('group work edge entry', () => {
     const open = vi.fn();
     render(
       <GroupWorkEntry
-        onSelect={() => {}}
-        onOpen={open}
         items={[
           {
             id: 'goal-1',
@@ -28,25 +26,54 @@ describe('group work edge entry', () => {
             isRunning: true,
           },
         ]}
+        onOpen={open}
+        onSelect={() => {}}
       />,
     );
     const trigger = screen.getByRole('button', { name: '目标与任务' });
-    expect(screen.getByText('目标 1')).toBeInTheDocument();
-    expect(screen.getByText('任务 1')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('执行中 1');
+    expect(screen.getByText('目标（1）')).toBeInTheDocument();
+    expect(screen.getByText('任务（1）')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('执行中（1）');
     expect(screen.queryByRole('button', { name: /整理同行资料/ })).not.toBeInTheDocument();
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('button', { name: /整理同行资料/ }));
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ id: 'task-1' }));
     fireEvent.keyDown(trigger, { key: 'Escape' });
-    expect(screen.getByRole('status')).toHaveTextContent('执行中 1');
+    expect(screen.getByRole('status')).toHaveTextContent('执行中（1）');
     expect(screen.queryByRole('button', { name: /整理同行资料/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps manual controls outside the detail button', () => {
+    const open = vi.fn();
+    const cancel = vi.fn();
+    render(
+      <GroupWorkEntry
+        renderControls={() => <button onClick={cancel}>取消任务</button>}
+        items={[
+          {
+            id: 'task-control',
+            assigneeLabel: '测试成员',
+            kind: 'tasks',
+            title: '测试任务',
+            status: '执行中',
+            isRunning: true,
+          },
+        ]}
+        onOpen={open}
+        onSelect={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '目标与任务' }));
+    const button = screen.getByRole('button', { name: '取消任务' });
+    expect(button.parentElement?.closest('button')).toBeNull();
+    fireEvent.click(button);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('does not describe paused or waiting work as executing', () => {
     render(
       <GroupWorkEntry
-        onSelect={() => {}}
         items={[
           {
             id: 'task-2',
@@ -57,9 +84,10 @@ describe('group work edge entry', () => {
             isRunning: false,
           },
         ]}
+        onSelect={() => {}}
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent('待处理 1');
+    expect(screen.getByRole('status')).toHaveTextContent('待处理（1）');
     expect(screen.getByRole('status')).not.toHaveTextContent('执行中');
   });
   it('grows the existing controls instead of replacing the compact labels with another panel', () => {

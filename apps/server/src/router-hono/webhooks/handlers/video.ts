@@ -266,11 +266,7 @@ export const videoWebhook = async (c: Context<BlankEnv, '/video/:provider'>) => 
           : undefined;
 
         if (cost) {
-          await new PlatformManagedVideoUsageSettlement(
-            db,
-            asyncTask.userId,
-            asyncTask.workspaceId ?? undefined,
-          ).settleVideo({
+          await new PlatformManagedVideoUsageSettlement(db, asyncTask.userId).settleVideo({
             asyncTaskId: asyncTask.id,
             generationId: generation.id,
             model: resolvedModelId,

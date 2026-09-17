@@ -30,6 +30,7 @@ vi.mock('@/libs/trpc/client', () => ({
       listTopics: {
         useQuery: () => ({
           data: {
+            totalCount: 64,
             items: [
               {
                 id: 'copy',
@@ -49,6 +50,11 @@ vi.mock('@/libs/trpc/client', () => ({
 beforeEach(() => vi.clearAllMocks());
 
 describe('recent group topics', () => {
+  it('shows the visible total rather than the recent preview length', () => {
+    render(<RecentTopicLinks groupId="group" />);
+    expect(screen.getByText('（64）')).toBeVisible();
+    expect(screen.queryByText('（2）')).toBeNull();
+  });
   it('hides sidebar dropdowns and children when direct navigation is requested', () => {
     render(<RecentTopicLinks defaultExpanded collapsible={false} groupId="group" />);
     expect(screen.queryByRole('button', { name: /展开话题|收起话题/ })).toBeNull();
@@ -82,13 +88,7 @@ describe('recent group topics', () => {
   });
 
   it('can delegate scrolling to the enclosing sidebar', () => {
-    render(
-      <RecentTopicLinks
-        defaultExpanded
-        groupId="group"
-        scrollWithinSection={false}
-      />,
-    );
+    render(<RecentTopicLinks defaultExpanded groupId="group" scrollWithinSection={false} />);
 
     const preview = document.querySelector<HTMLElement>('[data-group-topic-preview]');
     expect(preview).not.toBeNull();

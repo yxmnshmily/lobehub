@@ -57,7 +57,7 @@ const Desktop = memo(() => {
       collapsible={false}
       items={[desktop]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

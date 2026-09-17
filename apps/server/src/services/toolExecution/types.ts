@@ -81,6 +81,7 @@ export interface ServerAgentMemberRunItem {
   instruction?: string;
   /** Validated by the runner before it reaches a group member operation. */
   replyToMessageId?: string;
+  skillIdentifiers?: string[];
   /** Server-owned deterministic tool policy for this member run. */
   toolDispatchPolicy?: OperationToolDispatchPolicy;
 }

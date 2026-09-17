@@ -123,6 +123,7 @@ const EXAMPLE_ICONS: Record<GoalExampleKey, typeof TargetIcon> = {
 };
 
 interface GoalEmptyStateProps {
+  hasGoals?: boolean;
   onCreate: (seed?: GoalExampleSeed) => void;
 }
 
@@ -137,7 +138,7 @@ interface GoalEmptyStateProps {
  * round — is one level down, behind the hint sitting opposite the examples
  * heading, so the two things that actually start a goal stay above the fold.
  */
-const GoalEmptyState = memo<GoalEmptyStateProps>(({ onCreate }) => {
+const GoalEmptyState = memo<GoalEmptyStateProps>(({ hasGoals = false, onCreate }) => {
   const { t } = useTranslation('chat');
 
   return (
@@ -156,7 +157,7 @@ const GoalEmptyState = memo<GoalEmptyStateProps>(({ onCreate }) => {
             </Text>
           </Flexbox>
           <Button icon={PlusIcon} type={'primary'} onClick={() => onCreate()}>
-            {t('goalEmpty.create')}
+            {t(hasGoals ? 'goalPage.create' : 'goalEmpty.create')}
           </Button>
         </Flexbox>
       </Flexbox>

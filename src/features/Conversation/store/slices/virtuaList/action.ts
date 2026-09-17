@@ -40,7 +40,11 @@ export interface VirtuaListAction {
   /**
    * Update scroll state (atBottom, isScrolling)
    */
-  setScrollState: (state: { atBottom?: boolean; isScrolling?: boolean }) => void;
+  setScrollState: (state: {
+    atBottom?: boolean;
+    isScrolling?: boolean;
+    scrollDirection?: 'up' | 'down';
+  }) => void;
 
   /**
    * Upsert visible item metrics and recalculate active index

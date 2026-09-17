@@ -76,7 +76,13 @@ export function GroupTopics({ groupId }: { groupId: string }) {
                     useChatStore
                       .getState()
                       .internal_dispatchTopic({ type: 'deleteTopic', id, groupId, scope: 'group' });
-                    await evictMessageCache((context) => context.topicId === id);
+                    await evictMessageCache(
+                      (context) => context.topicId === id || context.groupId === groupId,
+                    );
+                    await utils.groupConversation.listTextMessages.invalidate({ groupId });
+                    await utils.groupConversation.listPublishedAssistantMessages.invalidate({
+                      groupId,
+                    });
                     await utils.message.getMessages.invalidate({ groupId });
                     return result;
                   } finally {
@@ -145,6 +151,8 @@ export function GroupTopics({ groupId }: { groupId: string }) {
                   title: topic.title ?? '',
                   createdAt: new Date(topic.createdAt).getTime(),
                   updatedAt: new Date(topic.updatedAt ?? topic.createdAt).getTime(),
+                  businessAssociations: topic.businessAssociations ?? [],
+                  cost: topic.cost,
                   status: topic.status,
                   trigger: topic.trigger,
                   favorite: topic.favorite ?? undefined,

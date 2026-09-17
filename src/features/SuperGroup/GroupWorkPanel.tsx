@@ -8,6 +8,7 @@ import { useTravelTranslation } from '@/utils/i18n/travel';
 import GroupWorkEntry from './GroupWorkEntry';
 import { useGroupWorkRequest } from './useGroupWorkRequest';
 import { useGroupWorkStatus } from './useGroupWorkStatus';
+import WorkRunControls from './WorkRunControls';
 
 export default function GroupWorkPanel({ groupId }: { groupId: string }) {
   const t = useTravelTranslation();
@@ -19,6 +20,16 @@ export default function GroupWorkPanel({ groupId }: { groupId: string }) {
     <WideScreenContainer paddingBlock="12px 0" wrapperStyle={{ flexShrink: 0, marginBottom: -1 }}>
       <GroupWorkEntry
         items={items}
+        renderControls={(item) =>
+          !error && item.rawStatus ? (
+            <WorkRunControls
+              id={item.id}
+              kind={item.kind}
+              status={item.rawStatus}
+              onChanged={() => mutate()}
+            />
+          ) : null
+        }
         onOpen={(item) => {
           useGroupWorkRequest.setState({
             request: {
@@ -33,7 +44,7 @@ export default function GroupWorkPanel({ groupId }: { groupId: string }) {
         }}
       />
       {error && (
-        <Text type="secondary" style={{ textAlign: 'center', fontSize: 12 }}>
+        <Text style={{ textAlign: 'center', fontSize: 12 }} type="secondary">
           {t('进度更新失败，请重试')}{' '}
           <Button size="small" type="text" onClick={() => void mutate()}>
             {t('重试')}

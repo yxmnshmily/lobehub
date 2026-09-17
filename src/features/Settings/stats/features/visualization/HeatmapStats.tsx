@@ -1,5 +1,5 @@
 import { Block, Flexbox } from '@lobehub/ui';
-import { cssVar } from 'antd-style';
+import { createStaticStyles, cssVar } from 'antd-style';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -11,6 +11,14 @@ import { topicService } from '@/services/topic';
 import { formatLocalizedTokens as formatShortenNumber } from '@/utils/format';
 
 import { HeatmapType } from '../../types';
+
+const styles = createStaticStyles(({ css }) => ({
+  summary: css`
+    /* Physical side retained for the page style editor. */
+    /* stylelint-disable-next-line liberty/use-logical-spec */
+    margin-bottom: 24px;
+  `,
+}));
 
 /**
  * Render a wall-clock duration in seconds as a compact "1h 15m" / "15m 20s" /
@@ -90,7 +98,13 @@ const HeatmapStats = memo(() => {
   ];
 
   return (
-    <Block paddingBlock={16} paddingInline={8} variant={'outlined'}>
+    <Block
+      className={styles.summary}
+      data-testid="heatmap-summary"
+      paddingBlock={16}
+      paddingInline={8}
+      variant={'outlined'}
+    >
       <div
         style={{
           display: 'grid',

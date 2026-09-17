@@ -17,6 +17,7 @@ import type {
   GoalTickResult,
   MetricKind,
   TaskItem,
+  TaskOriginContext,
   TaskTopicHandoff,
   WorkVersionEventItem,
 } from '@lobechat/types';
@@ -32,6 +33,7 @@ import { MetricModel } from '@/database/models/metric';
 import { ProjectModel } from '@/database/models/project';
 import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
+import { TopicModel } from '@/database/models/topic';
 import { WorkModel } from '@/database/models/work';
 import type { LobeChatDatabase } from '@/database/type';
 import { assertAgentUsableBy } from '@/database/utils/agent-access';
@@ -194,6 +196,24 @@ export class GoalService {
       input.config,
       input.agentId,
     );
+    if (input.config?.origin) {
+      const origin = input.config.origin;
+      const topic =
+        origin.topicId &&
+        (await new TopicModel(this.db, this.userId, this.workspaceId).findById(origin.topicId));
+      if (!groupExecution || !origin.agentId || !topic || topic.groupId !== groupExecution.groupId)
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Origin conversation not found in this group',
+        });
+      await resolveGroupExecution(
+        this.db,
+        this.userId,
+        this.workspaceId,
+        input.config,
+        origin.agentId,
+      );
+    }
     if (groupExecution)
       input = { ...input, agentId: groupExecution.supervisorAgentId ?? groupExecution.agentId };
     if (input.agentId) {
@@ -580,7 +600,48 @@ export class GoalService {
     });
   };
 
-  graph = async (goalId: string) => {
+  graph = async (goalId: string, groupId?: string) => {
+    if (groupId) {
+      const direct = await this.goalModel.findById(goalId);
+      if (direct) {
+        if (direct.config?.groupId !== groupId)
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Goal not found in this conversation',
+          });
+      } else {
+        const matches: GoalItem[] = [];
+        let offset = 0;
+        while (true) {
+          const page = await this.goalModel.list({ groupId, limit: 100, offset });
+          matches.push(
+            ...page.goals.filter(({ goal }) => goal.title === goalId).map(({ goal }) => goal),
+          );
+          offset += page.goals.length;
+          if (!page.goals.length || offset >= page.total) break;
+        }
+        if (!matches.length)
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Goal not found in this conversation',
+          });
+        if (matches.length > 1)
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message:
+              'Multiple goals share this exact name: ' +
+              JSON.stringify(
+                matches.map((goal) => ({
+                  goalId: goal.id,
+                  title: goal.title,
+                  status: goal.status,
+                  createdAt: goal.createdAt,
+                })),
+              ),
+          });
+        goalId = matches[0].id;
+      }
+    }
     const graph = await this.requireGraph(goalId);
     const [runHeartbeats, deliveredAt, acceptances, spend] = await Promise.all([
       this.collectRunHeartbeats(graph),
@@ -745,7 +806,7 @@ export class GoalService {
    * budget with nothing left on screen to stop it. The tasks themselves stay:
    * they are ordinary tasks with their own history and acceptance.
    */
-  delete = async (goalId: string) => {
+  delete = async (goalId: string, options?: { taskIdsToStop?: string[] }) => {
     let graph = await this.graphModel.getGraph(goalId);
     const managed = !!graph?.goal.config?.manager;
     const supervised =
@@ -776,6 +837,7 @@ export class GoalService {
     const taskIds = graph?.nodes.flatMap((node) => (node.taskId ? [node.taskId] : [])) ?? [];
 
     for (const taskId of taskIds) {
+      if (options?.taskIdsToStop && !options.taskIdsToStop.includes(taskId)) continue;
       const topics = await this.taskTopicModel.findByTaskId(taskId);
       for (const topic of topics) {
         if (topic.status !== 'running' || !topic.topicId) continue;
@@ -843,25 +905,102 @@ export class GoalService {
     reason?: string,
     actor: 'coordinator' | 'user' = 'coordinator',
   ): Promise<GoalItem | undefined> => {
-    if (goal.status === to) return goal;
-    const updated = await this.goalModel.updateStatus(goal.id, to);
-    if (!updated) return undefined;
-    const model = actor === 'coordinator' ? this.coordinatorGraph : this.graphModel;
-    await model
-      .recordGoalStatus(goal.id, goal.status, to, reason)
-      .catch((error) => console.error('[GoalService] failed to record goal status:', error));
+    const updated = await this.db.transaction(async (db) => {
+      const model = new GoalModel(db, this.userId, this.workspaceId);
+      const current = await model.lockById(goal.id);
+      if (!current || current.status === to) return current;
+      if (
+        current.status === 'canceled' ||
+        (actor === 'coordinator' &&
+          current.status === 'paused' &&
+          current.config?.pausedBy === 'user')
+      )
+        return current;
+      const result = await model.updateStatus(goal.id, to);
+      const graphModel = new GoalGraphModel(
+        db,
+        this.userId,
+        this.workspaceId,
+        actor === 'coordinator' ? { id: GOAL_COORDINATOR_ACTOR_ID, type: 'system' } : undefined,
+      );
+      await graphModel.recordGoalStatus(goal.id, current.status, to, reason);
+      return result;
+    });
     return updated;
   };
 
-  pause = async (goalId: string) => {
-    const graph = await this.requireGraph(goalId);
-    // From here the pause is the person's, so no later measurement lifts it.
-    // Written even when the goal is already paused — that transition is a
-    // no-op, so this marker is the only record that the person took it over.
-    await this.setPauseReason(goalId, 'user');
-    const goal = await this.transitionStatus(graph.goal, 'paused', 'paused by user', 'user');
-    if (!goal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
-    return goal;
+  pause = async (goalId: string) => this.stopByUser(goalId, false);
+
+  cancel = async (goalId: string) => this.stopByUser(goalId, true);
+
+  private stopByUser = async (goalId: string, cancel: boolean) => {
+    // Fence claims under the same row lock used by dispatch before interrupting work.
+    await this.db.transaction(async (db) => {
+      const model = new GoalModel(db, this.userId, this.workspaceId);
+      const goal = await model.lockById(goalId);
+      if (!goal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
+      if (goal.config?.manualStopPending)
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Goal is still stopping; try again shortly',
+        });
+      // Failed goals remain dismissible through the same controls as active goals.
+      if (goal.status === 'achieved' || (goal.status === 'failed' && !cancel))
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Goal is already finished' });
+      if (goal.status === 'canceled') {
+        if (cancel) return;
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Goal is canceled' });
+      }
+      await model.update(goalId, {
+        config: { ...goal.config, pausedBy: 'user', manualStopPending: true },
+        status: 'paused',
+      });
+      if (goal.status !== 'paused')
+        await new GoalGraphModel(db, this.userId, this.workspaceId).recordGoalStatus(
+          goalId,
+          goal.status,
+          'paused',
+          'paused by user',
+        );
+    });
+    try {
+      const graph = await this.requireGraph(goalId);
+      await new GoalManagerService(this.db, this.userId, this.workspaceId).stop(graph);
+      await new GoalSupervisorService(this.db, this.userId, this.workspaceId).stop(graph);
+      const ids = [...new Set(graph.nodes.flatMap((node) => (node.taskId ? [node.taskId] : [])))];
+      const pausedTaskIds = new Set(graph.goal.config?.pausedTaskIds ?? []);
+      for (const task of await this.taskModel.findByIds(ids)) {
+        if (['completed', 'failed', 'canceled'].includes(task.status)) continue;
+        if (!cancel && task.status === 'paused') continue;
+        if (!cancel) {
+          pausedTaskIds.add(task.id);
+          await this.goalModel.update(goalId, {
+            config: {
+              ...(await this.goalModel.findById(goalId))?.config,
+              pausedTaskIds: [...pausedTaskIds],
+            },
+          });
+        }
+        await this.taskService.updateStatus(
+          { id: task.id, status: cancel ? 'canceled' : 'paused' },
+          { userId: this.userId },
+        );
+      }
+      if (cancel) {
+        const current = await this.requireGraph(goalId);
+        await this.transitionStatus(current.goal, 'canceled', 'canceled by user', 'user');
+      }
+    } finally {
+      await this.db.transaction(async (db) => {
+        const model = new GoalModel(db, this.userId, this.workspaceId);
+        const current = await model.lockById(goalId);
+        if (current?.config?.manualStopPending)
+          await model.update(goalId, {
+            config: { ...current.config, manualStopPending: undefined },
+          });
+      });
+    }
+    return (await this.requireGraph(goalId)).goal;
   };
 
   /**
@@ -977,6 +1116,220 @@ export class GoalService {
     return goal;
   };
 
+  /** Revise one work item in place, preserving its task and artifact history. */
+  revise = async (
+    goalId: string,
+    input: {
+      groupId?: string;
+      instruction: string;
+      nodeId: string;
+      requirement?: string;
+      origin?: TaskOriginContext;
+    },
+  ) => {
+    if (!input.instruction.trim())
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'A revision needs a concrete instruction',
+      });
+
+    // Fence dispatch before cancelling any old run. The goal row version also
+    // prevents two concurrent edits from overwriting each other's requirements.
+    const edit = await this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${GOAL_DISPATCH_LOCK_NAMESPACE}, hashtext(${goalId}))`,
+      );
+      const model = new GoalModel(tx, this.userId, this.workspaceId);
+      const goal = await model.lockById(goalId);
+      if (!goal || (input.groupId && goal.config?.groupId !== input.groupId))
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found in this conversation' });
+      if (!goal.config?.origin && input.origin) {
+        const origin = input.origin;
+        const topic =
+          origin.topicId &&
+          (await new TopicModel(tx, this.userId, this.workspaceId).findById(origin.topicId));
+        if (!input.groupId || !origin.agentId || !topic || topic.groupId !== input.groupId)
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Origin conversation not found in this group',
+          });
+        await resolveGroupExecution(tx, this.userId, this.workspaceId, goal.config, origin.agentId);
+      }
+      const graph = await new GoalGraphModel(tx, this.userId, this.workspaceId).getGraph(goalId);
+      const target = graph?.nodes.find((node) => node.id === input.nodeId && node.kind === 'task');
+      if (!graph || !target)
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal work item not found' });
+      if (
+        goal.config?.manager ||
+        goal.config?.planningCheckpoint ||
+        goal.config?.exploration ||
+        goal.status === 'canceled'
+      )
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message:
+            'This goal is under managed planning or canceled; its current plan cannot be revised here',
+        });
+
+      const affected = new Set([target.id]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const edge of graph.edges) {
+          if (
+            edge.kind === 'depends_on' &&
+            affected.has(edge.targetNodeId) &&
+            !affected.has(edge.sourceNodeId)
+          ) {
+            affected.add(edge.sourceNodeId);
+            changed = true;
+          }
+        }
+      }
+      // A final acceptance must inspect the new result, even when a historical
+      // graph did not represent that dependency with an explicit edge.
+      for (const node of graph.nodes)
+        if (node.kind === 'task' && node.title === GOAL_ACCEPTANCE_TASK_TITLE)
+          affected.add(node.id);
+      const nodeIds = graph.nodes
+        .filter((node) => node.kind === 'task' && affected.has(node.id))
+        .map((node) => node.id);
+      const taskIds = graph.nodes
+        .filter((node) => nodeIds.includes(node.id))
+        .flatMap((node) => (node.taskId ? [node.taskId] : []));
+      const paused = await model.updateStatus(goalId, 'paused');
+      return { goal, nodeIds, taskIds, version: paused!.updatedAt };
+    });
+
+    // Cancellation is not reversible. Keep the dispatch fence in place;
+    // resuming old instructions after a partial cancellation would silently
+    // restart the very work the user asked to change. The text transaction
+    // rolled back, so a subsequent inspection/revision remains safe.
+    for (const topic of await this.taskTopicModel.findRunningByTaskIds(edit.taskIds)) {
+      if (topic.topicId) await this.taskService.cancelTopic(topic.topicId);
+    }
+    return await this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${GOAL_DISPATCH_LOCK_NAMESPACE}, hashtext(${goalId}))`,
+      );
+      const model = new GoalModel(tx, this.userId, this.workspaceId);
+      const current = await model.lockById(goalId);
+      if (
+        !current ||
+        current.status !== 'paused' ||
+        +new Date(current.updatedAt) !== +new Date(edit.version)
+      )
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'The goal changed during revision; inspect its latest state before retrying',
+        });
+      const service = new GoalService(tx, this.userId, this.workspaceId);
+      const graph = await service.requireGraph(goalId);
+      const goalRevisionAt = new Date().toISOString();
+      if (input.requirement !== undefined) {
+        if (!input.requirement.trim())
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Goal requirement cannot be empty',
+          });
+        graph.goal = (await model.update(goalId, { requirement: input.requirement }))!;
+        for (const node of graph.nodes.filter((node) => node.kind === 'problem'))
+          await service.graphModel.updateNodeDescription(goalId, node.id, input.requirement);
+      }
+      if (!graph.goal.config?.origin && input.origin)
+        graph.goal = (await model.update(goalId, {
+          config: { ...graph.goal.config, origin: input.origin },
+        }))!;
+      for (const node of graph.nodes.filter((node) => edit.nodeIds.includes(node.id))) {
+        const description = node.id === input.nodeId ? input.instruction.trim() : node.description;
+        if (node.id === input.nodeId)
+          await service.graphModel.updateNodeDescription(goalId, node.id, description!);
+        if (node.taskId) {
+          const task = await service.taskModel.findById(node.taskId);
+          if (!task || task.status === 'running')
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'An affected task is still running; the revision was not applied',
+            });
+          await service.taskModel.update(node.taskId, {
+            instruction: service.buildTaskInstruction(graph, node.title, description),
+            description: description?.slice(0, TASK_DESCRIPTION_MAX_LENGTH),
+            status: 'backlog',
+            error: null,
+            completedAt: null,
+            context: {
+              ...(task.context as Record<string, unknown> | null),
+              ...(node.title === GOAL_ACCEPTANCE_TASK_TITLE && graph.goal.config?.origin
+                ? { origin: graph.goal.config.origin }
+                : {}),
+              completion: undefined,
+              goalRevisionAt,
+            },
+          });
+          const acceptance = await service.acceptanceService.acceptanceModel.findBySubject(
+            'task',
+            node.taskId,
+          );
+          if (acceptance) {
+            await service.acceptanceService.acceptanceModel.update(acceptance.id, {
+              requirement: service.buildTaskAcceptanceRequirement(graph, node.title, description),
+              metadata: { ...acceptance.metadata, goalRevisionAt },
+            });
+            await service.acceptanceService.acceptanceModel.updateStatus(acceptance.id, 'pending');
+          }
+        }
+        await service.graphModel.updateNodeStatus(
+          goalId,
+          node.id,
+          node.taskId ? 'active' : 'proposed',
+          'User requested a revision',
+        );
+        for (const edge of graph.edges.filter(
+          (edge) => edge.sourceNodeId === node.id && edge.kind === 'produces',
+        )) {
+          const finding = graph.nodes.find((item) => item.id === edge.targetNodeId);
+          if (finding?.kind === 'finding')
+            await service.graphModel.updateNodeStatus(
+              goalId,
+              finding.id,
+              'retired',
+              'Historical result superseded by requested revision',
+            );
+        }
+      }
+      for (const decision of graph.decisions.filter((item) => item.status === 'pending')) {
+        if (
+          graph.edges.some(
+            (edge) =>
+              edit.nodeIds.includes(edge.sourceNodeId) &&
+              edge.targetNodeId === decision.nodeId &&
+              edge.kind === 'leads_to',
+          )
+        )
+          await service.graphModel.cancelDecision(
+            goalId,
+            decision.id,
+            'Superseded by requested revision',
+          );
+      }
+      const remaining = await service.requireGraph(goalId);
+      const status =
+        edit.goal.status === 'paused'
+          ? 'paused'
+          : remaining.decisions.some((item) => item.status === 'pending')
+            ? 'review'
+            : 'running';
+      const goal = await model.updateStatus(goalId, status);
+      await service.graphModel.recordGoalStatus(
+        goalId,
+        edit.goal.status,
+        status,
+        'Revised existing work; previous deliverables retained',
+      );
+      return { goal: goal!, revisedNodeIds: edit.nodeIds, taskIds: edit.taskIds };
+    });
+  };
+
   /**
    * Hand the goal to a different responsible agent. Every Task the
    * coordinator creates from here on is assigned to the new agent, and —
@@ -1033,6 +1386,13 @@ export class GoalService {
       });
     }
     const graph = await this.requireGraph(goalId);
+    if (graph.goal.config?.manualStopPending)
+      throw new TRPCError({
+        code: 'CONFLICT',
+        message: 'Goal is still stopping; try again shortly',
+      });
+    if (graph.goal.status === 'canceled')
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Goal is canceled' });
 
     const unfinishedNodes = graph.nodes.filter(
       (node) => node.kind === 'task' && node.taskId && !TERMINAL_NODE_STATUSES.has(node.status),
@@ -1175,13 +1535,48 @@ export class GoalService {
   };
 
   resume = async (goalId: string) => {
-    const graph = await this.requireGraph(goalId);
-    const status = graph.decisions.some((decision) => decision.status === 'pending')
-      ? 'review'
-      : 'running';
-    await this.setPauseReason(goalId, undefined);
-    const goal = await this.transitionStatus(graph.goal, status, 'resumed by user', 'user');
-    return goal ?? graph.goal;
+    const resumed = await this.db.transaction(async (db) => {
+      const model = new GoalModel(db, this.userId, this.workspaceId);
+      const goal = await model.lockById(goalId);
+      if (!goal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
+      if (goal.config?.manualStopPending)
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Goal is still stopping; try again shortly',
+        });
+      if (goal.status === 'canceled' || goal.status === 'achieved' || goal.status === 'failed')
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Goal is ${goal.status}` });
+      const graphModel = new GoalGraphModel(db, this.userId, this.workspaceId);
+      const graph = await graphModel.getGraph(goalId);
+      const status = graph!.decisions.some((decision) => decision.status === 'pending')
+        ? 'review'
+        : 'running';
+      const updated = await model.update(goalId, {
+        config: { ...goal.config, pausedBy: undefined },
+        status,
+      });
+      if (goal.status !== status)
+        await graphModel.recordGoalStatus(goalId, goal.status, status, 'resumed by user');
+      return { goal: updated!, taskIds: goal.config?.pausedTaskIds ?? [] };
+    });
+    // Child work may resume remote operations; never hold the goal row lock here.
+    for (const id of resumed.taskIds) {
+      const current = await this.goalModel.findById(goalId);
+      if (!current || current.status === 'paused' || current.status === 'canceled') break;
+      if ((await this.taskModel.findById(id))?.status !== 'paused') continue;
+      await this.taskService.resume(id, { userId: this.userId }, undefined, {
+        deferRootExecution: true,
+      });
+    }
+    return this.db.transaction(async (db) => {
+      const model = new GoalModel(db, this.userId, this.workspaceId);
+      const current = await model.lockById(goalId);
+      if (!current) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
+      if (current.status === 'paused' || current.status === 'canceled') return current;
+      return (await model.update(goalId, {
+        config: { ...current.config, pausedTaskIds: undefined },
+      }))!;
+    });
   };
 
   decide = async (goalId: string, decisionId: string, optionId: string, resolution?: string) => {
@@ -1678,6 +2073,10 @@ export class GoalService {
           checkpoint: { topic: { after: false } },
           ...(groupExecution ? { groupId: groupExecution.groupId } : {}),
         },
+        context:
+          frontier.title === GOAL_ACCEPTANCE_TASK_TITLE && graph.goal.config?.origin
+            ? { origin: graph.goal.config.origin }
+            : undefined,
         description: description?.slice(0, TASK_DESCRIPTION_MAX_LENGTH),
         instruction: this.buildTaskInstruction(graph, frontier.title, description),
         name: frontier.title,
@@ -2460,16 +2859,63 @@ export class GoalService {
     nodeId: string,
     taskId: string,
     effects: GoalAdvanceEffect[] = [],
+  ): Promise<GoalTickResult> =>
+    this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${GOAL_DISPATCH_LOCK_NAMESPACE}, hashtext(${graph.goal.id}))`,
+      );
+      const service = new GoalService(tx, this.userId, this.workspaceId);
+      const current = await service.requireGraph(graph.goal.id);
+      const beforeNode = graph.nodes.find((node) => node.id === nodeId);
+      const currentNode = current.nodes.find((node) => node.id === nodeId);
+      const task = await service.taskModel.findById(taskId);
+      if (
+        current.goal.status === 'paused' ||
+        task?.status !== 'completed' ||
+        !beforeNode ||
+        !currentNode ||
+        +new Date(beforeNode.updatedAt) !== +new Date(currentNode.updatedAt)
+      ) {
+        return {
+          goalId: graph.goal.id,
+          outcome: 'no_progress',
+          message: 'Work changed before completion was consumed',
+        };
+      }
+      return service.consumeCompletedTaskLocked(current, nodeId, taskId, effects);
+    });
+
+  private consumeCompletedTaskLocked = async (
+    graph: GoalGraphSnapshot,
+    nodeId: string,
+    taskId: string,
+    effects: GoalAdvanceEffect[] = [],
   ): Promise<GoalTickResult> => {
     const existingFinding = graph.edges.some(
-      (edge) => edge.sourceNodeId === nodeId && edge.kind === 'produces',
+      (edge) =>
+        edge.sourceNodeId === nodeId &&
+        edge.kind === 'produces' &&
+        graph.nodes.some((node) => node.id === edge.targetNodeId && node.status !== 'retired'),
     );
     // The newest row by seq can be a retry that was canceled when verification
     // accepted an earlier delivery — the settle path cancels the in-flight
     // attempt it superseded. The finding must be synthesized from the run that
     // actually delivered, so prefer the newest completed topic (with a handoff
     // when one exists) over whatever happens to be last.
-    const recent = await this.taskTopicModel.findWithHandoff(taskId, 10);
+    const task = await this.taskModel.findById(taskId);
+    const revisionAt = (task?.context as { goalRevisionAt?: string } | undefined)?.goalRevisionAt;
+    const revisionTime = typeof revisionAt === 'string' ? Date.parse(revisionAt) : NaN;
+    const inRevision = (topic: { createdAt: Date }) =>
+      !Number.isFinite(revisionTime) || topic.createdAt.getTime() >= revisionTime;
+    const recent = (await this.taskTopicModel.findWithHandoff(taskId, 10)).filter(inRevision);
+    if (Number.isFinite(revisionTime) && !recent.some((topic) => topic.status === 'completed'))
+      return {
+        goalId: graph.goal.id,
+        nodeId,
+        taskId,
+        outcome: 'no_progress',
+        message: 'Waiting for the revised task delivery',
+      };
     const latest =
       recent.find((topic) => topic.status === 'completed' && topic.handoff) ??
       recent.find((topic) => topic.status === 'completed') ??
@@ -2500,7 +2946,7 @@ export class GoalService {
     // Every run of the task, not the ten `findWithHandoff` reads for the
     // finding: an attempt budget above ten would otherwise strand a deliverable
     // produced early and merely referenced later.
-    const allRuns = await this.taskTopicModel.findByTaskId(taskId);
+    const allRuns = (await this.taskTopicModel.findByTaskId(taskId)).filter(inRevision);
     await this.attachTaskDeliverables(
       graph.goal.id,
       nodeId,

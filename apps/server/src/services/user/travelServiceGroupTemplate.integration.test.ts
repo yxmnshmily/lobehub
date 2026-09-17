@@ -27,6 +27,7 @@ import {
   importSuperGroupTemplateMember,
   removeSuperGroupTemplateMember,
   reorderSuperGroupTemplateMembers,
+  savePublishedSuperGroupAgent,
   upsertSuperGroupTemplateMember,
 } from './travelServiceGroupTemplate';
 
@@ -71,6 +72,20 @@ const findMember = (userId: string, key = memberInput.key) =>
   });
 
 describe('administrator super-group template', () => {
+  it.each([null, undefined])(
+    'ignores a %s config patch without publishing or changing the member',
+    async (value) => {
+      await upsertSuperGroupTemplateMember(db, adminId, memberInput);
+      const member = await findMember(adminId);
+      const template = await getSuperGroupTemplate(db);
+      await expect(savePublishedSuperGroupAgent(db, adminId, member!.id, value)).resolves.toBe(
+        false,
+      );
+      expect(await getSuperGroupTemplate(db)).toEqual(template);
+      expect(await findMember(adminId)).toEqual(member);
+    },
+  );
+
   it.each(['#336699', 'http://localhost:3010/lobehub/files/generated-background.webp'])(
     'publishes background %s and resets across source, group copies and future users',
     async (backgroundColor) => {

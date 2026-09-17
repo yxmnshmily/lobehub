@@ -4,6 +4,7 @@ import debug from 'debug';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
 import { MessageModel } from '@/database/models/message';
+import { TaskModel } from '@/database/models/task';
 import { VerifyCheckResultModel } from '@/database/models/verifyCheckResult';
 import { VerifyRubricModel } from '@/database/models/verifyRubric';
 import { VerifyRunModel } from '@/database/models/verifyRun';
@@ -15,6 +16,23 @@ import { AcceptanceService } from './acceptanceService';
 import { VerifyStatusService } from './statusService';
 
 const log = debug('lobe-server:verify-repair');
+
+const canRepairTask = async (
+  db: LobeChatDatabase,
+  userId: string,
+  taskId: string,
+  createdAt: Date | string | undefined,
+  workspaceId?: string,
+): Promise<boolean> => {
+  const task = await new TaskModel(db, userId, workspaceId).findById(taskId);
+  if (!task || ['paused', 'canceled', 'completed', 'failed'].includes(task.status)) return false;
+  const context = task.context as { manualControl?: string; manualStopAt?: string } | null;
+  if (context?.manualControl) return false;
+  return (
+    !context?.manualStopAt ||
+    (!!createdAt && +new Date(createdAt) >= +new Date(context.manualStopAt))
+  );
+};
 
 /**
  * Resolve the run's repair-round cap. A per-run override on the session metadata
@@ -103,6 +121,19 @@ export const createRepairRunner = (params: {
     if (round >= maxRepairRounds) {
       log('op %s reached max repair rounds (%d), not repairing', operationId, maxRepairRounds);
       return null;
+    }
+
+    // A user can stop the task while verification or feedback persistence is
+    // awaiting I/O. Re-read immediately before starting another model call.
+    if (taskId) {
+      let sourceOperation = await operationModel.findById(operationId);
+      let depth = 0;
+      while (!sourceOperation?.taskId && sourceOperation?.parentOperationId && depth < 10) {
+        sourceOperation = await operationModel.findById(sourceOperation.parentOperationId);
+        depth += 1;
+      }
+      if (!(await canRepairTask(db, userId, taskId, sourceOperation?.createdAt, workspaceId)))
+        return null;
     }
 
     // Re-run the original agent in the same topic. The feedback lives on the
@@ -200,6 +231,11 @@ export const maybeAutoRepair = async (
     taskOperation = await operationModel.findById(taskOperation.parentOperationId);
     taskDepth += 1;
   }
+  if (
+    taskOperation?.taskId &&
+    !(await canRepairTask(db, userId, taskOperation.taskId, taskOperation.createdAt, workspaceId))
+  )
+    return;
   const spawner = createRepairRunner({
     agentId: op?.agentId,
     db,

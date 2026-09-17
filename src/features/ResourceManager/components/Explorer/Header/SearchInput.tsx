@@ -12,8 +12,9 @@ import { useResourceManagerStore } from '@/features/ResourceManager/store';
 const SearchInput = memo<{ mobile?: boolean }>(({ mobile = false }) => {
   const { t } = useTranslation('components');
   const [expanded, setExpanded] = useState(false);
-  const [showIcon, setShowIcon] = useState(true);
   const [localQuery, setLocalQuery] = useState('');
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef(false);
   const inputRef = useRef<any>(null);
   const setSearchQuery = useResourceManagerStore((s) => s.setSearchQuery);
 
@@ -25,16 +26,18 @@ const SearchInput = memo<{ mobile?: boolean }>(({ mobile = false }) => {
   }, [debouncedQuery, expanded, setSearchQuery]);
 
   const handleExpand = useCallback(() => {
-    setShowIcon(false);
     setExpanded(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
-  const handleCollapse = useCallback(() => {
-    setExpanded(false);
-    setLocalQuery('');
-    setSearchQuery(null);
-  }, [setSearchQuery]);
+  const handleCollapse = useCallback(
+    (returnFocus = false) => {
+      returnFocusRef.current = returnFocus;
+      setExpanded(false);
+      setLocalQuery('');
+      setSearchQuery(null);
+    },
+    [setSearchQuery],
+  );
 
   const handleBlur = useCallback(() => {
     if (!localQuery) {
@@ -42,16 +45,18 @@ const SearchInput = memo<{ mobile?: boolean }>(({ mobile = false }) => {
     }
   }, [localQuery, handleCollapse]);
 
-  const handleTransitionEnd = useCallback(() => {
-    if (!expanded) {
-      setShowIcon(true);
+  useEffect(() => {
+    if (expanded) inputRef.current?.focus();
+    else if (returnFocusRef.current) {
+      triggerRef.current?.focus();
+      returnFocusRef.current = false;
     }
   }, [expanded]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        handleCollapse();
+        handleCollapse(true);
       }
     },
     [handleCollapse],
@@ -66,30 +71,38 @@ const SearchInput = memo<{ mobile?: boolean }>(({ mobile = false }) => {
           transition: 'opacity 200ms ease-out',
           width: expanded ? 200 : 0,
         }}
-        onTransitionEnd={handleTransitionEnd}
       >
-        <Input
-          aria-label={t('FileManager.search.placeholder')}
-          placeholder={t('FileManager.search.placeholder')}
-          prefix={<SearchIcon size={14} />}
-          ref={inputRef}
-          size={mobile ? 'middle' : 'small'}
-          style={{ height: mobile ? 44 : undefined, width: 200 }}
-          value={localQuery}
-          suffix={
-            localQuery ? (
-              <XIcon size={14} style={{ cursor: 'pointer' }} onClick={handleCollapse} />
-            ) : undefined
-          }
-          onBlur={handleBlur}
-          onChange={(e) => setLocalQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
+        {expanded && (
+          <Input
+            aria-label={t('FileManager.search.placeholder')}
+            placeholder={t('FileManager.search.placeholder')}
+            prefix={<SearchIcon size={14} />}
+            ref={inputRef}
+            size={mobile ? 'middle' : 'small'}
+            style={{ height: mobile ? 44 : undefined, width: 200 }}
+            value={localQuery}
+            suffix={
+              localQuery ? (
+                <ActionIcon
+                  aria-label={t('FileManager.search.clear')}
+                  icon={XIcon}
+                  size={14}
+                  style={{ minHeight: mobile ? 44 : undefined, minWidth: mobile ? 44 : undefined }}
+                  onClick={() => handleCollapse(true)}
+                />
+              ) : undefined
+            }
+            onBlur={handleBlur}
+            onChange={(e) => setLocalQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        )}
       </div>
-      {showIcon && (
+      {!expanded && (
         <ActionIcon
           aria-label={t('FileManager.search.placeholder')}
           icon={SearchIcon}
+          ref={triggerRef}
           title={t('FileManager.search.placeholder')}
           style={{
             marginRight: 4,

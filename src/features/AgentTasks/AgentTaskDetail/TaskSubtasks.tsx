@@ -10,6 +10,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { usePermission } from '@/hooks/usePermission';
 import { showContextMenu } from '@/libs/contextMenu';
@@ -61,6 +62,7 @@ const buildTree = (subtasks: TaskDetailSubtask[]): TaskTreeNode[] =>
   }));
 
 const SubtaskTitle = memo<{ task: TaskDetailSubtask }>(({ task }) => {
+  const { i18n } = useTranslation();
   const status = toTaskStatus(task.status);
   const isRunning = status === 'running';
   const hasRunningTopic = Boolean(task.runningTopic);
@@ -95,7 +97,7 @@ const SubtaskTitle = memo<{ task: TaskDetailSubtask }>(({ task }) => {
         </Text>
       )}
       <Text ellipsis fontSize={13} style={{ flex: 1, minWidth: 0 }}>
-        {task.name || task.identifier}
+        {localizeGoalTemplate(task.name || task.identifier, i18n.resolvedLanguage || i18n.language)}
       </Text>
       {task.automationMode ? (
         <span

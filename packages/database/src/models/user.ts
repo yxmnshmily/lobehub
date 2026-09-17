@@ -110,6 +110,7 @@ export class UserModel {
         email: users.email,
         firstName: users.firstName,
         fullName: users.fullName,
+        phone: users.phone,
         interests: users.interests,
         isOnboarded: users.isOnboarded,
         lastName: users.lastName,
@@ -171,6 +172,7 @@ export class UserModel {
       email: state.email || undefined,
       firstName: state.firstName || undefined,
       fullName: state.fullName || undefined,
+      phone: state.phone || undefined,
       interests: state.interests || undefined,
       isOnboarded: state.isOnboarded,
       lastName: state.lastName || undefined,
@@ -673,7 +675,7 @@ export class UserModel {
     const general = user?.general as UserGeneralConfig | undefined;
 
     return {
-      responseLanguage: general?.responseLanguage || 'en-US',
+      responseLanguage: general?.responseLanguage || 'zh-CN',
       userName: user?.fullName || user?.firstName || 'User',
     };
   };

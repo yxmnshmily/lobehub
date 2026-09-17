@@ -160,6 +160,7 @@ export interface ExecSubAgentTaskParams {
   parentMessageId: string;
   /** Parent operation ID for dispatching callAgent hooks */
   parentOperationId?: string;
+  skillIdentifiers?: string[];
   timeout?: number;
   /** Task title (shown in UI, used as thread title) */
   title?: string;

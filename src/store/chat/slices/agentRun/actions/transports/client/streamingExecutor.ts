@@ -27,10 +27,12 @@ import {
   AgentRuntimeErrorType,
   buildGoalOverviewContext,
   type ConversationContext,
+  getDisabledPluginIds,
   type LobeAgentChatConfig,
   type MessageMetadata,
   type RunSubAgentResult,
   type RuntimeInitialContext,
+  type StepActivatedSkill,
   type UIChatMessage,
 } from '@lobechat/types';
 import debug from 'debug';
@@ -40,6 +42,7 @@ import { aiAgentService } from '@/services/aiAgent';
 import { isCanUseAudio, isCanUseVideo, isCanUseVision } from '@/services/chat/helper';
 import { type ResolvedAgentConfig } from '@/services/chat/mecha';
 import { composeEnabledTools, resolveAgentConfig } from '@/services/chat/mecha';
+import { resolveClientSkills } from '@/services/chat/mecha/skillEngineering';
 import { localFileService } from '@/services/electron/localFileService';
 import { messageService } from '@/services/message';
 import { workService } from '@/services/work';
@@ -512,6 +515,7 @@ export class StreamingExecutorActionImpl {
   };
 
   executeClientAgent = async (params: {
+    skillIdentifiers?: string[];
     context: ConversationContext;
     disableTools?: boolean;
     initialContext?: AgentRuntimeContext;
@@ -601,6 +605,7 @@ export class StreamingExecutorActionImpl {
     // Initialize before publishing a running topic/signal. Profile-only group
     // members have no executable config, and provider hydration can also fail.
     // Neither failure may strand the child operation in "preparing response".
+    let dispatchActivatedSkills: StepActivatedSkill[] = [];
     let prepared: ReturnType<ChatStore['internal_createAgentState']>;
     try {
       await getAiInfraStoreState().ensureAiProviderRuntimeStateReady();
@@ -619,6 +624,20 @@ export class StreamingExecutorActionImpl {
         modelOverride: params.modelOverride,
         chatConfigOverride: params.chatConfigOverride,
       });
+      if (params.skillIdentifiers?.length) {
+        if (disableTools)
+          throw new Error('Skills cannot be selected for a tools-disabled broadcast.');
+        const selected = await resolveClientSkills(
+          [],
+          getDisabledPluginIds(prepared.agentConfig.agentConfig.plugins),
+          params.skillIdentifiers,
+        );
+        const ids = new Set(params.skillIdentifiers);
+        dispatchActivatedSkills = selected.skills
+          .filter((skill) => ids.has(skill.identifier))
+          .map((skill) => ({ name: skill.name, description: skill.description }));
+        prepared.agentConfig = { ...prepared.agentConfig, skillIdentifiers: [...ids] };
+      }
     } catch (error) {
       if (this.#get().operations[operationId]?.status === 'cancelled') return;
       const message = error instanceof Error ? error.message : String(error);
@@ -780,7 +799,10 @@ export class StreamingExecutorActionImpl {
         (id) => scope === 'page' || id !== PageAgentIdentifier,
       );
       // Accumulate activated skills from activateSkill messages
-      const activatedSkills = selectActivatedSkillsFromMessages(currentDBMessages);
+      const activatedSkills = [
+        ...dispatchActivatedSkills,
+        ...(selectActivatedSkillsFromMessages(currentDBMessages) ?? []),
+      ];
       const hasQueuedMessages = (this.#get().queuedMessages[contextKey]?.length ?? 0) > 0;
       const stepContext = computeStepContext({
         activatedSkills,

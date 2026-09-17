@@ -1,0 +1,1445 @@
+{
+  "advances": [
+    {
+      "completedAt": 1789235045104,
+      "durationMs": 59,
+      "seq": 0,
+      "startedAt": 1789235045045,
+      "ticks": [
+        {
+          "at": 1789235045045,
+          "branch": "plan_decomposition",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Another advance is already planning this goal or tasks already exist",
+          "outcome": "waiting_external",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 0,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 1,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "childOperationIds": ["op_1789235052824_agt_DoPfw09fNiV9_tpc_kWnpV9mBZnqe_dgcAVR5Q"],
+      "completedAt": 1789235052932,
+      "durationMs": 7886,
+      "seq": 1,
+      "startedAt": 1789235045046,
+      "ticks": [
+        {
+          "at": 1789235045046,
+          "branch": "plan_decomposition",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Planned 2 exploration directions",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "type": "created_node",
+              "detail": "创作阳朔亲子游30字内口语初稿"
+            },
+            {
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "type": "created_node",
+              "detail": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 0,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 1,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789235051771,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "proposed",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            },
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-30",
+          "outcome": "advanced",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "targetId": "task_6XtrGv0H95Yb",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "创作阳朔亲子游30字内口语初稿"
+              },
+              {
+                "createdAt": 1789235051719,
+                "id": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "审核初稿的字数、口语与禁用信息"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "07cfa214-697b-44d4-bf2c-fa9297096ab2",
+                "kind": "decomposes",
+                "sourceNodeId": "29a389fd-d8b3-4da9-a1f5-c531f36aa45e",
+                "targetNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6"
+              },
+              {
+                "id": "bb3cb1ef-c447-493c-97f9-51bf42792c7a",
+                "kind": "decomposes",
+                "sourceNodeId": "29a389fd-d8b3-4da9-a1f5-c531f36aa45e",
+                "targetNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0"
+              },
+              {
+                "id": "f19e3990-dbf4-4bd8-811a-5788501dd935",
+                "kind": "depends_on",
+                "sourceNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+                "targetNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 3,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        },
+        {
+          "at": 1789235051834,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "active",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "backlog",
+              "updatedAt": 1789235051794
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "operationId": "op_1789235052824_agt_DoPfw09fNiV9_tpc_kWnpV9mBZnqe_dgcAVR5Q",
+              "targetId": "task_6XtrGv0H95Yb",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_6XtrGv0H95Yb",
+                "title": "创作阳朔亲子游30字内口语初稿"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 3,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "childOperationIds": ["op_1789235105642_agt_DoPfw09fNiV9_tpc_UTbJkhR4vKVX_3xWeKaiw"],
+      "completedAt": 1789235105746,
+      "durationMs": 1036,
+      "seq": 2,
+      "startedAt": 1789235104710,
+      "ticks": [
+        {
+          "at": 1789235104710,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 1,
+            "totalCost": 0.010251
+          },
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "active",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": "Verification could not run (internal error); the delivery was not evaluated.",
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "paused",
+              "updatedAt": 1789235104694
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "operationId": "op_1789235105642_agt_DoPfw09fNiV9_tpc_UTbJkhR4vKVX_3xWeKaiw",
+              "targetId": "task_6XtrGv0H95Yb",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 3,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789235147142,
+      "durationMs": 99,
+      "seq": 3,
+      "startedAt": 1789235147043,
+      "ticks": [
+        {
+          "at": 1789235147043,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 2,
+            "totalCost": 0.013495
+          },
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "active",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": "Verification could not run (internal error); the delivery was not evaluated.",
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "paused",
+              "updatedAt": 1789235147016
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "detail": "Task attempt budget was exhausted",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "targetId": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0",
+              "type": "opened_decision"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 3,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 3,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789235976140,
+      "durationMs": 36,
+      "seq": 4,
+      "startedAt": 1789235976104,
+      "ticks": [
+        {
+          "at": 1789235976104,
+          "branch": "pending_decision",
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "waiting",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "completed",
+              "updatedAt": 1789235976094
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task attempt budget was exhausted. Retry or retire this task node?",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": "task_6XtrGv0H95Yb",
+                "title": "创作阳朔亲子游30字内口语初稿"
+              },
+              {
+                "createdAt": 1789235147108,
+                "id": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0",
+                "kind": "decision",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "2e49bade-6c76-481c-839c-6a2708c4693d",
+                "kind": "leads_to",
+                "sourceNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "targetNodeId": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "ae818b03-50c9-4e99-ba22-3c907a3bed59",
+                "nodeId": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0",
+                "question": "Task attempt budget was exhausted. Retry or retire this task node?",
+                "resolvedOptionId": null,
+                "status": "pending"
+              }
+            ],
+            "goal": {
+              "status": "review"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 0,
+            "gatesPending": 1,
+            "nodesTotal": 4,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1789236184855_agt_DoPfw09fNiV9_tpc_23YG2426Wupc_ugUCw2rB"],
+      "completedAt": 1789236184906,
+      "durationMs": 874,
+      "seq": 5,
+      "startedAt": 1789236184032,
+      "ticks": [
+        {
+          "at": 1789236184032,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 2,
+            "totalCost": 0.024095
+          },
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "active",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "backlog",
+              "updatedAt": 1789236183988
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "operationId": "op_1789236184855_agt_DoPfw09fNiV9_tpc_23YG2426Wupc_ugUCw2rB",
+              "targetId": "task_6XtrGv0H95Yb",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_6XtrGv0H95Yb",
+                "title": "创作阳朔亲子游30字内口语初稿"
+              },
+              {
+                "createdAt": 1789235147108,
+                "id": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0",
+                "kind": "decision",
+                "priority": 0,
+                "status": "retired",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "ae818b03-50c9-4e99-ba22-3c907a3bed59",
+                "nodeId": "1a25ede1-7ee1-4246-8c35-06cfc0e049f0",
+                "question": "Task attempt budget was exhausted. Retry or retire this task node?",
+                "resolvedOptionId": null,
+                "status": "canceled"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "completedAt": 1789236185535,
+      "durationMs": 48,
+      "seq": 6,
+      "startedAt": 1789236185487,
+      "ticks": [
+        {
+          "at": 1789236185487,
+          "branch": "failure_decision",
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "active",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": "call_llm produced no non-system messages for deepseek/deepseek-v4-pro (topic=tpc_23YG2426Wupc, step=0); refusing to dispatch",
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "paused",
+              "updatedAt": 1789236185481
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789236206924,
+      "durationMs": 49,
+      "seq": 7,
+      "startedAt": 1789236206875,
+      "ticks": [
+        {
+          "at": 1789236206875,
+          "branch": "failure_decision",
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "waiting",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": "call_llm produced no non-system messages for deepseek/deepseek-v4-pro (topic=tpc_MoVKrvqopKM9, step=0); refusing to dispatch",
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "paused",
+              "updatedAt": 1789236206869
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": "task_6XtrGv0H95Yb",
+                "title": "创作阳朔亲子游30字内口语初稿"
+              }
+            ],
+            "goal": {
+              "status": "review"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": [
+        "op_1789237127960_agt_DoPfw09fNiV9_tpc_Z4faPIux0jJb_WvuvhtHJ",
+        "op_1789237190241_agt_jPjdoH3ZNsuv_tpc_nOvinZtlSOvr_3NR9absI"
+      ],
+      "completedAt": 1789237190320,
+      "durationMs": 1561,
+      "seq": 8,
+      "startedAt": 1789237188759,
+      "ticks": [
+        {
+          "at": 1789237188760,
+          "branch": "consume_completed",
+          "candidates": [
+            {
+              "blockedBy": ["b51609a1-f8b5-4b57-9b58-e3b357086cb6"],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            },
+            {
+              "blockedBy": [],
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "priority": 0,
+              "status": "waiting",
+              "title": "创作阳朔亲子游30字内口语初稿"
+            }
+          ],
+          "chosenNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_6XtrGv0H95Yb",
+              "identifier": "T-30",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "status": "completed",
+              "updatedAt": 1789237188748
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task outcome was synthesized into a finding",
+          "outcome": "advanced",
+          "taskId": "task_6XtrGv0H95Yb",
+          "effects": [
+            {
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "operationId": "op_1789237127960_agt_DoPfw09fNiV9_tpc_Z4faPIux0jJb_WvuvhtHJ",
+              "targetId": "task_6XtrGv0H95Yb",
+              "type": "node_status",
+              "detail": "resolved"
+            },
+            {
+              "detail": "finding",
+              "nodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+              "targetId": "c832feb2-c595-4606-ba1f-8292dcc348c6",
+              "type": "created_node"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 4,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 4,
+            "tasksBlocked": 1,
+            "tasksOpen": 2,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789237188865,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.028251
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "chosenNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-31",
+          "outcome": "advanced",
+          "taskId": "task_OJyoO3wfB4lq",
+          "effects": [
+            {
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "targetId": "task_OJyoO3wfB4lq",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "kind": "task",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": "task_6XtrGv0H95Yb",
+                "title": "创作阳朔亲子游30字内口语初稿"
+              },
+              {
+                "createdAt": 1789237188796,
+                "id": "c832feb2-c595-4606-ba1f-8292dcc348c6",
+                "kind": "finding",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "阳朔亲子游口语短文案初稿完成"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "20c30b04-0d2c-4c33-aadc-2543b4b50954",
+                "kind": "produces",
+                "sourceNodeId": "b51609a1-f8b5-4b57-9b58-e3b357086cb6",
+                "targetNodeId": "c832feb2-c595-4606-ba1f-8292dcc348c6"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 5,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 5,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 1
+        },
+        {
+          "at": 1789237188978,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.028251
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "active",
+              "title": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "chosenNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_OJyoO3wfB4lq",
+              "identifier": "T-31",
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "status": "backlog",
+              "updatedAt": 1789237188883
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-31",
+          "outcome": "waiting_external",
+          "taskId": "task_OJyoO3wfB4lq",
+          "effects": [
+            {
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "operationId": "op_1789237190241_agt_jPjdoH3ZNsuv_tpc_nOvinZtlSOvr_3NR9absI",
+              "targetId": "task_OJyoO3wfB4lq",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_OJyoO3wfB4lq",
+                "title": "审核初稿的字数、口语与禁用信息"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 5,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 5,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1789237399084_agt_jPjdoH3ZNsuv_tpc_HYNzfXNlk3eR_4aq4lnY7"],
+      "completedAt": 1789237399190,
+      "durationMs": 1144,
+      "seq": 9,
+      "startedAt": 1789237398046,
+      "ticks": [
+        {
+          "at": 1789237398047,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 6,
+            "totalCost": 0.066359
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "active",
+              "title": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "chosenNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_OJyoO3wfB4lq",
+              "identifier": "T-31",
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "status": "paused",
+              "updatedAt": 1789237398029
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-31",
+          "outcome": "waiting_external",
+          "taskId": "task_OJyoO3wfB4lq",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "operationId": "op_1789237399084_agt_jPjdoH3ZNsuv_tpc_HYNzfXNlk3eR_4aq4lnY7",
+              "targetId": "task_OJyoO3wfB4lq",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 5,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 5,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": [
+        "op_1789237399084_agt_jPjdoH3ZNsuv_tpc_HYNzfXNlk3eR_4aq4lnY7",
+        "op_1789237584305_agt_tczVqFc9gmKp_tpc_RXnPvIg4GSd9_yc77vcbX"
+      ],
+      "completedAt": 1789237584438,
+      "durationMs": 1571,
+      "seq": 10,
+      "startedAt": 1789237582867,
+      "ticks": [
+        {
+          "at": 1789237582867,
+          "branch": "consume_completed",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "priority": 0,
+              "status": "active",
+              "title": "审核初稿的字数、口语与禁用信息"
+            }
+          ],
+          "chosenNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_OJyoO3wfB4lq",
+              "identifier": "T-31",
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "status": "completed",
+              "updatedAt": 1789237582843
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task outcome was synthesized into a finding",
+          "outcome": "advanced",
+          "taskId": "task_OJyoO3wfB4lq",
+          "effects": [
+            {
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "operationId": "op_1789237399084_agt_jPjdoH3ZNsuv_tpc_HYNzfXNlk3eR_4aq4lnY7",
+              "targetId": "task_OJyoO3wfB4lq",
+              "type": "node_status",
+              "detail": "resolved"
+            },
+            {
+              "detail": "finding",
+              "nodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+              "targetId": "e3f29f83-cdbe-422d-9462-176b810cf5c9",
+              "type": "created_node"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 5,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 5,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        },
+        {
+          "at": 1789237583015,
+          "branch": "terminal_acceptance",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created Goal-level acceptance Task for the remaining contract",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "type": "created_node",
+              "detail": "terminal acceptance"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789235051719,
+                "id": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+                "kind": "task",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": "task_OJyoO3wfB4lq",
+                "title": "审核初稿的字数、口语与禁用信息"
+              },
+              {
+                "createdAt": 1789237582941,
+                "id": "e3f29f83-cdbe-422d-9462-176b810cf5c9",
+                "kind": "finding",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "完成阳朔亲子游文案初稿五项审核"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "327286aa-9bd1-4326-bb32-1bb435ddf7be",
+                "kind": "produces",
+                "sourceNodeId": "8945a22b-f5c5-4d96-afcb-de5b7ec3eaf0",
+                "targetNodeId": "e3f29f83-cdbe-422d-9462-176b810cf5c9"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 6,
+            "findings": 2,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 2
+          },
+          "index": 1
+        },
+        {
+          "at": 1789237583066,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 7,
+            "totalCost": 0.082571
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "priority": -1,
+              "status": "proposed",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-32",
+          "outcome": "advanced",
+          "taskId": "task_ZpahCZxCDMhW",
+          "effects": [
+            {
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "targetId": "task_ZpahCZxCDMhW",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789237583028,
+                "id": "4396765e-d536-4bea-8e22-eb40d59d026c",
+                "kind": "task",
+                "priority": -1,
+                "status": "proposed",
+                "taskId": null,
+                "title": "Complete full Goal acceptance"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "6218951a-e1db-4e01-8170-858c7e06c4c9",
+                "kind": "decomposes",
+                "sourceNodeId": "29a389fd-d8b3-4da9-a1f5-c531f36aa45e",
+                "targetNodeId": "4396765e-d536-4bea-8e22-eb40d59d026c"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 7,
+            "findings": 2,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 2
+          },
+          "index": 2
+        },
+        {
+          "at": 1789237583163,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 7,
+            "totalCost": 0.082571
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ZpahCZxCDMhW",
+              "identifier": "T-32",
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "status": "backlog",
+              "updatedAt": 1789237583117
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-32",
+          "outcome": "waiting_external",
+          "taskId": "task_ZpahCZxCDMhW",
+          "effects": [
+            {
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "operationId": "op_1789237584305_agt_tczVqFc9gmKp_tpc_RXnPvIg4GSd9_yc77vcbX",
+              "targetId": "task_ZpahCZxCDMhW",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789237583028,
+                "id": "4396765e-d536-4bea-8e22-eb40d59d026c",
+                "kind": "task",
+                "priority": -1,
+                "status": "active",
+                "taskId": "task_ZpahCZxCDMhW",
+                "title": "Complete full Goal acceptance"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 7,
+            "findings": 2,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 2
+          },
+          "index": 3
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1789237584305_agt_tczVqFc9gmKp_tpc_RXnPvIg4GSd9_yc77vcbX"],
+      "completedAt": 1789237654649,
+      "durationMs": 648,
+      "seq": 11,
+      "startedAt": 1789237654001,
+      "ticks": [
+        {
+          "at": 1789237654001,
+          "branch": "consume_completed",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ZpahCZxCDMhW",
+              "identifier": "T-32",
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "status": "completed",
+              "updatedAt": 1789237652891
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task outcome was synthesized into a finding",
+          "outcome": "advanced",
+          "taskId": "task_ZpahCZxCDMhW",
+          "effects": [
+            {
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "operationId": "op_1789237584305_agt_tczVqFc9gmKp_tpc_RXnPvIg4GSd9_yc77vcbX",
+              "targetId": "task_ZpahCZxCDMhW",
+              "type": "node_status",
+              "detail": "resolved"
+            },
+            {
+              "detail": "document",
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "targetId": "wk_JbjiNoKzh4fl",
+              "type": "attached_work_version"
+            },
+            {
+              "detail": "finding",
+              "nodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+              "targetId": "3d91deb1-240c-4179-95a3-db2935bda5db",
+              "type": "created_node"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 7,
+            "findings": 2,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 2
+          },
+          "index": 0
+        },
+        {
+          "at": 1789237654619,
+          "branch": "terminal_acceptance",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Goal-level acceptance passed",
+          "outcome": "achieved",
+          "effects": [
+            {
+              "detail": "resolved",
+              "nodeId": "29a389fd-d8b3-4da9-a1f5-c531f36aa45e",
+              "type": "node_status"
+            },
+            {
+              "type": "goal_status",
+              "detail": "achieved"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789237583028,
+                "id": "4396765e-d536-4bea-8e22-eb40d59d026c",
+                "kind": "task",
+                "priority": -1,
+                "status": "resolved",
+                "taskId": "task_ZpahCZxCDMhW",
+                "title": "Complete full Goal acceptance"
+              },
+              {
+                "createdAt": 1789237654033,
+                "id": "3d91deb1-240c-4179-95a3-db2935bda5db",
+                "kind": "finding",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "完成阳朔亲子游短文案全项验收"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "42cb5cf0-6661-450d-b4cf-ba81b3af128d",
+                "kind": "produces",
+                "sourceNodeId": "4396765e-d536-4bea-8e22-eb40d59d026c",
+                "targetNodeId": "3d91deb1-240c-4179-95a3-db2935bda5db"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 8,
+            "findings": 3,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 3
+          },
+          "index": 1
+        }
+      ],
+      "trigger": "settle"
+    }
+  ],
+  "completedAt": 1789237654657,
+  "completionReason": "achieved",
+  "goalId": "goal_fem8ecaybx5E",
+  "graphBaseline": {
+    "decisions": [],
+    "edges": [],
+    "goal": {
+      "agentId": "agt_tczVqFc9gmKp",
+      "id": "goal_fem8ecaybx5E",
+      "maxRounds": null,
+      "maxTotalCost": null,
+      "requirement": "## 阳朔亲子游短文案（30字内·口语版）\n\n**Scope:** 打磨一条「阳朔亲子游」短文案，用于发布前的文字打磨。\n\n硬性要求：\n1) 全文不超过 30 个字（含标点）；\n2) 口语自然，像真人说话，避免模板化 AI 腔和书面语堆砌；\n3) 不出现任何价格、费用、折扣、预算类信息；\n4) 不出现具体行程安排（天数、景点顺序、交通、时间点等）；\n5) 只产出这一条文案，不配图/封面，不做发布计划、标题矩阵或发布时间建议。\n\n分工：\n- 由短视频编剧负责文案创作与后续改写；\n- 由旅游攻略审核员负责表达检查，重点核对口语自然度、字数，以及禁用信息（价格、行程），把发现的具体问题反馈给创作者修订。\n\n交付节奏：先给用户一版过目。用户后续在同一目标下提出修改意见时，沿用本目标继续迭代，不要另起目标或另拆方案。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **字数不超过 30 字** — 最终文案正文（含标点）不超过 30 个字  \n   *How to judge:* 逐字统计文案正文（含标点，不含标题及说明性文字），确认总数不超过 30 字。\n2. **口语自然、像真人说话** — 文案读起来是日常口语，不生硬、不模板化  \n   *How to judge:* 判断文案是否符合自然口语表达：用词日常、句读像真人说话，没有书面语堆砌、口号式排比或明显 AI 模板腔。\n3. **不含价格与费用信息** — 文案中不出现任何价格、费用、折扣、预算类表述  \n   *How to judge:* 检查文案是否出现金额、费用、价格、优惠、折扣、预算等表述；出现任一即判不通过。\n4. **不含具体行程安排** — 文案中不出现行程细节  \n   *How to judge:* 检查文案是否包含天数、景点顺序、交通方式、出发时间等具体行程安排；出现任一即判不通过。\n5. **只交付一条文案，无配图与发布计划** — 交付物仅为一条短文案  \n   *How to judge:* 确认交付内容只有一条文案；没有附带图片或封面方案，也没有发布计划、发布时间、标题矩阵等额外内容。",
+      "status": "planning",
+      "title": "阳朔亲子游短文案（30字内·口语版）"
+    },
+    "nodes": [
+      {
+        "createdAt": 1789235045014,
+        "id": "29a389fd-d8b3-4da9-a1f5-c531f36aa45e",
+        "kind": "problem",
+        "priority": 0,
+        "status": "active",
+        "taskId": null,
+        "title": "阳朔亲子游短文案（30字内·口语版）"
+      }
+    ]
+  },
+  "startedAt": 1789235045045,
+  "title": "阳朔亲子游短文案（30字内·口语版）",
+  "totalAdvances": 12,
+  "totalTicks": 20,
+  "traceId": "goal_fem8ecaybx5E"
+}

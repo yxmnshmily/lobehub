@@ -1,5 +1,6 @@
 import { VERIFICATION_ERRORED_ERROR, VERIFICATION_FAILED_ERROR } from '@lobechat/const/goal';
 import debug from 'debug';
+import { sql } from 'drizzle-orm';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
 import { GoalModel } from '@/database/models/goal';
@@ -19,6 +20,15 @@ const log = debug('lobe-server:verify-settle');
 
 const TERMINAL_TASK_STATUS = new Set(['canceled', 'completed', 'failed']);
 const MAX_OPERATION_ANCESTORS = 32;
+
+const manuallyStopped = (task: { status: string; context?: unknown }, createdAt: Date | string) => {
+  const context = task.context as { manualControl?: string; manualStopAt?: string } | null;
+  return (
+    task.status === 'paused' ||
+    !!context?.manualControl ||
+    (!!context?.manualStopAt && !(+new Date(createdAt) >= +new Date(context.manualStopAt)))
+  );
+};
 
 /**
  * Repair operations are descendants of the task's original operation and do
@@ -96,9 +106,18 @@ export const driveTaskFromVerify = async (
     const taskOperation = await resolveTaskOperation(operationModel, operationId);
     if (!op || !taskOperation?.taskId) return; // not a task-bound run — nothing to drive
 
+    const taskId = taskOperation.taskId;
     const taskModel = new TaskModel(db, userId, workspaceId);
     const task = await taskModel.findById(taskOperation.taskId);
-    if (!task || TERMINAL_TASK_STATUS.has(task.status)) return; // task already settled
+    if (
+      !task ||
+      TERMINAL_TASK_STATUS.has(task.status) ||
+      manuallyStopped(task, taskOperation.createdAt)
+    )
+      return;
+
+    const revisionAt = (task.context as { goalRevisionAt?: string } | undefined)?.goalRevisionAt;
+    if (revisionAt && !(+new Date(taskOperation.createdAt) >= +new Date(revisionAt))) return;
 
     const goalReview =
       run.status === 'passed'
@@ -111,59 +130,89 @@ export const driveTaskFromVerify = async (
           ? 'errored'
           : run.status;
 
-    if (outcome === 'passed') {
-      // Verify and, for Goal tasks, Acceptance review must pass before completing
-      // the task and cascading (checkpoint / sibling
-      // rollup / downstream unlock). A Goal Graph Task is an ordinary task
-      // here — the coordinator reads its completed status on the next tick and
-      // synthesizes the finding from it.
-      if (task.automationMode) {
-        // Recurring tasks are parked back at `scheduled` and re-armed by the
-        // task lifecycle. Verify accepts this run, not the lifetime schedule.
-        log('verify passed → recurring task %s remains scheduled', taskOperation.taskId);
+    const goal = await new GoalModel(db, userId, workspaceId).findByGraphTask(taskOperation.taskId);
+    const applyOutcome = async (writeDb: LobeChatDatabase) => {
+      // The same fence as Goal.revise: a verdict computed before the user's
+      // edit must not settle the replacement work after that edit commits.
+      const model = new TaskModel(writeDb, userId, workspaceId);
+      await model.lockForStatusChange([taskId]);
+      const current = await model.findById(taskId);
+      const boundary = (current?.context as { goalRevisionAt?: string } | undefined)
+        ?.goalRevisionAt;
+      if (
+        !current ||
+        TERMINAL_TASK_STATUS.has(current.status) ||
+        manuallyStopped(current, taskOperation.createdAt) ||
+        (boundary && !(+new Date(taskOperation.createdAt) >= +new Date(boundary)))
+      )
+        return false;
+      if (outcome === 'passed') {
+        // Verify and, for Goal tasks, Acceptance review must pass before completing
+        // the task and cascading (checkpoint / sibling
+        // rollup / downstream unlock). A Goal Graph Task is an ordinary task
+        // here — the coordinator reads its completed status on the next tick and
+        // synthesizes the finding from it.
+        if (task.automationMode) {
+          // Recurring tasks are parked back at `scheduled` and re-armed by the
+          // task lifecycle. Verify accepts this run, not the lifetime schedule.
+          log('verify passed → recurring task %s remains scheduled', taskId);
+        } else {
+          // The verify → TaskService → aiAgent → agentRuntime completion → verify
+          // cycle is safe statically since every use is call-time (inside this fn).
+          await new TaskService(writeDb, userId, workspaceId).updateStatus({
+            id: taskId,
+            status: 'completed',
+          });
+          log('verify passed → task %s completed', taskId);
+        }
       } else {
-        // The verify → TaskService → aiAgent → agentRuntime completion → verify
-        // cycle is safe statically since every use is call-time (inside this fn).
-        await new TaskService(db, userId, workspaceId).updateStatus({
-          id: taskOperation.taskId,
-          status: 'completed',
-        });
-        log('verify passed → task %s completed', taskOperation.taskId);
-      }
-    } else {
-      // Two non-pass outcomes, kept distinct so an infra error never reads as a
-      // rejected delivery:
-      // - failed:  the verifier ran and judged the delivery short of the criteria.
-      // - errored: the verifier could not run (infra) — the delivery was NOT
-      //   evaluated, so we must not claim it "did not pass".
-      const isErrored = outcome === 'errored';
+        // Two non-pass outcomes, kept distinct so an infra error never reads as a
+        // rejected delivery:
+        // - failed:  the verifier ran and judged the delivery short of the criteria.
+        // - errored: the verifier could not run (infra) — the delivery was NOT
+        //   evaluated, so we must not claim it "did not pass".
+        const isErrored = outcome === 'errored';
 
-      // Both summaries are contract strings, not copy: the Goal coordinator
-      // matches on them to decide whether a paused Goal Task starts another
-      // attempt or opens a decision gate. They live in `@lobechat/const/goal`
-      // so the writer and the reader cannot drift apart.
-      const pauseSummary = isErrored ? VERIFICATION_ERRORED_ERROR : VERIFICATION_FAILED_ERROR;
-      if (task.automationMode) {
-        // Mirror of the pass branch: verify judges THIS tick, not the lifetime
-        // schedule. Pausing here would permanently disarm the cron (the
-        // schedule query never picks `paused` tasks up again), so a recurring
-        // task keeps its schedule and the verdict stays on the run.
-        log(
-          isErrored
-            ? 'verify errored → recurring task %s remains scheduled'
-            : 'verify failed → recurring task %s remains scheduled',
-          taskOperation.taskId,
-        );
-      } else {
-        // Verification outcomes belong to the task itself. Do not create an inbox
-        // brief here: a verifier rejection/error is not a separate user todo.
-        await taskModel.updateStatus(taskOperation.taskId, 'paused', { error: pauseSummary });
-        log(
-          isErrored ? 'verify errored → task %s paused' : 'verify failed → task %s paused',
-          taskOperation.taskId,
-        );
+        // Both summaries are contract strings, not copy: the Goal coordinator
+        // matches on them to decide whether a paused Goal Task starts another
+        // attempt or opens a decision gate. They live in `@lobechat/const/goal`
+        // so the writer and the reader cannot drift apart.
+        const pauseSummary = isErrored ? VERIFICATION_ERRORED_ERROR : VERIFICATION_FAILED_ERROR;
+        if (task.automationMode) {
+          // Mirror of the pass branch: verify judges THIS tick, not the lifetime
+          // schedule. Pausing here would permanently disarm the cron (the
+          // schedule query never picks `paused` tasks up again), so a recurring
+          // task keeps its schedule and the verdict stays on the run.
+          log(
+            isErrored
+              ? 'verify errored → recurring task %s remains scheduled'
+              : 'verify failed → recurring task %s remains scheduled',
+            taskId,
+          );
+        } else {
+          // Verification outcomes belong to the task itself. Do not create an inbox
+          // brief here: a verifier rejection/error is not a separate user todo.
+          await new TaskModel(writeDb, userId, workspaceId).updateStatus(taskId, 'paused', {
+            error: pauseSummary,
+          });
+          log(
+            isErrored ? 'verify errored → task %s paused' : 'verify failed → task %s paused',
+            taskId,
+          );
+        }
       }
-    }
+
+      return true;
+    };
+    const applied = goal
+      ? await db.transaction(async (tx) => {
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(${0x67_6f_64_69}, hashtext(${goal.id}))`,
+          );
+          return applyOutcome(tx);
+        })
+      : await db.transaction(applyOutcome);
+    if (!applied) return;
 
     // Deferred creator callback: verify-bound runs defer
     // the taskCallback from `onTopicComplete` to HERE so the creator only sees the

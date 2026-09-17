@@ -1,18 +1,19 @@
 'use client';
 
 import { Block } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui/base-ui';
+import { ActionIcon, toast } from '@lobehub/ui/base-ui';
 import { Spin } from 'antd';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { Plus, X } from 'lucide-react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { memo, useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import Image from '@/libs/next/Image';
 import { useFileStore } from '@/store/file';
 
 export const UPLOAD_CARD_SIZE = 64;
-const ADD_CIRCLE_SIZE = 28;
+const ADD_CIRCLE_SIZE = 44;
 
 export type UploadData = string | { dimensions?: { height: number; width: number }; url: string };
 
@@ -26,6 +27,8 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 
     width: ${ADD_CIRCLE_SIZE}px;
     height: ${ADD_CIRCLE_SIZE}px;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
 
     color: ${cssVar.colorTextSecondary};
@@ -69,9 +72,14 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 
     .upload-card-close {
       opacity: 0 !important;
+
+      @media (hover: none), (pointer: coarse), (width <= 767px) {
+        opacity: 1 !important;
+      }
     }
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       z-index: 99 !important;
 
       .upload-card-close {
@@ -87,6 +95,11 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
     width: 100%;
     height: 100%;
     border-radius: 3px;
+
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: -2px;
+    }
   `,
   label: css`
     padding-inline: 4px;
@@ -99,13 +112,28 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
   placeholderCard: css`
     cursor: pointer;
 
+    display: flex;
+    flex-direction: column;
     flex-shrink: 0;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
 
     width: ${UPLOAD_CARD_SIZE}px;
     height: ${UPLOAD_CARD_SIZE}px;
+    padding: 0;
+    border: 0;
     border-radius: 6px;
 
+    font: inherit;
     color: ${cssVar.colorTextQuaternary};
+
+    background: ${cssVar.colorFillTertiary};
+
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: -2px;
+    }
   `,
   uploadOverlay: css`
     position: absolute;
@@ -167,6 +195,7 @@ const UploadCard = memo<UploadCardProps>(
     style,
     variant = 'card',
   }) => {
+    const { t } = useTranslation(['common', 'error', 'components']);
     const inputRef = useRef<HTMLInputElement>(null);
     const uploadWithProgress = useFileStore((s) => s.uploadWithProgress);
     const [isUploading, setIsUploading] = useState(false);
@@ -176,9 +205,9 @@ const UploadCard = memo<UploadCardProps>(
     const uploading = isUploading || loading;
 
     const handleFileSelect = useCallback(() => {
-      if (loading) return;
+      if (uploading) return;
       inputRef.current?.click();
-    }, [loading]);
+    }, [uploading]);
 
     const handleFileChange = useCallback(
       async (e: ChangeEvent<HTMLInputElement>) => {
@@ -187,14 +216,21 @@ const UploadCard = memo<UploadCardProps>(
         if (onUploadFiles) {
           const files = Array.from(e.target.files ?? []);
           if (files.length === 0) return;
-          await onUploadFiles(files);
+          try {
+            await onUploadFiles(files);
+          } catch {
+            toast.error(t('upload.uploadFailed', { ns: 'error' }));
+          }
           return;
         }
 
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (maxFileSize && file.size > maxFileSize) return;
+        if (maxFileSize && file.size > maxFileSize) {
+          toast.error(t('MultiImagesUpload.validation.fileSizeExceeded', { ns: 'components' }));
+          return;
+        }
 
         const previewUrl = URL.createObjectURL(file);
         setUploadPreview(previewUrl);
@@ -212,14 +248,18 @@ const UploadCard = memo<UploadCardProps>(
               ? { dimensions: result.dimensions, url: result.url }
               : result.url;
             onUpload(data);
+          } else {
+            toast.error(t('upload.uploadFailed', { ns: 'error' }));
           }
+        } catch {
+          toast.error(t('upload.uploadFailed', { ns: 'error' }));
         } finally {
           URL.revokeObjectURL(previewUrl);
           setUploadPreview(null);
           setIsUploading(false);
         }
       },
-      [maxFileSize, uploadWithProgress, onUpload, onUploadFiles],
+      [maxFileSize, uploadWithProgress, onUpload, onUploadFiles, t],
     );
 
     const showPreview = uploadPreview || imageUrl;
@@ -242,13 +282,16 @@ const UploadCard = memo<UploadCardProps>(
       return (
         <>
           {fileInput}
-          <div
+          <button
+            aria-label={t('addNew')}
             className={`${uploadCardStyles.addCircle} ${className || ''}`}
+            disabled={uploading}
             style={style}
+            type="button"
             onClick={handleFileSelect}
           >
             <Plus size={14} />
-          </div>
+          </button>
         </>
       );
     }
@@ -258,19 +301,30 @@ const UploadCard = memo<UploadCardProps>(
         <>
           {fileInput}
           <Block
-            clickable
             className={cx(uploadCardStyles.filledCard, className)}
             style={style}
             variant={'outlined'}
-            onClick={handleFileSelect}
           >
-            <div className={uploadCardStyles.filledCardInner}>
+            <div
+              aria-disabled={uploading}
+              aria-label={label || t('edit')}
+              className={uploadCardStyles.filledCardInner}
+              role="button"
+              tabIndex={uploading ? -1 : 0}
+              onClick={handleFileSelect}
+              onKeyDown={(e) => {
+                if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  handleFileSelect();
+                }
+              }}
+            >
               <Image
                 fill
                 unoptimized
                 alt=""
                 src={uploadPreview || imageUrl!}
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'contain' }}
               />
               {uploading && (
                 <div className={uploadCardStyles.uploadOverlay}>
@@ -281,9 +335,11 @@ const UploadCard = memo<UploadCardProps>(
             {!uploading && (
               <ActionIcon
                 glass
+                aria-label={t('delete')}
                 className={cx(uploadCardStyles.closeButton, closeClassName, 'upload-card-close')}
                 icon={X}
                 size={12}
+                style={{ minHeight: 44, minWidth: 44 }}
                 variant="outlined"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -299,19 +355,17 @@ const UploadCard = memo<UploadCardProps>(
     return (
       <>
         {fileInput}
-        <Block
-          clickable
-          align={'center'}
+        <button
+          aria-label={label || t('addNew')}
           className={cx(uploadCardStyles.placeholderCard, className)}
-          gap={4}
-          justify={'center'}
+          disabled={uploading}
           style={style}
-          variant={'filled'}
+          type="button"
           onClick={handleFileSelect}
         >
           <Plus size={20} />
           {label && <span className={uploadCardStyles.label}>{label}</span>}
-        </Block>
+        </button>
       </>
     );
   },

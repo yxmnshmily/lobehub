@@ -467,6 +467,7 @@ export interface ExecSubAgentParams {
   parentMessageId: string;
   /** Parent operation ID for dispatching callAgent hooks */
   parentOperationId?: string;
+  skillIdentifiers?: string[];
   /** Timeout in milliseconds (optional) */
   timeout?: number;
   /** Thread title shown in UI */

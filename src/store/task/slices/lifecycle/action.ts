@@ -46,6 +46,18 @@ export class TaskLifecycleSliceActionImpl {
     this.#get = get;
   }
 
+  cancelTask = async (id: string): Promise<void> => {
+    await taskService.updateStatusCascade(id, 'canceled');
+    await this.#get().internal_refreshTaskDetail(id);
+    await this.#get().refreshTaskList();
+  };
+
+  resumeTask = async (id: string): Promise<void> => {
+    await taskService.resume(id);
+    await this.#get().internal_refreshTaskDetail(id);
+    await this.#get().refreshTaskList();
+  };
+
   cancelTopic = async (topicId: string): Promise<void> => {
     await taskService.cancelTopic(topicId);
     const { activeTaskId, internal_refreshTaskDetail } = this.#get();

@@ -14,6 +14,8 @@ import { usePermission } from '@/hooks/usePermission';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
 import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
+import { useChatStore } from '@/store/chat';
+import { topicSelectors } from '@/store/chat/slices/topic/selectors';
 import { type EnabledProviderWithModels } from '@/types/aiProvider';
 
 interface ResolveChatInputNoticeParams {
@@ -106,8 +108,30 @@ const useChatInputNoticeByAgentId = (agentId: string): ChatInputNotice | undefin
 
   // Same source as the model trigger renders, so the notice can never judge a
   // different model than the one the user sees (member overrides included).
-  const { canSelectModel, isPreferenceLoading, model, provider, selectModel, selectionPolicy } =
-    useAgentModelSelection(agentId);
+  const {
+    canSelectModel,
+    isPreferenceLoading,
+    model: agentModel,
+    provider: agentProvider,
+    selectModel,
+    selectionPolicy,
+  } = useAgentModelSelection(agentId);
+  const topicModel = useChatStore(topicSelectors.activeTopicModel);
+  const activeTopicId = useChatStore((s) => s.activeTopicId);
+  const hasTopic = useChatStore(
+    (s) => !!s.activeTopicId && !!topicSelectors.getTopicById(s.activeTopicId)(s),
+  );
+  const useFetchTopicDetail = useChatStore((s) => s.useFetchTopicDetail);
+  const { isLoading: isTopicModelLoading } = useFetchTopicDetail(
+    hasTopic ? undefined : activeTopicId,
+  );
+  // The agent fallback is not the effective model until the saved topic pin is loaded.
+  const isTopicModelPending = !!activeTopicId && !hasTopic && isTopicModelLoading;
+
+  const updateTopicModel = useChatStore((s) => s.updateTopicModel);
+  // Match the topic pin displayed by the model switch, including member defaults.
+  const model = topicModel?.model ?? agentModel;
+  const provider = topicModel?.model ? topicModel.provider : agentProvider;
 
   // `isPreferenceLoading` is true for every workspace agent while the shared
   // preferences request is in flight, but the override only feeds the
@@ -162,7 +186,7 @@ const useChatInputNoticeByAgentId = (agentId: string): ChatInputNotice | undefin
 
   const notice = resolveChatInputNotice({
     currentChatModel,
-    isAgentModelPending: isAgentConfigLoading || isMemberOverridePending,
+    isAgentModelPending: isAgentConfigLoading || isMemberOverridePending || isTopicModelPending,
     isGroupContext,
     isHeterogeneousAgent,
     isModelDisabled,
@@ -187,7 +211,8 @@ const useChatInputNoticeByAgentId = (agentId: string): ChatInputNotice | undefin
       });
       if (providerId !== provider) {
         try {
-          await selectModel({ model, provider: providerId });
+          if (activeTopicId) await updateTopicModel(activeTopicId, { model, provider: providerId });
+          else await selectModel({ model, provider: providerId });
         } catch (error) {
           console.error('Failed to select the enabled chat model provider:', error);
           toast.error(t('input.modelDisabled.selectionFailed'));
@@ -203,6 +228,8 @@ const useChatInputNoticeByAgentId = (agentId: string): ChatInputNotice | undefin
     enableTargetProviderId,
     enabledChatModelList,
     model,
+    activeTopicId,
+    updateTopicModel,
     provider,
     selectModel,
     t,

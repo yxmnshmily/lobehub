@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import CollapsibleContent from '@/components/CollapsibleContent';
 import { EditorCanvas } from '@/features/EditorCanvas';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { usePermission } from '@/hooks/usePermission';
 import { useGoalStore } from '@/store/goal';
 
@@ -27,7 +28,8 @@ interface GoalRequirementProps {
 }
 
 const GoalRequirement = memo<GoalRequirementProps>(({ goalId, requirement }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
+  const language = i18n.resolvedLanguage || i18n.language;
   const { allowed: canEdit } = usePermission('create_content');
   const updateGoalRequirement = useGoalStore((s) => s.updateGoalRequirement);
   const editor = useEditor();
@@ -42,8 +44,12 @@ const GoalRequirement = memo<GoalRequirementProps>(({ goalId, requirement }) => 
     initialRef.current = { goalId, requirement };
     setExpanded(false);
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const editorData = useMemo(() => ({ content: initialRef.current.requirement }), [goalId]);
+
+  const initialRequirement = initialRef.current.requirement;
+  const editorData = useMemo(
+    () => ({ content: localizeGoalTemplate(initialRequirement, language) }),
+    [initialRequirement, language],
+  );
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastSavedRef = useRef(requirement);
@@ -61,7 +67,8 @@ const GoalRequirement = memo<GoalRequirementProps>(({ goalId, requirement }) => 
     // An emptied requirement is far more likely a half-finished edit than an
     // intent to drop the acceptance bar; keep the last saved text until the
     // user writes a replacement.
-    if (!markdown || markdown === lastSavedRef.current) return;
+    if (!markdown || markdown === localizeGoalTemplate(lastSavedRef.current, language).trim())
+      return;
     // The marker advances only on success: a transiently failed save stays
     // different from `lastSavedRef`, so the next edit (or the unmount flush)
     // retries the same content instead of silently considering it saved.
@@ -73,7 +80,7 @@ const GoalRequirement = memo<GoalRequirementProps>(({ goalId, requirement }) => 
         console.error('[GoalRequirement] Failed to save:', error);
         toast.error(t('goalProcess.requirementSaveFailed'));
       });
-  }, [canEdit, editor, goalId, t, updateGoalRequirement]);
+  }, [canEdit, editor, goalId, language, t, updateGoalRequirement]);
 
   // The unmount cleanup runs with the closure of a stale render; the ref keeps
   // it flushing the *current* document instead of an early one.

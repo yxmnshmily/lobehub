@@ -1317,6 +1317,7 @@ export class AiAgentService {
         operationId,
         runAttachments,
         runFromHistory,
+        skillIdentifiers: params.skillIdentifiers,
         throwIfExecutionAborted,
       },
     );
@@ -1701,6 +1702,7 @@ export class AiAgentService {
               threadId,
             }),
           isSubAgent: true,
+          skillIdentifiers: params.skillIdentifiers,
           logScope: 'execVirtualSubAgent',
           // Tag the op as a group member so the abandon path routes its parent
           // resume through the group bridge (its own timeout), not the sub-agent one.

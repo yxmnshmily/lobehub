@@ -60,17 +60,24 @@ export async function loadGroupWorkStatus(groupId: string): Promise<GroupWorkSta
     goals,
     async ({ goal, pendingDecisions }): Promise<GroupWorkStatusItem> => {
       let isRunning = false;
-      let status = pendingDecisions ? '等待确认' : goalLabels[goal.status] || goal.status;
+      let rawStatus = goal.status;
+      let status =
+        pendingDecisions && goal.status !== 'paused'
+          ? '等待确认'
+          : goalLabels[goal.status] || goal.status;
       if (!pendingDecisions && ['running', 'verifying'].includes(goal.status)) {
         try {
           const graph = await goalService.getGraph(goal.id);
+          rawStatus = graph.goal.status;
           const view = buildGoalGraphView(graph);
           isRunning =
             ['running', 'verifying'].includes(graph.goal.status) &&
             view.frontier.some(
               (item) => item.kind === 'running' && !!graph.runHeartbeats?.[item.view.node.id],
             );
-          if (view.needsYou) {
+          if (graph.goal.status === 'paused') {
+            status = '已暂停';
+          } else if (view.needsYou) {
             isRunning = false;
             status = '等待处理';
           } else if (isRunning) status = '执行中';
@@ -81,6 +88,7 @@ export async function loadGroupWorkStatus(groupId: string): Promise<GroupWorkSta
       }
       return {
         id: goal.id,
+        rawStatus,
         agentId: goal.agentId || undefined,
         title: goal.title,
         kind: 'goals',
@@ -95,10 +103,12 @@ export async function loadGroupWorkStatus(groupId: string): Promise<GroupWorkSta
     tasks,
     async (task): Promise<GroupWorkStatusItem> => {
       let isRunning = false;
+      let rawStatus = task.status;
       let status = taskLabels[task.status] || task.status;
       if (task.status === 'running') {
         try {
           const { data } = await taskService.getDetail(task.id);
+          rawStatus = data.status;
           const heartbeatFresh =
             !!data.heartbeat?.lastAt &&
             (data.heartbeat.timeout ?? 0) > 0 &&
@@ -121,6 +131,7 @@ export async function loadGroupWorkStatus(groupId: string): Promise<GroupWorkSta
       }
       return {
         id: task.id,
+        rawStatus,
         agentId: task.assigneeAgentId || undefined,
         title: task.name || task.identifier,
         kind: 'tasks',

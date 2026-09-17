@@ -13,11 +13,22 @@ const mockToolsEnv = vi.hoisted(() => ({
 const mockMessageModelQueryByIds = vi.hoisted(() => vi.fn());
 const mockMessageModelQuery = vi.hoisted(() => vi.fn());
 const mockChat = vi.hoisted(() => vi.fn());
+const mockAgentConfig = vi.hoisted(() => vi.fn());
+vi.mock('@/database/models/agent', () => ({
+  AgentModel: vi.fn(function () {
+    return { getAgentModelConfig: mockAgentConfig };
+  }),
+}));
 const mockInitModelRuntimeFromDB = vi.hoisted(() => vi.fn());
 const mockConsumeStreamUntilDone = vi.hoisted(() => vi.fn());
 const mockImageUrlToBase64 = vi.hoisted(() => vi.fn());
 const mockSharpOptions = vi.hoisted(() => vi.fn());
 const mockBuiltinModels = vi.hoisted(() => [
+  {
+    abilities: { vision: false, audio: false, video: false },
+    id: 'text-only-model',
+    providerId: 'test-provider',
+  },
   {
     abilities: { audio: true, video: true, vision: true },
     id: 'vision-model',
@@ -129,6 +140,7 @@ describe('lobeAgentRuntime', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAgentConfig.mockReset();
     mockMessageModelQuery.mockResolvedValue([]);
     mockToolsEnv.MULTIMODAL_UNDERSTANDING_IMAGE_FORMATS = ['image/png', 'image/jpeg'];
     mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = 'vision-model';
@@ -273,6 +285,80 @@ describe('lobeAgentRuntime', () => {
       }),
     ).toThrow('messageId is required for LobeAgent execution');
   });
+
+  it('preserves the explicit deployment model instead of the member model', async () => {
+    mockAgentConfig.mockResolvedValue({ model: 'other', provider: 'other' });
+    const result = await lobeAgentRuntime
+      .factory({ ...baseContext, agentId: 'member-1' })
+      .analyzeMedia({ urls: [VALID_PNG_DATA_URL], question: 'Describe' });
+    expect(result.success).toBe(true);
+    expect(mockAgentConfig).not.toHaveBeenCalled();
+    expect(mockChat.mock.calls[0][0].model).toBe('vision-model');
+  });
+
+  it('does not replace a partially configured deployment with the member model', async () => {
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;
+    mockAgentConfig.mockResolvedValue({ model: 'vision-model', provider: 'test-provider' });
+    const result = await lobeAgentRuntime
+      .factory({ ...baseContext, agentId: 'member-1' })
+      .analyzeMedia({ urls: [VALID_PNG_DATA_URL], question: 'Describe' });
+    expect(result.success).toBe(false);
+    expect(mockAgentConfig).not.toHaveBeenCalled();
+    expect(mockChat).not.toHaveBeenCalled();
+  });
+
+  it('does not use a member outside the scoped agent lookup', async () => {
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER = undefined;
+    mockAgentConfig.mockResolvedValue(null);
+    const result = await lobeAgentRuntime
+      .factory({ ...baseContext, agentId: 'unavailable-member' })
+      .analyzeMedia({ urls: [VALID_PNG_DATA_URL], question: 'Describe' });
+    expect(result.success).toBe(false);
+    expect(mockChat).not.toHaveBeenCalled();
+  });
+
+  it('does not treat image vision as video capability', async () => {
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER = undefined;
+    mockAgentConfig.mockResolvedValue({ model: 'image-only-model', provider: 'test-provider' });
+    const result = await lobeAgentRuntime
+      .factory({ ...baseContext, agentId: 'member-1' })
+      .analyzeMedia({ urls: ['https://example.com/video.mp4'], question: 'Describe' });
+    expect(result.error.code).toBe('MULTIMODAL_MODEL_VIDEO_UNSUPPORTED');
+    expect(mockChat).not.toHaveBeenCalled();
+  });
+
+  it('uses the current scoped member vision model when no global multimodal model is configured', async () => {
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;
+    mockToolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER = undefined;
+    mockAgentConfig.mockResolvedValue({ model: 'vision-model', provider: 'test-provider' });
+    const result = await lobeAgentRuntime
+      .factory({ ...baseContext, agentId: 'member-1', workspaceId: 'workspace-1' })
+      .analyzeMedia({ urls: [VALID_PNG_DATA_URL], question: 'Describe the image' });
+    expect(result.success).toBe(true);
+    expect(mockAgentConfig).toHaveBeenCalledWith('member-1');
+    expect(mockInitModelRuntimeFromDB).toHaveBeenCalledWith(
+      baseContext.serverDB,
+      'user-1',
+      'test-provider',
+      'workspace-1',
+    );
+  });
+
+  it.each(['unknown-model', 'text-only-model'])(
+    'does not send an image to member model %s without vision',
+    async (model) => {
+      mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;
+      mockToolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER = undefined;
+      mockAgentConfig.mockResolvedValue({ model, provider: 'test-provider' });
+      const result = await lobeAgentRuntime
+        .factory({ ...baseContext, agentId: 'member-1' })
+        .analyzeMedia({ urls: [VALID_PNG_DATA_URL], question: 'Describe the image' });
+      expect(result.success).toBe(false);
+      expect(mockChat).not.toHaveBeenCalled();
+    },
+  );
 
   it('should return a configuration error when multimodal model env is missing', async () => {
     mockToolsEnv.MULTIMODAL_UNDERSTANDING_MODEL = undefined;

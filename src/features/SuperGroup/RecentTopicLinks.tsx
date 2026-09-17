@@ -133,7 +133,8 @@ export default function RecentTopicLinks({
             <MessageSquare aria-hidden size={18} />
           </span>
           <span data-nav-label="">
-            {t('title', { ns: 'topic' })} {topics.length}
+            {t('title', { ns: 'topic' })}
+            <span style={{ color: cssVar.colorError }}>（{query.data?.totalCount ?? '…'}）</span>
           </span>
           <ArrowRight
             aria-hidden
@@ -206,8 +207,8 @@ export default function RecentTopicLinks({
       )}
       {collapsible && expanded && (
         <Flexbox
-          data-nav-scroll=""
           data-group-topic-preview=""
+          data-nav-scroll=""
           gap={2}
           style={{
             maxHeight: scrollWithinSection ? 'min(380px, 40dvh)' : undefined,

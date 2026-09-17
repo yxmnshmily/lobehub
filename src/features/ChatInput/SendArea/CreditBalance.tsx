@@ -4,7 +4,7 @@ import { formatLocalizedTokens } from '@lobechat/utils/format';
 import { Flexbox } from '@lobehub/ui';
 import { Button, Popover } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
-import { ChevronDown, Gauge } from 'lucide-react';
+import { ChevronDown, CircleGauge, Gauge } from 'lucide-react';
 import { useState } from 'react';
 
 import { useSession } from '@/libs/better-auth/auth-client';
@@ -39,7 +39,7 @@ export default function CreditBalance() {
       nativeButton
       open={open}
       placement="topRight"
-      trigger={['hover', 'click']}
+      trigger={['click']}
       content={
         <Flexbox gap={16} style={{ width: 280, maxWidth: 'calc(100vw - 48px)' }}>
           <strong>{t('剩余额度')}</strong>
@@ -78,6 +78,7 @@ export default function CreditBalance() {
       onOpenChange={setOpen}
     >
       <Button
+        data-credit-trigger
         aria-label={`${t('积分额度')}：${label}`}
         size="small"
         type="text"
@@ -93,9 +94,12 @@ export default function CreditBalance() {
           whiteSpace: 'nowrap',
         }}
       >
-        <Gauge aria-hidden size={14} />
-        {label}
-        <ChevronDown aria-hidden size={10} />
+        <CircleGauge aria-hidden data-credit-compact-icon size={16} />
+        <span data-credit-full-label>
+          <Gauge aria-hidden size={14} />
+          {label}
+          <ChevronDown aria-hidden size={10} />
+        </span>
       </Button>
     </Popover>
   );

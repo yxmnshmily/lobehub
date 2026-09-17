@@ -4,39 +4,47 @@ import { Flexbox } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import type { ProjectDetail } from '@/store/project';
 
 const styles = createStaticStyles(({ css }) => ({
   panel: css`
     overflow: auto;
-    min-height: 0;
+
     min-width: 0;
+    min-height: 0;
     padding: 16px;
     border-inline-start: 0.5px solid ${cssVar.colorBorderSecondary};
+
     background: ${cssVar.colorBgContainer};
+
     @container project-conversation (max-width: 840px) {
       flex-shrink: 0;
       max-height: 160px;
-      border-inline-start: 0;
       border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+      border-inline-start: 0;
     }
   `,
   row: css`
+    gap: 8px;
+    justify-content: space-between;
+
     width: 100%;
     height: auto;
     min-height: 56px;
     padding: 8px;
-    gap: 8px;
-    justify-content: space-between;
-    border-radius: 0;
     border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+    border-radius: 0;
+
     text-align: start;
     white-space: normal;
   `,
   history: css`
-    margin-top: 12px;
+    margin-block-start: 12px;
+
     > summary {
       cursor: pointer;
       padding: 8px;
@@ -63,6 +71,7 @@ export default function ProjectProgress({
   detail: ProjectDetail;
   stale?: boolean;
 }) {
+  const { i18n } = useTranslation();
   const navigate = useWorkspaceAwareNavigate();
   const tasks = detail.tasks ?? [];
   const activeTasks = tasks.filter((task) => task.status !== 'canceled');
@@ -84,8 +93,17 @@ export default function ProjectProgress({
           gap={4}
           style={{ minWidth: 0, alignItems: 'stretch', textAlign: 'start' }}
         >
-          <Text style={{ overflowWrap: 'anywhere' }} title={task.name || task.instruction}>
-            {task.name || task.instruction}
+          <Text
+            style={{ overflowWrap: 'anywhere' }}
+            title={localizeGoalTemplate(
+              task.name || task.instruction || '',
+              i18n.resolvedLanguage || i18n.language,
+            )}
+          >
+            {localizeGoalTemplate(
+              task.name || task.instruction || '',
+              i18n.resolvedLanguage || i18n.language,
+            )}
           </Text>
           <Flexbox horizontal gap={8} wrap="wrap">
             <Text fontSize={12} type={task.status === 'failed' ? 'danger' : 'secondary'}>

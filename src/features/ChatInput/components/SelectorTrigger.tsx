@@ -1,7 +1,7 @@
 import { Icon } from '@lobehub/ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { ChevronDownIcon, ZapIcon } from 'lucide-react';
-import type { ComponentPropsWithRef } from 'react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { memo } from 'react';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -52,8 +52,8 @@ const styles = createStaticStyles(({ css }) => ({
 
 /**
  * The chip both composer model selectors open from — the heterogeneous one and
- * the standard model + reasoning-effort one. Text only by design: the label
- * already names the model, so an icon would only add noise next to Send.
+ * the standard model + reasoning-effort one. Optional scope and model icon stay
+ * before the model label without taking away its overflow handling.
  *
  * The chip reads as two halves, the way the Codex composer does ("5.6 Sol 极高"):
  * `text` is the model, `secondaryText` the reasoning effort. Only the model half
@@ -70,14 +70,22 @@ const styles = createStaticStyles(({ css }) => ({
 interface TriggerProps extends ComponentPropsWithRef<'div'> {
   ariaLabel: string;
   fast?: boolean;
+  modelIcon?: ReactNode;
+  scopeLabel?: string;
   secondaryText?: string;
   text: string;
 }
 
 const SelectorTrigger = memo<TriggerProps>(
-  ({ ariaLabel, className, fast, secondaryText, text, ...rest }) => (
+  ({ ariaLabel, className, fast, modelIcon, scopeLabel, secondaryText, text, ...rest }) => (
     <div {...rest} aria-label={ariaLabel} className={cx(styles.trigger, className)}>
       {fast && <Icon icon={ZapIcon} size={12} />}
+      {scopeLabel && <span style={{ flexShrink: 0 }}>{scopeLabel}：</span>}
+      {modelIcon && (
+        <span aria-hidden style={{ display: 'flex', flexShrink: 0 }}>
+          {modelIcon}
+        </span>
+      )}
       <span className={styles.label}>{text}</span>
       {secondaryText && (
         <span data-secondary className={styles.secondary}>

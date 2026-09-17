@@ -7,8 +7,8 @@ import { type AnalyticsConfig } from '@/types/spaServerConfig';
 export const resolveViteDevOrigin = () =>
   `http://localhost:${Number(process.env.VITE_DEV_PORT) || 9876}`;
 
-export const resolveViteSpaTemplatePath = (isMobile: boolean) =>
-  isMobile ? '/index.mobile.html' : '/';
+/* 2026-09-17：移动版已整体删除，dev 模板恒为桌面入口 '/'。 */
+export const resolveViteSpaTemplatePath = () => '/';
 
 const isPrivateIpv4 = (hostname: string) => {
   const parts = hostname.split('.').map(Number);

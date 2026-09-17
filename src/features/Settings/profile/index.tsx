@@ -66,7 +66,7 @@ const ProfileSetting = ({ showSettingHeader = true }: ProfileSettingProps) => {
       <FormGroup
         collapsible={false}
         gap={16}
-        variant={'filled'}
+        variant={'borderless'}
         title={
           <Flexbox horizontal align="center" gap={8}>
             <CircleUserRound aria-hidden size={20} />

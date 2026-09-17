@@ -4,6 +4,8 @@ import 'antd/dist/reset.css';
 
 import { type NeutralColors, type PrimaryColors } from '@lobehub/ui';
 import { ConfigProvider, FontLoader, ThemeProvider } from '@lobehub/ui';
+import { darkAlgorithm } from '@lobehub/ui/es/styles/theme/algorithms/darkAlgorithm';
+import { lightAlgorithm } from '@lobehub/ui/es/styles/theme/algorithms/lightAlgorithm';
 import { createStaticStyles, cx } from 'antd-style';
 import * as m from 'motion/react-m';
 import { type ReactNode } from 'react';
@@ -27,6 +29,7 @@ import { setCookie } from '@/utils/client/cookie';
 
 import {
   getMonochromeCustomTheme,
+  getThemeErrorTokens,
   getThemeSurfaceTokens,
   shouldUseThemeSurfaceTokens,
 } from './themeSurfaceTokens';
@@ -96,7 +99,14 @@ export interface AppThemeProps {
 }
 
 const AppTheme = memo<AppThemeProps>(
-  ({ children, defaultNeutralColor, defaultPrimaryColor, globalCDN, customFontURL, customFontFamily }) => {
+  ({
+    children,
+    defaultNeutralColor,
+    defaultPrimaryColor,
+    globalCDN,
+    customFontURL,
+    customFontFamily,
+  }) => {
     const language = useGlobalStore(systemStatusSelectors.language);
     const isDark = useIsDark();
 
@@ -162,14 +172,17 @@ const AppTheme = memo<AppThemeProps>(
       <ThemeProvider
         appearance={currentAppearence}
         className={cx(styles.app, styles.scrollbar, styles.scrollbarPolyfill)}
+        defaultAppearance={currentAppearence}
+        defaultThemeMode={currentAppearence}
         customTheme={{
-          neutralColor: neutralColor ?? defaultNeutralColor,
           primaryColor: primaryColor ?? defaultPrimaryColor,
           ...getMonochromeCustomTheme(neutralColor, defaultNeutralColor),
         }}
-        defaultAppearance={currentAppearence}
-        defaultThemeMode={currentAppearence}
         theme={{
+          algorithm: [
+            isDark ? darkAlgorithm : lightAlgorithm,
+            (_seed, mapped) => ({ ...mapped!, ...getThemeErrorTokens(isDark) }),
+          ],
           cssVar: { key: 'lobe-vars' },
           token: {
             // DeepSeek-style neutral layers: crisp text, restrained hairlines,

@@ -42,6 +42,7 @@ describe('CreateGoal card navigation', () => {
     mocks.snapshot.goal.config = config;
     render(
       <CreateGoalRender
+        args={{ criteria: [], instruction: 'Create the campaign', name: 'Campaign' }}
         content=""
         messageId="message-one"
         pluginState={{ success: true, goalId: 'goal-one' }}

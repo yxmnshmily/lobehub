@@ -88,7 +88,7 @@ const HotkeySetting = memo(() => {
       initialValues={hotkeys}
       items={[desktop]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

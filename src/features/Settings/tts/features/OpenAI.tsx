@@ -65,7 +65,7 @@ const OpenAI = memo(() => {
       initialValues={tts}
       items={[openai]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       onValuesChange={async (values) => {
         if (!canManageServiceModel) return;
 

@@ -97,8 +97,11 @@ export function defineConfig() {
     const safeLocale = toSafeLocale(locale);
 
     // 2. Create normalized preference values
+    // 2026-09-17：isMobile 恒 false——用户口径"手机端自适应网页端"，真手机 UA 也
+    // 派发 desktop variant（desktopHtmlTemplate + entry.web 入口，挂桌面路由树）。
+    // workbench 的 mobile 判断在本文件下方独立分支，不受此行影响。
     const route = RouteVariants.serializeVariants({
-      isMobile: device.type === 'mobile',
+      isMobile: false,
       locale: safeLocale,
     });
 

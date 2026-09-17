@@ -120,45 +120,6 @@ const createWebRoutePreloadTasks = (): RoutePreloadTask[] => [
   }),
 ];
 
-const createMobileRoutePreloadTasks = (): RoutePreloadTask[] => [
-  createTask({
-    id: 'mobile-home',
-    idleDelay: 1500,
-    matches: (pathname) => pathname === '/',
-    priority: 'high',
-  }),
-  createTask({
-    id: 'mobile-agent',
-    idleDelay: 2500,
-    matches: matchesRoute('agent'),
-    priority: 'high',
-  }),
-  createTask({
-    id: 'mobile-agents',
-    idleDelay: 2500,
-    matches: matchesRoute('agents'),
-    priority: 'high',
-  }),
-  createTask({
-    id: 'mobile-tasks',
-    idleDelay: 4000,
-    matches: matchesRoute('(?:tasks|task|agent/[^/]+/task)'),
-    priority: 'medium',
-  }),
-  createTask({
-    id: 'mobile-community',
-    idleDelay: 6000,
-    matches: matchesRoute('community'),
-    priority: 'medium',
-  }),
-  createTask({
-    id: 'mobile-settings',
-    idleDelay: 8000,
-    matches: matchesRoute('settings'),
-    priority: 'low',
-  }),
-];
-
 const getConnection = (targetWindow: Window): NetworkInformationLike | undefined => {
   const navigatorWithConnection = targetWindow.navigator as Navigator & {
     connection?: NetworkInformationLike;
@@ -306,6 +267,6 @@ export const startRoutePreload = () => {
   if (routePreloadStarted || typeof window === 'undefined') return;
   routePreloadStarted = true;
 
-  const tasks = __MOBILE__ ? createMobileRoutePreloadTasks() : createWebRoutePreloadTasks();
+  const tasks = createWebRoutePreloadTasks();
   createRoutePreloadScheduler(tasks).start();
 };

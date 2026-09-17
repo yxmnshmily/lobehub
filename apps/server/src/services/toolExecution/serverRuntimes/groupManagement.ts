@@ -63,6 +63,7 @@ class GroupManagementExecutionRuntime {
         {
           agentId: params.agentId,
           instruction: params.instruction,
+          skillIdentifiers: params.skillIdentifiers,
           replyToMessageId: params.replyToMessageId,
         },
       ],
@@ -113,7 +114,13 @@ class GroupManagementExecutionRuntime {
     if (!params.agentId) return buildError('agentId is required.', 'INVALID_ARGUMENTS');
 
     const { started, error } = await ctx.agentMember.run({
-      members: [{ agentId: params.agentId, instruction: params.reason }],
+      members: [
+        {
+          agentId: params.agentId,
+          instruction: params.reason,
+          skillIdentifiers: params.skillIdentifiers,
+        },
+      ],
       mode: 'in_group',
       // Delegate hands control to the member — finish without another supervisor turn.
       onComplete: 'finish',
@@ -145,7 +152,13 @@ class GroupManagementExecutionRuntime {
     }
 
     const { started, error } = await ctx.agentMember.run({
-      members: [{ agentId: params.agentId, instruction: params.instruction }],
+      members: [
+        {
+          agentId: params.agentId,
+          instruction: params.instruction,
+          skillIdentifiers: params.skillIdentifiers,
+        },
+      ],
       mode: 'isolated',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
       timeout: params.timeout,
@@ -170,7 +183,11 @@ class GroupManagementExecutionRuntime {
     if (tasks.length === 0) return buildError('tasks is required.', 'INVALID_ARGUMENTS');
 
     const { started, error } = await ctx.agentMember.run({
-      members: tasks.map((task) => ({ agentId: task.agentId, instruction: task.instruction })),
+      members: tasks.map((task) => ({
+        agentId: task.agentId,
+        instruction: task.instruction,
+        skillIdentifiers: task.skillIdentifiers,
+      })),
       mode: 'isolated',
       onComplete: params.skipCallSupervisor ? 'finish' : 'resume',
       // Per-task timeouts collapse to the longest; the barrier waits for all.

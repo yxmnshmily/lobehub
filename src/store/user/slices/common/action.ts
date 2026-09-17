@@ -143,6 +143,7 @@ export class CommonActionImpl {
                     email: data.email,
                     firstName: data.firstName,
                     fullName: data.fullName,
+                    phone: data.phone,
                     id: data.userId,
                     interests: data.interests,
                     latestName: data.lastName,

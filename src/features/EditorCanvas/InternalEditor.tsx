@@ -25,6 +25,7 @@ import InlineToolbar from './InlineToolbar';
 import LinearFilePlugin from './LinearFilePlugin';
 import { registerAttachmentClickOpen } from './registerAttachmentClickOpen';
 import { registerBlockDecoratorCaretGuard } from './registerBlockDecoratorCaretGuard';
+import ReactResourceReferencePlugin from './ResourceReference';
 import { useFileUpload, useImageUpload } from './useImageUpload';
 
 const IMAGE_FILTERS = [
@@ -35,6 +36,49 @@ const IMAGE_FILTERS = [
 // level row inside the paragraph. The inner card visuals (icon + name + size
 // + download button) live in `LinearFilePlugin`.
 const fileNodeStyles = createStaticStyles(({ css }) => ({
+  references: css`
+    [data-resource-reference] > ne-content {
+      display: none;
+    }
+
+    [data-resource-name]::before {
+      content: attr(data-resource-name);
+      font-size: 36px;
+    }
+
+    [data-resource-reference] {
+      cursor: pointer;
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      width: 112px;
+      max-width: 100%;
+      height: 112px;
+      padding: 0;
+      border-radius: 6px;
+
+      color: var(--color-link);
+      vertical-align: middle;
+    }
+
+    [data-resource-thumbnail] {
+      background-color: transparent;
+      background-image: var(--resource-thumbnail);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+    }
+
+    [data-resource-thumbnail]::before {
+      content: '';
+    }
+
+    [data-resource-reference]:focus-visible {
+      outline: 2px solid currentcolor;
+    }
+  `,
   fileWrapper: css`
     display: block !important;
     width: 100% !important;
@@ -55,6 +99,7 @@ const STATIC_PLUGINS = [
   // comment editors, so a chip serialises identically in every canvas.
   Editor.withProps(ReactMentionPlugin, { markdownWriter: writeTopicCommentMentionMarkdown }),
   ReactTablePlugin,
+  ReactResourceReferencePlugin,
 ];
 
 const EDITOR_INIT_DATA_SOURCE_TYPES = ['json', 'markdown'] as const;
@@ -326,7 +371,7 @@ const InternalEditor = memo<InternalEditorProps>(
 
     return (
       <div
-        className={className}
+        className={[className, fileNodeStyles.references].filter(Boolean).join(' ')}
         style={wrapperStyle}
         onClick={(e) => {
           e.stopPropagation();

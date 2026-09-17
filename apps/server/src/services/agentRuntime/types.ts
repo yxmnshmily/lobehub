@@ -326,6 +326,8 @@ export interface ExecGroupMemberParams {
   platformManagedMaxCredits?: number;
   /** Same-group, same-topic assistant message this in-group member directly replies to. */
   replyToMessageId?: string;
+  /** Existing skills selected for this member run; never persisted to plugins. */
+  skillIdentifiers?: string[];
   /**
    * Supervisor ASSISTANT message id that owns the group-management tool call.
    * In-group council members parent their response to THIS message — so the

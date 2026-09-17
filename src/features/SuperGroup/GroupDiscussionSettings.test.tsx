@@ -42,7 +42,7 @@ beforeEach(() => {
 async function chooseThree() {
   const user = userEvent.setup();
   await user.click(screen.getByRole('combobox'));
-  await user.click(await screen.findByRole('option', { name: '3', exact: true }));
+  await user.click(await screen.findByRole('option', { name: '3' }));
 }
 
 describe('group discussion settings', () => {

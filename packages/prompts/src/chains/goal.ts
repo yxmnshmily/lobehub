@@ -9,7 +9,7 @@ import {
 } from './verify';
 
 /** Bump when the create-goal criteria drafting prompt meaningfully changes. */
-export const GOAL_CRITERIA_DRAFT_PROMPT_VERSION = 'v3';
+export const GOAL_CRITERIA_DRAFT_PROMPT_VERSION = 'v4';
 
 export const GOAL_CRITERIA_DRAFT_JSON_SCHEMA = {
   name: 'goal_criteria_draft',
@@ -176,6 +176,7 @@ export const chainGoalCriteriaDraft = ({
         '- Set required=true when failure means the goal has not been achieved.',
         '- Set onFail="auto_repair" when another autonomous iteration can address the failure; otherwise use "manual".',
         '- Each criteria[].description is a one-sentence summary. Each criteria[].instruction is the exact, detailed judging rubric, including pass conditions, failure conditions, evidence, and important edge cases.',
+        '- Judge the actual delivered result and preserve explicit user standards and material defects. Do not fail an otherwise correct result for review-report headings or item-by-item wording unless the user explicitly requested that format.',
         '- Write all human-facing fields in the language used by the goal.',
       ].join('\n'),
       role: 'system',

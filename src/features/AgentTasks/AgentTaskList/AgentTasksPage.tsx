@@ -1,7 +1,14 @@
 import { Flexbox } from '@lobehub/ui';
-import { ActionIcon, TabsIndicator, TabsList, TabsRoot, TabsTab } from '@lobehub/ui/base-ui';
+import {
+  ActionIcon,
+  Button,
+  TabsIndicator,
+  TabsList,
+  TabsRoot,
+  TabsTab,
+} from '@lobehub/ui/base-ui';
 import { Pagination } from 'antd';
-import { Plus } from 'lucide-react';
+import { History, House, Plus } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
@@ -11,6 +18,7 @@ import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
 import NavHeader from '@/features/NavHeader';
 import ToggleRightPanelButton from '@/features/RightPanel/ToggleRightPanelButton';
 import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
+import { useGroupWorkHistory } from '@/features/SuperGroup/useGroupWorkHistory';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -150,6 +158,7 @@ export const getMyTaskViewOptions = (viewOptions: TaskListViewOptions): TaskList
 
 const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId }) => {
   const { t } = useTranslation('chat');
+  const { isHome, toggleView } = useGroupWorkHistory(groupId);
   const navigate = useWorkspaceAwareNavigate();
   const isMobile = useIsMobile();
   const { allowed: canCreateTask, reason } = usePermission('create_content');
@@ -376,6 +385,18 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId 
         left={groupId ? <GroupPageBreadcrumb groupId={groupId} title="任务" /> : headerLeft}
         right={
           <Flexbox horizontal align={'center'} gap={4}>
+            {groupId && isOrdinaryCollection && (
+              <Button
+                icon={isHome ? History : House}
+                size="small"
+                onClick={() => {
+                  if (isHome) handleShowHiddenCompleted();
+                  toggleView();
+                }}
+              >
+                {isHome ? '历史任务' : '任务首页'}
+              </Button>
+            )}
             {isOrdinaryCollection && !agentId && !projectId && <TaskListVisibilityFilter />}
             {isOrdinaryCollection && (inlineCollapsed || viewMode === 'kanban') && (
               <ActionIcon
@@ -439,6 +460,16 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId 
                   )
                 : t('taskList.scheduled.empty')
             }
+            selectionScopeKey={JSON.stringify([
+              activeWorkspaceId,
+              groupId,
+              agentId,
+              projectId,
+              collection,
+              myTaskScope,
+              collectionPage,
+              isHome,
+            ])}
             onRetry={() => collectionSWR.mutate()}
           />
           {(collectionTasksTotal > COLLECTION_PAGE_SIZE || collectionPage > 1) && (
@@ -453,7 +484,7 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId 
             </Flexbox>
           )}
         </WideScreenContainer>
-      ) : isEmptyHero ? (
+      ) : isHome || (isEmptyHero && !groupId) ? (
         <EmptyState agentId={agentId} projectId={projectId} />
       ) : viewMode === 'kanban' ? (
         <Flexbox flex={1} style={{ overflowX: 'auto', overflowY: 'hidden' }}>
@@ -486,6 +517,16 @@ const AgentTasksPage = memo<AgentTasksPageProps>(({ agentId, groupId, projectId 
             isLoading={isLoading || (!isTaskListInit && !error)}
             options={viewOptions}
             routeScope={routeScope}
+            selectionScopeKey={JSON.stringify([
+              activeWorkspaceId,
+              groupId,
+              agentId,
+              projectId,
+              collection,
+              myTaskScope,
+              collectionPage,
+              isHome,
+            ])}
             onRetry={() => mutate()}
             onShowHiddenCompleted={handleShowHiddenCompleted}
           />

@@ -3,6 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar, responsive } from 'antd-style';
 
+import { useTopicsViewStore } from '@/features/AgentTopicManager/store';
 import NavHeader from '@/features/NavHeader';
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
@@ -58,8 +59,40 @@ const TopicGridSkeleton = () => (
   </div>
 );
 
+const TopicRowsSkeleton = () => (
+  <Flexbox aria-busy gap={0}>
+    <Flexbox
+      horizontal
+      gap={12}
+      paddingBlock={14}
+      style={{ borderBottom: `1px solid ${cssVar.colorBorderSecondary}` }}
+    >
+      <SkeletonBar height={16} width={16} />
+      <SkeletonBar height={14} width={160} />
+    </Flexbox>
+    {Array.from({ length: 8 }, (_, i) => (
+      <Flexbox
+        horizontal
+        align="center"
+        gap={12}
+        key={i}
+        paddingBlock={16}
+        style={{ borderBottom: `1px dashed ${cssVar.colorBorderSecondary}` }}
+      >
+        <SkeletonBar height={16} width={16} />
+        <Flexbox flex={1} gap={7}>
+          <SkeletonBar height={16} width={`${40 + (i % 3) * 12}%`} />
+        </Flexbox>
+        <SkeletonBar height={12} width={56} />
+      </Flexbox>
+    ))}
+  </Flexbox>
+);
+
 const TopicsSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => {
-  if (chrome === 'body') return <TopicGridSkeleton />;
+  const viewMode = useTopicsViewStore((s) => s.viewMode);
+  const content = viewMode === 'card' ? <TopicGridSkeleton /> : <TopicRowsSkeleton />;
+  if (chrome === 'body') return content;
 
   return (
     <Flexbox aria-busy flex={1} height={'100%'} style={{ minHeight: 0, overflow: 'hidden' }}>
@@ -82,7 +115,7 @@ const TopicsSkeleton = ({ chrome = 'page' }: RouteSkeletonProps) => {
               <SkeletonBar height={32} radius={8} width={36} />
             </Flexbox>
           </Flexbox>
-          <TopicGridSkeleton />
+          {content}
         </Flexbox>
       </Flexbox>
     </Flexbox>

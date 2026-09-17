@@ -1,0 +1,242 @@
+{
+  "advances": [
+    {
+      "completedAt": 1789280726217,
+      "durationMs": 156,
+      "seq": 0,
+      "startedAt": 1789280726061,
+      "ticks": [
+        {
+          "at": 1789280726062,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "priority": 0,
+              "status": "proposed",
+              "title": "保留的验收步骤"
+            }
+          ],
+          "chosenNodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-36",
+          "outcome": "advanced",
+          "taskId": "task_VC1nmPAox3zT",
+          "effects": [
+            {
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "targetId": "task_VC1nmPAox3zT",
+              "type": "created_task"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789280726190,
+          "branch": "goal_paused",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "priority": 0,
+              "status": "active",
+              "title": "保留的验收步骤"
+            }
+          ],
+          "chosenNodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_VC1nmPAox3zT",
+              "identifier": "T-36",
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "status": "backlog",
+              "updatedAt": 1789280726104
+            }
+          ],
+          "concurrency": 3,
+          "message": "Goal is paused",
+          "outcome": "no_progress",
+          "effects": [],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789280726036,
+                "id": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_VC1nmPAox3zT",
+                "title": "保留的验收步骤"
+              }
+            ],
+            "goal": {
+              "status": "paused"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "childOperationIds": ["op_1789280799279_agt_GzbTGv8h549U_tpc_ga0ewvO4lDfe_EMraMBrl"],
+      "completedAt": 1789280799451,
+      "durationMs": 2807,
+      "seq": 1,
+      "startedAt": 1789280796644,
+      "ticks": [
+        {
+          "at": 1789280796644,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "priority": 0,
+              "status": "active",
+              "title": "保留的验收步骤"
+            }
+          ],
+          "chosenNodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_VC1nmPAox3zT",
+              "identifier": "T-36",
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "status": "backlog",
+              "updatedAt": 1789280726104
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-36",
+          "outcome": "waiting_external",
+          "taskId": "task_VC1nmPAox3zT",
+          "effects": [
+            {
+              "nodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+              "operationId": "op_1789280799279_agt_GzbTGv8h549U_tpc_ga0ewvO4lDfe_EMraMBrl",
+              "targetId": "task_VC1nmPAox3zT",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 1,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 2,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "resume"
+    }
+  ],
+  "completedAt": 1789280799461,
+  "completionReason": "canceled",
+  "goalId": "goal_OFUTJbf7QX42",
+  "graphBaseline": {
+    "decisions": [],
+    "edges": [
+      {
+        "id": "54071f32-8b44-4712-911e-82594ec4f075",
+        "kind": "decomposes",
+        "sourceNodeId": "0edc0a03-09e5-45d8-a1bd-fd1ca2413280",
+        "targetNodeId": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1"
+      }
+    ],
+    "goal": {
+      "agentId": null,
+      "id": "goal_OFUTJbf7QX42",
+      "maxRounds": null,
+      "maxTotalCost": null,
+      "requirement": "仅验证手工暂停、恢复、取消。",
+      "status": "planning",
+      "title": "手工控制验收目标 0913"
+    },
+    "nodes": [
+      {
+        "createdAt": 1789280726023,
+        "id": "0edc0a03-09e5-45d8-a1bd-fd1ca2413280",
+        "kind": "problem",
+        "priority": 0,
+        "status": "active",
+        "taskId": null,
+        "title": "手工控制验收目标 0913"
+      },
+      {
+        "createdAt": 1789280726036,
+        "id": "9f35b6b5-7eb0-4617-9689-b0e4f19009a1",
+        "kind": "task",
+        "priority": 0,
+        "status": "proposed",
+        "taskId": null,
+        "title": "保留的验收步骤"
+      }
+    ]
+  },
+  "startedAt": 1789280726061,
+  "title": "手工控制验收目标 0913",
+  "totalAdvances": 2,
+  "totalTicks": 3,
+  "traceId": "goal_OFUTJbf7QX42"
+}

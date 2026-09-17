@@ -163,7 +163,7 @@ const StatsSetting = memo<StatsSettingProps>(
           collapsible={false}
           extra={headerNode === undefined && !mobile ? <ShareButton mobile={mobile} /> : undefined}
           gap={16}
-          variant={'filled'}
+          variant={'borderless'}
           title={
             headerNode === undefined ? (
               mobile ? (
@@ -223,7 +223,7 @@ const StatsSetting = memo<StatsSettingProps>(
           extra={usageFilters}
           gap={16}
           title={t('tab.usage')}
-          variant={'filled'}
+          variant={'borderless'}
           styles={{
             title: { lineHeight: '35px' },
           }}

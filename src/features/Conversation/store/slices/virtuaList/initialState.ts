@@ -53,6 +53,9 @@ export interface VirtuaListState {
    */
   isScrolling: boolean;
 
+  /** Direction of the latest user scroll; unset until the user scrolls. */
+  scrollDirection?: 'up' | 'down';
+
   /**
    * Scroll methods from VList instance
    */

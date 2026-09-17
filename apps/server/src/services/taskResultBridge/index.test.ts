@@ -19,6 +19,7 @@ const {
   execAgent,
   findMessage,
   getLastLeaf,
+  getGroupMembers,
   release,
   settle,
   topicFindById,
@@ -32,11 +33,20 @@ const {
   execAgent: vi.fn(),
   findMessage: vi.fn(),
   getLastLeaf: vi.fn(),
+  getGroupMembers: vi.fn(),
   releaseReservation: vi.fn(),
   tryReserve: vi.fn(),
   release: vi.fn(),
   settle: vi.fn(),
   topicFindById: vi.fn(),
+}));
+
+vi.mock('@/database/models/chatGroup', () => ({
+  ChatGroupModel: vi.fn(function () {
+    return {
+      getGroupAgentsWithMeta: getGroupMembers,
+    };
+  }),
 }));
 
 vi.mock('@/database/models/message', () => ({
@@ -105,11 +115,14 @@ describe('TaskResultBridgeService.deliver', () => {
   let findByTopicId: any;
 
   beforeEach(() => {
-    createMsg.mockReset().mockResolvedValue({ id: 'task-cb-task-1-topic-done' } as any);
+    getGroupMembers
+      .mockReset()
+      .mockResolvedValue([{ agentId: 'agent-creator', role: 'supervisor' }]);
+    createMsg.mockReset().mockResolvedValue({ id: 'task-cb-task-1-op-task' } as any);
     createPending.mockReset().mockResolvedValue({ id: 'receipt-1' });
     claimPending
       .mockReset()
-      .mockResolvedValue([{ callbackMessageId: 'task-cb-task-1-topic-done', id: 'receipt-1' }]);
+      .mockResolvedValue([{ callbackMessageId: 'task-cb-task-1-op-task', id: 'receipt-1' }]);
     attachCreatorOperation.mockReset().mockResolvedValue(undefined);
     release.mockReset().mockResolvedValue(undefined);
     settle.mockReset().mockResolvedValue('topic-origin');
@@ -120,7 +133,7 @@ describe('TaskResultBridgeService.deliver', () => {
     getLastLeaf
       .mockReset()
       .mockResolvedValueOnce('msg-current-leaf')
-      .mockResolvedValue('task-cb-task-1-topic-done');
+      .mockResolvedValue('task-cb-task-1-op-task');
     tryReserve.mockReset().mockResolvedValue(true);
     releaseReservation.mockReset().mockResolvedValue(undefined);
     execAgent
@@ -143,6 +156,38 @@ describe('TaskResultBridgeService.deliver', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  it('preserves the persisted origin group on the callback and creator wakeup', async () => {
+    topicFindById.mockResolvedValue({
+      agentId: 'agent-creator',
+      groupId: 'group-origin',
+      metadata: {},
+    });
+    await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
+    expect(createMsg.mock.calls[0][0]).toMatchObject({ groupId: 'group-origin' });
+    expect(execAgent.mock.calls[0][0].prompt).toContain('Deliver the completed result');
+    expect(execAgent.mock.calls[0][0].prompt).toContain('Do not start unrelated memory');
+    expect(execAgent.mock.calls[0][0].appContext).toMatchObject({
+      groupId: 'group-origin',
+      scope: 'group',
+      topicId: 'topic-origin',
+    });
+  });
+
+  it('does not promote a regular group member to supervisor on wakeup', async () => {
+    topicFindById.mockResolvedValue({ groupId: 'group-origin', metadata: {} });
+    getGroupMembers.mockResolvedValue([{ agentId: 'agent-creator', role: 'participant' }]);
+    await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
+    expect(execAgent.mock.calls[0][0].appContext.orchestrationRole).toBe('member');
+  });
+
+  it('does not deliver into an unavailable origin topic', async () => {
+    topicFindById.mockResolvedValue(undefined);
+    await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
+    expect(createMsg).not.toHaveBeenCalled();
+    expect(createPending).not.toHaveBeenCalled();
+    expect(execAgent).not.toHaveBeenCalled();
+  });
+
   it('appends a taskCallback card to the origin topic and runs the creator agent off history', async () => {
     await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
 
@@ -163,14 +208,14 @@ describe('TaskResultBridgeService.deliver', () => {
     });
     expect(params.content).toContain('Fixed the null deref');
     expect(params.content).toContain('ship it');
-    // deterministic id keyed on (task, completed topic) for idempotency
-    expect(id).toBe('task-cb-task-1-topic-done');
+    // deterministic id keyed on (task, completed operation) for idempotency
+    expect(id).toBe('task-cb-task-1-op-task');
 
     expect(execAgent).toHaveBeenCalledTimes(1);
     expect(execAgent.mock.calls[0][0]).toMatchObject({
       agentId: 'agent-creator',
       appContext: { topicId: 'topic-origin' },
-      parentMessageId: 'task-cb-task-1-topic-done',
+      parentMessageId: 'task-cb-task-1-op-task',
       suppressUserMessage: true,
     });
     expect(releaseReservation).toHaveBeenCalledWith('topic-origin', 'task-result-wakeup-receipt-1');
@@ -205,13 +250,31 @@ describe('TaskResultBridgeService.deliver', () => {
   });
 
   it('resumes an incomplete wakeup when the callback message already exists', async () => {
-    findMessage.mockResolvedValueOnce({ id: 'task-cb-task-1-topic-done' });
+    findMessage.mockResolvedValueOnce({ id: 'task-cb-task-1-op-task' });
 
     await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
 
     expect(createMsg).not.toHaveBeenCalled();
     expect(createPending).toHaveBeenCalledTimes(1);
     expect(execAgent).toHaveBeenCalledTimes(1);
+  });
+
+  it('delivers a revision in the same topic once per operation, not once per topic', async () => {
+    const messages = new Map<string, unknown>();
+    findMessage.mockImplementation(async (id: string) => messages.get(id));
+    createMsg.mockImplementation(async (params: unknown, id: string) => {
+      messages.set(id, params);
+      return { id };
+    });
+    const service = new TaskResultBridgeService(db, TEST_USER);
+    await service.deliver(baseParams);
+    findByTopicId.mockResolvedValue({ handoff: { summary: 'Revised final copy' } });
+    await service.deliver({ ...baseParams, operationId: 'op-revision' });
+    await service.deliver({ ...baseParams, operationId: 'op-revision' });
+
+    expect(createMsg).toHaveBeenCalledTimes(2);
+    expect(createMsg.mock.calls[1][0].content).toContain('Revised final copy');
+    expect(createMsg.mock.calls[1][1]).not.toBe(createMsg.mock.calls[0][1]);
   });
 
   it('waits for the in-flight tool turn before resolving the callback parent', async () => {
@@ -380,5 +443,22 @@ describe('TaskResultBridgeService.deliver', () => {
 
     const [params] = createMsg.mock.calls[0] as [any, string];
     expect(params.content).toContain('Raw final output from the run');
+  });
+
+  it('carries the actual final deliverable instead of replacing it with a handoff summary', async () => {
+    const finalCopy = 'Final usable copy. '.repeat(150);
+    await new TaskResultBridgeService(db, TEST_USER).deliver({
+      ...baseParams,
+      lastAssistantContent: finalCopy,
+    });
+    expect(createMsg.mock.calls[0][0].content).toBe(finalCopy.trim());
+  });
+
+  it('uses persisted final content when an asynchronous verification callback has no text', async () => {
+    findByTopicId.mockResolvedValue({
+      handoff: { content: 'The complete revised artifact', summary: 'The work is done' },
+    });
+    await new TaskResultBridgeService(db, TEST_USER).deliver(baseParams);
+    expect(createMsg.mock.calls[0][0].content).toBe('The complete revised artifact');
   });
 });

@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import Loading from '@/components/Loading/BrandTextLoading';
+import LocalizedGeneratedText from '@/features/Acceptance/components/LocalizedGeneratedText';
 import AudioPlayer from '@/features/AudioPlayer';
 import type { VerifyEvidenceWithUrl } from '@/services/verify';
 
@@ -1079,9 +1080,15 @@ const CheckRow = memo<{ defaultOpen: boolean; row: CheckRowData }>(({ defaultOpe
             <p className={styles.notExecutedHint}>{t('report.plan.notExecutedHint')}</p>
           )}
           {result?.toulmin?.evidence && (
-            <p className={styles.reasoning}>{result.toulmin.evidence}</p>
+            <p className={styles.reasoning}>
+              <LocalizedGeneratedText text={result.toulmin.evidence} />
+            </p>
           )}
-          {result?.suggestion && <p className={styles.suggestion}>{result.suggestion}</p>}
+          {result?.suggestion && (
+            <p className={styles.suggestion}>
+              <LocalizedGeneratedText text={result.suggestion} />
+            </p>
+          )}
           {visualization && <VisualizationRenderer manifest={visualization} />}
           {evidenceCount > 0 && (
             <>
@@ -1394,7 +1401,11 @@ const ReportViewer = memo<ReportViewerProps>(({ runId: explicitRunId }) => {
             </Text>
 
             {!isCodingReport && run.goal && <Text className={styles.summary}>{run.goal}</Text>}
-            {report?.summary && <Text className={styles.summary}>{report.summary}</Text>}
+            {report?.summary && (
+              <Text className={styles.summary}>
+                <LocalizedGeneratedText text={report.summary} />
+              </Text>
+            )}
 
             {isCodingReport && (
               <CodingScopeCard

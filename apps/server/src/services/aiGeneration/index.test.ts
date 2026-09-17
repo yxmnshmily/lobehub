@@ -1,3 +1,4 @@
+import { outputLanguageInstruction } from '@lobechat/prompts';
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,10 @@ import * as ModelRuntimeModule from '@/server/modules/ModelRuntime';
 import { AiGenerationService } from './index';
 
 const initPlatformRuntime = vi.hoisted(() => vi.fn());
+
+vi.mock('@/database/models/user', () => ({
+  UserModel: { getInfoForAIGeneration: vi.fn(async () => ({ responseLanguage: 'zh-CN' })) },
+}));
 
 vi.mock('@/server/services/platformAiRuntime', () => ({
   PlatformAiRuntime: vi.fn().mockImplementation(() => ({ init: initPlatformRuntime })),
@@ -73,7 +78,10 @@ describe('AiGenerationService.generateObject', () => {
 
     const [payload] = generateObject.mock.calls[0];
     expect(payload).toEqual({
-      messages: [{ content: 'pick a name', role: 'user' }],
+      messages: [
+        { content: 'pick a name', role: 'user' },
+        { role: 'system', content: outputLanguageInstruction('zh-CN') },
+      ],
       model: 'gpt-4o',
       schema,
       thinking: { type: 'disabled' },

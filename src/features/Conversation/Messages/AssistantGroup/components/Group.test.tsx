@@ -875,3 +875,172 @@ describe('Group', () => {
     );
   });
 });
+
+describe('compact group process', () => {
+  afterEach(() => {
+    cleanup();
+    mockIsGenerating = false;
+  });
+
+  it.each([false, true])(
+    'folds tool narration with generating=%s while keeping the answer',
+    (generating) => {
+      mockIsGenerating = generating;
+      render(
+        <Group
+          compactProcess
+          id="compact"
+          messageIndex={0}
+          blocks={[
+            blk({
+              id: 'step',
+              content: 'Internal command diagnostics',
+              tools: [
+                {
+                  id: 'tool',
+                  apiName: 'run',
+                  identifier: 'terminal',
+                  result: { content: 'done' },
+                } as any,
+              ],
+            }),
+            blk({ id: 'answer', content: 'Your finished copy' }),
+          ]}
+        />,
+      );
+      expect(screen.getByTestId('process-fold')).toBeTruthy();
+      expect(parseAnswerSegments().some((block) => block.content === 'Your finished copy')).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each(['pending', 'rejected'])('keeps intervention %s visible outside the fold', (status) => {
+    render(
+      <Group
+        compactProcess
+        id="compact"
+        messageIndex={0}
+        blocks={[
+          blk({
+            id: 'step',
+            tools: [
+              {
+                id: 'tool',
+                apiName: 'run',
+                identifier: 'terminal',
+                intervention: { status },
+              } as any,
+            ],
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId('process-fold')).toBeNull();
+  });
+
+  it('keeps tool failures visible outside the fold', () => {
+    render(
+      <Group
+        compactProcess
+        id="compact"
+        messageIndex={0}
+        blocks={[
+          blk({
+            id: 'step',
+            tools: [
+              {
+                id: 'tool',
+                apiName: 'run',
+                identifier: 'terminal',
+                result: { error: { message: 'Failed' } },
+              } as any,
+            ],
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId('process-fold')).toBeNull();
+  });
+
+  it('keeps image results visible outside the fold', () => {
+    render(
+      <Group
+        compactProcess
+        id="compact"
+        messageIndex={0}
+        blocks={[
+          blk({
+            id: 'image',
+            tools: [
+              {
+                id: 'tool',
+                apiName: 'upload',
+                identifier: 'image',
+                result: { state: { images: [{ url: 'https://example.com/image.png' }] } },
+              } as any,
+            ],
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId('process-fold')).toBeNull();
+  });
+});
+
+describe('compact document deliveries', () => {
+  afterEach(cleanup);
+  it.each(['lobe-agent-documents', 'lobe-notebook'])(
+    'keeps %s document results outside execution details',
+    (identifier) => {
+      mockIsGenerating = false;
+      render(
+        <Group
+          compactProcess
+          id="document"
+          messageIndex={0}
+          blocks={[
+            blk({
+              id: 'document-result',
+              tools: [
+                {
+                  id: 'doc-tool',
+                  apiName: 'createDocument',
+                  identifier,
+                  arguments: JSON.stringify({ title: 'Finished copy', content: 'Final copy' }),
+                  result: { content: 'Created', state: { documentId: 'doc-1' } },
+                } as any,
+              ],
+            }),
+          ]}
+        />,
+      );
+      expect(screen.queryByTestId('process-fold')).toBeNull();
+    },
+  );
+  it('keeps document creation preview visible while streaming', () => {
+    mockIsGenerating = true;
+    render(
+      <Group
+        compactProcess
+        id="document"
+        messageIndex={0}
+        blocks={[
+          blk({
+            id: 'document-result',
+            tools: [
+              {
+                id: 'doc-tool',
+                apiName: 'createDocument',
+                identifier: 'lobe-agent-documents',
+                arguments: '{"title":"Draft","content":"Writing',
+              } as any,
+            ],
+          }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId('process-fold')).toBeNull();
+    mockIsGenerating = false;
+  });
+});

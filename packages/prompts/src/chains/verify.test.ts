@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { chainVerifyReviewPrediction, REVIEW_PREDICT_PROMPT_VERSION } from './verify';
+import {
+  chainVerifyPlan,
+  chainVerifyReviewPrediction,
+  REVIEW_PREDICT_PROMPT_VERSION,
+} from './verify';
 
 const buildSystemPrompt = () => {
   const { messages } = chainVerifyReviewPrediction({
@@ -51,4 +55,11 @@ describe('chainVerifyReviewPrediction', () => {
   it('uses a new prompt cohort for the stricter evidence contract', () => {
     expect(REVIEW_PREDICT_PROMPT_VERSION).toBe('v3');
   });
+});
+
+it('keeps generated acceptance focused on requested results rather than review-report formatting', () => {
+  const plan = chainVerifyPlan({ goal: 'Review a short caption', maxCriteria: 3 });
+  expect(plan.messages[0].content).toContain(
+    'Do not fail an otherwise correct result for review-report headings or item-by-item wording unless the user explicitly requested that format',
+  );
 });

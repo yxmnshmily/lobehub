@@ -7,8 +7,8 @@ import { SmilePlus } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonBar from '@/components/Skeleton/Bar';
 import EmojiPicker from '@/components/EmojiPicker';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useDocumentStore } from '@/store/document';
 import { editorSelectors } from '@/store/document/slices/editor';
 import { useGlobalStore } from '@/store/global';
@@ -41,7 +41,7 @@ const TitleSection = memo(() => {
   const setTitle = usePageEditorStore((s) => s.setTitle);
   const handleTitleSubmit = usePageEditorStore((s) => s.handleTitleSubmit);
   const isDocumentLoading = useDocumentStore(editorSelectors.isDocumentLoading(documentId));
-  const showTitleSkeleton = isDocumentLoading && !title;
+  const showTitleSkeleton = !!documentId && isDocumentLoading && !title;
 
   const [isHoveringTitle, setIsHoveringTitle] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);

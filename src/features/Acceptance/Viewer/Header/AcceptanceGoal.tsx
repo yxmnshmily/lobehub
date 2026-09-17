@@ -7,6 +7,7 @@ import { ChevronsDownUp, ChevronsUpDown, GitBranch, GitCommitHorizontal } from '
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 
 import { useAcceptanceScope } from '../AcceptanceScope';
@@ -85,13 +86,15 @@ interface AcceptanceGoalProps {
 }
 
 const AcceptanceGoal = ({ editSlot }: AcceptanceGoalProps) => {
-  const { t } = useTranslation('verify');
+  const { t, i18n } = useTranslation('verify');
   const { acceptanceId } = useAcceptanceScope();
   const { data } = useAcceptanceBundle(acceptanceId);
   const [collapsed, setCollapsed] = useLocalStorageState(GOAL_COLLAPSED_STORAGE_KEY, false);
   if (!data) return null;
 
-  const requirement = data.acceptance.requirement;
+  const requirement = data.acceptance.requirement
+    ? localizeGoalTemplate(data.acceptance.requirement, i18n.resolvedLanguage || i18n.language)
+    : null;
   const scope = acceptanceCodingScope(data.rounds);
   const emptyLabel = editSlot
     ? t('acceptance.requirementEmptyEditable')

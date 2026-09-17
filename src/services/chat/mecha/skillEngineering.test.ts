@@ -234,3 +234,29 @@ describe('resolveClientSkills', () => {
     });
   });
 });
+
+describe('dispatch skill loading', () => {
+  it('loads a selected resource skill without changing pinned configuration', async () => {
+    setToolState({
+      agentSkills: [{ id: 'db-copy', identifier: 'copy', name: 'Copy', zipFileHash: 'zip' }],
+    });
+    mockedGetById.mockResolvedValue({
+      id: 'db-copy',
+      identifier: 'copy',
+      name: 'Copy',
+      content: 'Full copy instructions',
+      zipFileHash: 'zip',
+    } as any);
+    const result = await resolveClientSkills([], [], ['copy']);
+    expect(findSkill(result.skills, 'copy')).toMatchObject({
+      activated: true,
+      content: 'Full copy instructions',
+    });
+    expect(result.enabledPluginIds).toContain('copy');
+  });
+  it('rejects disabled or unavailable selected skills', async () => {
+    setToolState({ agentSkills: [{ id: 'db-copy', identifier: 'copy', name: 'Copy' }] });
+    await expect(resolveClientSkills([], ['copy'], ['copy'])).rejects.toThrow();
+    await expect(resolveClientSkills([], [], ['missing'])).rejects.toThrow();
+  });
+});

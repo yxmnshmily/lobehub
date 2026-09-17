@@ -4,25 +4,25 @@ import { Accordion, AccordionItem, Flexbox } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { SearchIcon } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import CompactListPopover from '@/features/NavPanel/components/CompactListPopover';
 import NavItem from '@/features/NavPanel/components/NavItem';
+import { useEffectiveNavPanelExpanded } from '@/features/NavPanel/hooks/useEffectiveNavPanelExpanded';
 import { getTabUrl, SearchSection } from '@/features/SettingsSearch';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActiveLocation } from '@/hooks/useActiveLocation';
-import { useGlobalStore } from '@/store/global';
 import { SettingsTabs } from '@/store/global/initialState';
-import { systemStatusSelectors } from '@/store/global/selectors';
 import { isModifierClick } from '@/utils/navigation';
 
 import { useCategory } from '../../hooks/useCategory';
 
 const styles = createStaticStyles(({ css }) => ({
   expandedMenu: css`
-    padding: 4px 8px 16px;
+    padding-block: 4px 16px;
+    padding-inline: 8px;
 
     a {
       color: inherit;
@@ -86,11 +86,13 @@ export const isSettingsCategoryItemActive = ({
 const Body = memo(() => {
   const categoryGroups = useCategory();
   const { t } = useTranslation('setting');
-  const expanded = useGlobalStore(systemStatusSelectors.showLeftPanel);
-  const togglePanel = useGlobalStore((s) => s.toggleLeftPanel);
+  /* 与 64px 外壳（NavPanelDraggable）用同一套判定：视口收窄到 lg 以下时自动进入
+     图标栏 + CompactListPopover 弹出菜单，而不是把展开菜单塞进 64px 里。 */
+  const expanded = useEffectiveNavPanelExpanded();
   const navigate = useWorkspaceAwareNavigate();
   const location = useActiveLocation();
-  const expandedGroupKeys = useMemo(
+  const [groupExpansion, setGroupExpansion] = useState<Record<string, boolean>>({});
+  const defaultExpandedGroupKeys = useMemo(
     () =>
       categoryGroups
         .filter(
@@ -105,6 +107,26 @@ const Body = memo(() => {
         .map(({ key }) => key),
     [categoryGroups, location.pathname],
   );
+
+  useEffect(() => {
+    // Capture each group's first visible default, including groups that arrive
+    // after the admin query. Later routes must not move the navigation targets.
+    setGroupExpansion((previous) => {
+      const missing = categoryGroups.filter(({ key }) => !(key in previous));
+      if (!missing.length) return previous;
+      return {
+        ...previous,
+        ...Object.fromEntries(
+          missing.map(({ key }) => [key, defaultExpandedGroupKeys.includes(key)]),
+        ),
+      };
+    });
+  }, [categoryGroups, defaultExpandedGroupKeys]);
+
+  // Route changes must not remount the accordion and reopen user-collapsed groups.
+  const expandedGroupKeys = categoryGroups
+    .filter(({ key }) => groupExpansion[key] ?? defaultExpandedGroupKeys.includes(key))
+    .map(({ key }) => key);
 
   // Extract current tab from pathname: /settings/profile -> profile
   const activeTab = useMemo(() => {
@@ -149,14 +171,51 @@ const Body = memo(() => {
     );
   };
 
+  const groupsMenu = (
+    <Accordion
+      expandedKeys={expandedGroupKeys}
+      gap={8}
+      onExpandedChange={(keys) => {
+        setGroupExpansion((previous) => {
+          const next = { ...previous };
+          for (const { key } of categoryGroups) {
+            // Store only user changes; newly available groups keep their defaults.
+            if (keys.includes(key) !== expandedGroupKeys.includes(key)) {
+              next[key] = keys.includes(key);
+            }
+          }
+          return next;
+        });
+      }}
+    >
+      {categoryGroups.map((group) => (
+        <AccordionItem
+          itemKey={group.key}
+          key={group.key}
+          paddingBlock={4}
+          paddingInline={'8px 4px'}
+          title={
+            <Text ellipsis fontSize={12} type={'secondary'} weight={500}>
+              {group.title}
+            </Text>
+          }
+        >
+          <Flexbox gap={1} paddingBlock={1}>
+            {group.items.map(renderItem)}
+          </Flexbox>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  );
+
   if (!expanded) {
     return (
       <Flexbox gap={4} paddingInline={4}>
-        <NavItem
-          icon={SearchIcon}
-          title={t('settingsSearch.placeholder')}
-          onClick={() => togglePanel(true)}
-        />
+        {/* 窄屏图标栏：搜索不再依赖展开偏好（自动收窄时 togglePanel 不生效），
+            改为与其它图标一致的弹出层——默认展示完整菜单，输入即出搜索结果。 */}
+        <CompactListPopover icon={SearchIcon} title={t('settingsSearch.placeholder')}>
+          <SearchSection>{groupsMenu}</SearchSection>
+        </CompactListPopover>
         {categoryGroups.map((group) => {
           const currentItem =
             group.items.find((item) =>
@@ -181,31 +240,7 @@ const Body = memo(() => {
 
   return (
     <Flexbox className={styles.expandedMenu} gap={4}>
-      <SearchSection>
-        <Accordion
-          defaultExpandedKeys={expandedGroupKeys}
-          gap={8}
-          key={expandedGroupKeys.join(':')}
-        >
-          {categoryGroups.map((group) => (
-            <AccordionItem
-              itemKey={group.key}
-              key={group.key}
-              paddingBlock={4}
-              paddingInline={'8px 4px'}
-              title={
-                <Text ellipsis fontSize={12} type={'secondary'} weight={500}>
-                  {group.title}
-                </Text>
-              }
-            >
-              <Flexbox gap={1} paddingBlock={1}>
-                {group.items.map(renderItem)}
-              </Flexbox>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </SearchSection>
+      <SearchSection>{groupsMenu}</SearchSection>
     </Flexbox>
   );
 });

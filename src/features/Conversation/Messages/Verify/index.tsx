@@ -36,6 +36,7 @@ const VerifyMessage = memo<VerifyMessageProps>(({ id }) => {
   const item = useConversationStore(dataSelectors.getDisplayMessageById(id), isEqual);
   const operationId = item?.metadata?.verifyOperationId;
   // Sequence number among all verify messages in the thread (not the repair round).
+  const groupId = useConversationStore((s) => s.context?.groupId);
   const ordinal = useConversationStore(dataSelectors.getVerifyOrdinal(id));
 
   const { data: state } = useVerifyState(operationId ?? null);
@@ -47,7 +48,7 @@ const VerifyMessage = memo<VerifyMessageProps>(({ id }) => {
     <Flexbox paddingBlock={8}>
       <div className={styles.card} style={{ background: phaseCardBackground(phase, cssVar) }}>
         <RunResult embedded operationId={operationId} round={ordinal} />
-        <CheckerDock embedded operationId={operationId} />
+        <CheckerDock embedded compactDetails={!!groupId} operationId={operationId} />
       </div>
     </Flexbox>
   );

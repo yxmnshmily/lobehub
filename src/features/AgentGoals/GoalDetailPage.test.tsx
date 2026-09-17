@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
+import { useGlobalStore } from '@/store/global';
+import { systemStatusSelectors } from '@/store/global/selectors';
+
 import GoalDetailPage from './GoalDetailPage';
 
 const state = vi.hoisted(() => ({
@@ -40,7 +43,15 @@ vi.mock('./GoalDetailActions', () => ({ default: () => null }));
 vi.mock('./GoalRequirement', () => ({ default: () => null }));
 vi.mock('./NorthStarMetrics', () => ({ default: () => null }));
 vi.mock('./GoalSupervision', () => ({ GoalSupervision: () => null }));
-vi.mock('./ProcessControl', () => ({ default: () => null }));
+vi.mock('./ProcessControl', () => ({
+  default: ({
+    graphFullscreen,
+    onGraphFullscreenChange,
+  }: {
+    graphFullscreen: boolean;
+    onGraphFullscreenChange: (value: boolean) => void;
+  }) => <button onClick={() => onGraphFullscreenChange(!graphFullscreen)}>切换画布全屏</button>,
+}));
 vi.mock('@/features/RightPanel', () => ({
   default: ({ children, expand }: { children: ReactNode; expand: boolean }) => (
     <div hidden={!expand}>{children}</div>
@@ -54,6 +65,26 @@ vi.mock('./GoalChat', () => ({
 }));
 
 describe('goal chat collapse recovery', () => {
+  it.each([true, false])(
+    'restores sidebar preference %s after fullscreen and unmount',
+    (expanded) => {
+      useGlobalStore.setState({ isStatusInit: true });
+      useGlobalStore.getState().toggleLeftPanel(expanded);
+      const view = render(
+        <MemoryRouter>
+          <GoalDetailPage agentId="a1" goalId="g1" />
+        </MemoryRouter>,
+      );
+      const isExpanded = () => systemStatusSelectors.showLeftPanel(useGlobalStore.getState());
+      fireEvent.click(screen.getByRole('button', { name: '切换画布全屏' }));
+      expect(isExpanded()).toBe(false);
+      fireEvent.click(screen.getByRole('button', { name: '切换画布全屏' }));
+      expect(isExpanded()).toBe(expanded);
+      fireEvent.click(screen.getByRole('button', { name: '切换画布全屏' }));
+      view.unmount();
+      expect(isExpanded()).toBe(expanded);
+    },
+  );
   it('offers a working reopen control after each collapse', () => {
     render(
       <MemoryRouter>

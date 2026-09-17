@@ -1,15 +1,19 @@
 import { AccordionItem, Block, Center, Empty, Flexbox } from '@lobehub/ui';
-import { Text } from '@lobehub/ui/base-ui';
+import { Checkbox, Text, toast } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import { cssVar } from 'antd-style';
 import { ClipboardCheckIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Components } from 'react-virtuoso';
 import { Virtuoso } from 'react-virtuoso';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import BulkSelectionBar from '@/features/AgentTopicManager/BulkSelectionBar';
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
+import { usePermission } from '@/hooks/usePermission';
 import { useTaskStore } from '@/store/task';
 import { taskListSelectors } from '@/store/task/selectors';
 import { COMPLETE_TASK_LIST_MAX_ITEMS } from '@/store/task/slices/list/action';
@@ -51,6 +55,7 @@ interface TaskListProps {
   onShowHiddenCompleted?: () => void;
   options: TaskListViewOptions;
   routeScope?: TaskItemRouteScope;
+  selectionScopeKey?: string;
 }
 
 const HIDDEN_COMPLETED_STATUS_SET = new Set<string>(HIDDEN_WHEN_COMPLETED_STATUSES);
@@ -154,6 +159,59 @@ const TaskList = memo<TaskListProps>((props) => {
     () => (options.showSubTasks ? unfinishedTasks : collapseSubTasks(unfinishedTasks)),
     [options.showSubTasks, unfinishedTasks],
   );
+  const { allowed: canEdit } = usePermission('create_content');
+  const { canDelete: canManage, checkDeletePermission } = useGroupDeletePermission(canEdit);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const activeRef = useRef(true);
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
+  }, []);
+  const visibleIds = useMemo(() => visibleTasks.map((task) => task.id), [visibleTasks]);
+  const selected = useMemo(
+    () => selectedIds.filter((id) => visibleIds.includes(id)),
+    [selectedIds, visibleIds],
+  );
+  useEffect(() => {
+    setSelectedIds((ids) => ids.filter((id) => visibleIds.includes(id)));
+  }, [visibleIds]);
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [routeScope]);
+
+  const selectionScope = JSON.stringify([
+    props.selectionScopeKey,
+    routeScope,
+    options.hideCompleted,
+    options.showSubTasks,
+  ]);
+  const currentScope = useRef(selectionScope);
+  currentScope.current = selectionScope;
+  const handleDelete = useCallback(() => {
+    if (busy || !canManage || !selected.length) return;
+    const targets = visibleTasks.filter((task) => selected.includes(task.id));
+    const scope = selectionScope;
+    void confirmResourceDeletion({
+      onBusyChange: setBusy,
+      resource: 'task',
+      ids: targets.map((task) => task.identifier),
+      canProceed: () =>
+        checkDeletePermission() && activeRef.current && currentScope.current === scope,
+
+      title: t('bulkDelete.confirmTitle', { ns: 'common', count: targets.length }),
+
+      onOk: (cleanupPending) => {
+        if (!checkDeletePermission() || currentScope.current !== scope) return;
+        setSelectedIds([]);
+        if (!cleanupPending)
+          toast.success(t('bulkDelete.success', { ns: 'common', count: targets.length }));
+      },
+    });
+  }, [checkDeletePermission, busy, canManage, selected, visibleTasks, t, selectionScope]);
+
   // Keyed off the full list, not the visible one: a nested child's parent may
   // sit in another group, or be hidden by the display options, and still has to
   // resolve into a context row.
@@ -226,13 +284,31 @@ const TaskList = memo<TaskListProps>((props) => {
         // Matches the 2px row gap the former Block wrapper gave the list.
         <div style={{ paddingBlock: 1, paddingInline: 2 }}>
           <TaskRowIndent depth={item.row.depth} muted={item.row.isParentContext}>
-            <AgentTaskItem routeScope={routeScope} task={item.row.task} />
+            <Flexbox horizontal align="center" gap={8}>
+              {canManage && !item.row.isParentContext && (
+                <Checkbox
+                  aria-label={item.row.task.name || item.row.task.identifier}
+                  checked={selected.includes(item.row.task.id)}
+                  disabled={busy}
+                  onChange={() =>
+                    setSelectedIds((ids) =>
+                      ids.includes(item.row.task.id)
+                        ? ids.filter((id) => id !== item.row.task.id)
+                        : [...ids, item.row.task.id],
+                    )
+                  }
+                />
+              )}
+              <Flexbox flex={1} style={{ minWidth: 0 }}>
+                <AgentTaskItem routeScope={routeScope} task={item.row.task} />
+              </Flexbox>
+            </Flexbox>
           </TaskRowIndent>
           {item.showDivider && <Divider dashed style={{ margin: 0 }} />}
         </div>
       );
     },
-    [routeScope, toggleCollapsed],
+    [routeScope, toggleCollapsed, canManage, selected, busy],
   );
 
   const skeleton = (
@@ -299,6 +375,18 @@ const TaskList = memo<TaskListProps>((props) => {
       onRetry={onRetry}
     >
       <div ref={anchorRef} style={{ width: '100%' }}>
+        {canManage && (
+          <div style={{ paddingBlock: 12 }}>
+            <BulkSelectionBar
+              busy={busy}
+              selectedCount={selected.length}
+              total={visibleIds.length}
+              onClear={() => setSelectedIds([])}
+              onDelete={handleDelete}
+              onSelectAll={() => setSelectedIds(visibleIds)}
+            />
+          </div>
+        )}
         {scrollParent && (
           <Virtuoso
             // Footer belongs to the window so it follows the last rendered row

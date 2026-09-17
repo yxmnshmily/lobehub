@@ -7,6 +7,7 @@ export type RightPanelMode = 'copilot' | 'history';
 
 export interface PublicState {
   autoSave?: boolean;
+  draftVisibility?: 'private' | 'public';
   emoji?: string;
   knowledgeBaseId?: string;
   /**

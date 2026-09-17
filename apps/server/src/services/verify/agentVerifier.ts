@@ -1,10 +1,11 @@
 import { BUILTIN_AGENT_SLUGS } from '@lobechat/builtin-agents';
 import { VerifyToolIdentifier } from '@lobechat/builtin-tool-verify';
-import { buildVerifierPrompt } from '@lobechat/prompts';
+import { buildVerifierPrompt, outputLanguageInstruction } from '@lobechat/prompts';
 import debug from 'debug';
 
 import { AgentModel } from '@/database/models/agent';
 import { DocumentModel } from '@/database/models/document';
+import { UserModel } from '@/database/models/user';
 import type { LobeChatDatabase } from '@/database/type';
 import type { AgentHook, AgentHookEvent } from '@/server/services/agentRuntime/hooks/types';
 import { AiAgentService } from '@/server/services/aiAgent';
@@ -149,13 +150,17 @@ export const createVerifierAgentRunner = (params: {
         },
       },
     ];
-    const verifierPrompt = buildVerifierPrompt({
-      checkItem,
-      deliverable,
-      evidence,
-      goal,
-      instruction,
-    });
+    const userInfo = await UserModel.getInfoForAIGeneration(db, userId);
+    const verifierPrompt =
+      buildVerifierPrompt({
+        checkItem,
+        deliverable,
+        evidence,
+        goal,
+        instruction,
+      }) +
+      '\n\n' +
+      outputLanguageInstruction(userInfo.responseLanguage);
 
     // The aiAgent → agentRuntime completion → verify lifecycle → this runner →
     // aiAgent import cycle is safe statically: every use here is call-time (inside

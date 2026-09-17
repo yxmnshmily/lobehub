@@ -38,7 +38,7 @@ const About = memo<{ mobile?: boolean }>(({ mobile }) => {
       collapsible={false}
       gap={16}
       style={{ maxWidth: '100%', minWidth: 0, width: '100%' }}
-      variant={'filled'}
+      variant={'borderless'}
     >
       <Flexbox gap={20} paddingBlock={20} width={'100%'}>
         <Version mobile={mobile} />

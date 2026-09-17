@@ -4,6 +4,7 @@ import {
   resolveGoalAttemptBudget,
   resolveGoalScheduleConfig,
 } from '@lobechat/builtin-tool-goal';
+import { TRPCError } from '@trpc/server';
 
 import { GoalService } from '@/server/services/goal';
 import { advanceGoal } from '@/server/services/goal/advanceGoal';
@@ -26,6 +27,151 @@ export const goalRuntime: ServerRuntimeRegistration = {
     const { agentId, serverDB, userId, workspaceId } = context;
 
     return {
+      viewGoal: async (args: { goalId: string }) => {
+        try {
+          const graph = await new GoalService(serverDB, userId, workspaceId ?? undefined).graph(
+            args.goalId,
+            context.groupId ?? undefined,
+          );
+          if (context.groupId && graph.goal.config?.groupId !== context.groupId)
+            return { content: 'Goal not found in this conversation.', success: false };
+          const summary = {
+            goalId: graph.goal.id,
+            title: graph.goal.title,
+            status: graph.goal.status,
+            requirement: graph.goal.requirement,
+            work: graph.nodes
+              .filter((node) => node.kind === 'task')
+              .map((node) => ({
+                nodeId: node.id,
+                taskId: node.taskId,
+                title: node.title,
+                instruction: node.description,
+                status: node.status,
+              })),
+            results: graph.workVersions,
+          };
+          return { content: JSON.stringify(summary), state: summary, success: true };
+        } catch (error) {
+          return {
+            content:
+              error instanceof TRPCError
+                ? error.message
+                : 'Could not read this goal. Check its identifier and access.',
+            success: false,
+          };
+        }
+      },
+      resumeGoal: async (args: { goalId: string }) => {
+        try {
+          const service = new GoalService(serverDB, userId, workspaceId ?? undefined);
+          const { goal: current } = await service.graph(args.goalId);
+          if (context.groupId && current.config?.groupId !== context.groupId)
+            return { content: 'Goal not found in this conversation.', success: false };
+          if (current.status === 'achieved' || current.status === 'canceled')
+            return {
+              content:
+                'This goal has ended. Use reviseGoal for a requested change to completed work.',
+              success: false,
+            };
+          const goal = current.status === 'paused' ? await service.resume(args.goalId) : current;
+          const state = { goalId: args.goalId, status: goal.status };
+          if (goal.status !== 'running')
+            return {
+              content: `Goal status: ${goal.status}; resolve its pending work or decision before execution can continue.`,
+              state,
+              success: true,
+            };
+          try {
+            await scheduleGoalAdvance({
+              goalId: args.goalId,
+              trigger: 'manual',
+              userId,
+              workspaceId: workspaceId ?? undefined,
+            });
+            return {
+              content:
+                'Existing goal queued to continue within its current budget. Results are not ready yet.',
+              state,
+              success: true,
+            };
+          } catch {
+            return {
+              content:
+                'Goal is ready to continue, but scheduling failed. Retry this same goal; do not create another.',
+              state,
+              success: true,
+            };
+          }
+        } catch {
+          return {
+            content: 'Could not resume this goal. Check its identifier and current status.',
+            success: false,
+          };
+        }
+      },
+      reviseGoal: async (args: {
+        goalId: string;
+        instruction: string;
+        nodeId: string;
+        requirement?: string;
+      }) => {
+        try {
+          const revision = await new GoalService(serverDB, userId, workspaceId ?? undefined).revise(
+            args.goalId,
+            {
+              groupId: context.groupId ?? undefined,
+              origin:
+                context.groupId && context.topicId && agentId
+                  ? { agentId, topicId: context.topicId }
+                  : undefined,
+              instruction: args.instruction,
+              nodeId: args.nodeId,
+              requirement: args.requirement,
+            },
+          );
+          const state = {
+            goalId: args.goalId,
+            status: revision.goal.status,
+            taskIds: revision.taskIds,
+          };
+          if (revision.goal.status !== 'running')
+            return {
+              content: `Revision saved to the existing work. Goal status: ${revision.goal.status}; execution has not resumed.`,
+              state,
+              success: true,
+            };
+          try {
+            await scheduleGoalAdvance({
+              goalId: args.goalId,
+              trigger: 'manual',
+              userId,
+              workspaceId: workspaceId ?? undefined,
+            });
+            return {
+              content:
+                'Revision saved and queued on the existing work. The revised result is not ready yet.',
+              state,
+              success: true,
+            };
+          } catch {
+            return {
+              content:
+                'Revision saved, but scheduling failed. Inspect the same goal before retrying; do not create another goal.',
+              state,
+              success: true,
+            };
+          }
+        } catch (error) {
+          return {
+            content:
+              error instanceof TRPCError
+                ? error.message
+                : 'Could not apply the revision. Inspect the existing goal; interrupted work remains paused.',
+            success: false,
+          };
+        }
+      },
       createGoal: async (args: {
         criteria: Array<{ description?: string; instruction?: string; title: string }>;
         deadline?: string | null;
@@ -49,6 +195,17 @@ export const goalRuntime: ServerRuntimeRegistration = {
             createdByAgentId: agentId,
             config: {
               ...(context.groupId ? { groupId: context.groupId } : {}),
+              ...(context.groupId && context.topicId
+                ? {
+                    origin: {
+                      agentId,
+                      topicId: context.topicId,
+                      messageId: context.assistantMessageId,
+                      operationId: context.operationId,
+                      toolCallId: context.toolCallId,
+                    },
+                  }
+                : {}),
               recovery: { maxAttemptsPerTask: resolveGoalAttemptBudget(args.maxIterations) },
               ...(scheduleConfig ? { schedule: scheduleConfig } : {}),
             },
@@ -78,7 +235,7 @@ export const goalRuntime: ServerRuntimeRegistration = {
             workspaceId: workspaceId ?? undefined,
           });
 
-          const created = `Goal "${graph.goal.title}" created with ${drafts.length} acceptance criteria.`;
+          const created = `Goal "${graph.goal.title}" (${graph.goal.id}) created with ${drafts.length} acceptance criteria.`;
           const tail =
             'Execution continues in its own task; do not perform or reproduce the work in this conversation.';
 

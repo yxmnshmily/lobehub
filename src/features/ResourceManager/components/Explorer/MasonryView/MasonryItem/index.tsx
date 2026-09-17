@@ -89,7 +89,6 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    padding-block-end: 60px;
     border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusLG};
 
@@ -145,6 +144,11 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   content: css`
     position: relative;
+
+    &:focus-visible {
+      outline: 2px solid ${cssVar.colorPrimary};
+      outline-offset: -2px;
+    }
   `,
   contentWithPadding: css`
     padding: 12px;
@@ -223,7 +227,7 @@ const MasonryFileItem = memo<MasonryFileItemProps>(
     userId,
     visibility,
   }) => {
-    const { t } = useTranslation('components');
+    const { t } = useTranslation(['components', 'file']);
     const chunkTargetId = getChunkTargetId({ fileId, id });
     const isDragActive = useDragActive();
     const setCurrentDrag = useSetCurrentDrag();
@@ -399,13 +403,9 @@ const MasonryFileItem = memo<MasonryFileItemProps>(
         </div>
 
         <div
-          className={styles.actionBar}
-          style={{ position: 'absolute', insetInlineEnd: 0, bottom: 0, zIndex: 2 }}
-        >
-          <QuickActions menuItems={menuItems} />
-        </div>
-
-        <div
+          aria-label={name || t('file:pageList.untitled')}
+          role="button"
+          tabIndex={0}
           className={cx(
             styles.content,
             !isImage &&
@@ -417,6 +417,12 @@ const MasonryFileItem = memo<MasonryFileItemProps>(
               styles.contentWithPadding,
           )}
           onClick={handleItemClick}
+          onKeyDown={(e) => {
+            if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              handleItemClick();
+            }
+          }}
         >
           {(() => {
             switch (true) {
@@ -500,6 +506,12 @@ const MasonryFileItem = memo<MasonryFileItemProps>(
               }
             }
           })()}
+        </div>
+        <div
+          className={styles.actionBar}
+          style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end' }}
+        >
+          <QuickActions menuItems={menuItems} />
         </div>
       </div>
     );

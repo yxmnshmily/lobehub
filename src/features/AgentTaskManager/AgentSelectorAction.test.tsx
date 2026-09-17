@@ -127,6 +127,43 @@ describe('AgentSelectorAction', () => {
     ];
   });
 
+  it.each(['目标助手', '项目助手'])(
+    'labels and selects the scoped %s without duplicating it',
+    (title) => {
+      mocks.homeState.ungroupedAgents = [
+        { id: 'agt_scoped', title: 'Original name', type: 'agent' },
+        { id: 'agt_custom', title: 'Custom Agent', type: 'agent' },
+      ];
+      const change = vi.fn();
+      const { getByText, queryByText, getAllByText } = render(
+        <AgentSelectorAction
+          assistantId="agt_scoped"
+          assistantTitle={title}
+          onAgentChange={change}
+        />,
+      );
+      expect(getAllByText(title)).toHaveLength(1);
+      expect(queryByText('Original name')).toBeNull();
+      fireEvent.click(getByText(title));
+      expect(change).toHaveBeenCalledWith('agt_scoped');
+      fireEvent.click(getByText('Custom Agent'));
+      expect(change).toHaveBeenLastCalledWith('agt_custom');
+    },
+  );
+
+  it('keeps the project assistant but excludes agents unavailable to the project', () => {
+    const { queryByText, getByText } = render(
+      <AgentSelectorAction
+        allowedAgentIds={[]}
+        assistantId="project-agent"
+        assistantTitle="项目助手"
+        onAgentChange={vi.fn()}
+      />,
+    );
+    expect(getByText('项目助手')).toBeInTheDocument();
+    expect(queryByText('Custom Agent')).toBeNull();
+  });
+
   it('adds the builtin task agent and filters out group sessions', () => {
     render(<AgentSelectorAction onAgentChange={vi.fn()} />);
 

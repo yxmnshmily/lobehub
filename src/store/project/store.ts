@@ -13,7 +13,10 @@ import type { ResetableStore } from '@/store/utils/resetableStore';
 
 type ProjectListResponse = Awaited<ReturnType<typeof projectService.listAll>>;
 type ProjectDetailResponse = Awaited<ReturnType<typeof projectService.detail>>;
-export type ProjectListItem = ProjectListResponse['data'][number];
+export type ProjectListItem = Omit<
+  ProjectListResponse['data'][number],
+  'totalRunCost' | 'totalRunDuration'
+> & { totalRunCost?: number; totalRunDuration?: number };
 export type ProjectDetail = ProjectDetailResponse['data'];
 
 const LIST_KEY = 'project/list';

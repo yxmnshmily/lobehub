@@ -1,4 +1,5 @@
 import { Flexbox } from '@lobehub/ui';
+import { createStaticStyles } from 'antd-style';
 import { type FC } from 'react';
 
 import BusinessPanelContent from '@/business/client/features/User/BusinessPanelContent';
@@ -14,6 +15,26 @@ import { authSelectors } from '@/store/user/selectors';
 
 import UserLoginOrSignup from '../UserLoginOrSignup';
 import { useMenu } from './useMenu';
+
+const styles = createStaticStyles(({ css }) => ({
+  menu: css`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+
+    > .ant-menu-item,
+    > .ant-menu-submenu {
+      width: auto;
+      min-width: 0;
+      margin: 0;
+    }
+
+    > .ant-menu-item-divider {
+      grid-column: 1 / -1;
+    }
+  `,
+}));
 
 const PanelContent: FC<{ closePopover: () => void }> = ({ closePopover }) => {
   const isLoginWithAuth = useUserStore(authSelectors.isLoginWithAuth);
@@ -48,7 +69,11 @@ const PanelContent: FC<{ closePopover: () => void }> = ({ closePopover }) => {
         <UserLoginOrSignup onClick={handleSignIn} />
       )}
 
-      <Menu items={[...(mainItems ?? []), ...(logoutItems ?? [])]} onClick={handleMenuClick} />
+      <Menu
+        className={styles.menu}
+        items={[...(mainItems ?? []), ...(logoutItems ?? [])]}
+        onClick={handleMenuClick}
+      />
 
       <UserPanelAccountSection onNavigate={closePopover} />
     </Flexbox>

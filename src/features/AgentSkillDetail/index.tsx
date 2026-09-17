@@ -5,7 +5,7 @@ import { Github } from '@lobehub/icons';
 import { Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { DotIcon, ExternalLinkIcon } from 'lucide-react';
+import { ChevronLeft, DotIcon, ExternalLinkIcon } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +34,37 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: 0.5px;
     background: ${cssVar.colorBorderSecondary};
   `,
+  drillBack: css`
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+    align-items: center;
+
+    min-height: 44px;
+    padding-inline: 8px;
+    border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
+  `,
+  drillContent: css`
+    overflow: hidden;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+
+    min-height: 0;
+  `,
+  drillPath: css`
+    overflow: hidden;
+
+    font-size: 13px;
+    color: ${cssVar.colorTextSecondary};
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  `,
+  drillTree: css`
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+  `,
   left: css`
     overflow-y: auto;
     flex-shrink: 0;
@@ -59,6 +90,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 interface AgentSkillDetailProps {
+  /**
+   * 下钻模式（设置页使用）：文件树与文件内容不再左右并排，而是"树 → 点文件
+   * 进入内容（带返回）"。默认 false 保持原有的双栏并排（技能商店等场景）。
+   */
+  drilldown?: boolean;
   skillId: string;
 }
 
@@ -77,9 +113,10 @@ const buildContentMap = (nodes: SkillResourceTreeNode[] = []): Record<string, st
   return map;
 };
 
-const AgentSkillDetail = memo<AgentSkillDetailProps>(({ skillId }) => {
+const AgentSkillDetail = memo<AgentSkillDetailProps>(({ drilldown = false, skillId }) => {
   const { t } = useTranslation('setting');
-  const [selectedFile, setSelectedFile] = useState('SKILL.md');
+  /* 下钻模式初始停在文件树层；双栏模式保持默认打开 SKILL.md 的原行为。 */
+  const [selectedFile, setSelectedFile] = useState<string | null>(drilldown ? null : 'SKILL.md');
   const { data, isLoading } = useToolStore((s) => s.useFetchAgentSkillDetail)(skillId);
 
   const skillDetail = data?.skillDetail;
@@ -92,15 +129,21 @@ const AgentSkillDetail = memo<AgentSkillDetailProps>(({ skillId }) => {
         <div className={styles.meta}>
           <ArticleSkeleton rows={1} style={{ margin: 0 }} title={220} />
         </div>
-        <Flexbox horizontal style={{ flex: 1, overflow: 'hidden' }}>
-          <div className={styles.left}>
+        {drilldown ? (
+          <div className={styles.drillTree}>
             <FileTreeSkeleton rows={9} />
           </div>
-          <div className={styles.divider} />
-          <div className={styles.right}>
-            <ArticleSkeleton rows={8} style={{ padding: 16 }} />
-          </div>
-        </Flexbox>
+        ) : (
+          <Flexbox horizontal style={{ flex: 1, overflow: 'hidden' }}>
+            <div className={styles.left}>
+              <FileTreeSkeleton rows={9} />
+            </div>
+            <div className={styles.divider} />
+            <div className={styles.right}>
+              <ArticleSkeleton rows={8} style={{ padding: 16 }} />
+            </div>
+          </Flexbox>
+        )}
       </Flexbox>
     );
   }
@@ -160,23 +203,55 @@ const AgentSkillDetail = memo<AgentSkillDetailProps>(({ skillId }) => {
           </Flexbox>
         </div>
       )}
-      <Flexbox horizontal style={{ flex: 1, overflow: 'hidden' }}>
-        <div className={styles.left}>
-          <FileTree
-            resourceTree={resourceTree || []}
-            selectedFile={selectedFile}
-            onSelectFile={setSelectedFile}
-          />
-        </div>
-        <div className={styles.divider} />
-        <div className={styles.right} key={selectedFile}>
-          <ContentViewer
-            contentMap={contentMap}
-            selectedFile={selectedFile}
-            skillDetail={skillDetail}
-          />
-        </div>
-      </Flexbox>
+      {drilldown ? (
+        selectedFile === null ? (
+          /* 下钻第 1 层：全宽文件树 */
+          <div className={styles.drillTree}>
+            <FileTree
+              resourceTree={resourceTree || []}
+              selectedFile={selectedFile ?? ''}
+              onSelectFile={setSelectedFile}
+            />
+          </div>
+        ) : (
+          /* 下钻第 2 层：全宽文件内容，顶部带返回 */
+          <div className={styles.drillContent} key={selectedFile}>
+            <div className={styles.drillBack}>
+              <ActionIcon
+                icon={ChevronLeft}
+                title={t('back', { ns: 'common' })}
+                onClick={() => setSelectedFile(null)}
+              />
+              <span className={styles.drillPath}>{selectedFile}</span>
+            </div>
+            <div className={styles.right}>
+              <ContentViewer
+                contentMap={contentMap}
+                selectedFile={selectedFile}
+                skillDetail={skillDetail}
+              />
+            </div>
+          </div>
+        )
+      ) : (
+        <Flexbox horizontal style={{ flex: 1, overflow: 'hidden' }}>
+          <div className={styles.left}>
+            <FileTree
+              resourceTree={resourceTree || []}
+              selectedFile={selectedFile}
+              onSelectFile={setSelectedFile}
+            />
+          </div>
+          <div className={styles.divider} />
+          <div className={styles.right} key={selectedFile}>
+            <ContentViewer
+              contentMap={contentMap}
+              selectedFile={selectedFile}
+              skillDetail={skillDetail}
+            />
+          </div>
+        </Flexbox>
+      )}
     </Flexbox>
   );
 });

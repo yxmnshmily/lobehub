@@ -37,6 +37,14 @@ describe('getPortalViewMinWidth', () => {
 });
 
 describe('getPortalViewWidth', () => {
+  it('opens verification details wide instead of restoring their old narrow width', () => {
+    for (const viewType of [PortalViewType.VerifyResult, PortalViewType.VerifyReport]) {
+      expect(getPortalViewWidth({ viewType, legacyWidth: 400, widths: { [viewType]: 400 } })).toBe(
+        CHAT_PORTAL_WIDE_WIDTH,
+      );
+      expect(getPortalViewWidth({ viewType, widths: { [`${viewType}:wide-v2`]: 700 } })).toBe(700);
+    }
+  });
   it('opens acceptance wide even when the legacy shared width is narrow', () => {
     expect(
       getPortalViewWidth({ legacyWidth: CHAT_PORTAL_WIDTH, viewType: PortalViewType.Acceptance }),

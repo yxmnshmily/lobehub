@@ -17,6 +17,7 @@ import type { ChatTopic } from '@/types/topic';
 
 import StatusDot from './StatusDot';
 import { useTopicsViewStore } from './store';
+import { TopicAssociations, TopicCredits } from './TopicBusinessInfo';
 import { getProjectLabel } from './utils';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -208,10 +209,14 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId, onOpen, readOnly = !!o
         </Text>
       )}
 
-      {projectLabel && (
-        <Tag icon={<Icon icon={FolderIcon} size={11} />} size={'small'}>
-          {projectLabel}
-        </Tag>
+      {topic.businessAssociations !== undefined ? (
+        <TopicAssociations topic={topic} />
+      ) : (
+        projectLabel && (
+          <Tag icon={<Icon icon={FolderIcon} size={11} />} size={'small'}>
+            {projectLabel}
+          </Tag>
+        )
       )}
 
       <Flexbox horizontal align={'center'} className={styles.footer} justify={'space-between'}>
@@ -220,6 +225,7 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId, onOpen, readOnly = !!o
           align={'center'}
           gap={10}
           style={{ color: cssVar.colorTextQuaternary, fontSize: 11 }}
+          wrap={'wrap'}
         >
           {messageCount > 0 && (
             <Flexbox horizontal align={'center'} gap={3}>
@@ -233,13 +239,16 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId, onOpen, readOnly = !!o
               {formatTokenNumber(tokenUsage)}
             </Flexbox>
           )}
-          {cost > 0 && (
+          {topic.businessAssociations === undefined && cost > 0 && (
             <Flexbox horizontal align={'center'} gap={3} title={formatPrice(cost, 6)}>
               <Icon icon={Coins} size={11} />
               {formatPrice(cost, 2)}
             </Flexbox>
           )}
           <span title={updatedAt.title}>{updatedAt.text}</span>
+          <span>
+            {t('management.columns.credits')}：<TopicCredits topic={topic} />
+          </span>
         </Flexbox>
         <StatusDot status={status} />
       </Flexbox>

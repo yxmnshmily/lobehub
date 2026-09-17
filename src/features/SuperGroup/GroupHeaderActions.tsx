@@ -76,7 +76,7 @@ export default function GroupHeaderActions({
       {children}
       {!mobile && profileAction}
       {!mobile && searchAction}
-      {!mobile && <WideScreenButton />}
+      {!mobile && <WideScreenButton wide />}
       {!mobile && shareAction}
       {groupId && (mobile || showMembers) && (
         <Popover

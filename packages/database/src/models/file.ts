@@ -34,9 +34,9 @@ import {
   messages,
   messagesFiles,
   topics,
+  users,
   works,
   workVersions,
-  users,
 } from '../schemas';
 import type { LobeChatDatabase, Transaction } from '../type';
 import { buildFileCategoryFilter } from '../utils/fileTypeCategory';
@@ -85,6 +85,16 @@ export class FileModel {
     });
   }
 
+  /** Serialize registration with cleanup and never resurrect a retired storage key. */
+  private async assertStorageKeyAvailable(tx: Transaction, key: string | null | undefined) {
+    if (!key) return;
+    await tx.execute(sql`lock table files, global_files in row exclusive mode`);
+    const retired = await tx.execute(
+      sql`select id from async_tasks where type = 'resource-file-deletion' and metadata @> ${JSON.stringify({ objects: [{ key }] })}::jsonb limit 1`,
+    );
+    if (retired.rows.length) throw new Error('该文件存储地址已进入删除流程，请重新上传到新的地址');
+  }
+
   create = async (
     params: Omit<NewFile, 'id' | 'userId'> & {
       id?: string;
@@ -95,6 +105,7 @@ export class FileModel {
     trx?: Transaction,
   ): Promise<{ id: string }> => {
     const executeInTransaction = async (tx: Transaction): Promise<FileItem> => {
+      await this.assertStorageKeyAvailable(tx, params.url);
       if (insertToGlobalFiles) {
         await tx
           .insert(globalFiles)
@@ -143,7 +154,10 @@ export class FileModel {
   };
 
   createGlobalFile = async (file: Omit<NewGlobalFile, 'id' | 'userId'>) => {
-    return this.db.insert(globalFiles).values(file).returning();
+    return this.db.transaction(async (tx) => {
+      await this.assertStorageKeyAvailable(tx, file.url);
+      return tx.insert(globalFiles).values(file).returning();
+    });
   };
 
   updateGlobalFile = async (
@@ -151,7 +165,11 @@ export class FileModel {
     data: Partial<Pick<NewGlobalFile, 'metadata' | 'url'>>,
     trx?: Transaction,
   ) => {
-    return (trx ?? this.db).update(globalFiles).set(data).where(eq(globalFiles.hashId, hashId));
+    const update = async (tx: Transaction) => {
+      await this.assertStorageKeyAvailable(tx, data.url);
+      return tx.update(globalFiles).set(data).where(eq(globalFiles.hashId, hashId));
+    };
+    return trx ? update(trx) : this.db.transaction(update);
   };
 
   checkHash = async (hash: string) => {

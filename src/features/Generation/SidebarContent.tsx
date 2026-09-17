@@ -1,34 +1,20 @@
 'use client';
 
-import { Flexbox, Icon } from '@lobehub/ui';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 
-import { getRouteById } from '@/config/routes';
 import SideBarLayout from '@/features/NavPanel/SideBarLayout';
+import GenerationMediaModeSegment from '@/routes/(main)/(create)/features/GenerationInput/GenerationMediaModeSegment';
 import Body from '@/routes/(main)/(create)/features/GenerationLayout/Body';
 import Header from '@/routes/(main)/(create)/features/GenerationLayout/Header';
 import type { GenerationLayoutCommonProps } from '@/routes/(main)/(create)/features/GenerationLayout/types';
 import { useImageStore } from '@/store/image';
 import { generationTopicSelectors } from '@/store/image/slices/generationTopic/selectors';
 
-const useImageSidebarProps = (): GenerationLayoutCommonProps => {
-  const { t } = useTranslation('common');
+const getImageSidebarProps = (): GenerationLayoutCommonProps => {
   return {
     breadcrumb: [
       {
-        href: '/image',
-        title: (
-          <Flexbox
-            horizontal
-            align="center"
-            gap={6}
-            style={{ color: 'inherit', fontSize: 14, whiteSpace: 'nowrap' }}
-          >
-            <Icon icon={getRouteById('image')!.icon} />
-            <span>{t('tab.generation')}</span>
-          </Flexbox>
-        ),
+        title: <GenerationMediaModeSegment layout="sidebar" mode="image" />,
       },
     ],
     generationTopicsSelector: generationTopicSelectors.generationTopics,
@@ -40,7 +26,7 @@ const useImageSidebarProps = (): GenerationLayoutCommonProps => {
 };
 
 const ImageSidebarContent = memo(() => {
-  const props = useImageSidebarProps();
+  const props = getImageSidebarProps();
   return <SideBarLayout body={<Body {...props} />} header={<Header {...props} />} />;
 });
 

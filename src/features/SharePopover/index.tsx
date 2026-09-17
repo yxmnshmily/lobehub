@@ -43,14 +43,27 @@ const PRIVACY_WARNING_ITEMS = [
 interface SharePopoverContentProps {
   /** Owner of the topic — carries the agent-level topic-share policy. */
   agentId?: string;
+  confirmOnCopy?: boolean;
+  onClose?: () => void;
   onOpenModal?: () => void;
   topicId?: string;
   topicPreview?: string;
   topicTitle?: string;
 }
 
-const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
-  const { agentId, onOpenModal, topicId, topicTitle, topicPreview } = props;
+export const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
+  const {
+    agentId,
+    confirmOnCopy = false,
+    onClose,
+    onOpenModal,
+    topicId,
+    topicTitle,
+    topicPreview,
+  } = props;
+  const [selectedVisibility, setSelectedVisibility] = useState<Visibility>(
+    confirmOnCopy ? 'link' : 'private',
+  );
   const { t } = useTranslation('chat');
 
   const [updating, setUpdating] = useState(false);
@@ -90,7 +103,15 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
   // Skipped entirely when the caller cannot publish: the placeholder is of no
   // use to them, and under a restricted agent the server would refuse it.
   useEffect(() => {
-    if (isLoading || loadError || shareInfo || !activeTopicId || !canShare || !canPublishLink)
+    if (
+      confirmOnCopy ||
+      isLoading ||
+      loadError ||
+      shareInfo ||
+      !activeTopicId ||
+      !canShare ||
+      !canPublishLink
+    )
       return;
     // One attempt per topic — a rerender must not retry a create we know failed.
     if (failedTopicId === activeTopicId) return;
@@ -100,6 +121,7 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
       .then(() => mutate())
       .catch(() => setFailedTopicId(activeTopicId));
   }, [
+    confirmOnCopy,
     isLoading,
     loadError,
     shareInfo,
@@ -113,19 +135,38 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
   const shareUrl = shareInfo?.id
     ? `${appOrigin}${withLobeHubMountPath(`/share/t/${encodeURIComponent(shareInfo.id)}`)}`
     : '';
-  const currentVisibility = (shareInfo?.visibility as Visibility) || 'private';
+  const currentVisibility = confirmOnCopy
+    ? canPublishLink
+      ? selectedVisibility
+      : (shareInfo?.visibility as Visibility) || 'private'
+    : (shareInfo?.visibility as Visibility) || 'private';
 
   const updateVisibility = useCallback(
     async (visibility: Visibility) => {
-      if (!activeTopicId) return;
+      if (
+        !activeTopicId ||
+        !canShare ||
+        (visibility === 'link' && !canPublishLink && shareInfo?.visibility !== 'link')
+      )
+        return;
 
       setUpdating(true);
       try {
-        await topicService.updateShareVisibility(activeTopicId, visibility);
+        let info = shareInfo;
+        if (info && info.visibility !== visibility) {
+          await topicService.updateShareVisibility(activeTopicId, visibility);
+        } else if (!info && visibility === 'link') {
+          info = await topicService.enableSharing(activeTopicId, visibility);
+        }
         await mutate();
+        if (confirmOnCopy) setSelectedVisibility(visibility);
+        const copyUrl = info?.id
+          ? `${appOrigin}${withLobeHubMountPath(`/share/t/${encodeURIComponent(info.id)}`)}`
+          : '';
+        if (visibility === 'link' && !copyUrl) throw new Error('Missing share link');
         // Auto-copy the share link the moment link sharing is enabled
-        if (visibility === 'link' && shareUrl) {
-          await copyToClipboard(shareUrl);
+        if (visibility === 'link' && copyUrl) {
+          await copyToClipboard(copyUrl);
           toast.success(t('shareModal.copyLinkSuccess'));
         } else {
           toast.success(t('shareModal.link.visibilityUpdated'));
@@ -136,18 +177,18 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
         setUpdating(false);
       }
     },
-    [activeTopicId, mutate, t, shareUrl],
+    [activeTopicId, appOrigin, canShare, canPublishLink, confirmOnCopy, mutate, t, shareInfo],
   );
 
   const handleVisibilityChange = useCallback(
     (visibility: Visibility) => {
       // The `link` option is already disabled in that case; this is the guard
       // that keeps a keyboard selection from racing past it.
-      if (visibility === 'link' && !canPublishLink) return;
+      if (visibility === 'link' && !canPublishLink && shareInfo?.visibility !== 'link') return;
 
       // Show confirmation when changing from private to link (unless user has dismissed it)
       if (
-        currentVisibility === 'private' &&
+        (confirmOnCopy || currentVisibility === 'private') &&
         visibility === 'link' &&
         !hideTopicSharePrivacyWarning
       ) {
@@ -184,7 +225,7 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
             if (doNotShowAgain) {
               updateSystemStatus({ hideTopicSharePrivacyWarning: true });
             }
-            updateVisibility(visibility);
+            return updateVisibility(visibility);
           },
           title: t('shareModal.popover.privacyWarning.title'),
         });
@@ -194,8 +235,10 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
     },
     [
       canPublishLink,
+      confirmOnCopy,
       currentVisibility,
       hideTopicSharePrivacyWarning,
+      shareInfo?.visibility,
       t,
       topicTitle,
       updateSystemStatus,
@@ -204,15 +247,20 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
   );
 
   const handleCopyLink = useCallback(async () => {
+    if (confirmOnCopy) return handleVisibilityChange('link');
     if (!shareUrl) return;
-    await copyToClipboard(shareUrl);
-    toast.success(t('shareModal.copyLinkSuccess'));
-  }, [shareUrl, t]);
+    try {
+      await copyToClipboard(shareUrl);
+      toast.success(t('shareModal.copyLinkSuccess'));
+    } catch {
+      toast.error(t('shareModal.link.updateError'));
+    }
+  }, [confirmOnCopy, handleVisibilityChange, shareUrl, t]);
 
   const handleOpenModal = useCallback(() => {
-    close();
+    (onClose ?? close)();
     onOpenModal?.();
-  }, [close, onOpenModal]);
+  }, [close, onClose, onOpenModal]);
 
   // Clearing the per-topic failure re-arms the create effect; `mutate` reruns
   // the read so a transient load error clears with it.
@@ -246,7 +294,7 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
 
   // Loading state. Without a share record a restricted caller still gets the
   // real body (visibility defaults to private) instead of an eternal skeleton.
-  if (isLoading || (!shareInfo && canPublishLink)) {
+  if (isLoading || (!confirmOnCopy && !shareInfo && canPublishLink)) {
     return (
       <Flexbox className={styles.container} gap={16}>
         <Text strong>{t('share', { ns: 'common' })}</Text>
@@ -329,7 +377,12 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
               {option.label}
             </Flexbox>
           )}
-          onChange={handleVisibilityChange}
+          onChange={(visibility: Visibility) => {
+            if (!confirmOnCopy) return handleVisibilityChange(visibility);
+            if (visibility === 'link' && !canPublishLink) return;
+            if (visibility === 'private') void updateVisibility(visibility);
+            else setSelectedVisibility(visibility);
+          }}
         />
       </Flexbox>
 
@@ -344,7 +397,14 @@ const SharePopoverContent = memo<SharePopoverContentProps>((props) => {
           {t('shareModal.popover.export')}
         </Button>
         {currentVisibility !== 'private' && (
-          <Button icon={LinkIcon} size="small" type="primary" onClick={handleCopyLink}>
+          <Button
+            disabled={updating}
+            icon={LinkIcon}
+            loading={updating}
+            size="small"
+            type="primary"
+            onClick={handleCopyLink}
+          >
             {t('shareModal.copyLink')}
           </Button>
         )}
@@ -357,6 +417,7 @@ interface SharePopoverProps {
   /** Owner of the topic — carries the agent-level topic-share policy. */
   agentId?: string;
   children?: ReactNode;
+  confirmOnCopy?: boolean;
   onOpenChange?: (open: boolean) => void;
   onOpenModal?: () => void;
   open?: boolean;
@@ -366,7 +427,17 @@ interface SharePopoverProps {
 }
 
 const SharePopover = memo<SharePopoverProps>(
-  ({ agentId, children, onOpenModal, topicId, topicTitle, topicPreview, open, onOpenChange }) => {
+  ({
+    agentId,
+    children,
+    confirmOnCopy,
+    onOpenModal,
+    topicId,
+    topicTitle,
+    topicPreview,
+    open,
+    onOpenChange,
+  }) => {
     const isMobile = useIsMobile();
 
     return (
@@ -380,6 +451,7 @@ const SharePopover = memo<SharePopoverProps>(
             {open !== false && (
               <SharePopoverContent
                 agentId={agentId}
+                confirmOnCopy={confirmOnCopy}
                 key={topicId}
                 topicId={topicId}
                 topicPreview={topicPreview}

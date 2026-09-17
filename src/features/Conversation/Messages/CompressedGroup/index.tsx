@@ -14,7 +14,8 @@ import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/selectors';
 import { shinyTextStyles } from '@/styles/loading';
 
-import { dataSelectors, useConversationStore } from '../../store';
+import { contextSelectors, dataSelectors, useConversationStore } from '../../store';
+import ProcessFold from '../AssistantGroup/components/ProcessFold';
 import CompressedMessageItem from './CompressedMessageItem';
 import { isCompressionSummaryGenerating, shouldShowCompressedGroupPanel } from './logic';
 
@@ -60,6 +61,7 @@ export interface CompressedGroupMessageProps {
 
 const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
   const { t } = useTranslation('chat');
+  const groupId = useConversationStore(contextSelectors.groupId);
   const [activeTab, setActiveTab] = useState<string>(() => getStoredTab(id));
 
   const handleTabChange = useCallback(
@@ -84,7 +86,7 @@ const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
     });
   }, [id, cancelCompression, t]);
 
-  const content = message?.content;
+  const content = message?.content ?? '';
   const rawCompressedMessages = (message as UIChatMessage)?.compressedMessages;
   const expanded = (message?.metadata as CompressionGroupMetadata)?.expanded ?? true;
 
@@ -128,7 +130,7 @@ const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
     [],
   );
 
-  return (
+  const panel = (
     <Flexbox className={styles.container} gap={8}>
       {isGeneratingSummary ? (
         <>
@@ -180,6 +182,13 @@ const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
         </ScrollShadow>
       )}
     </Flexbox>
+  );
+  return groupId ? (
+    <ProcessFold stepCount={0} title={t('groupProcess.details')}>
+      {panel}
+    </ProcessFold>
+  ) : (
+    panel
   );
 });
 

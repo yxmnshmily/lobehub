@@ -41,14 +41,14 @@ const PAGE_SIZE = 30;
 
 /** Optional group adapter: the page stays shared, while access and navigation stay with its host. */
 export interface TopicPageSource {
-  error?: Error | null;
+  error?: unknown;
   getArchiveTopics?: () => Promise<ChatTopic[]>;
   hasMore: boolean;
   header: ReactNode;
   isLoading: boolean;
   isLoadingMore: boolean;
   loadMore: () => void;
-  loadMoreError?: Error | null;
+  loadMoreError?: unknown;
   management?: TopicManagementActions;
   onOpen: (topicId?: string) => void;
   retry: () => void;
@@ -173,23 +173,58 @@ const AgentTopicManager = memo(({ source }: { source?: TopicPageSource }) => {
 
   const renderGroups = useMemo(() => {
     if (!useGroups) return [{ children: filtered, id: 'all' }];
+    if (
+      groupBy === 'byProject' &&
+      filtered.some((topic) => topic.businessAssociations !== undefined)
+    ) {
+      const buckets = new Map<string, { id: string; title: string; children: ChatTopic[] }>();
+      for (const topic of filtered) {
+        // Keep one row per topic even when multiple objects are linked.
+        const relations = topic.businessAssociations ?? [];
+        const id = relations.length
+          ? relations
+              .map((item) => `${item.kind}:${item.id}`)
+              .sort()
+              .join('|')
+          : 'unlinked';
+        const title = relations.length
+          ? relations
+              .map((item) => `${t(`management.association.${item.kind}`)}：${item.title}`)
+              .join('；')
+          : t('management.association.none');
+        const bucket = buckets.get(id) ?? { id, title, children: [] };
+        bucket.children.push(topic);
+        buckets.set(id, bucket);
+      }
+      return [...buckets.values()];
+    }
     if (groupBy === 'byProject') {
       const field: 'createdAt' | 'updatedAt' = sortBy === 'createdAt' ? 'createdAt' : 'updatedAt';
       return groupTopicsByProject(filtered, field);
     }
     return groupTopicsByUpdatedTime(filtered);
-  }, [filtered, useGroups, groupBy, sortBy]);
+  }, [filtered, useGroups, groupBy, sortBy, t]);
 
   const projects = useMemo(() => {
     const map = new Map<string, string>();
-    for (const t of baseTopics) {
-      const wd = getTopicWorkingDirectorySourcePath(t);
+    for (const topic of baseTopics) {
+      if (topic.businessAssociations !== undefined) {
+        if (!topic.businessAssociations.length)
+          map.set('unlinked', t('management.association.none'));
+        for (const item of topic.businessAssociations)
+          map.set(
+            `${item.kind}:${item.id}`,
+            `${t(`management.association.${item.kind}`)}：${item.title}`,
+          );
+        continue;
+      }
+      const wd = getTopicWorkingDirectorySourcePath(topic);
       if (wd && !map.has(wd)) {
-        map.set(wd, getProjectFilterLabel(t) ?? wd);
+        map.set(wd, getProjectFilterLabel(topic) ?? wd);
       }
     }
     return Array.from(map, ([value, label]) => ({ label, value }));
-  }, [baseTopics]);
+  }, [baseTopics, t]);
 
   const botChannelOptions = useMemo(() => buildBotChannelOptions(baseTopics), [baseTopics]);
 
@@ -269,7 +304,21 @@ const AgentTopicManager = memo(({ source }: { source?: TopicPageSource }) => {
             readOnly={!!source && !source.management}
             statusCounts={statusCounts}
           />
-          {(!source || source.management) && <BulkActionBar management={source?.management} />}
+          {(!source || source.management) && (
+            <BulkActionBar
+              management={source?.management}
+              visibleIds={filtered.map((topic) => topic.id)}
+              scopeKey={JSON.stringify([
+                scopeKey,
+                search,
+                status,
+                groupIds,
+                triggers,
+                botChannels,
+                timeRange,
+              ])}
+            />
+          )}
           {!isSearchMode && error && !isLoading && baseTopics.length === 0 ? (
             <AsyncError
               error={error}
@@ -320,7 +369,7 @@ const AgentTopicManager = memo(({ source }: { source?: TopicPageSource }) => {
               </span>
             </Flexbox>
           )}
-          {!isSearchMode && loadMoreError && !isLoadingMore && (
+          {!isSearchMode && Boolean(loadMoreError) && !isLoadingMore && (
             <Flexbox align={'center'} paddingBlock={12}>
               <AsyncError
                 error={loadMoreError}

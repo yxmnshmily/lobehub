@@ -6,10 +6,11 @@ import { parse } from 'cookie';
 import debug from 'debug';
 import { type NextRequest } from 'next/server';
 
+import type { WorkspaceRole } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { canUseWorkspaceApiKeys } from '@/business/server/workspaceApiKey';
 import { getServerDB } from '@/database/core/db-adaptor';
 import { ApiKeyModel } from '@/database/models/apiKey';
-import { hasActiveWorkspaceMembership } from '@/database/models/workspace';
+import { getActiveWorkspaceMembershipRole } from '@/database/models/workspace';
 import { authEnv, LOBE_CHAT_OIDC_AUTH_HEADER } from '@/envs/auth';
 import { getActiveSession } from '@/libs/better-auth/getActiveSession';
 import { extractTraceContext } from '@/libs/observability/traceparent';
@@ -27,15 +28,18 @@ const LOBE_CHAT_API_KEY_HEADER = 'X-API-Key';
 const verifyRequestedWorkspaceMembership = async (
   userId: string,
   workspaceId: string,
-  database?: Parameters<typeof hasActiveWorkspaceMembership>[0],
-): Promise<boolean> => {
+  database?: Parameters<typeof getActiveWorkspaceMembershipRole>[0],
+): Promise<WorkspaceRole | null> => {
   try {
-    return await hasActiveWorkspaceMembership(database ?? (await getServerDB()), {
+    const role = await getActiveWorkspaceMembershipRole(database ?? (await getServerDB()), {
       userId,
       workspaceId,
     });
+    return role === 'owner' || role === 'admin' || role === 'member' || role === 'viewer'
+      ? role
+      : null;
   } catch {
-    return false;
+    return null;
   }
 };
 
@@ -146,6 +150,8 @@ export interface AuthContext {
   userAgent?: string;
   userId?: string | null;
   workspaceId?: string | null;
+  /** Verified server-side membership role; never read from request input. */
+  workspaceRole?: WorkspaceRole;
 }
 
 /**
@@ -168,6 +174,7 @@ export const createContextInner = async (params?: {
   userAgent?: string;
   userId?: string | null;
   workspaceId?: string | null;
+  workspaceRole?: WorkspaceRole;
 }): Promise<AuthContext> => {
   log('createContextInner called with params: %O', params);
   const responseHeaders = new Headers();
@@ -189,6 +196,9 @@ export const createContextInner = async (params?: {
     userAgent: params?.userAgent,
     userId: params?.userId,
     workspaceId: params?.workspaceId,
+    ...(params?.userId && params.workspaceId && params.workspaceRole
+      ? { workspaceRole: params.workspaceRole }
+      : {}),
   };
 };
 
@@ -283,14 +293,14 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
     // an active member, and the workspace must retain its API-key entitlement.
     // Current RBAC is evaluated later and intersects with the key's scopes, so
     // a role downgrade automatically narrows even a full-access key.
+    let workspaceRole: WorkspaceRole | undefined;
     if (apiKeyAuth.workspaceId) {
       const db = await getServerDB();
-      const isActiveMember = await hasActiveWorkspaceMembership(db, {
-        userId: apiKeyAuth.userId,
-        workspaceId: apiKeyAuth.workspaceId,
-      });
+      workspaceRole =
+        (await verifyRequestedWorkspaceMembership(apiKeyAuth.userId, apiKeyAuth.workspaceId, db)) ??
+        undefined;
 
-      if (!isActiveMember) {
+      if (!workspaceRole) {
         log('Workspace API key issuer is no longer an active member; rejecting request');
 
         return createContextInner({
@@ -321,10 +331,12 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
       traceContext,
       userId: apiKeyAuth.userId,
       workspaceId: apiKeyAuth.workspaceId ?? undefined,
+      workspaceRole,
     });
   }
 
   let userId;
+  let workspaceRole: WorkspaceRole | undefined;
   let oidcAuth;
   let authFailure: string | undefined;
 
@@ -361,7 +373,10 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
         userId = tokenInfo.userId;
         const db = await getServerDB();
         await assertOIDCUserActive(db, userId);
-        if (workspaceId && !(await verifyRequestedWorkspaceMembership(userId, workspaceId, db))) {
+        workspaceRole = workspaceId
+          ? ((await verifyRequestedWorkspaceMembership(userId, workspaceId, db)) ?? undefined)
+          : undefined;
+        if (workspaceId && !workspaceRole) {
           log('OIDC workspace membership verification failed');
           return createContextInner({
             ...commonContext,
@@ -383,6 +398,7 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
           ...commonContext,
           traceContext,
           userId,
+          workspaceRole,
         });
       }
     } catch (error) {
@@ -413,10 +429,10 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
 
     if (session && session?.user?.id) {
       userId = session.user.id;
-      if (
-        workspaceId &&
-        !(await verifyRequestedWorkspaceMembership(session.user.id, workspaceId))
-      ) {
+      workspaceRole = workspaceId
+        ? ((await verifyRequestedWorkspaceMembership(session.user.id, workspaceId)) ?? undefined)
+        : undefined;
+      if (workspaceId && !workspaceRole) {
         log('Session workspace membership verification failed');
         return createContextInner({
           ...commonContext,
@@ -431,6 +447,7 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
       userId = null;
       return createContextInner({
         ...commonContext,
+        authFailure,
         traceContext,
         userId,
         workspaceId: undefined,
@@ -442,6 +459,7 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
       authFailure,
       traceContext,
       userId,
+      workspaceRole,
     });
   } catch (e) {
     log('Better Auth authentication error: %O', e);

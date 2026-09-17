@@ -9,6 +9,7 @@ import { messageStateSelectors, useConversationStore } from '../../../store';
 import { CollapsedMessage } from '../../AssistantGroup/components/CollapsedMessage';
 import DisplayContent from '../../components/DisplayContent';
 import FileChunks from '../../components/FileChunks';
+import GroupProcessDetails from '../../components/GroupProcessDetails';
 import ImageFileListViewer from '../../components/ImageFileListViewer';
 import Reasoning, { hasRenderableReasoning } from '../../components/Reasoning';
 import SearchGrounding from '../../components/SearchGrounding';
@@ -51,7 +52,11 @@ const MessageContent = memo<UIChatMessage>(
           />
         )}
         {showFileChunks && <FileChunks data={chunksList} />}
-        {showReasoning && <Reasoning {...props.reasoning} id={id} />}
+        {showReasoning && (
+          <GroupProcessDetails>
+            <Reasoning {...props.reasoning} id={id} />
+          </GroupProcessDetails>
+        )}
         <DisplayContent
           content={reply.content}
           generating={isLoading}

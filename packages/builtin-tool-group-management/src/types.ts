@@ -45,6 +45,8 @@ export interface SpeakParams {
    * self-talk, progress updates, new contributions, and continuing own work.
    */
   replyToMessageId?: string;
+  /** Existing skills to load for this dispatch only. */
+  skillIdentifiers?: string[];
   /**
    * If true, the orchestration will end after this agent responds,
    * without calling the supervisor again.
@@ -69,6 +71,8 @@ export interface BroadcastParams {
 export interface DelegateParams {
   agentId: string;
   reason?: string;
+  /** Existing skills to load for this dispatch only. */
+  skillIdentifiers?: string[];
 }
 
 // ==================== Task Execution Params ====================
@@ -82,6 +86,8 @@ export interface ExecuteTaskParams {
    * MUST be true when task requires local-system tools. Default is false (server execution).
    */
   runInClient?: boolean;
+  /** Existing skills to load for this dispatch only. */
+  skillIdentifiers?: string[];
   /**
    * If true, the orchestration will end after the task completes,
    * without calling the supervisor again.
@@ -98,6 +104,8 @@ export interface TaskItem {
   agentId: string;
   /** Detailed instruction for the agent to execute */
   instruction: string;
+  /** Existing skills to load for this dispatch only. */
+  skillIdentifiers?: string[];
   /** Optional timeout in milliseconds for this specific task */
   timeout?: number;
   /** Brief title describing what this task does (shown in UI) */

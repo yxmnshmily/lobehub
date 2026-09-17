@@ -151,6 +151,15 @@ describe('UserPersonaService', () => {
     },
   );
 
+  it.each([{}, { responseLanguage: '' }, { responseLanguage: 42 }, null])(
+    'uses the configured language for an absent or invalid stored preference: %j',
+    async (general) => {
+      await db.insert(userSettings).values({ id: userId, general });
+      await new UserPersonaService(db).composeWriting({ userId });
+      expect(toolCall).toHaveBeenLastCalledWith(expect.objectContaining({ language: 'English' }));
+    },
+  );
+
   it('passes existing persona baseline on subsequent runs', async () => {
     const service = new UserPersonaService(db);
     await service.composeWriting({ userId, username: 'User' });

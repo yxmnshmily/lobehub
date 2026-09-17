@@ -7,6 +7,9 @@ import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceA
 import { ProjectModel } from '@/database/models/project';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { ResourceDeletionService } from '@/server/services/resourceDeletion';
+
+import { assertGroupResourceDeletable } from './_helpers/assertGroupResourceDeletable';
 
 const projectProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -137,8 +140,18 @@ export const projectRouter = router({
 
   delete: projectWriteProcedure.input(idInput).mutation(async ({ ctx, input }) => {
     try {
+      await assertGroupResourceDeletable(ctx, 'project', [input.id]);
+      const project = await ctx.projectModel.findById(input.id);
+      if (!project) return { data: null, message: 'Project deleted', success: true };
+      const deletion = await new ResourceDeletionService(
+        ctx.serverDB,
+        ctx.userId,
+        ctx.workspaceId ?? undefined,
+        ctx.workspaceRole,
+      ).delete('project', [input.id]);
       return {
-        data: requireResult(await ctx.projectModel.delete(input.id)),
+        data: project,
+        deletion,
         message: 'Project deleted',
         success: true,
       };

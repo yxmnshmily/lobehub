@@ -12,7 +12,7 @@ import {
 } from '@lobechat/types';
 import { cleanObject } from '@lobechat/utils';
 import { TRPCError } from '@trpc/server';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
@@ -30,15 +30,20 @@ import { WorkspaceAuditLogModel } from '@/database/models/workspaceAuditLog';
 import { AgentMigrationRepo } from '@/database/repositories/agentMigration';
 import { HeteroSessionImporterRepo } from '@/database/repositories/heteroSessionImporter';
 import { TopicImporterRepo } from '@/database/repositories/topicImporter';
-import { chatGroups } from '@/database/schemas';
+import { chatGroups, topics } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
+import { buildWorkspaceWhere } from '@/database/utils/workspace';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { FileService } from '@/server/services/file';
 import { createFtsSearchRepo } from '@/server/services/ftsSearch';
+import { FileDeletionCleanup, stageFileCleanup } from '@/server/services/resourceDeletion';
 import { after } from '@/server/utils/scheduleAfterResponse';
 import { type BatchTaskResult } from '@/types/service';
 
+import {
+  assertGroupOwnerForDeletion,
+  assertGroupResourceDeletable,
+} from './_helpers/assertGroupResourceDeletable';
 import {
   assertWorkspaceRowManageable,
   shouldRestrictBulkDeleteToCreator,
@@ -380,6 +385,7 @@ export const topicRouter = router({
     .use(withScopedPermission('topic:delete'))
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ input, ctx }) => {
+      await assertGroupResourceDeletable(ctx, 'topic', input.ids);
       const rows = await ctx.topicModel.findOwnersByIds(input.ids);
       for (const userId of new Set(rows.map((row) => row.userId))) {
         assertWorkspaceRowManageable(ctx, userId, 'topic');
@@ -394,6 +400,20 @@ export const topicRouter = router({
     .mutation(async ({ input, ctx }) => {
       const restrictToCreator = shouldRestrictBulkDeleteToCreator(ctx, input.scope);
 
+      await assertGroupResourceDeletable(
+        ctx,
+        'topic',
+        undefined,
+        and(
+          buildWorkspaceWhere(
+            { userId: ctx.userId, workspaceId: ctx.workspaceId ?? undefined },
+            topics,
+          ),
+          restrictToCreator ? eq(topics.userId, ctx.userId) : undefined,
+          isNull(topics.senderId),
+          eq(topics.agentId, input.agentId),
+        ),
+      );
       return ctx.topicModel.batchDeleteByAgentId(input.agentId, { restrictToCreator });
     }),
 
@@ -401,6 +421,7 @@ export const topicRouter = router({
     .use(withScopedPermission('topic:delete'))
     .input(z.object({ groupId: z.string(), scope: topicBulkDeleteScopeSchema }))
     .mutation(async ({ input, ctx }) => {
+      await assertGroupOwnerForDeletion(ctx, [input.groupId]);
       await assertCanUseConversationTargets(guardCtx(ctx), [{ groupId: input.groupId }]);
       const restrictToCreator = shouldRestrictBulkDeleteToCreator(ctx, input.scope);
 
@@ -432,6 +453,20 @@ export const topicRouter = router({
 
       const restrictToCreator = shouldRestrictBulkDeleteToCreator(ctx, input.scope);
 
+      await assertGroupResourceDeletable(
+        ctx,
+        'topic',
+        undefined,
+        and(
+          buildWorkspaceWhere(
+            { userId: ctx.userId, workspaceId: ctx.workspaceId ?? undefined },
+            topics,
+          ),
+          restrictToCreator ? eq(topics.userId, ctx.userId) : undefined,
+          isNull(topics.senderId),
+          resolved.sessionId ? eq(topics.sessionId, resolved.sessionId) : isNull(topics.sessionId),
+        ),
+      );
       return ctx.topicModel.batchDeleteBySessionId(resolved.sessionId, { restrictToCreator });
     }),
 
@@ -925,6 +960,19 @@ export const topicRouter = router({
   removeAllTopics: topicProcedure
     .use(withScopedPermission('topic:delete'))
     .mutation(async ({ ctx }) => {
+      await assertGroupResourceDeletable(
+        ctx,
+        'topic',
+        undefined,
+        and(
+          buildWorkspaceWhere(
+            { userId: ctx.userId, workspaceId: ctx.workspaceId ?? undefined },
+            topics,
+          ),
+          eq(topics.userId, ctx.userId),
+          isNull(topics.senderId),
+        ),
+      );
       return ctx.topicModel.deleteAll();
     }),
 
@@ -937,6 +985,7 @@ export const topicRouter = router({
       // remove it. Resolving through the visitor-excluding lookup keeps the
       // file cleanup below from destroying a visitor conversation's attachments
       // (DB rows + S3 objects) while the topic itself survives.
+      await assertGroupResourceDeletable(ctx, 'topic', [input.id]);
       const topic = await ctx.topicModel.findOwnTopicById(input.id);
       if (topic) assertWorkspaceRowManageable(ctx, topic.userId, 'topic');
 
@@ -944,28 +993,23 @@ export const topicRouter = router({
       // unchanged return shape, but never touch any files.
       if (!input.removeFiles || !topic) return ctx.topicModel.delete(input.id);
 
-      // Collect the topic's deletable attachments BEFORE deleting it — the lookup
-      // joins messages, which are cascade-deleted along with the topic. Files
-      // still referenced by another topic or the session are intentionally kept.
-      const fileIds = await ctx.fileModel.findDeletableFilesByTopicId(input.id);
-
-      const result = await ctx.topicModel.delete(input.id);
-
-      if (fileIds.length > 0) {
-        const needToRemove = await ctx.fileModel.deleteMany(
-          fileIds,
-          serverDBEnv.REMOVE_GLOBAL_FILE,
-        );
-        // deleteMany returns only files whose underlying object is no longer
-        // referenced by any other file, so the S3 cleanup is reference-safe.
-        if (needToRemove && needToRemove.length > 0) {
-          const wsId = ctx.workspaceId ?? undefined;
-          const fileService = new FileService(ctx.serverDB, ctx.userId, wsId);
-          await fileService.deleteFiles(needToRemove.map((file) => file.url!));
-        }
-      }
-
-      return result;
+      const wsId = ctx.workspaceId ?? undefined;
+      const { result, cleanupJobId } = await ctx.serverDB.transaction(async (tx) => {
+        const db = tx as LobeChatDatabase;
+        const topicModel = new TopicModel(db, ctx.userId, wsId);
+        const fileModel = new FileModel(db, ctx.userId, wsId);
+        const fileIds = await fileModel.findDeletableFilesByTopicId(input.id);
+        const result = await topicModel.delete(input.id);
+        const removed = fileIds.length
+          ? await fileModel.deleteMany(fileIds, serverDBEnv.REMOVE_GLOBAL_FILE)
+          : [];
+        const cleanupJobId = await stageFileCleanup(db, ctx.userId, wsId, removed ?? []);
+        return { result, cleanupJobId };
+      });
+      const storageCleanup = cleanupJobId
+        ? await new FileDeletionCleanup(ctx.serverDB, ctx.userId, wsId).retry(cleanupJobId)
+        : undefined;
+      return { ...result, storageCleanup };
     }),
 
   searchTopics: topicSearchProcedure

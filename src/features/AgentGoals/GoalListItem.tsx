@@ -6,6 +6,7 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { ArrowRightIcon } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
@@ -30,6 +31,7 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 export const GoalListItem = memo<GoalItemProps>(({ goal: item }) => {
+  const { t } = useTranslation('chat');
   const navigate = useWorkspaceAwareNavigate();
   const { aid } = useActiveRouteParams<{ aid?: string }>();
   const { goal } = item;
@@ -68,6 +70,11 @@ export const GoalListItem = memo<GoalItemProps>(({ goal: item }) => {
           <Text ellipsis fontSize={15} weight={600}>
             {goal.title}
           </Text>
+          {goal.status === 'canceled' && (
+            <Text fontSize={12} style={{ flexShrink: 0 }} type={'secondary'}>
+              {t('goalList.status.canceled')}
+            </Text>
+          )}
         </Flexbox>
         {goal.requirement && goal.requirement !== goal.title && (
           <Text ellipsis fontSize={12} type={'secondary'}>

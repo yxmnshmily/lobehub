@@ -60,7 +60,7 @@ const AppEnvironmentSection = memo(() => {
       collapsible={false}
       items={formItems}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

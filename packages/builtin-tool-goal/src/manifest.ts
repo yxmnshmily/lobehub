@@ -9,7 +9,7 @@ export const GoalManifest: BuiltinToolManifest = {
   api: [
     {
       description:
-        'Create and start a long-horizon goal with an editable acceptance plan. Use for /goal, or in a group when the user explicitly requests a deliverable requiring coordinated dependent tasks. Do not turn ordinary questions or brainstorming into goals. It creates the goal in the current group when present, records acceptance criteria, and advances its coordinator. Once it succeeds, do not reproduce the work in this conversation; the goal page owns execution and progress.',
+        'Create and start a long-horizon goal with an editable acceptance plan. Use for an explicit goal request such as /goal, or a focused outcome needing sustained specialist collaboration and refinement, even for one artifact. Routine creative work such as a short text plus one image can be completed directly in conversation; a deliverable or a simple sequence alone does not require a goal. Do not turn ordinary questions or brainstorming into goals. It creates the goal in the current group when present, records acceptance criteria, and advances its coordinator. Once it succeeds, do not reproduce the work in this conversation; the goal owns execution; keep progress and available results accessible through the current conversation.',
       humanIntervention: 'never',
       name: GoalApiName.createGoal,
       parameters: {
@@ -17,7 +17,7 @@ export const GoalManifest: BuiltinToolManifest = {
         properties: {
           criteria: {
             description:
-              'Concrete acceptance criteria derived from every explicit user requirement.',
+              'Outcome-level acceptance checks. For a simple artifact, combine its explicit content, style and format requirements into an overall result check; separate genuinely independent outcomes or user-requested formal checks.',
             items: {
               additionalProperties: false,
               properties: {
@@ -58,6 +58,61 @@ export const GoalManifest: BuiltinToolManifest = {
         type: 'object',
       },
       renderDisplayControl: 'expand',
+    },
+    {
+      name: GoalApiName.viewGoal,
+      description:
+        'Inspect an existing goal, its current work items and linked results in this conversation. Use its returned node and task identifiers for follow-up changes instead of creating duplicate work.',
+      humanIntervention: 'never',
+      parameters: {
+        type: 'object',
+        properties: {
+          goalId: {
+            type: 'string',
+            description:
+              'Existing goal ID, or its exact name in the current group when the ID is unavailable. Use the returned goalId for changes; disambiguate duplicate candidates first.',
+          },
+        },
+        required: ['goalId'],
+      },
+    },
+    {
+      name: GoalApiName.reviseGoal,
+      description:
+        'Apply a requested revision to one existing goal work item, preserving the original goal/task IDs and result history. This interrupts affected running work and queues a new attempt for that item, actual dependents and final acceptance; unrelated completed work stays intact. Inspect with viewGoal first. Supply the full updated instruction for the item. Existing budget limits and a deliberate pause remain in force; managed planning may report a conflict.',
+      humanIntervention: 'never',
+      parameters: {
+        type: 'object',
+        properties: {
+          goalId: { type: 'string', description: 'Existing goal ID.' },
+          nodeId: {
+            type: 'string',
+            description: 'Task node ID returned by viewGoal, not the task ID.',
+          },
+          instruction: {
+            type: 'string',
+            description:
+              'Complete revised instruction for this work item, preserving unchanged requirements.',
+          },
+          requirement: {
+            type: 'string',
+            description:
+              'Optional complete revised goal requirement, only when the user changed the overall requirement. Existing structured acceptance criteria remain in force.',
+          },
+        },
+        required: ['goalId', 'nodeId', 'instruction'],
+      },
+    },
+    {
+      name: GoalApiName.resumeGoal,
+      description:
+        'Continue an existing paused goal when the user asks to resume. Keeps its original work and budget limits; pending decisions still require resolution. Use reviseGoal for changes to completed results instead of replaying the goal.',
+      humanIntervention: 'never',
+      parameters: {
+        type: 'object',
+        properties: { goalId: { type: 'string', description: 'Existing goal ID.' } },
+        required: ['goalId'],
+      },
     },
   ],
   identifier: GoalIdentifier,

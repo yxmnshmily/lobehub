@@ -100,35 +100,35 @@ describe('member menu', () => {
     (compact) => {
       render(
         <AssistantMenu
-          agentId="writer"
           canConfigure
+          agentId="writer"
           compact={compact}
           title="Writer"
           onUpdated={mocks.refresh}
         />,
       );
-      expect(screen.getByRole('button', { name: 'labels', exact: true })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'labels' })).toBeVisible();
     },
   );
   it('keeps the built-in supervisor name fixed', () => {
     render(
       <AssistantMenu
-        agentId="supervisor"
         canConfigure
+        agentId="supervisor"
         canRename={false}
         title="旅游群"
         onUpdated={mocks.refresh}
       />,
     );
-    expect(screen.queryByRole('button', { name: 'rename', exact: true })).toBeNull();
-    expect(screen.getByRole('button', { name: 'manage', exact: true })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'rename' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'manage' })).toBeVisible();
   });
   it('reuses the full list menu but only invokes group-specific deletion', () => {
     const remove = vi.fn();
     render(
       <AssistantMenu
-        agentId="writer"
         canConfigure
+        agentId="writer"
         title="Writer"
         onRemove={remove}
         onUpdated={mocks.refresh}
@@ -144,12 +144,12 @@ describe('member menu', () => {
       'moveGroup',
       'delete',
     ])
-      expect(screen.getByRole('button', { name: key, exact: true })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'delete', exact: true }));
+      expect(screen.getByRole('button', { name: key })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'delete' }));
     expect(remove).toHaveBeenCalledOnce();
     expect(mocks.originalDelete).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'publishToWorkspace' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'duplicate', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'duplicate' }));
     expect(mocks.duplicate).toHaveBeenCalledOnce();
   });
   it('keeps configuration and deletion unavailable without template permission', () => {
@@ -163,13 +163,13 @@ describe('member menu', () => {
       />,
     );
     for (const name of ['manage', 'rename', 'delete', 'labels'])
-      expect(screen.queryByRole('button', { name, exact: true })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'duplicate', exact: true })).toBeNull();
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'duplicate' })).toBeNull();
   });
   it('can restore a hidden member from the complete member list', async () => {
     mocks.visible = false;
     render(
-      <AssistantMenu agentId="writer" canConfigure title="Writer" onUpdated={mocks.refresh} />,
+      <AssistantMenu canConfigure agentId="writer" title="Writer" onUpdated={mocks.refresh} />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'showInSidebar' }));
     await waitFor(() => expect(mocks.show).toHaveBeenCalledWith('writer', true));

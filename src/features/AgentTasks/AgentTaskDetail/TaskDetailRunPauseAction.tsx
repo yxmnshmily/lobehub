@@ -4,7 +4,7 @@ import { CalendarOffIcon, PlayIcon, RotateCcwIcon } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import StopLoadingIcon from '@/components/StopLoading';
+import WorkRunControls from '@/features/SuperGroup/WorkRunControls';
 import { usePermission } from '@/hooks/usePermission';
 import { useAgentStore } from '@/store/agent';
 import { builtinAgentSelectors } from '@/store/agent/selectors';
@@ -47,7 +47,6 @@ const TaskDetailRunPauseAction = memo(() => {
   const { allowed: canEditTask, reason } = usePermission('create_content');
   const taskId = useTaskStore(taskDetailSelectors.activeTaskId);
   const canRun = useTaskStore(taskDetailSelectors.canRunActiveTask);
-  const canPause = useTaskStore(taskDetailSelectors.canPauseActiveTask);
   const status = useTaskStore(taskDetailSelectors.activeTaskStatus);
   const detail = useTaskStore(taskDetailSelectors.activeTaskDetail);
   const automationMode = useTaskStore(taskDetailSelectors.activeTaskAutomationMode);
@@ -70,10 +69,6 @@ const TaskDetailRunPauseAction = memo(() => {
   const handleRunOrPause = useCallback(async () => {
     if (!canEditTask) return;
     if (!taskId) return;
-    if (canPause) {
-      await updateTaskStatus(taskId, 'paused');
-      return;
-    }
     if (!canRun) return;
     setIsStarting(true);
     try {
@@ -87,13 +82,11 @@ const TaskDetailRunPauseAction = memo(() => {
   }, [
     taskId,
     canRun,
-    canPause,
     assigneeAgentId,
     assigneeUserId,
     inboxAgentId,
     runTask,
     updateTask,
-    updateTaskStatus,
     canEditTask,
   ]);
 
@@ -194,26 +187,13 @@ const TaskDetailRunPauseAction = memo(() => {
     );
   }
 
-  if (!canRun && !canPause && !isStarting) return null;
+  if (!canRun && !isStarting) return null;
 
   if (isStarting) {
     const pendingLabel = isRerun ? t('taskDetail.rerunTask') : t('taskDetail.runTask');
     return (
       <Button disabled loading type={'primary'}>
         {pendingLabel}
-      </Button>
-    );
-  }
-
-  if (canPause) {
-    return (
-      <Button
-        disabled={!canEditTask}
-        icon={StopLoadingIcon}
-        title={reason}
-        onClick={handleRunOrPause}
-      >
-        {t('taskDetail.stopTask')}
       </Button>
     );
   }
@@ -234,4 +214,15 @@ const TaskDetailRunPauseAction = memo(() => {
   );
 });
 
-export default TaskDetailRunPauseAction;
+export default function TaskExecutionControls() {
+  const id = useTaskStore(taskDetailSelectors.activeTaskId);
+  const status = useTaskStore(taskDetailSelectors.activeTaskStatus);
+  if (!id || !status) return null;
+  const manuallyControlled = ['running', 'paused', 'scheduled'].includes(status);
+  return (
+    <Flexbox horizontal gap={8} style={{ flexWrap: 'wrap' }}>
+      {(!manuallyControlled || status === 'scheduled') && <TaskDetailRunPauseAction />}
+      <WorkRunControls id={id} kind="tasks" status={status} />
+    </Flexbox>
+  );
+}

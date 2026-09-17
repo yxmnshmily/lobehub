@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
 import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
@@ -23,12 +24,16 @@ interface BreadcrumbProps {
 }
 
 const Breadcrumb = memo<BreadcrumbProps>(({ taskId, agentId }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const groupScope = use(GroupWorkScopeContext);
   const { aid: routeAgentId } = useParams<{ aid?: string }>();
   const aid = agentId ?? routeAgentId;
   const agentMeta = useAgentDisplayMeta(aid);
-  const taskTitle = useTaskStore((s) => (taskId ? s.taskDetailMap[taskId]?.name : undefined));
+  const rawTaskTitle = useTaskStore((s) => (taskId ? s.taskDetailMap[taskId]?.name : undefined));
+  const taskTitle = localizeGoalTemplate(
+    rawTaskTitle ?? '',
+    i18n.resolvedLanguage || i18n.language,
+  );
   const taskIdentifier = useTaskStore((s) =>
     taskId ? s.taskDetailMap[taskId]?.identifier : undefined,
   );
@@ -54,9 +59,9 @@ const Breadcrumb = memo<BreadcrumbProps>(({ taskId, agentId }) => {
   if (groupScope)
     return (
       <GroupPageBreadcrumb
+        detailTitle={taskId ? taskTitle || taskIdentifier || taskId : undefined}
         groupId={groupScope.groupId}
         title="任务"
-        detailTitle={taskId ? taskTitle || taskIdentifier || taskId : undefined}
       />
     );
 

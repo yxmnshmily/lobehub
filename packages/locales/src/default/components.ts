@@ -81,6 +81,7 @@ export default {
   'FileManager.emptyStatus.title': 'Drag files or folders here',
   'FileManager.image.loadFailed': 'Preview unavailable',
   'FileManager.noFolders': 'No folders available',
+  'FileManager.search.clear': 'Clear search',
   'FileManager.search.noResults': 'No files found',
   'FileManager.search.placeholder': 'Search files...',
   'FileManager.selection.onlyOwn': 'You can only select resources you uploaded.',

@@ -9,6 +9,9 @@ import type {
 
 import { lambdaClient } from '@/libs/trpc/client';
 
+/** Every graph method takes the `goals` row id. */
+import { clearResourceDeletionCache } from './resourceDeletionCache';
+
 export interface GoalListParams {
   agentId?: string;
   groupId?: string;
@@ -18,7 +21,6 @@ export interface GoalListParams {
   statuses?: GoalStatus[];
 }
 
-/** Every graph method takes the `goals` row id. */
 class GoalService {
   /**
    * List goals. Each item is the execution-carrier task with the goal row
@@ -63,11 +65,15 @@ class GoalService {
   ) => lambdaClient.goal.recordObservation.mutate({ id, ...observation });
 
   /** Delete a goal and its graph. The dispatched Work Tasks are left in place. */
-  delete = async (id: string) => lambdaClient.goal.delete.mutate({ id });
+  delete = async (id: string) => {
+    const result = await lambdaClient.goal.delete.mutate({ id });
+    await clearResourceDeletionCache(result?.deletion);
+    return result;
+  };
 
   /** The whole Goal Graph in one read: nodes, edges, decisions, events, work-version links. */
-  getGraph = async (id: string): Promise<GoalGraphSnapshot> => {
-    const { data } = await lambdaClient.goal.graph.query({ id });
+  getGraph = async (id: string, groupId?: string): Promise<GoalGraphSnapshot> => {
+    const { data } = await lambdaClient.goal.graph.query({ id, groupId });
     return data;
   };
 
@@ -88,9 +94,20 @@ class GoalService {
   };
 
   /** Stop scheduling new work. Does not abort the operation already running. */
+  cancel = async (id: string) => lambdaClient.goal.cancel.mutate({ id });
+
   pause = async (id: string) => lambdaClient.goal.pause.mutate({ id });
 
-  resume = async (id: string) => lambdaClient.goal.resume.mutate({ id });
+  resume = async (id: string, groupId?: string) => lambdaClient.goal.resume.mutate({ id, groupId });
+
+  revise = async (params: {
+    id: string;
+    groupId?: string;
+    origin?: { agentId: string; topicId: string };
+    nodeId: string;
+    instruction: string;
+    requirement?: string;
+  }) => lambdaClient.goal.revise.mutate(params);
 
   /** Resolve a pending decision gate. Does not resume a paused goal by itself. */
   decide = async (params: {

@@ -63,7 +63,7 @@ export const selectActivatedSkills = (enabledSkills?: SkillMeta[]): SkillMeta[] 
 /**
  * Skill Context Provider
  * Injects lightweight skill metadata into the system prompt so the LLM knows
- * which skills are available and can invoke them via `runSkill`.
+ * which skills are available and can invoke them via `activateSkill`.
  */
 export class SkillContextProvider extends BaseSystemRoleProvider {
   readonly name = 'SkillContextProvider';
@@ -117,6 +117,11 @@ export class SkillContextProvider extends BaseSystemRoleProvider {
       log('No skill content generated, skipping injection');
       return null;
     }
+
+    // Applies equally to pinned bodies and skills loaded on demand.
+    contentParts.push(
+      "Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements.",
+    );
 
     log(
       'Skill context prepared: %d activated, %d available',

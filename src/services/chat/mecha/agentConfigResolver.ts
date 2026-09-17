@@ -138,6 +138,8 @@ export interface ResolvedAgentConfig {
    * For regular agents: agent config plugins
    */
   plugins: string[];
+  /** Skills selected for this execution only; never persisted to the agent. */
+  skillIdentifiers?: string[];
   /** The agent's slug (if builtin) */
   slug?: string;
   /**

@@ -4,7 +4,7 @@ import { Center, ContextMenuTrigger, Empty, Flexbox, Icon, SearchBar, Tooltip } 
 import {
   ActionIcon,
   Button,
-  confirmModal,
+  Checkbox,
   type DropdownItem,
   DropdownMenu,
   Text,
@@ -19,16 +19,20 @@ import {
   SearchXIcon,
   TrashIcon,
 } from 'lucide-react';
-import { memo, use, useMemo, useState } from 'react';
+import { memo, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import AsyncError from '@/components/AsyncError';
 import { PROJECT_STATUS_VISUALS, resolveProjectStatus } from '@/components/ExecutionStatus';
+import BulkSelectionBar from '@/features/AgentTopicManager/BulkSelectionBar';
 import NavHeader from '@/features/NavHeader';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import { openCreateProjectModal } from '@/features/Projects/CreateProjectModal';
 import ProjectDisabled from '@/features/Projects/ProjectDisabled';
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
+import RunUsage from '@/features/RunUsage';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
 import TopicCreatorAvatar from '@/features/TopicCreatorAvatar';
 import UserAvatar from '@/features/User/UserAvatar';
 import WideScreenContainer from '@/features/WideScreenContainer';
@@ -55,8 +59,23 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex: none;
     min-width: 72px;
     color: ${cssVar.colorTextSecondary};
+
     @container project-list (max-width: 600px) {
       display: none;
+    }
+  `,
+  usage: css`
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    width: 210px;
+  `,
+  name: css`
+    flex: 1;
+    min-width: 0;
+
+    @container project-list (max-width: 600px) {
+      flex-basis: calc(100% - 32px);
     }
   `,
   link: css`
@@ -68,6 +87,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
 
     color: inherit;
+
+    @container project-list (max-width: 600px) {
+      flex-wrap: wrap;
+    }
   `,
   owner: css`
     flex: none;
@@ -78,6 +101,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 12px;
     border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: ${cssVar.borderRadiusSM};
+
     color: inherit;
 
     &:hover {
@@ -97,6 +121,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     color: ${cssVar.colorTextSecondary};
     text-align: end;
     white-space: nowrap;
+
     @container project-list (max-width: 440px) {
       display: none;
     }
@@ -106,10 +131,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
   `,
   header: css`
-    padding: 8px 12px;
+    padding-block: 8px;
+    padding-inline: 12px;
     border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
-    color: ${cssVar.colorTextSecondary};
+
     font-size: 12px;
+    color: ${cssVar.colorTextSecondary};
+
+    @container project-list (max-width: 600px) {
+      display: none;
+    }
   `,
 }));
 
@@ -129,25 +160,24 @@ const ProjectOwnerAvatar = memo<{ userId: string }>(({ userId }) => {
 
 ProjectOwnerAvatar.displayName = 'ProjectOwnerAvatar';
 
-const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
+const ProjectRow = memo<{
+  project: ProjectListItem;
+  selected: boolean;
+  busy: boolean;
+  onSelect: () => void;
+}>(({ project, selected, busy, onSelect }) => {
   const { t } = useTranslation(['project', 'common']);
   const [deleting, setDeleting] = useState(false);
-  const deleteProject = useProjectStore((s) => s.deleteProject);
   const currentUserId = useUserStore(userProfileSelectors.userId);
-  const canDelete = currentUserId === project.userId;
+  const { canDelete, checkDeletePermission } = useGroupDeletePermission(
+    currentUserId === project.userId,
+  );
   const status = resolveProjectStatus(project.status);
   const statusVisual = PROJECT_STATUS_VISUALS[status];
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteProject(project.id);
+  const handleDelete = (cleanupPending: boolean) => {
+    if (checkDeletePermission() && !cleanupPending)
       toast.success(t('list.deleteSuccess', { name: project.name }));
-    } catch (error) {
-      console.error('Failed to delete project', error);
-      toast.error(t('list.deleteError'));
-      setDeleting(false);
-    }
   };
 
   const menuItems: DropdownItem[] = [
@@ -157,12 +187,13 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
       key: 'delete',
       label: t('list.deleteAction'),
       onClick: () => {
-        confirmModal({
-          cancelText: t('cancel', { ns: 'common' }),
-          content: t('list.deleteConfirmDescription', { name: project.name }),
-          okButtonProps: { danger: true },
-          okText: t('delete', { ns: 'common' }),
-          onOk: () => void handleDelete(),
+        void confirmResourceDeletion({
+          onBusyChange: setDeleting,
+          resource: 'project',
+          ids: [project.id],
+          canProceed: checkDeletePermission,
+
+          onOk: handleDelete,
           title: t('list.deleteConfirmTitle'),
         });
       },
@@ -171,11 +202,19 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
 
   const row = (
     <Flexbox horizontal align={'center'} className={styles.row} gap={8}>
+      {canDelete && (
+        <Checkbox
+          aria-label={project.name}
+          checked={selected}
+          disabled={!canDelete || busy || deleting}
+          onChange={onSelect}
+        />
+      )}
       <WorkspaceLink className={styles.link} to={`/project/${project.slug ?? project.id}`}>
         <Tooltip title={t(`acceptance.status.${status}`)}>
           <Icon color={statusVisual.color} icon={statusVisual.icon} size={16} />
         </Tooltip>
-        <Flexbox flex={1} style={{ minWidth: 0 }}>
+        <Flexbox className={styles.name}>
           <Text ellipsis weight={500}>
             {project.name}
           </Text>
@@ -183,6 +222,9 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
         <Text className={styles.identifier} fontSize={12}>
           {project.identifier}
         </Text>
+        <span className={styles.usage}>
+          <RunUsage cost={project.totalRunCost} duration={project.totalRunDuration} />
+        </span>
         <ProjectOwnerAvatar userId={project.userId} />
         <Text
           className={styles.updatedAt}
@@ -213,9 +255,17 @@ const ProjectRow = memo<{ project: ProjectListItem }>(({ project }) => {
 ProjectRow.displayName = 'ProjectRow';
 
 const ProjectListPage = memo(() => {
-  const { t } = useTranslation('project');
+  const { t } = useTranslation(['project', 'common']);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const currentUserId = useUserStore(userProfileSelectors.userId);
+  const activeWorkspaceId = useActiveWorkspaceId();
   const [keyword, setKeyword] = useState('');
   const groupScope = use(GroupProjectScopeContext);
+  const { canDelete: canDeleteInGroup, checkDeletePermission } = useGroupDeletePermission(
+    true,
+    groupScope?.groupId,
+  );
   const labEnabled = useUserStore(labPreferSelectors.enableProjects);
   const enabled = labEnabled || !!groupScope;
   const navigate = useWorkspaceAwareNavigate();
@@ -232,6 +282,40 @@ const ProjectListPage = memo(() => {
         )
       : projects;
   }, [keyword, projects]);
+
+  const selectionScope = JSON.stringify([
+    groupScope?.groupId,
+    activeWorkspaceId,
+    currentUserId,
+    keyword,
+  ]);
+  const currentScope = useRef(selectionScope);
+  currentScope.current = selectionScope;
+  useEffect(() => setSelected([]), [selectionScope]);
+  const selectableProjects = filteredProjects.filter(
+    (project) => canDeleteInGroup && project.userId === currentUserId,
+  );
+  const selectedProjects = selectableProjects.filter((project) => selected.includes(project.id));
+  const confirmDelete = () => {
+    if (deleting || !selectedProjects.length) return;
+    const targets = [...selectedProjects];
+    const scope = selectionScope;
+    void confirmResourceDeletion({
+      onBusyChange: setDeleting,
+      resource: 'project',
+      ids: targets.map((project) => project.id),
+      canProceed: () => checkDeletePermission() && currentScope.current === scope,
+
+      title: t('bulkDelete.confirmTitle', { ns: 'common', count: targets.length }),
+
+      onOk: (cleanupPending) => {
+        if (!checkDeletePermission() || currentScope.current !== scope) return;
+        setSelected([]);
+        if (!cleanupPending)
+          toast.success(t('bulkDelete.success', { ns: 'common', count: targets.length }));
+      },
+    });
+  };
 
   if (!enabled) return <ProjectDisabled />;
 
@@ -274,6 +358,16 @@ const ProjectListPage = memo(() => {
             {t('create.action')}
           </Button>
         </Flexbox>
+        {canDeleteInGroup && (
+          <BulkSelectionBar
+            busy={deleting}
+            selectedCount={selectedProjects.length}
+            total={selectableProjects.length}
+            onClear={() => setSelected([])}
+            onDelete={confirmDelete}
+            onSelectAll={() => setSelected(selectableProjects.map((project) => project.id))}
+          />
+        )}
         {error ? (
           <AsyncError error={error} onRetry={() => mutate()} />
         ) : isLoading && projects.length === 0 ? (
@@ -288,14 +382,28 @@ const ProjectListPage = memo(() => {
         ) : (
           <Flexbox gap={0}>
             <Flexbox aria-hidden horizontal align="center" className={styles.header} gap={8}>
+              <span style={{ width: 20, flex: 'none' }} />
               <span style={{ flex: 1 }}>项目名称</span>
               <span className={styles.identifier}>编号</span>
+              <span className={styles.usage}>{t('runUsage.summary', { ns: 'common' })}</span>
               <span className={styles.owner}>成员</span>
               <span className={styles.updatedAt}>更新时间</span>
               <span style={{ width: 28, flex: 'none' }} />
             </Flexbox>
             {filteredProjects.map((project) => (
-              <ProjectRow key={project.id} project={project} />
+              <ProjectRow
+                busy={deleting}
+                key={project.id}
+                project={project}
+                selected={selected.includes(project.id)}
+                onSelect={() =>
+                  setSelected((ids) =>
+                    ids.includes(project.id)
+                      ? ids.filter((id) => id !== project.id)
+                      : [...ids, project.id],
+                  )
+                }
+              />
             ))}
           </Flexbox>
         )}

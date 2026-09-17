@@ -29,7 +29,7 @@ const Page = memo(() => {
       <Form
         collapsible={false}
         itemsType={'group'}
-        variant={'filled'}
+        variant={'borderless'}
         items={[
           {
             children: <DeviceManager scope={'personal'} onConnect={handleConnect} />,

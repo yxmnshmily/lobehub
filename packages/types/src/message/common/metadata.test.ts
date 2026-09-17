@@ -15,6 +15,12 @@ describe('MessageMetadataSchema', () => {
     });
   });
 
+  it('preserves task-run provenance without exposing generated instructions as user input', () => {
+    expect(
+      MessageMetadataSchema.parse({ agentDispatch: { kind: 'taskRun', visibility: 'internal' } }),
+    ).toEqual({ agentDispatch: { kind: 'taskRun', visibility: 'internal' } });
+  });
+
   it('preserves request trigger metadata during runtime parsing', () => {
     const parsed = MessageMetadataSchema.parse({
       trigger: RequestTrigger.Onboarding,

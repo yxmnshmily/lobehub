@@ -1111,6 +1111,59 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     );
   });
 
+  it('applies the group supervisor runtime once while retaining its configured role', async () => {
+    const stored = {
+      chatConfig: {},
+      id: 'supervisor',
+      model: 'gpt-4',
+      plugins: [],
+      provider: 'openai',
+      slug: 'group-supervisor',
+      systemRole: 'Custom travel specialty.',
+    };
+    mockGetAgentConfig.mockImplementation(async () => structuredClone(stored));
+
+    for (let run = 0; run < 2; run++) {
+      await service.execAgent({
+        agentId: 'supervisor',
+        prompt: 'Make a caption',
+        appContext: { groupId: 'group-1', orchestrationRole: 'supervisor' },
+      });
+      const role = mockCreateOperation.mock.calls[run][0].agentConfig.systemRole;
+      expect(role).toContain('<core_responsibilities>');
+      expect(role).toContain('multi-agent group "Group"');
+      expect(role.match(/<core_responsibilities>/g)).toHaveLength(1);
+      expect(role.match(/Custom travel specialty\./g)).toHaveLength(1);
+    }
+    expect(stored.systemRole).toBe('Custom travel specialty.');
+  });
+
+  it.each([
+    { id: 'member', group: true },
+    { id: 'supervisor', group: false },
+  ])(
+    'does not apply group supervisor runtime outside an authorized group supervisor: $id/$group',
+    async ({ id, group }) => {
+      mockGetAgentConfig.mockResolvedValue({
+        chatConfig: {},
+        id,
+        model: 'gpt-4',
+        plugins: [],
+        provider: 'openai',
+        slug: 'group-supervisor',
+        systemRole: 'Original role.',
+      });
+      await service.execAgent({
+        agentId: id,
+        prompt: 'Hello',
+        ...(group
+          ? { appContext: { groupId: 'group-1', orchestrationRole: 'supervisor' as const } }
+          : {}),
+      });
+      expect(mockCreateOperation.mock.calls[0][0].agentConfig.systemRole).toBe('Original role.');
+    },
+  );
+
   it('should merge runtime systemRole for inbox agent when DB systemRole is empty', async () => {
     // Inbox agent with no user-customized systemRole in DB
     mockGetAgentConfig.mockResolvedValue({
@@ -1416,9 +1469,10 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
           agentId: 'worker',
           taskId: kind === 'task' ? 'task-row-1' : undefined,
           appContext: {
+            scope: 'task',
             groupId: 'group-a',
             topicId: 'topic-1',
-            ...(kind === 'goal' ? { viewedGoal: 'goal-1' } : {}),
+            ...(kind === 'goal' ? { viewedGoal: { goalId: 'goal-1' } } : {}),
           },
           prompt: 'Perform assigned work',
         },

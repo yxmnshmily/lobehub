@@ -7,7 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { useTaskTransferMenuItem } from '@/business/client/hooks/useTaskTransferMenuItem';
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
 import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
 import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
@@ -29,29 +31,30 @@ const TaskDetailHeaderActions = memo(() => {
   const activeWorkspaceId = useActiveWorkspaceId();
   const activeWorkspaceSlug = useActiveWorkspaceSlug();
   const { allowed: canEditTask } = usePermission('create_content');
+  const { canDelete, checkDeletePermission } = useGroupDeletePermission(canEditTask);
   const taskId = useTaskStore(taskDetailSelectors.activeTaskId);
   const taskAgentId = useTaskStore(taskDetailSelectors.activeTaskAgentId);
   const visibility = useTaskStore(taskDetailSelectors.activeTaskVisibility);
   const createdByUserId = useTaskStore(taskDetailSelectors.activeTaskCreatedByUserId);
   const currentUserId = useUserStore(userProfileSelectors.userId);
-  const deleteTask = useTaskStore((s) => s.deleteTask);
   const updateTaskVisibility = useTaskStore((s) => s.updateTaskVisibility);
   const transferItems = useTaskTransferMenuItem(taskId) as DropdownItem[] | null;
 
   const triggerDelete = useCallback(() => {
-    if (!canEditTask) return;
+    if (!checkDeletePermission()) return;
     if (!taskId) return;
-    confirmModal({
-      content: t('taskDetail.deleteConfirm.content'),
-      okButtonProps: { danger: true },
-      okText: t('taskDetail.deleteConfirm.ok'),
+    void confirmResourceDeletion({
+      resource: 'task',
+      ids: [taskId],
+      canProceed: checkDeletePermission,
+
       onOk: async () => {
-        await deleteTask(taskId);
+        if (!checkDeletePermission()) return;
         navigate('/tasks');
       },
       title: t('taskDetail.deleteConfirm.title'),
     });
-  }, [canEditTask, taskId, t, deleteTask, navigate]);
+  }, [checkDeletePermission, taskId, t, navigate]);
 
   const triggerPublish = useCallback(() => {
     if (!canEditTask) return;
@@ -128,14 +131,17 @@ const TaskDetailHeaderActions = memo(() => {
         },
       },
       { type: 'divider' },
-      {
-        danger: true,
-        disabled: !canEditTask,
-        icon: <Icon icon={Trash} />,
-        key: 'delete',
-        label: t('delete', { ns: 'common' }),
-        onClick: triggerDelete,
-      },
+      ...(canDelete
+        ? [
+            {
+              danger: true,
+              icon: <Icon icon={Trash} />,
+              key: 'delete',
+              label: t('delete', { ns: 'common' }),
+              onClick: triggerDelete,
+            },
+          ]
+        : []),
     ];
 
     // Publish-to-workspace only surfaces on private tasks inside a workspace;
@@ -195,6 +201,7 @@ const TaskDetailHeaderActions = memo(() => {
     triggerPublish,
     triggerMakePrivate,
     canEditTask,
+    canDelete,
     transferItems,
   ]);
 

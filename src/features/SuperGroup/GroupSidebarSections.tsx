@@ -50,6 +50,13 @@ export default function GroupSidebarSections({
   const memberSidebar = useMemberSidebar();
   const people = participants.data?.items ?? [];
   const memberCount = people.length + assistants.length;
+  // Older running servers omit totalCount; a completed page still gives an exact total.
+  const totalMemberCount =
+    participants.data?.totalCount != null
+      ? participants.data.totalCount + assistants.length
+      : participants.data && participants.data.nextOffset == null
+        ? memberCount
+        : undefined;
   const visiblePeople = people.slice(0, 10);
   const visibleAssistants = memberSidebar
     .arrange(assistants)
@@ -81,8 +88,10 @@ export default function GroupSidebarSections({
         <UserRound aria-hidden size={20} />
       </span>
       <Text data-nav-label="" fontSize={12} type="secondary">
-        成员 {memberCount}
-        {participants.data?.nextOffset != null ? '+' : ''}
+        成员
+        {totalMemberCount != null && (
+          <span style={{ color: cssVar.colorError }}>（{totalMemberCount}）</span>
+        )}
       </Text>
       <ArrowRight
         aria-hidden
@@ -127,8 +136,10 @@ export default function GroupSidebarSections({
               <Icon icon={UserRound} size={20} />
             </span>
             <Text fontSize={12} type="secondary">
-              成员 {memberCount}
-              {participants.data?.nextOffset != null ? '+' : ''}
+              成员
+              {totalMemberCount != null && (
+                <span style={{ color: cssVar.colorError }}>（{totalMemberCount}）</span>
+              )}
             </Text>
             <ArrowRight
               aria-hidden
@@ -272,8 +283,8 @@ export default function GroupSidebarSections({
       collapsible={isDesktop}
       defaultExpanded={compact}
       groupId={groupId}
-      onSelectTopic={onSelectTopic}
       scrollWithinSection={false}
+      onSelectTopic={onSelectTopic}
     />
   );
   if (compact)

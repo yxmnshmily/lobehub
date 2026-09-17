@@ -1,3 +1,5 @@
+import { escapeXmlAttr, escapeXmlContent } from '../search/xmlEscape';
+
 export { buildResourcesTreeText, resourcesTreePrompt } from './resourcesTree';
 
 export type SkillSource = 'builtin' | 'device' | 'project' | 'user';
@@ -16,10 +18,13 @@ export interface SkillItem {
 }
 
 export const skillPrompt = (skill: SkillItem) => {
-  const attrs = [`name="${skill.name}"`];
-  if (skill.source) attrs.push(`source="${skill.source}"`);
-  if (skill.location) attrs.push(`location="${skill.location}"`);
-  return `  <skill ${attrs.join(' ')}>${skill.description}</skill>`;
+  const attrs = [
+    `name="${escapeXmlAttr(skill.name)}"`,
+    `identifier="${escapeXmlAttr(skill.identifier)}"`,
+  ];
+  if (skill.source) attrs.push(`source="${escapeXmlAttr(skill.source)}"`);
+  if (skill.location) attrs.push(`location="${escapeXmlAttr(skill.location)}"`);
+  return `  <skill ${attrs.join(' ')}>${escapeXmlContent(skill.description)}</skill>`;
 };
 
 export const skillsPrompts = (skills: SkillItem[]) => {
@@ -38,5 +43,5 @@ export const skillsPrompts = (skills: SkillItem[]) => {
 ${skillTags}
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed.${filesystemHint}`;
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.${filesystemHint}`;
 };

@@ -1,6 +1,8 @@
 'use client';
 
+import { toast } from '@lobehub/ui/base-ui';
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useFileStore } from '@/store/file';
 
@@ -75,6 +77,7 @@ export const useReferenceImageUpload = ({
   onFirstDimensions,
   onLimitExceeded,
 }: UseReferenceImageUploadOptions) => {
+  const { t } = useTranslation(['error', 'components']);
   const uploadWithProgress = useFileStore((s) => s.uploadWithProgress);
 
   const maxCount = useMemo(() => slots.reduce((sum, slot) => sum + slot.capacity, 0), [slots]);
@@ -106,6 +109,9 @@ export const useReferenceImageUpload = ({
       const uploadableFiles = maxFileSize
         ? imageFiles.filter((file) => file.size <= maxFileSize)
         : imageFiles;
+      if (uploadableFiles.length < imageFiles.length) {
+        toast.error(t('MultiImagesUpload.validation.fileSizeExceeded', { ns: 'components' }));
+      }
       if (uploadableFiles.length === 0) return;
 
       // Account for both landed images and any in-flight uploads.
@@ -146,6 +152,10 @@ export const useReferenceImageUpload = ({
           outcome.status === 'fulfilled' ? outcome.value : null,
         );
 
+        if (results.some((result) => !result)) {
+          toast.error(t('upload.uploadFailed', { ns: 'error' }));
+        }
+
         // Collect successful URLs and the first available dimensions.
         const uploadedUrls: string[] = [];
         let firstDimensions: { height: number; width: number } | undefined;
@@ -180,6 +190,7 @@ export const useReferenceImageUpload = ({
       }
     },
     [
+      t,
       slots,
       canCreate,
       maxCount,

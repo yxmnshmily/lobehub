@@ -72,6 +72,14 @@ export class UserPersonaService {
   private async resolveAgentConfig(userId: string): Promise<MemoryAgentConfig> {
     const userModel = new UserModel(this.db, userId);
     const settings = await userModel.getUserSettings();
+    const general = settings?.general;
+    const responseLanguage =
+      general &&
+      typeof general === 'object' &&
+      'responseLanguage' in general &&
+      typeof general.responseLanguage === 'string'
+        ? general.responseLanguage
+        : undefined;
     const userMemoryPersonaWriter = (
       settings?.systemAgent as Partial<UserServiceModelConfig> | undefined
     )?.userMemoryPersonaWriter;
@@ -87,7 +95,7 @@ export class UserPersonaService {
       contextLimit:
         resolvePositiveInteger(userMemoryPersonaWriter?.contextLimit) ??
         this.agentConfig.contextLimit,
-      language: settings?.general?.responseLanguage || this.agentConfig.language || 'zh-CN',
+      language: responseLanguage || this.agentConfig.language || 'zh-CN',
       model: userMemoryPersonaWriter?.model || this.agentConfig.model,
       provider,
     };

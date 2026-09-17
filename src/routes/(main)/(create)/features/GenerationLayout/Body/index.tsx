@@ -67,7 +67,10 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
   if (!expanded) {
     return (
       <Flexbox paddingInline={4}>
-        <CompactListPopover icon={getRouteById(namespace)!.icon} title={t('topic.title')}>
+        <CompactListPopover
+          icon={getRouteById(namespace)!.icon}
+          title={`${t('topic.title')}（${count}）`}
+        >
           <List namespace={namespace} useStore={useStore} viewModeStatusKey={viewModeStatusKey} />
         </CompactListPopover>
       </Flexbox>
@@ -131,7 +134,7 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
           title={
             <Text ellipsis fontSize={12} type={'secondary'} weight={500}>
               {t('topic.title')}
-              {count > 0 && ` ${count}`}
+              {`（${count}）`}
             </Text>
           }
         >

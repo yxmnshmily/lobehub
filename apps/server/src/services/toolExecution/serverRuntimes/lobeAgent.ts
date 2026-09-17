@@ -27,6 +27,7 @@ import { RequestTrigger } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
 import { parseDataUri } from '@lobechat/utils/uriParser';
 
+import { AgentModel } from '@/database/models/agent';
 import { MessageModel } from '@/database/models/message';
 import { toolsEnv } from '@/envs/tools';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
@@ -349,8 +350,23 @@ class LobeAgentExecutionRuntime {
   };
 
   analyzeMedia = async (params: AnalyzeMediaParams): Promise<BuiltinServerRuntimeOutput> => {
-    const provider = toolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER;
-    const model = toolsEnv.MULTIMODAL_UNDERSTANDING_MODEL;
+    let provider = toolsEnv.MULTIMODAL_UNDERSTANDING_PROVIDER;
+    let model = toolsEnv.MULTIMODAL_UNDERSTANDING_MODEL;
+    let usesMemberModel = false;
+    // An explicit deployment pair wins. With neither configured, reuse only
+    // this member's scoped model; never discover another member or credential.
+    if (!provider && !model && this.agentId) {
+      const configured = await new AgentModel(
+        this.db,
+        this.userId,
+        this.workspaceId,
+      ).getAgentModelConfig(this.agentId);
+      if (configured) {
+        provider = configured.provider;
+        model = configured.model;
+        usesMemberModel = true;
+      }
+    }
 
     if (!provider || !model) {
       return buildError(
@@ -452,21 +468,21 @@ class LobeAgentExecutionRuntime {
     const hasImages = selectedItems.some((item) => item.type === 'image');
     const hasVideos = selectedItems.some((item) => item.type === 'video');
 
-    if (hasAudios && abilities?.audio === false) {
+    if (hasAudios && (usesMemberModel ? abilities?.audio !== true : abilities?.audio === false)) {
       return buildError(
         `Configured multimodal understanding model "${provider}/${model}" does not support audio understanding.`,
         'MULTIMODAL_MODEL_AUDIO_UNSUPPORTED',
       );
     }
 
-    if (hasImages && abilities?.vision === false) {
+    if (hasImages && (usesMemberModel ? abilities?.vision !== true : abilities?.vision === false)) {
       return buildError(
         `Configured multimodal understanding model "${provider}/${model}" does not support image vision.`,
         'MULTIMODAL_MODEL_IMAGE_UNSUPPORTED',
       );
     }
 
-    if (hasVideos && abilities?.video === false) {
+    if (hasVideos && (usesMemberModel ? abilities?.video !== true : abilities?.video === false)) {
       return buildError(
         `Configured multimodal understanding model "${provider}/${model}" does not support video understanding.`,
         'MULTIMODAL_MODEL_VIDEO_UNSUPPORTED',

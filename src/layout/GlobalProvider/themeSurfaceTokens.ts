@@ -41,3 +41,27 @@ export const getMonochromeCustomTheme = (
   neutralColor?: NeutralColors,
   defaultNeutralColor?: NeutralColors,
 ) => ({ neutralColor: neutralColor ?? defaultNeutralColor });
+
+// Semantic errors keep a restrained red hue across menus, buttons and validation.
+// Override the full scale so hover/background states do not retain the UI kit's pink.
+export const getThemeErrorTokens = (isDark: boolean) => {
+  const color = isDark ? '#e58b86' : '#ad4742';
+  const hover = isDark ? '#eea39e' : '#a8433e';
+  const active = isDark ? '#e08a84' : '#963b36';
+  return {
+    colorError: color,
+    colorErrorActive: active,
+    colorErrorBg: isDark ? '#342829' : '#fcf4f3',
+    colorErrorBgHover: isDark ? '#423031' : '#f8e9e7',
+    colorErrorBorder: isDark ? '#704b49' : '#e7bcb8',
+    colorErrorBorderHover: isDark ? '#91615d' : '#d79690',
+    colorErrorFill: isDark ? 'rgba(229, 139, 134, 0.22)' : 'rgba(173, 71, 66, 0.18)',
+    colorErrorFillSecondary: isDark ? 'rgba(229, 139, 134, 0.16)' : 'rgba(173, 71, 66, 0.12)',
+    colorErrorFillTertiary: isDark ? 'rgba(229, 139, 134, 0.10)' : 'rgba(173, 71, 66, 0.08)',
+    colorErrorFillQuaternary: isDark ? 'rgba(229, 139, 134, 0.06)' : 'rgba(173, 71, 66, 0.04)',
+    colorErrorHover: hover,
+    colorErrorText: color,
+    colorErrorTextActive: active,
+    colorErrorTextHover: hover,
+  };
+};

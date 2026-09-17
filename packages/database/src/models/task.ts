@@ -1054,24 +1054,28 @@ export class TaskModel {
         SELECT ${tasks.id} AS root_id, ${tasks.id} AS task_id
         FROM ${tasks}
         WHERE ${inArray(tasks.id, taskIds)} AND ${this.ownership()}
-        UNION ALL
+        UNION
         SELECT goal_tree.root_id, child.id
         FROM ${tasks} child
         JOIN goal_tree ON child.parent_task_id = goal_tree.task_id
         WHERE ${this.ownershipSql('child')}
+      ), runs AS (
+        SELECT goal_tree.root_id, ${taskTopics.topicId} AS topic_id, min(${taskTopics.createdAt}) AS started_at
+        FROM goal_tree JOIN ${taskTopics} ON ${taskTopics.taskId} = goal_tree.task_id
+        WHERE ${buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, taskTopics)}
+        GROUP BY goal_tree.root_id, ${taskTopics.topicId}
       )
       SELECT
-        goal_tree.root_id,
+        runs.root_id,
         coalesce(sum(${topics.totalCost}), 0) AS total_run_cost,
         coalesce(
-          sum(extract(epoch from (${topics.completedAt} - ${taskTopics.createdAt})) * 1000)
+          sum(greatest(0, extract(epoch from (${topics.completedAt} - runs.started_at)) * 1000))
             filter (where ${topics.completedAt} is not null),
           0
         ) AS total_run_duration
-      FROM goal_tree
-      LEFT JOIN ${taskTopics} ON ${taskTopics.taskId} = goal_tree.task_id
-      LEFT JOIN ${topics} ON ${topics.id} = ${taskTopics.topicId}
-      GROUP BY goal_tree.root_id
+      FROM runs JOIN ${topics} ON ${topics.id} = runs.topic_id
+      WHERE ${buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, topics)}
+      GROUP BY runs.root_id
     `);
 
     return result.rows;
@@ -1150,14 +1154,19 @@ export class TaskModel {
       .limit(limit)
       .offset(offset);
     const [countResult, taskList] = await Promise.all([countQuery, taskListQuery]);
-    const subtaskProgressByTaskId = await this.subtaskProgressByTaskIds(
-      taskList.map(({ id }) => id),
-    );
+    const ids = taskList.map(({ id }) => id);
+    const [subtaskProgressByTaskId, runStats] = await Promise.all([
+      this.subtaskProgressByTaskIds(ids),
+      this.runStatsByTaskIds(ids),
+    ]);
+    const runStatsById = new Map(runStats.map((row) => [row.root_id, row]));
 
     return {
       tasks: taskList.map((task) => ({
         ...task,
         subtaskProgress: subtaskProgressByTaskId.get(task.id),
+        totalRunCost: Number(runStatsById.get(task.id)?.total_run_cost ?? 0),
+        totalRunDuration: Number(runStatsById.get(task.id)?.total_run_duration ?? 0),
       })),
       total: Number(countResult[0].count),
     };

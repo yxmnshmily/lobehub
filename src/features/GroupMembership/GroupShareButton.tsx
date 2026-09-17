@@ -67,7 +67,13 @@ export const GroupLinkPanel = ({ groupId }: { groupId: string }) => {
             value={url}
             onFocus={(event) => event.target.select()}
           />
-          <QRCode size={180} style={{ alignSelf: 'center', background: '#fff' }} value={url} />
+          <QRCode
+            bgColor="#fff"
+            color="#000"
+            size={180}
+            style={{ alignSelf: 'center', background: '#fff' }}
+            value={url}
+          />
           <Button
             onClick={async () => {
               try {

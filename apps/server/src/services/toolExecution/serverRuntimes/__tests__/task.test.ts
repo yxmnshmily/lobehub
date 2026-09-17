@@ -920,6 +920,32 @@ describe('createTaskRuntime', () => {
   });
 
   describe('runTask / runTasks', () => {
+    it.each(['runTask', 'runTasks'] as const)(
+      'reports automatic return only for matching origin in %s',
+      async (method) => {
+        const resolve = vi
+          .fn()
+          .mockResolvedValue({ context: { origin: { agentId: 'agent', topicId: 'topic' } } });
+        const runtime = createTaskRuntime({
+          agentId: 'agent',
+          topicId: 'topic',
+          agentModel: {} as any,
+          taskCaller: { run: vi.fn().mockResolvedValue({ topicId: 'child' }) } as any,
+          taskModel: { resolve } as any,
+          taskService: {} as any,
+        });
+        const run = () =>
+          method === 'runTask'
+            ? runtime.runTask({ identifier: 'T-1' })
+            : runtime.runTasks({ identifiers: ['T-1'] });
+        expect((await run()).content).toContain('automatically return');
+        resolve.mockResolvedValue({ context: { origin: { agentId: 'agent', topicId: 'other' } } });
+        expect((await run()).content).not.toContain('automatically return');
+        resolve.mockRejectedValue(new Error('lookup unavailable'));
+        expect(await run()).toMatchObject({ success: true });
+      },
+    );
+
     it('forwards identifier + prompt + continueTopicId to taskCaller.run', async () => {
       const taskCaller = {
         run: vi.fn().mockResolvedValue({ operationId: 'op_1', topicId: 'tpc_1' }),

@@ -69,6 +69,7 @@ vi.mock('@/database/models/task', () => ({
   TaskModel: vi.fn(function () {
     return {
       findById: taskFindById,
+      lockForStatusChange: vi.fn(),
       updateStatus: taskUpdateStatus,
     };
   }),
@@ -89,9 +90,99 @@ vi.mock('@/server/services/taskResultBridge', () => ({
   }),
 }));
 
-const db = {} as any;
+const db: any = { execute: vi.fn() };
+db.transaction = async (fn: (tx: any) => unknown) => fn(db);
 
 describe('driveTaskFromVerify', () => {
+  it.each(['passed', 'failed', 'errored'])(
+    'ignores a late %s verdict after manual pause',
+    async (status) => {
+      runFindByOperation.mockResolvedValue({ id: 'late', status });
+      taskFindById.mockResolvedValue({
+        id: 'task-1',
+        status: 'paused',
+        context: { manualStopAt: '2026-09-13T01:00:00Z' },
+      });
+      await driveTaskFromVerify(db, 'u1', 'op-1');
+      expect(serviceUpdateStatus).not.toHaveBeenCalled();
+      expect(taskUpdateStatus).not.toHaveBeenCalled();
+      expect(deliverMock).not.toHaveBeenCalled();
+    },
+  );
+  it('rechecks a manual stop that occurs during the delivery review', async () => {
+    runFindByOperation.mockResolvedValue({ id: 'late', status: 'passed' });
+    vi.mocked(reviewGoalDelivery).mockImplementationOnce(async () => {
+      taskFindById.mockResolvedValue({
+        id: 'task-1',
+        status: 'running',
+        context: { manualControl: 'stopping' },
+      });
+      return undefined;
+    });
+    await driveTaskFromVerify(db, 'u1', 'op-1');
+    expect(serviceUpdateStatus).not.toHaveBeenCalled();
+    expect(deliverMock).not.toHaveBeenCalled();
+  });
+
+  it('rechecks a revision that commits while delivery review is running', async () => {
+    runFindByOperation.mockResolvedValue({ id: 'old-run', status: 'passed' });
+    goalFindByTask.mockResolvedValue({ id: 'goal-1' });
+    opFindById.mockResolvedValue({ taskId: 'task-1', createdAt: new Date('2026-09-13T00:00:00Z') });
+    vi.mocked(reviewGoalDelivery).mockImplementationOnce(async () => {
+      taskFindById.mockResolvedValue({
+        id: 'task-1',
+        status: 'backlog',
+        context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+      });
+      return undefined;
+    });
+    await driveTaskFromVerify(db, 'u1', 'op-1');
+    expect(serviceUpdateStatus).not.toHaveBeenCalled();
+    expect(deliverMock).not.toHaveBeenCalled();
+  });
+
+  it('uses the original task operation boundary for a newer verifier child', async () => {
+    runFindByOperation.mockResolvedValue({ id: 'old-run', status: 'passed' });
+    opFindById.mockImplementation(async (id) =>
+      id === 'child'
+        ? { parentOperationId: 'old-task', createdAt: new Date('2026-09-13T02:00:00Z') }
+        : { taskId: 'task-1', createdAt: new Date('2026-09-13T00:00:00Z') },
+    );
+    taskFindById.mockResolvedValue({
+      id: 'task-1',
+      status: 'backlog',
+      context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+    });
+    await driveTaskFromVerify(db, 'u1', 'child');
+    expect(serviceUpdateStatus).not.toHaveBeenCalled();
+  });
+
+  it('allows a fresh task operation after the revision', async () => {
+    runFindByOperation.mockResolvedValue({ id: 'new-run', status: 'passed' });
+    opFindById.mockResolvedValue({ taskId: 'task-1', createdAt: new Date('2026-09-13T02:00:00Z') });
+    taskFindById.mockResolvedValue({
+      id: 'task-1',
+      status: 'running',
+      context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+    });
+    await driveTaskFromVerify(db, 'u1', 'op-1');
+    expect(serviceUpdateStatus).toHaveBeenCalledWith({ id: 'task-1', status: 'completed' });
+  });
+
+  it('ignores an old operation verdict after the task was revised', async () => {
+    runFindByOperation.mockResolvedValue({ id: 'old-run', status: 'passed' });
+    opFindById.mockResolvedValue({ taskId: 'task-1', createdAt: new Date('2026-09-13T00:00:00Z') });
+    taskFindById.mockResolvedValue({
+      id: 'task-1',
+      status: 'backlog',
+      context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+    });
+    await driveTaskFromVerify(db, 'u1', 'op-1');
+    expect(serviceUpdateStatus).not.toHaveBeenCalled();
+    expect(taskUpdateStatus).not.toHaveBeenCalled();
+    expect(deliverMock).not.toHaveBeenCalled();
+  });
+
   it('automatically sends a Goal delivery back when Acceptance review rejects a Verify pass', async () => {
     runFindByOperation.mockResolvedValue({
       id: 'run-1',

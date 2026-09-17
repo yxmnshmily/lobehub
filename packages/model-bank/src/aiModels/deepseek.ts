@@ -7,6 +7,36 @@ const deepseekChatModels: AIChatModelCard[] = [
       functionCall: true,
       reasoning: true,
       structuredOutput: true,
+      vision: true,
+    },
+    contextWindowTokens: 1_000_000,
+    description:
+      'DeepSeek V4.1 Flash supports hybrid thinking, tool use and native image understanding with a 1M context window.',
+    displayName: 'DeepSeek V4.1 Flash',
+    enabled: true,
+    family: 'deepseek',
+    generation: 'deepseek-v4',
+    id: 'deepseek-flash',
+    maxOutput: 393_216,
+    // Off-peak base rates; business model loading applies the official peak schedule.
+    pricing: {
+      currency: 'CNY',
+      units: [
+        { name: 'textInput_cacheRead', rate: 0.02, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 4, strategy: 'fixed', unit: 'millionTokens' },
+      ],
+    },
+    settings: {
+      extendParams: ['deepseekV4GAReasoningEffort'],
+    },
+    type: 'chat',
+  },
+  {
+    abilities: {
+      functionCall: true,
+      reasoning: true,
+      structuredOutput: true,
     },
     contextWindowTokens: 1_048_576,
     description:
@@ -46,16 +76,13 @@ const deepseekChatModels: AIChatModelCard[] = [
     generation: 'deepseek-v4',
     id: 'deepseek-v4-pro',
     maxOutput: 393_216,
-    // Official footnote (2) on the pricing page: from 2026-09-14 12:00 UTC+8 every
-    // `deepseek-v4-pro` request is routed to V4.1 Flash and billed at Flash rates,
-    // until V4.1 Pro ships. V4 Pro is being retired, so this card carries the Flash
-    // price rather than the interim V4 Pro rate.
+    // Pro retains its own off-peak base rates.
     pricing: {
       currency: 'CNY',
       units: [
-        { name: 'textInput_cacheRead', rate: 0.02, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textInput', rate: 1, strategy: 'fixed', unit: 'millionTokens' },
-        { name: 'textOutput', rate: 4, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput_cacheRead', rate: 0.15, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textInput', rate: 4.5, strategy: 'fixed', unit: 'millionTokens' },
+        { name: 'textOutput', rate: 13.5, strategy: 'fixed', unit: 'millionTokens' },
       ],
     },
     releasedAt: '2026-08-13',

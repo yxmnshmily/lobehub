@@ -301,6 +301,7 @@ class ChatService {
       // `agentConfig.plugins` is the raw (pre-filter) field — `plugins` below
       // is already pinned-only (resolved upstream in agentConfigResolver).
       disabledPluginIds: getDisabledPluginIds(agentConfig.plugins),
+      skillIdentifiers: resolvedAgentConfig.skillIdentifiers,
       enableAgentMode,
       // Use raw chatConfig values, not selectors with business logic that may force false
       enableHistoryCount: chatConfig.enableHistoryCount,

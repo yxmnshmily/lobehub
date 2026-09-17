@@ -29,11 +29,13 @@ import type {
 } from '@lobechat/types';
 import { ChatErrorType, DEFAULT_BRIEF_ACTIONS } from '@lobechat/types';
 import debug from 'debug';
+import { sql } from 'drizzle-orm';
 
 import {
   notifyScheduledTaskCompleted,
   notifyScheduledTaskFailed,
 } from '@/business/server/task/notifyScheduledTaskResult';
+import { AgentOperationModel } from '@/database/models/agentOperation';
 import { BriefModel } from '@/database/models/brief';
 import { GoalModel } from '@/database/models/goal';
 import { TaskModel } from '@/database/models/task';
@@ -152,9 +154,49 @@ export class TaskLifecycleService {
 
     log('onTopicComplete: task=%s topic=%s reason=%s', taskIdentifier, topicId, reason);
 
+    const goal = await new GoalModel(this.db, this.userId, this.workspaceId).findByGraphTask(
+      taskId,
+    );
+    const initialTask = await this.taskModel.findById(taskId);
+    const stoppedAt = (initialTask?.context as { manualStopAt?: string } | null)?.manualStopAt;
+    const operation =
+      goal || stoppedAt
+        ? await new AgentOperationModel(this.db, this.userId, this.workspaceId).findById(
+            params.operationId,
+          )
+        : undefined;
+    const isCurrent = (task: TaskItem | null | undefined) => {
+      const ctx = task?.context as {
+        goalRevisionAt?: string;
+        manualStopAt?: string;
+        manualControl?: string;
+      } | null;
+      if (ctx?.manualControl === 'stopping') return false;
+      const boundary = [ctx?.goalRevisionAt, ctx?.manualStopAt].filter(Boolean).sort().at(-1);
+      return !boundary || (!!operation && +new Date(operation.createdAt) >= +new Date(boundary));
+    };
+    if (!isCurrent(initialTask)) return;
+    // Serialize only lifecycle writes with revision. Handoff generation stays
+    // outside this fence and we re-read the task after that asynchronous work.
+    const applyCurrent = async (apply: (task: TaskItem | null | undefined) => Promise<void>) => {
+      const write = async () => {
+        const task = await this.taskModel.findById(taskId);
+        if (!isCurrent(task)) return false;
+        await apply(task);
+        return true;
+      };
+      if (!goal) {
+        return write();
+      }
+      return this.db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(${0x67_6f_64_69}, hashtext(${goal.id}))`);
+        return write();
+      });
+    };
+
     await this.taskModel.updateHeartbeat(taskId);
 
-    const currentTask = await this.taskModel.findById(taskId);
+    const currentTask = initialTask;
 
     // Whether a confirmed verify plan owns this run's delivery acceptance. Set in
     // the 'done' branch; gates both the pause-for-review skip and (below) the
@@ -264,55 +306,58 @@ export class TaskLifecycleService {
         log('verify-bound check failed for op=%s (non-fatal): %O', params.operationId, error);
       }
 
-      if (currentTask) {
-        const completionRequestedByCurrentOperation =
-          (
-            currentTask.context as {
-              completion?: { requestedByOperationId?: string };
-            } | null
-          )?.completion?.requestedByOperationId === params.operationId;
+      const applied = await applyCurrent(async (currentTask) => {
+        if (currentTask) {
+          const completionRequestedByCurrentOperation =
+            (
+              currentTask.context as {
+                completion?: { requestedByOperationId?: string };
+              } | null
+            )?.completion?.requestedByOperationId === params.operationId;
 
-        if (
-          currentTask.automationMode === 'schedule' &&
-          (await this.scheduleCapReached(currentTask))
-        ) {
-          log('cap reached for task=%s — marking completed post-tick', taskIdentifier);
-          await this.taskModel.updateStatus(taskId, 'completed', { completedAt: new Date() });
-        } else if (currentTask.automationMode) {
-          // A successful tick parks the automation task back at its resting
-          // 'scheduled' state and clears the live error column. Before clearing
-          // it, stamp a durable recovery marker + reset the failure fuse so the
-          // recovery is auditable and a later query can still tell the task once
-          // failed — the live `error` alone would silently self-heal.
-          await this.recordAutomationRecovery(currentTask);
-          await this.taskModel.updateStatus(taskId, 'scheduled', { error: null });
-        } else if (!verifyBound && completionRequestedByCurrentOperation) {
-          if (currentTask.parentTaskId) {
-            await this.completeSubtask(currentTask);
-          } else {
+          if (
+            currentTask.automationMode === 'schedule' &&
+            (await this.scheduleCapReached(currentTask))
+          ) {
+            log('cap reached for task=%s — marking completed post-tick', taskIdentifier);
+            await this.taskModel.updateStatus(taskId, 'completed', { completedAt: new Date() });
+          } else if (currentTask.automationMode) {
+            // A successful tick parks the automation task back at its resting
+            // 'scheduled' state and clears the live error column. Before clearing
+            // it, stamp a durable recovery marker + reset the failure fuse so the
+            // recovery is auditable and a later query can still tell the task once
+            // failed — the live `error` alone would silently self-heal.
+            await this.recordAutomationRecovery(currentTask);
+            await this.taskModel.updateStatus(taskId, 'scheduled', { error: null });
+          } else if (!verifyBound && completionRequestedByCurrentOperation) {
+            if (currentTask.parentTaskId) {
+              await this.completeSubtask(currentTask);
+            } else {
+              await this.taskModel.updateStatusIfCurrent(taskId, 'running', 'completed', {
+                completedAt: new Date(),
+                error: null,
+              });
+            }
+          } else if (!verifyBound && params.runTrigger === 'goal' && !currentTask.parentTaskId) {
             await this.taskModel.updateStatusIfCurrent(taskId, 'running', 'completed', {
               completedAt: new Date(),
               error: null,
             });
+          } else if (!verifyBound && currentTask.parentTaskId) {
+            const checkpoint = this.taskModel.getCheckpointConfig(currentTask);
+            if (checkpoint.topic?.after) {
+              await this.taskModel.updateStatusIfCurrent(taskId, 'running', 'paused', {
+                error: null,
+              });
+            } else {
+              await this.completeSubtask(currentTask);
+            }
+          } else if (!verifyBound && this.taskModel.shouldPauseOnTopicComplete(currentTask)) {
+            await this.taskModel.updateStatus(taskId, 'paused', { error: null });
           }
-        } else if (!verifyBound && params.runTrigger === 'goal' && !currentTask.parentTaskId) {
-          await this.taskModel.updateStatusIfCurrent(taskId, 'running', 'completed', {
-            completedAt: new Date(),
-            error: null,
-          });
-        } else if (!verifyBound && currentTask.parentTaskId) {
-          const checkpoint = this.taskModel.getCheckpointConfig(currentTask);
-          if (checkpoint.topic?.after) {
-            await this.taskModel.updateStatusIfCurrent(taskId, 'running', 'paused', {
-              error: null,
-            });
-          } else {
-            await this.completeSubtask(currentTask);
-          }
-        } else if (!verifyBound && this.taskModel.shouldPauseOnTopicComplete(currentTask)) {
-          await this.taskModel.updateStatus(taskId, 'paused', { error: null });
         }
-      }
+      });
+      if (!applied) return;
 
       // 6. Recall the user when a scheduled tick lands: fire-and-forget through
       //    the `@/business` slot (default impl is a no-op; a notification
@@ -339,180 +384,183 @@ export class TaskLifecycleService {
         );
       }
     } else if (reason === 'error') {
-      if (topicId) await this.taskTopicModel.updateStatus(taskId, topicId, 'failed');
+      const applied = await applyCurrent(async (currentTask) => {
+        if (topicId) await this.taskTopicModel.updateStatus(taskId, topicId, 'failed');
 
-      const errorText = errorMessage || 'Unknown error';
+        const errorText = errorMessage || 'Unknown error';
 
-      // A budget / plan failure won't clear on a blind Retry — lead the card with
-      // the fix (Upgrade → plans page) instead. Other causes keep retry + feedback.
-      const isBillingError = errorCode ? BILLING_ERROR_CODES.has(errorCode) : false;
-      const errorActions: BriefAction[] =
-        isBillingError && BRANDING_URL.subscription
-          ? [
-              {
-                key: 'upgrade',
-                label: 'Upgrade plan',
-                type: 'link',
-                url: BRANDING_URL.subscription,
-              },
-              { key: 'feedback', label: '💬 Feedback', type: 'comment' },
-            ]
-          : DEFAULT_BRIEF_ACTIONS['error'];
+        // A budget / plan failure won't clear on a blind Retry — lead the card with
+        // the fix (Upgrade → plans page) instead. Other causes keep retry + feedback.
+        const isBillingError = errorCode ? BILLING_ERROR_CODES.has(errorCode) : false;
+        const errorActions: BriefAction[] =
+          isBillingError && BRANDING_URL.subscription
+            ? [
+                {
+                  key: 'upgrade',
+                  label: 'Upgrade plan',
+                  type: 'link',
+                  url: BRANDING_URL.subscription,
+                },
+                { key: 'feedback', label: '💬 Feedback', type: 'comment' },
+              ]
+            : DEFAULT_BRIEF_ACTIONS['error'];
 
-      // Resolve the user-facing copy in the user's language, at the source (not
-      // by string-munging on the client):
-      //  - title: a plain localized "run failed" — the task identity already sits
-      //    in the card's meta row, so the headline needn't repeat it.
-      //  - summary: map the structured error code to the same human, localized
-      //    message the chat error card shows. The copy for a code lives in exactly
-      //    one of two namespaces — `modelRuntime:<code>` (runtime codes) or
-      //    `error:response.<code>` (HTTP status / Cloud ChatErrorType such as
-      //    `InsufficientBudgetForModel`) — so try both and take whichever resolves
-      //    (the server `t` returns the key unchanged when it has no entry). Fall
-      //    back to the raw runtime message for codes with no friendly copy, or copy
-      //    left with an unresolved `{{…}}` placeholder we can't fill here.
-      const locale = await this.systemAgentService.getUserLocale();
-      const [{ t: tHome }, { t: tRuntime }, { t: tError }] = await Promise.all([
-        translation('home', locale),
-        translation('modelRuntime', locale),
-        translation('error', locale),
-      ]);
-      const resolveErrorSummary = () => {
-        if (!errorCode) return errorText;
-        const runtimeMsg = tRuntime(errorCode);
-        if (runtimeMsg !== errorCode && !runtimeMsg.includes('{{')) return runtimeMsg;
-        const responseKey = `response.${errorCode}`;
-        const responseMsg = tError(responseKey);
-        if (responseMsg !== responseKey && !responseMsg.includes('{{')) return responseMsg;
-        return errorText;
-      };
-      const summary = resolveErrorSummary();
+        // Resolve the user-facing copy in the user's language, at the source (not
+        // by string-munging on the client):
+        //  - title: a plain localized "run failed" — the task identity already sits
+        //    in the card's meta row, so the headline needn't repeat it.
+        //  - summary: map the structured error code to the same human, localized
+        //    message the chat error card shows. The copy for a code lives in exactly
+        //    one of two namespaces — `modelRuntime:<code>` (runtime codes) or
+        //    `error:response.<code>` (HTTP status / Cloud ChatErrorType such as
+        //    `InsufficientBudgetForModel`) — so try both and take whichever resolves
+        //    (the server `t` returns the key unchanged when it has no entry). Fall
+        //    back to the raw runtime message for codes with no friendly copy, or copy
+        //    left with an unresolved `{{…}}` placeholder we can't fill here.
+        const locale = await this.systemAgentService.getUserLocale();
+        const [{ t: tHome }, { t: tRuntime }, { t: tError }] = await Promise.all([
+          translation('home', locale),
+          translation('modelRuntime', locale),
+          translation('error', locale),
+        ]);
+        const resolveErrorSummary = () => {
+          if (!errorCode) return errorText;
+          const runtimeMsg = tRuntime(errorCode);
+          if (runtimeMsg !== errorCode && !runtimeMsg.includes('{{')) return runtimeMsg;
+          const responseKey = `response.${errorCode}`;
+          const responseMsg = tError(responseKey);
+          if (responseMsg !== responseKey && !responseMsg.includes('{{')) return responseMsg;
+          return errorText;
+        };
+        const summary = resolveErrorSummary();
 
-      // Always surface an urgent error brief — a failed run is visible to the
-      // user regardless of what happens to the scheduling state below. The topic
-      // id rides the structured `topicId` field (it also powers the card's
-      // "View run" shortcut), never the headline.
-      await this.briefModel.create({
-        actions: errorActions,
-        agentId: currentTask?.assigneeAgentId || undefined,
-        // Persist the structured cause for observability / future remedy mapping.
-        metadata: errorCode ? { error: { code: errorCode } } : undefined,
-        priority: 'urgent',
-        summary,
-        taskId,
-        title: tHome('inbox.error.title'),
-        topicId,
-        trigger: 'task',
-        type: 'error',
-      });
+        // Always surface an urgent error brief — a failed run is visible to the
+        // user regardless of what happens to the scheduling state below. The topic
+        // id rides the structured `topicId` field (it also powers the card's
+        // "View run" shortcut), never the headline.
+        await this.briefModel.create({
+          actions: errorActions,
+          agentId: currentTask?.assigneeAgentId || undefined,
+          // Persist the structured cause for observability / future remedy mapping.
+          metadata: errorCode ? { error: { code: errorCode } } : undefined,
+          priority: 'urgent',
+          summary,
+          taskId,
+          title: tHome('inbox.error.title'),
+          topicId,
+          trigger: 'task',
+          type: 'error',
+        });
 
-      const runTrigger = params.runTrigger ?? 'manual';
-      const isAutomationTick = runTrigger === 'schedule' || runTrigger === 'heartbeat';
+        const runTrigger = params.runTrigger ?? 'manual';
+        const isAutomationTick = runTrigger === 'schedule' || runTrigger === 'heartbeat';
 
-      // Captured by the schedule sub-branch below for the failure notification:
-      // how deep into the fuse this failure is, and whether it blew the fuse
-      // and auto-paused the task.
-      let scheduleConsecutiveFailures: number | undefined;
-      let pausedByFuse = false;
+        // Captured by the schedule sub-branch below for the failure notification:
+        // how deep into the fuse this failure is, and whether it blew the fuse
+        // and auto-paused the task.
+        let scheduleConsecutiveFailures: number | undefined;
+        let pausedByFuse = false;
 
-      if (!currentTask) {
-        // Task vanished mid-run — nothing to transition.
-      } else if (!currentTask.automationMode) {
-        // Ad-hoc / dependency task: pause for user attention (legacy behavior).
-        await this.recordAutomationError(currentTask, errorText, runTrigger);
-        await this.taskModel.updateStatus(taskId, 'paused', { error: errorText });
-      } else if (!isAutomationTick) {
-        // a manual "run now" of an automation task failed. This is
-        // an ad-hoc debug/backfill run — its failure is NOT a health signal for
-        // the automation. Restore the resting 'scheduled' state (the run had
-        // flipped it to 'running') so the next scheduled tick still fires, and
-        // record the error for visibility — but do NOT pause and do NOT touch
-        // the consecutive-failure fuse (only automation ticks count).
-        await this.recordAutomationError(currentTask, errorText, runTrigger);
-        await this.taskModel.updateStatus(taskId, 'scheduled', { error: errorText });
-      } else if (currentTask.automationMode === 'schedule') {
-        // a scheduled tick failed. A single transient error must not
-        // permanently pause a recurring task. Count consecutive failures and
-        // only pause once the fuse blows; otherwise keep the task 'scheduled' so
-        // the next tick retries. (Heartbeat tasks are handled by
-        // maybeRearmHeartbeat below, which owns their fuse + re-arm.)
-        const ctx = (currentTask.context as { scheduler?: TaskSchedulerContext } | null) ?? {};
-        const consecutiveFailures = (ctx.scheduler?.consecutiveFailures ?? 0) + 1;
-        scheduleConsecutiveFailures = consecutiveFailures;
-
-        if (consecutiveFailures >= AUTOMATION_FAILURE_FUSE) {
-          pausedByFuse = true;
-          log(
-            'schedule fuse blown: task=%s consecutiveFailures=%d — pausing',
-            taskIdentifier,
-            consecutiveFailures,
-          );
-          await this.recordAutomationError(currentTask, errorText, runTrigger, {
-            consecutiveFailures,
-            pauseReason: `${consecutiveFailures} consecutive scheduled-run failures`,
-          });
+        if (!currentTask) {
+          // Task vanished mid-run — nothing to transition.
+        } else if (!currentTask.automationMode) {
+          // Ad-hoc / dependency task: pause for user attention (legacy behavior).
+          await this.recordAutomationError(currentTask, errorText, runTrigger);
           await this.taskModel.updateStatus(taskId, 'paused', { error: errorText });
+        } else if (!isAutomationTick) {
+          // a manual "run now" of an automation task failed. This is
+          // an ad-hoc debug/backfill run — its failure is NOT a health signal for
+          // the automation. Restore the resting 'scheduled' state (the run had
+          // flipped it to 'running') so the next scheduled tick still fires, and
+          // record the error for visibility — but do NOT pause and do NOT touch
+          // the consecutive-failure fuse (only automation ticks count).
+          await this.recordAutomationError(currentTask, errorText, runTrigger);
+          await this.taskModel.updateStatus(taskId, 'scheduled', { error: errorText });
+        } else if (currentTask.automationMode === 'schedule') {
+          // a scheduled tick failed. A single transient error must not
+          // permanently pause a recurring task. Count consecutive failures and
+          // only pause once the fuse blows; otherwise keep the task 'scheduled' so
+          // the next tick retries. (Heartbeat tasks are handled by
+          // maybeRearmHeartbeat below, which owns their fuse + re-arm.)
+          const ctx = (currentTask.context as { scheduler?: TaskSchedulerContext } | null) ?? {};
+          const consecutiveFailures = (ctx.scheduler?.consecutiveFailures ?? 0) + 1;
+          scheduleConsecutiveFailures = consecutiveFailures;
+
+          if (consecutiveFailures >= AUTOMATION_FAILURE_FUSE) {
+            pausedByFuse = true;
+            log(
+              'schedule fuse blown: task=%s consecutiveFailures=%d — pausing',
+              taskIdentifier,
+              consecutiveFailures,
+            );
+            await this.recordAutomationError(currentTask, errorText, runTrigger, {
+              consecutiveFailures,
+              pauseReason: `${consecutiveFailures} consecutive scheduled-run failures`,
+            });
+            await this.taskModel.updateStatus(taskId, 'paused', { error: errorText });
+          } else {
+            log(
+              'schedule error (retryable): task=%s consecutiveFailures=%d/%d',
+              taskIdentifier,
+              consecutiveFailures,
+              AUTOMATION_FAILURE_FUSE,
+            );
+            await this.recordAutomationError(currentTask, errorText, runTrigger, {
+              consecutiveFailures,
+            });
+            await this.taskModel.updateStatus(taskId, 'scheduled', { error: errorText });
+          }
         } else {
-          log(
-            'schedule error (retryable): task=%s consecutiveFailures=%d/%d',
-            taskIdentifier,
-            consecutiveFailures,
-            AUTOMATION_FAILURE_FUSE,
-          );
-          await this.recordAutomationError(currentTask, errorText, runTrigger, {
-            consecutiveFailures,
-          });
+          // Heartbeat tick failed: record the error and keep the resting
+          // 'scheduled' state. maybeRearmHeartbeat (below) owns the consecutive-
+          // failure fuse and the re-arm decision for heartbeat tasks — mirror its
+          // fuse arithmetic here (it reads the same pre-increment context) so the
+          // notification below can tell a fuse-stop from a transient failure.
+          const ctx = (currentTask.context as { scheduler?: TaskSchedulerContext } | null) ?? {};
+          scheduleConsecutiveFailures = (ctx.scheduler?.consecutiveFailures ?? 0) + 1;
+          pausedByFuse = scheduleConsecutiveFailures >= AUTOMATION_FAILURE_FUSE;
+          await this.recordAutomationError(currentTask, errorText, runTrigger);
           await this.taskModel.updateStatus(taskId, 'scheduled', { error: errorText });
         }
-      } else {
-        // Heartbeat tick failed: record the error and keep the resting
-        // 'scheduled' state. maybeRearmHeartbeat (below) owns the consecutive-
-        // failure fuse and the re-arm decision for heartbeat tasks — mirror its
-        // fuse arithmetic here (it reads the same pre-increment context) so the
-        // notification below can tell a fuse-stop from a transient failure.
-        const ctx = (currentTask.context as { scheduler?: TaskSchedulerContext } | null) ?? {};
-        scheduleConsecutiveFailures = (ctx.scheduler?.consecutiveFailures ?? 0) + 1;
-        pausedByFuse = scheduleConsecutiveFailures >= AUTOMATION_FAILURE_FUSE;
-        await this.recordAutomationError(currentTask, errorText, runTrigger);
-        await this.taskModel.updateStatus(taskId, 'scheduled', { error: errorText });
-      }
 
-      // Tell the user their automation failed: fire-and-forget through the
-      // `@/business` slot (default impl is a no-op; a notification failure
-      // must never affect the task lifecycle). Manual "run now" failures are
-      // ad-hoc debug runs — the error brief above already covers them, and
-      // they are not an automation-health signal, so only automation ticks
-      // notify. Heartbeat ticks can fire every few seconds, so they only
-      // notify at the fuse-stop moment (the automation stopped re-arming);
-      // low-frequency scheduled ticks notify on every failure. Only the
-      // structured `errorCode` crosses the slot boundary; raw error text
-      // stays in the brief.
-      if (
-        currentTask?.automationMode &&
-        isAutomationTick &&
-        (runTrigger === 'schedule' || pausedByFuse)
-      ) {
-        void notifyScheduledTaskFailed({
-          agentId: currentTask.assigneeAgentId ?? undefined,
-          consecutiveFailures: scheduleConsecutiveFailures,
-          errorCode,
-          operationId: params.operationId,
-          paused: pausedByFuse,
-          runTrigger: runTrigger === 'schedule' ? 'schedule' : 'heartbeat',
-          taskId,
-          taskIdentifier,
-          taskName: currentTask.name ?? undefined,
-          topicId,
-          userId: this.userId,
-          workspaceId: this.workspaceId,
-        }).catch((error) =>
-          log(
-            'scheduled-task failure notification failed for task=%s (non-fatal): %O',
+        // Tell the user their automation failed: fire-and-forget through the
+        // `@/business` slot (default impl is a no-op; a notification failure
+        // must never affect the task lifecycle). Manual "run now" failures are
+        // ad-hoc debug runs — the error brief above already covers them, and
+        // they are not an automation-health signal, so only automation ticks
+        // notify. Heartbeat ticks can fire every few seconds, so they only
+        // notify at the fuse-stop moment (the automation stopped re-arming);
+        // low-frequency scheduled ticks notify on every failure. Only the
+        // structured `errorCode` crosses the slot boundary; raw error text
+        // stays in the brief.
+        if (
+          currentTask?.automationMode &&
+          isAutomationTick &&
+          (runTrigger === 'schedule' || pausedByFuse)
+        ) {
+          void notifyScheduledTaskFailed({
+            agentId: currentTask.assigneeAgentId ?? undefined,
+            consecutiveFailures: scheduleConsecutiveFailures,
+            errorCode,
+            operationId: params.operationId,
+            paused: pausedByFuse,
+            runTrigger: runTrigger === 'schedule' ? 'schedule' : 'heartbeat',
+            taskId,
             taskIdentifier,
-            error,
-          ),
-        );
-      }
+            taskName: currentTask.name ?? undefined,
+            topicId,
+            userId: this.userId,
+            workspaceId: this.workspaceId,
+          }).catch((error) =>
+            log(
+              'scheduled-task failure notification failed for task=%s (non-fatal): %O',
+              taskIdentifier,
+              error,
+            ),
+          );
+        }
+      });
+      if (!applied) return;
     }
 
     // Failed executions never enter verify settlement, so that callback cannot
@@ -735,6 +783,13 @@ export class TaskLifecycleService {
     if (task.automationMode !== 'heartbeat') return;
     if (!task.heartbeatInterval || task.heartbeatInterval <= 0) return;
     if (isTerminal(task.status)) return;
+    const manualStopAt = (task.context as { manualStopAt?: string } | null)?.manualStopAt;
+    if (
+      task.status === 'paused' &&
+      manualStopAt &&
+      (!task.startedAt || +new Date(manualStopAt) >= +new Date(task.startedAt))
+    )
+      return;
 
     const ctx = (task.context as { scheduler?: TaskSchedulerContext } | null) ?? {};
     const sched = ctx.scheduler ?? {};

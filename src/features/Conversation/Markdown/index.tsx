@@ -2,7 +2,9 @@ import { type MarkdownProps } from '@lobehub/ui';
 import { Markdown } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useUserStore } from '@/store/user';
 import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { displayBranding } from '@/utils/displayBranding';
@@ -18,6 +20,7 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const MarkdownMessage = memo<MarkdownProps>(({ children, className, componentProps, ...rest }) => {
+  const { i18n } = useTranslation();
   const { highlighterTheme, mermaidTheme, fontSize } = useUserStore(
     userGeneralSettingsSelectors.config,
   );
@@ -52,7 +55,9 @@ const MarkdownMessage = memo<MarkdownProps>(({ children, className, componentPro
       }}
       {...rest}
     >
-      {typeof children === 'string' ? displayBranding(children) : children}
+      {typeof children === 'string'
+        ? displayBranding(localizeGoalTemplate(children, i18n.resolvedLanguage || i18n.language))
+        : children}
     </Markdown>
   );
 });

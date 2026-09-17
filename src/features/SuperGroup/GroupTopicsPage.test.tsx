@@ -70,6 +70,8 @@ vi.mock('@/libs/trpc/client', () => ({
       groupConversation: {
         listTopics: { invalidate: mocks.invalidate },
         listGroups: { invalidate: mocks.invalidate },
+        listTextMessages: { invalidate: mocks.invalidate },
+        listPublishedAssistantMessages: { invalidate: mocks.invalidate },
       },
     }),
     groupConversation: {
@@ -160,13 +162,13 @@ it('keeps loaded topics visible when only the next page fails', () => {
   expect(screen.getByRole('button', { name: '行程计划' })).toBeVisible();
   expect(screen.getByText('更多话题加载失败')).toBeVisible();
   expect(screen.queryByText('话题加载失败')).toBeNull();
-  expect(screen.getByRole('button', { name: '归档', exact: true })).toBeVisible();
+  expect(screen.getByRole('button', { name: '归档' })).toBeVisible();
   expect(screen.getByRole('button', { name: '删除' })).toBeVisible();
 });
 
 it('connects owner archive and delete to the topic service and refreshes group data', async () => {
   render(<GroupTopics groupId="group-1" />);
-  fireEvent.click(screen.getByRole('button', { name: '归档', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: '归档' }));
   await waitFor(() =>
     expect(mocks.update).toHaveBeenCalledWith('topic-1', { status: 'completed' }),
   );

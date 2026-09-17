@@ -157,7 +157,10 @@ describe('MessagesEngine — activation result trimming', () => {
 
     it('should keep the tool result as the single channel when the manifest is not injected', async () => {
       const engine = new MessagesEngine(
-        createParams({ messages: activateToolsMessages(), toolsConfig: { tools: [] } }),
+        createParams({
+          messages: activateToolsMessages(),
+          toolsConfig: { manifests: [credsManifest], tools: [] },
+        }),
       );
 
       const result = await engine.process();

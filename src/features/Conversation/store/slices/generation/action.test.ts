@@ -1,5 +1,8 @@
 import { AgentManagementIdentifier } from '@lobechat/builtin-tool-agent-management';
-import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@lobechat/types';
+import {
+  DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID,
+  type SendGroupMessageParams,
+} from '@lobechat/types';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,7 +34,9 @@ const mockFailOperation = vi.fn();
 const mockExecuteClientAgent = vi.fn();
 const mockIsGatewayModeEnabled = vi.fn(() => false);
 const mockExecuteGatewayAgent = vi.fn();
-const mockSendGroupMessage = vi.fn(() => Promise.resolve(true));
+const mockSendGroupMessage = vi
+  .fn<(params: SendGroupMessageParams) => Promise<boolean>>()
+  .mockResolvedValue(true);
 const operationSelectorMock = vi.hoisted(() => ({
   getRunningInputLoadingOperationIds: vi.fn(() => () => ['root-op', 'retry-op']),
 }));
@@ -1208,7 +1213,9 @@ describe('Generation Actions', () => {
         await store.getState().regenerateUserMessage('user');
         const calls = mockSendGroupMessage.mock.calls;
         expect(calls).toHaveLength(2);
-        expect(calls[0][0].billing.idempotencyKey).not.toEqual(calls[1][0].billing.idempotencyKey);
+        const identities = calls.map(([params]) => params.billing?.idempotencyKey);
+        expect(identities).toEqual([expect.any(String), expect.any(String)]);
+        expect(identities[0]).not.toEqual(identities[1]);
       });
 
       it('continues a hosted reply through the server transport in its original topic', async () => {

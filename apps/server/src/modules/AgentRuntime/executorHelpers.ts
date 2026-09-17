@@ -509,6 +509,7 @@ export const buildServerAgentMemberRunner = (
               groupId,
               groupToolMessageId: groupTool.id,
               instruction: member.instruction,
+              skillIdentifiers: disableTools ? undefined : member.skillIdentifiers,
               mode,
               onComplete,
               parentOperationId: ctx.operationId,

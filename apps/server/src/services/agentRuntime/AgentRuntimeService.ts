@@ -922,10 +922,12 @@ export class AgentRuntimeService {
 
     // Only an already admitted, server-bound handle can supply this locator.
     // Never copy a locator out of appContext or a queue payload.
-    const platformUsageBudget = getPlatformUsageSharedBudgetSnapshot(operationId, {
-      actorUserId: userId,
-      workspaceId,
-    });
+    const platformUsageBudget = userId
+      ? getPlatformUsageSharedBudgetSnapshot(operationId, {
+          actorUserId: userId,
+          workspaceId,
+        })
+      : undefined;
     const operationMetadata = {
       ...(appContext?.agentSignal ? { agentSignal: appContext.agentSignal } : {}),
       ...(interventionResolution ? { agentInterventionContinuation: interventionResolution } : {}),
@@ -974,14 +976,22 @@ export class AgentRuntimeService {
       );
     }
     if (platformUsageBudget && !operationStartPersisted) {
-      throw new Error(`Failed to durably persist platform budget binding ${operationId} before dispatch`);
+      throw new Error(
+        `Failed to durably persist platform budget binding ${operationId} before dispatch`,
+      );
     }
     if (platformUsageBudget) {
       const durable = await this.agentOperationModel.findById(operationId);
-      const saved = durable?.metadata?.platformUsageBudget as typeof platformUsageBudget | undefined;
-      if (durable?.userId !== this.userId || (durable?.workspaceId ?? null) !== (workspaceId ?? null) ||
-        saved?.version !== platformUsageBudget.version || saved?.actorUserId !== platformUsageBudget.actorUserId ||
-        saved?.budgetId !== platformUsageBudget.budgetId || saved?.leaseVersion !== platformUsageBudget.leaseVersion) {
+      const saved = durable?.metadata?.platformUsageBudget as
+        typeof platformUsageBudget | undefined;
+      if (
+        durable?.userId !== this.userId ||
+        (durable?.workspaceId ?? null) !== (workspaceId ?? null) ||
+        saved?.version !== platformUsageBudget.version ||
+        saved?.actorUserId !== platformUsageBudget.actorUserId ||
+        saved?.budgetId !== platformUsageBudget.budgetId ||
+        saved?.leaseVersion !== platformUsageBudget.leaseVersion
+      ) {
         throw new Error(`Platform budget operation identity conflict: ${operationId}`);
       }
     }
@@ -3842,7 +3852,10 @@ export class AgentRuntimeService {
       throw new Error('Invalid server-derived hosted execution principal');
     }
 
-    if (billingActorUserId && metadata?.agentConfig?.agencyConfig?.modelRuntimeMode === 'platform-managed') {
+    if (
+      billingActorUserId &&
+      metadata?.agentConfig?.agencyConfig?.modelRuntimeMode === 'platform-managed'
+    ) {
       await restorePlatformUsageSharedBudgetForOperation(this.serverDB, operationId, {
         actorUserId: billingActorUserId,
         workspaceId: metadata?.workspaceId,

@@ -5,7 +5,7 @@ import { NavPanelPortal } from '@/features/NavPanel/NavPanelPortal';
 import SidebarContent from './SidebarContent';
 
 const Sidebar = () => (
-  <NavPanelPortal navKey="image">
+  <NavPanelPortal navKey="pages">
     <SidebarContent />
   </NavPanelPortal>
 );

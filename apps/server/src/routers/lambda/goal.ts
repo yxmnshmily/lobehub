@@ -16,7 +16,9 @@ import {
   HeteroOperationPrincipalError,
   resolveActiveHeteroOperationPrincipal,
 } from '@/server/services/heterogeneousAgent/operationPrincipal';
+import { ResourceDeletionService } from '@/server/services/resourceDeletion';
 
+import { assertGroupResourceDeletable } from './_helpers/assertGroupResourceDeletable';
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
 
 const goalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
@@ -182,6 +184,15 @@ export const goalRouter = router({
         config: z
           .object({
             groupId: z.string().min(1).optional(),
+            origin: z
+              .object({
+                agentId: z.string().optional(),
+                topicId: z.string().optional(),
+                messageId: z.string().optional(),
+                operationId: z.string().optional(),
+                toolCallId: z.string().optional(),
+              })
+              .optional(),
             acceptance: z
               .object({
                 /** Numeric clauses gating acceptance; keyed by a series on this goal. */
@@ -417,24 +428,32 @@ export const goalRouter = router({
       // `agent:update` says the member may change goals; it does not say whose.
       // Without this any member could delete a colleague's goal and cascade its
       // whole graph away, which is the same rule tasks already enforce.
+      await assertGroupResourceDeletable(ctx, 'goal', [input.id]);
       const goal = await ctx.goalModel.findById(input.id);
-      if (!goal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
+      if (!goal) return { message: 'Goal deleted', success: true };
       assertWorkspaceRowManageable(ctx, goal.userId, 'goal');
 
-      await ctx.goalService.delete(input.id);
-      return { message: 'Goal deleted', success: true };
+      const deletion = await new ResourceDeletionService(
+        ctx.serverDB,
+        ctx.userId,
+        ctx.workspaceId ?? undefined,
+        ctx.workspaceRole,
+      ).delete('goal', [input.id]);
+      return { deletion, message: 'Goal deleted', success: true };
     } catch (error) {
       mapGoalError(error, 'delete');
     }
   }),
 
-  graph: goalProcedure.input(idInput).query(async ({ ctx, input }) => {
-    try {
-      return { data: await ctx.goalService.graph(input.id), success: true };
-    } catch (error) {
-      mapGoalError(error, 'graph');
-    }
-  }),
+  graph: goalProcedure
+    .input(z.object({ id: z.string(), groupId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return { data: await ctx.goalService.graph(input.id, input.groupId), success: true };
+      } catch (error) {
+        mapGoalError(error, 'graph');
+      }
+    }),
 
   /**
    * List goals with their graph roll-up: how many Tasks are done, how many
@@ -453,6 +472,18 @@ export const goalRouter = router({
     )
     .query(async ({ input, ctx }) => ctx.goalModel.list(input)),
 
+  cancel: goalWriteProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    try {
+      return {
+        data: await ctx.goalService.cancel(input.id),
+        message: 'Goal canceled',
+        success: true,
+      };
+    } catch (error) {
+      mapGoalError(error, 'cancel');
+    }
+  }),
+
   pause: goalWriteProcedure.input(idInput).mutation(async ({ ctx, input }) => {
     try {
       return { data: await ctx.goalService.pause(input.id), message: 'Goal paused', success: true };
@@ -461,20 +492,62 @@ export const goalRouter = router({
     }
   }),
 
-  resume: goalWriteProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    try {
-      const data = await ctx.goalService.resume(input.id);
-      await scheduleGoalAdvance({
-        goalId: input.id,
-        trigger: 'resume',
-        userId: ctx.userId,
-        workspaceId: ctx.workspaceId ?? undefined,
-      });
-      return { data, message: 'Goal resumed', success: true };
-    } catch (error) {
-      mapGoalError(error, 'resume');
-    }
-  }),
+  revise: goalWriteProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        groupId: z.string().optional(),
+        origin: z.object({ agentId: z.string(), topicId: z.string() }).optional(),
+        nodeId: z.string(),
+        instruction: z.string().min(1),
+        requirement: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const data = await ctx.goalService.revise(input.id, input);
+      if (data.goal.status === 'running') {
+        try {
+          await scheduleGoalAdvance({
+            goalId: input.id,
+            trigger: 'manual',
+            userId: ctx.userId,
+            workspaceId: ctx.workspaceId ?? undefined,
+          });
+        } catch {
+          return {
+            data,
+            message: 'Revision saved, but scheduling failed. Retry the same goal.',
+            success: true,
+          };
+        }
+      }
+      return { data, message: `Revision saved. Goal status: ${data.goal.status}.`, success: true };
+    }),
+
+  resume: goalWriteProcedure
+    .input(z.object({ id: z.string(), groupId: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        if (input.groupId) {
+          const graph = await ctx.goalService.graph(input.id);
+          if (graph.goal.config?.groupId !== input.groupId)
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Goal not found in this conversation',
+            });
+        }
+        const data = await ctx.goalService.resume(input.id);
+        await scheduleGoalAdvance({
+          goalId: input.id,
+          trigger: 'resume',
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId ?? undefined,
+        });
+        return { data, message: 'Goal resumed', success: true };
+      } catch (error) {
+        mapGoalError(error, 'resume');
+      }
+    }),
 
   /**
    * Start every unfinished Task node over (cancel stale runs, back to

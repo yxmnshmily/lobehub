@@ -17,7 +17,7 @@ import {
   works,
   workVersions,
 } from '@lobechat/database/schemas';
-import type { ChatFileItem, ChatImageItem, UIChatMessage } from '@lobechat/types';
+import type { ChatFileItem, ChatImageItem, ChatTopic, UIChatMessage } from '@lobechat/types';
 import {
   and,
   asc,
@@ -103,6 +103,8 @@ export type CreateAccessibleTextMessageInput = {
 };
 
 export type AccessibleConversationTopic = {
+  businessAssociations?: ChatTopic['businessAssociations'];
+  cost?: number | null;
   favorite?: boolean | null;
   updatedAt?: Date;
   status?: typeof topics.$inferSelect.status;
@@ -959,11 +961,72 @@ export class GroupConversationAccessRepository {
     );
   };
 
+  /** Batched, group-scoped relations: shared conversations must not expose another group's work. */
+  private topicBusinessAssociations = async (ownerId: string, groupId: string, ids: string[]) => {
+    if (!ids.length) return new Map<string, NonNullable<ChatTopic['businessAssociations']>>();
+    const { rows } = await this.db.execute<{
+      topic_id: string;
+      id: string;
+      kind: 'goal' | 'task' | 'project';
+      title: string;
+    }>(sql`
+      WITH RECURSIVE visible_tasks AS (
+        SELECT id, name, identifier, parent_task_id, project_id, context FROM tasks
+        WHERE created_by_user_id = ${ownerId} AND workspace_id IS NULL AND deleted_at IS NULL
+          AND config->>'groupId' = ${groupId}
+      ), topic_tasks AS (
+        SELECT tt.topic_id, t.id FROM task_topics tt JOIN visible_tasks t ON t.id = tt.task_id
+        WHERE tt.user_id = ${ownerId} AND tt.workspace_id IS NULL AND ${inArray(sql`tt.topic_id`, ids)}
+        UNION
+        SELECT t.context->'origin'->>'topicId', t.id FROM visible_tasks t
+        WHERE ${inArray(sql`t.context->'origin'->>'topicId'`, ids)}
+        UNION
+        SELECT r.topic_id, p.id FROM topic_tasks r JOIN visible_tasks t ON t.id = r.id
+          JOIN visible_tasks p ON p.id = t.parent_task_id
+      ), visible_goals AS (
+        SELECT id, title, subject_type, subject_id, project_id, config FROM goals
+        WHERE user_id = ${ownerId} AND workspace_id IS NULL AND deleted_at IS NULL
+          AND config->>'groupId' = ${groupId}
+      ), topic_goals AS (
+        SELECT r.topic_id, g.id FROM topic_tasks r
+        JOIN visible_goals g ON (g.subject_type = 'task' AND g.subject_id = r.id)
+          OR EXISTS (SELECT 1 FROM goal_nodes n WHERE n.goal_id = g.id AND n.task_id = r.id)
+        UNION
+        SELECT g.config->'origin'->>'topicId', g.id FROM visible_goals g
+          WHERE ${inArray(sql`g.config->'origin'->>'topicId'`, ids)}
+        UNION
+        SELECT g.subject_id, g.id FROM visible_goals g
+          WHERE g.subject_type = 'topic' AND ${inArray(sql`g.subject_id`, ids)}
+      ), topic_projects AS (
+        SELECT id AS topic_id, project_id FROM topics WHERE ${inArray(sql`id`, ids)}
+        UNION
+        SELECT r.topic_id, t.project_id FROM topic_tasks r JOIN visible_tasks t ON t.id = r.id
+        UNION
+        SELECT r.topic_id, g.project_id FROM topic_goals r JOIN visible_goals g ON g.id = r.id
+      )
+      SELECT r.topic_id, t.id, 'task' AS kind, coalesce(nullif(t.name, ''), t.identifier) AS title
+        FROM topic_tasks r JOIN visible_tasks t ON t.id = r.id
+      UNION
+      SELECT r.topic_id, g.id, 'goal' AS kind, g.title FROM topic_goals r JOIN visible_goals g ON g.id = r.id
+      UNION
+      SELECT r.topic_id, p.id, 'project' AS kind, p.name FROM topic_projects r JOIN projects p ON p.id = r.project_id
+        WHERE p.user_id = ${ownerId} AND p.workspace_id IS NULL AND p.deleted_at IS NULL
+      ORDER BY kind, title, id
+    `);
+    const result = new Map<string, NonNullable<ChatTopic['businessAssociations']>>();
+    for (const { topic_id, ...association } of rows) {
+      const items = result.get(topic_id) ?? [];
+      items.push(association);
+      result.set(topic_id, items);
+    }
+    return result;
+  };
+
   listAccessibleTopics = async (
     actorUserId: string,
     groupId: string,
     options: GroupConversationPageOptions = {},
-  ): Promise<GroupConversationPage<AccessibleConversationTopic>> => {
+  ): Promise<GroupConversationPage<AccessibleConversationTopic> & { totalCount?: number }> => {
     const limit = options.recent
       ? Math.min(pageLimit(options.limit), 20)
       : pageLimit(options.limit);
@@ -996,12 +1059,17 @@ export class GroupConversationAccessRepository {
       .as('latest_request');
     const rows = await this.db
       .select({
+        // Window count uses the same visibility joins, before the preview limit.
+        totalCount: options.recent
+          ? sql<number>`count(${topics.id}) over ()`.mapWith(Number)
+          : sql<number>`0`,
         latestMessage: latestRequest.content,
         latestMessageId: latestRequest.id,
         ownerId: chatGroups.userId,
         createdAt: topics.createdAt,
         updatedAt: topics.updatedAt,
         favorite: topics.favorite,
+        totalCost: topics.totalCost,
         status: topics.status,
         trigger: topics.trigger,
         groupId: chatGroups.id,
@@ -1061,6 +1129,7 @@ export class GroupConversationAccessRepository {
           createdAt: row.createdAt,
           updatedAt: row.updatedAt ?? row.createdAt,
           ...(actorUserId === row.ownerId ? { favorite: row.favorite } : {}),
+          cost: row.totalCost == null ? null : Number(row.totalCost),
           status: row.status,
           trigger: row.trigger,
           id: row.id,
@@ -1078,8 +1147,21 @@ export class GroupConversationAccessRepository {
       ];
     });
 
-    if (options.recent) return { items: items.slice(0, limit), nextCursor: null };
-    return toPage(items, limit);
+    if (options.recent)
+      return { items: items.slice(0, limit), nextCursor: null, totalCount: rows[0].totalCount };
+    const page = toPage(items, limit);
+    const associations = await this.topicBusinessAssociations(
+      rows[0].ownerId,
+      groupId,
+      page.items.map(({ id }) => id),
+    );
+    return {
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        businessAssociations: associations.get(item.id) ?? [],
+      })),
+    };
   };
 
   listAccessibleTextMessages = async (

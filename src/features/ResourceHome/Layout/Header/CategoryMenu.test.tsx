@@ -5,6 +5,8 @@ import { FilesTabs } from '@/types/files';
 
 import CategoryMenu from './CategoryMenu';
 
+vi.mock('./CategoryCount', () => ({ default: () => <span>（33）</span> }));
+
 const mocks = vi.hoisted(() => ({
   category: 'home' as string,
   expanded: true,

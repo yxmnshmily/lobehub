@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import AsyncError from '@/components/AsyncError';
 import { ArticleSkeleton } from '@/components/Skeleton';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import {
   getProjectAcceptancePath,
@@ -135,7 +136,7 @@ const SectionTitle = memo<{
 ));
 
 const ProjectDashboard = memo<ProjectDashboardProps>(({ detail, projectId }) => {
-  const { t } = useTranslation('project');
+  const { t, i18n } = useTranslation('project');
   const navigate = useWorkspaceAwareNavigate();
   const openWork = useOpenWork();
   const workspaceId = useActiveWorkspaceId();
@@ -237,10 +238,16 @@ const ProjectDashboard = memo<ProjectDashboardProps>(({ detail, projectId }) => 
           ) : (
             activeTasks.map((task) => (
               <NavItem
-                description={task.description || task.instruction}
                 icon={task.status === 'paused' ? Clock3Icon : CircleDotIcon}
                 key={task.id}
-                title={task.name || task.instruction}
+                title={localizeGoalTemplate(
+                  task.name || task.instruction || '',
+                  i18n.resolvedLanguage || i18n.language,
+                )}
+                description={localizeGoalTemplate(
+                  task.description || task.instruction || '',
+                  i18n.resolvedLanguage || i18n.language,
+                )}
                 extra={
                   <Tag size={'small'}>
                     {t(`goals.status.${task.status}`, { defaultValue: task.status })}
@@ -291,7 +298,12 @@ const ProjectDashboard = memo<ProjectDashboardProps>(({ detail, projectId }) => 
           ) : (
             attentionTasks.map((task) => (
               <Flexbox className={styles.attention} gap={4} key={task.id}>
-                <Text weight={500}>{task.name || task.instruction}</Text>
+                <Text weight={500}>
+                  {localizeGoalTemplate(
+                    task.name || task.instruction || '',
+                    i18n.resolvedLanguage || i18n.language,
+                  )}
+                </Text>
                 <Text fontSize={12} type={task.status === 'failed' ? 'danger' : 'secondary'}>
                   {task.status === 'failed' ? t('overview.taskFailed') : t('overview.taskWaiting')}
                 </Text>

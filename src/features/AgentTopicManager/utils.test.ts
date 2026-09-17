@@ -109,3 +109,18 @@ describe('AgentTopicManager utils', () => {
     expect(getBotPlatformName('unknown-platform')).toBe('unknown-platform');
   });
 });
+
+it('filters business topics by any linked object and distinguishes unlinked topics', () => {
+  const topic = createTopic(undefined, {
+    businessAssociations: [
+      { id: 't1', kind: 'task', title: '任务' },
+      { id: 'g1', kind: 'goal', title: '目标' },
+    ],
+  });
+  expect(matchesGroup(topic, ['task:t1'])).toBe(true);
+  expect(matchesGroup(topic, ['goal:g1'])).toBe(true);
+  expect(matchesGroup(topic, ['project:p1'])).toBe(false);
+  expect(matchesGroup(createTopic(undefined, { businessAssociations: [] }), ['unlinked'])).toBe(
+    true,
+  );
+});

@@ -108,7 +108,7 @@ export const userRouter = router({
         // the avatar/banner then fails to load for everyone.
         const normalizedPayload = {
           ...input,
-          avatarUrl: toStableAssetUrl(input.avatarUrl),
+          avatarUrl: toStableAssetUrl(input.avatarUrl) ?? undefined,
           meta: {
             ...input.meta,
             bannerUrl: toStableAssetUrl(input.meta?.bannerUrl) ?? undefined,

@@ -359,3 +359,40 @@ describe('createGroupOrchestrationExecutors', () => {
     });
   });
 });
+
+it('passes dispatch skills without replacing the original group request', async () => {
+  const user = {
+    id: 'user',
+    role: 'user',
+    content: 'One sentence only',
+    createdAt: 1,
+    updatedAt: 1,
+  } as UIChatMessage;
+  const store = createMockStore({ dbMessagesMap: { 'group_test-group-id_test-topic-id': [user] } });
+  const executors = createGroupOrchestrationExecutors({
+    get: () => store,
+    messageContext: {
+      agentId: 'test-group-id',
+      groupId: 'test-group-id',
+      scope: 'group',
+      topicId: 'test-topic-id',
+    },
+    orchestrationOperationId: 'parent',
+    supervisorAgentId: 'supervisor',
+  });
+  await executors.call_agent!(
+    {
+      type: 'call_agent',
+      payload: { agentId: 'writer', instruction: 'Write the copy', skillIdentifiers: ['copy'] },
+    },
+    createInitialState(),
+  );
+  expect(store.executeClientAgent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      skillIdentifiers: ['copy'],
+      messages: expect.arrayContaining([
+        expect.objectContaining({ id: 'user', content: 'One sentence only' }),
+      ]),
+    }),
+  );
+});

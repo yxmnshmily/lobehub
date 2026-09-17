@@ -125,7 +125,10 @@ vi.mock('@/services/electron/completionSound', () => ({
 }));
 vi.mock('@/store/serverConfig', () => ({
   getServerConfigStoreState: () => ({
-    serverConfig: { enableMultimodalUnderstanding: serverConfigMock.enableMultimodalUnderstanding },
+    serverConfig: {
+      enableMultimodalUnderstanding: serverConfigMock.enableMultimodalUnderstanding,
+      telemetry: { disabled: true },
+    },
   }),
   serverConfigSelectors: {
     enableMultimodalUnderstanding: (state: {
@@ -209,6 +212,7 @@ beforeEach(() => {
     useAiInfraStore.setState({ isInitAiProviderRuntimeState: true });
     useChatStore.setState({
       refreshMessages: vi.fn(),
+      updateTopicStatus: vi.fn().mockResolvedValue(undefined),
       executeClientAgent: vi.fn(),
       internal_createAgentState: realCreateAgentState,
     });
@@ -251,7 +255,14 @@ describe('StreamingExecutor actions', () => {
       useChatStore.setState({ updateTopicStatus });
       vi.mocked(messageService.updateMessage).mockResolvedValue({ success: true } as any);
       seedDbMessages(context, [
-        { id: 'pending-assistant', role: 'assistant', content: '', ...context } as UIChatMessage,
+        {
+          id: 'pending-assistant',
+          role: 'assistant',
+          content: '',
+          createdAt: 1,
+          updatedAt: 1,
+          ...context,
+        },
       ]);
 
       await expect(

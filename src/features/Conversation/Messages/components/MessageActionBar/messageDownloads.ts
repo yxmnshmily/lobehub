@@ -1,6 +1,5 @@
 import { LOADING_FLAT } from '@lobechat/const';
 import type { UIChatMessage } from '@lobechat/types';
-import type { Definition, Html, Image, ImageReference, Link, LinkReference } from 'mdast';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
@@ -78,13 +77,17 @@ export const getMessageDownloads = (data: UIChatMessage): MessageDownload[] => {
     .join('\n\n');
   const tree = unified().use(remarkParse).parse(source);
   const definitions = new Map<string, string>();
-  visit(tree, 'definition', (node: Definition) => {
+  visit(tree, 'definition', (node) => {
     definitions.set(node.identifier, node.url);
   });
   visit(tree, (node) => {
-    if (['image', 'imageReference', 'link', 'linkReference'].includes(node.type)) {
-      const item = node as Image | ImageReference | Link | LinkReference;
-      const url = 'url' in item ? item.url : definitions.get(item.identifier);
+    if (
+      node.type === 'image' ||
+      node.type === 'imageReference' ||
+      node.type === 'link' ||
+      node.type === 'linkReference'
+    ) {
+      const url = 'url' in node ? node.url : definitions.get(node.identifier);
       if (!url) return;
       if (
         node.type.startsWith('image') ||
@@ -94,7 +97,7 @@ export const getMessageDownloads = (data: UIChatMessage): MessageDownload[] => {
         add(url);
     }
     if (node.type === 'html' && typeof DOMParser !== 'undefined') {
-      const document = new DOMParser().parseFromString((node as Html).value, 'text/html');
+      const document = new DOMParser().parseFromString(node.value, 'text/html');
       for (const media of document.querySelectorAll('img[src],video[src],audio[src],source[src]'))
         add(media.getAttribute('src') || '');
     }

@@ -24,9 +24,13 @@ describe('display branding', () => {
       postProcess: ['displayBranding'],
       resources: { 'zh-CN': { translation: { title: '{{brand}} 设置' } } },
     });
-    expect(instance.t('title', { brand: 'LobeHub' })).toBe('旅游群 设置');
+    expect(
+      instance.t('title', { brand: 'LobeHub', defaultValue: 'Missing bundled translation' }),
+    ).toBe('旅游群 设置');
     instance.addResourceBundle('zh-CN', 'lazy', { title: 'LobeHub Desktop' });
-    expect(instance.t('lazy:title')).toBe('旅游群 Desktop');
+    expect(instance.t('lazy:title', { defaultValue: 'Missing lazy translation' })).toBe(
+      '旅游群 Desktop',
+    );
     expect(instance.t('missing', { defaultValue: 'LobeHub 设置' })).toBe('旅游群 设置');
   });
 });

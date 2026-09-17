@@ -16,6 +16,7 @@ import type {
   BuiltinToolContext,
   BuiltinToolResult,
   TaskAutomationMode,
+  TaskContext,
   TaskStatus,
   ToolAfterCallContext,
 } from '@lobechat/types';
@@ -212,6 +213,18 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
     try {
       log('[TaskExecutor] createTask - params:', params);
       const parentIdentifier = params.parentIdentifier?.trim() || undefined;
+      // Match server task creation: anchor delivery to the creator conversation,
+      // never the assigned member or the source user message.
+      const origin =
+        ctx?.agentId && ctx.topicId
+          ? {
+              agentId: ctx.agentId,
+              messageId: ctx.anchorMessageId,
+              operationId: ctx.rootOperationId ?? ctx.operationId,
+              toolCallId: ctx.toolCallId,
+              topicId: ctx.topicId,
+            }
+          : undefined;
 
       // Executing agent and human owner are independent, coexisting sides (the
       // member owns the outcome, the agent executes) — a member owner does not
@@ -221,6 +234,7 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
         assigneeAgentId:
           params.assigneeAgentId ?? (ctx?.scope === 'task' ? undefined : ctx?.agentId),
         assigneeUserId: params.assigneeUserId,
+        context: origin ? { origin } : undefined,
         createdByAgentId: ctx?.agentId,
         instruction: params.instruction,
         name: params.name,
@@ -811,6 +825,22 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
     }
   };
 
+  #automaticReturnHint = async (
+    identifier: string,
+    ctx?: BuiltinToolContext,
+  ): Promise<string | undefined> => {
+    if (!ctx?.agentId || !ctx.topicId) return;
+    try {
+      const task = await taskService.find(identifier);
+      const origin = (task?.data?.context as TaskContext | undefined)?.origin;
+      if (origin?.agentId === ctx.agentId && origin.topicId === ctx.topicId) {
+        return 'Results will automatically return to this conversation. For now, give only a brief started status; do not poll or start the task again while waiting. The user can still ask for a status check.';
+      }
+    } catch {
+      // A failed optional lookup must not turn a successful launch into a failure.
+    }
+  };
+
   runTask = async (
     params: { continueTopicId?: string; identifier?: string; prompt?: string },
     ctx?: BuiltinToolContext,
@@ -840,6 +870,8 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
       const lines = [`Task ${identifier} started.`];
       if (topicId) lines.push(`  Topic: ${topicId}`);
       if (operationId) lines.push(`  Operation: ${operationId}`);
+      const returnHint = await this.#automaticReturnHint(identifier, ctx);
+      if (returnHint) lines.push(returnHint);
 
       return {
         content: lines.join('\n'),
@@ -859,7 +891,7 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
 
   runTasks = async (
     params: { identifiers: string[] },
-    _ctx?: BuiltinToolContext,
+    ctx?: BuiltinToolContext,
   ): Promise<BuiltinToolResult> => {
     const identifiers = Array.isArray(params.identifiers)
       ? params.identifiers.map((id) => id?.trim()).filter((id): id is string => !!id)
@@ -885,6 +917,8 @@ class TaskExecutor extends BaseExecutor<typeof TaskApiName> {
         const operationId = (result as { operationId?: string } | undefined)?.operationId;
         results.push({ identifier, operationId, success: true, topicId });
         lines.push(`${index + 1}. ${identifier} — started${topicId ? ` (topic ${topicId})` : ''}`);
+        const returnHint = await this.#automaticReturnHint(identifier, ctx);
+        if (returnHint) lines.push(returnHint);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         results.push({ error: message, identifier, success: false });

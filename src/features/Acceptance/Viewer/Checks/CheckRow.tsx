@@ -23,6 +23,8 @@ import {
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import LocalizedGeneratedText from '@/features/Acceptance/components/LocalizedGeneratedText';
+
 import { hasRenderableEvidence, readVisualizationManifest } from '../../Report/visualization';
 import { VisualizationDeltaBadge, VisualizationRenderer } from '../../Report/VisualizationRenderer';
 import { checkDisplayTitle } from '../../utils';
@@ -583,7 +585,7 @@ export const AcceptanceCheckRow = memo<{
               open it — in a detail view there is nothing to preview. */}
             {check.result?.toulmin?.evidence && (
               <Text fontSize={12} style={{ whiteSpace: 'pre-wrap' }} type={'secondary'}>
-                {check.result.toulmin.evidence}
+                <LocalizedGeneratedText text={check.result.toulmin.evidence} />
               </Text>
             )}
             {/* An agent judge's argument is its run, not a paragraph — link the
@@ -718,7 +720,7 @@ export const AcceptanceCheckRow = memo<{
                     {t('acceptance.checks.judgeReason')}
                   </Text>
                   <Text fontSize={12} style={{ whiteSpace: 'pre-wrap' }}>
-                    {check.result.toulmin.reasoning}
+                    <LocalizedGeneratedText text={check.result.toulmin.reasoning} />
                   </Text>
                 </Flexbox>
               ) : !hasRenderableEvidence(check.evidence.length, visualization) ? (

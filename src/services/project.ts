@@ -2,6 +2,8 @@ import type { ProjectStatus, ProjectVisibility } from '@lobechat/types';
 
 import { createWorkspaceLambdaClient, lambdaClient } from '@/libs/trpc/client';
 
+import { clearResourceDeletionCache } from './resourceDeletionCache';
+
 const PROJECT_PAGE_SIZE = 100;
 
 class ProjectService {
@@ -28,7 +30,11 @@ class ProjectService {
 
   detail = async (id: string) => lambdaClient.project.detail.query({ id });
 
-  delete = async (id: string) => lambdaClient.project.delete.mutate({ id });
+  delete = async (id: string) => {
+    const result = await lambdaClient.project.delete.mutate({ id });
+    await clearResourceDeletionCache(result?.deletion);
+    return result;
+  };
 
   create = async (
     params: {

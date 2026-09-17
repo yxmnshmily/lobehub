@@ -145,6 +145,18 @@ describe('TaskTopicModel', () => {
   });
 
   describe('cancelIfRunning', () => {
+    it('does not cancel a newer operation that reused the same topic', async () => {
+      const taskModel = new TaskModel(serverDB, userId);
+      const topicModel = new TaskTopicModel(serverDB, userId);
+      const task = await taskModel.create({ instruction: 'Test' });
+      await createTopic('tpc_reused');
+      await topicModel.add(task.id, 'tpc_reused', { seq: 1, operationId: 'new-op' });
+      expect(await topicModel.cancelIfRunning(task.id, 'tpc_reused', 'old-op')).toBe(false);
+      expect((await topicModel.findByTopicId('tpc_reused'))?.status).toBe('running');
+      expect(await topicModel.cancelIfRunning(task.id, 'tpc_reused', 'new-op')).toBe(true);
+      expect((await topicModel.findByTopicId('tpc_reused'))?.status).toBe('canceled');
+    });
+
     it('should cancel + stamp completedAt when topic was running', async () => {
       const taskModel = new TaskModel(serverDB, userId);
       const topicModel = new TaskTopicModel(serverDB, userId);

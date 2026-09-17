@@ -24,6 +24,7 @@ import SourceFilter from '../ToolBar/SourceFilter';
 import ViewSwitcher from '../ToolBar/ViewSwitcher';
 import Breadcrumb from './Breadcrumb';
 import SearchInput from './SearchInput';
+import SelectionSummary from './SelectionSummary';
 
 const styles = createStaticStyles(({ css }) => ({
   mobileActions: css`
@@ -44,23 +45,15 @@ const Header = memo(() => {
   const activeWorkspaceId = useActiveWorkspaceId();
 
   // Get state and actions from store
-  const [
-    libraryId,
-    category,
-    onActionClick,
-    selectAllState,
-    selectFileIds,
-    selectionTotal,
-    viewMode,
-  ] = useResourceManagerStore((s) => [
-    s.libraryId,
-    s.category,
-    s.onActionClick,
-    s.selectAllState,
-    s.selectedFileIds,
-    s.selectionTotal,
-    s.viewMode,
-  ]);
+  const [libraryId, category, onActionClick, selectAllState, selectFileIds, selectionTotal] =
+    useResourceManagerStore((s) => [
+      s.libraryId,
+      s.category,
+      s.onActionClick,
+      s.selectAllState,
+      s.selectedFileIds,
+      s.selectionTotal,
+    ]);
   const { allowed: canEditResources, reason } = usePermission('edit_own_content');
   const total = useFileStore((s) => s.total);
   const selectCount = getExplorerSelectedCount({
@@ -186,16 +179,16 @@ const Header = memo(() => {
     </Flexbox>
   );
 
+  const headerLeft = (
+    <Flexbox horizontal align="center" gap={16} style={{ minWidth: 0, overflowX: 'auto' }}>
+      {leftContent}
+      <SelectionSummary />
+    </Flexbox>
+  );
+
   const rightContent = (
     <>
-      {/*
-        Grid view carries the source chips on its item-count row (where the
-        count and the pool it counts belong together). The list view has no
-        such row — its header is a horizontally scrolling column strip — so
-        the chips live here instead, and a standing filter stays visible in
-        both views.
-      */}
-      {viewMode === 'list' && !mobile && <SourceFilter />}
+      <SourceFilter />
       <SearchInput mobile={mobile} />
       <SortDropdown />
       <BatchActionsDropdown selectCount={selectCount} onActionClick={onActionClick} />
@@ -215,7 +208,7 @@ const Header = memo(() => {
         style={{ borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}` }}
       >
         <Flexbox horizontal align="center" style={{ minWidth: 0 }}>
-          {leftContent}
+          {headerLeft}
         </Flexbox>
         <Flexbox
           horizontal
@@ -233,7 +226,7 @@ const Header = memo(() => {
 
   return (
     <NavHeader
-      left={leftContent}
+      left={headerLeft}
       right={rightContent}
       style={{
         borderBottom: `0.5px solid ${cssVar.colorBorderSecondary}`,

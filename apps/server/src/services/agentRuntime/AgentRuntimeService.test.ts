@@ -503,6 +503,11 @@ describe('AgentRuntimeService', () => {
       expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
     });
 
+    it('does not query an admitted budget with an absent actor or substitute the service owner', async () => {
+      await service.createOperation({ ...mockParams, autoStart: false, userId: undefined });
+      expect(budgetContinuation.snapshot).not.toHaveBeenCalled();
+    });
+
     it.each([true, false])(
       'persists the admitted budget before dispatch (persisted=%s)',
       async (persisted) => {

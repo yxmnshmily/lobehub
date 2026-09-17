@@ -5,6 +5,7 @@ import { PlusIcon, SquarePenIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import NavItem from '@/features/NavPanel/components/NavItem';
 import { usePermission } from '@/hooks/usePermission';
 import { usePageStore } from '@/store/page';
 
@@ -15,6 +16,7 @@ interface AddButtonProps {
    * (personal mode) omits this prop and gets the larger create-page icon.
    */
   compact?: boolean;
+  showLabel?: boolean;
   /**
    * Force the new page's visibility. Used by the workspace-mode sidebar so
    * each accordion header creates directly into its own bucket.
@@ -25,8 +27,9 @@ interface AddButtonProps {
   visibility?: 'private' | 'public';
 }
 
-const AddButton = memo<AddButtonProps>(({ compact, visibility }) => {
+const AddButton = memo<AddButtonProps>(({ compact, showLabel, visibility }) => {
   const { t } = useTranslation('file');
+  const { t: tGeneration } = useTranslation('image');
   const { allowed: canCreate } = usePermission('create_content');
 
   const createNewPage = usePageStore((s) => s.createNewPage);
@@ -37,6 +40,17 @@ const AddButton = memo<AddButtonProps>(({ compact, visibility }) => {
     const untitledTitle = t('pageList.untitled');
     createNewPage(untitledTitle, visibility);
   };
+
+  if (showLabel) {
+    return (
+      <NavItem
+        disabled={!canCreate}
+        icon={SquarePenIcon}
+        title={tGeneration('topic.createNew')}
+        onClick={handleNewDocument}
+      />
+    );
+  }
 
   return (
     <ActionIcon

@@ -20,14 +20,9 @@ import { MessageToolCallSchema } from '../types';
 const normalizeChunkForParse = <T extends Omit<MessageToolCallChunk, 'index'>>(chunk: T): T => {
   if (chunk.function) {
     const { name, arguments: args, ...rest } = chunk.function;
-    const normalized = { ...rest };
     // Always carry name/arguments forward when present; only missing (null /
     // undefined) values are coerced to '' as start-of-tool markers.
-    if (name == null) normalized.name = '';
-    else normalized.name = name;
-    if (args == null) normalized.arguments = '';
-    else normalized.arguments = args;
-    return { ...chunk, function: normalized as T['function'] };
+    return { ...chunk, function: { ...rest, name: name ?? '', arguments: args ?? '' } };
   }
   return chunk;
 };

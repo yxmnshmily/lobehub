@@ -1,4 +1,4 @@
-import { Flexbox, Icon, Markdown } from '@lobehub/ui';
+import { Flexbox, Icon } from '@lobehub/ui';
 import { Button, Tag, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import dayjs from 'dayjs';
@@ -18,6 +18,8 @@ import {
   type GoalNodeView,
 } from '@/features/AgentGoals/ProcessControl/goalGraphViewModel';
 import { KindDot } from '@/features/AgentGoals/ProcessControl/shared';
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/selectors';
 import { goalSelectors, useGoalStore } from '@/store/goal';
@@ -134,7 +136,7 @@ const NodeLinkRow = memo<{ onClick: () => void; text: string; view: GoalNodeView
 NodeLinkRow.displayName = 'GoalNodePortalLink';
 
 const Body = memo(() => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const view = useChatStore(chatPortalSelectors.goalNodeView);
   const openTaskDetail = useChatStore((s) => s.openTaskDetail);
   const openGoalNode = useChatStore((s) => s.openGoalNode);
@@ -180,7 +182,7 @@ const Body = memo(() => {
           // item its automatic minimum size collapses to 0 and a long handoff
           // would be squeezed (and clipped) to fit instead of scrolling the panel.
           <Markdown fontSize={13} style={{ flexShrink: 0 }} variant={'chat'}>
-            {node.description}
+            {localizeGoalTemplate(node.description, i18n.resolvedLanguage || i18n.language)}
           </Markdown>
         ) : (
           <Section
@@ -191,7 +193,7 @@ const Body = memo(() => {
             }
           >
             <Text fontSize={13} style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-              {node.description}
+              {localizeGoalTemplate(node.description, i18n.resolvedLanguage || i18n.language)}
             </Text>
           </Section>
         ))}
@@ -227,7 +229,10 @@ const Body = memo(() => {
       {nodeView.producedBy && graph.byId[nodeView.producedBy.id] && (
         <Section title={t('goalProcess.node.producedByTitle')}>
           <NodeLinkRow
-            text={nodeView.producedBy.title}
+            text={localizeGoalTemplate(
+              nodeView.producedBy.title,
+              i18n.resolvedLanguage || i18n.language,
+            )}
             view={graph.byId[nodeView.producedBy.id]}
             onClick={() => openGoalNode(view.goalId, nodeView.producedBy!.id)}
           />

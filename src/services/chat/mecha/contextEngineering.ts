@@ -131,6 +131,7 @@ interface ContextEngineeringContext {
   plugins?: string[];
   provider: string;
   sessionId?: string;
+  skillIdentifiers?: string[];
   /**
    * Step context from Agent Runtime
    * Contains latest XML structure updated each step
@@ -160,6 +161,7 @@ export const contextEngineering = async ({
   agentDocuments,
   agentId,
   disabledPluginIds,
+  skillIdentifiers,
   enableAgentMode,
   groupId,
   initialContext,
@@ -200,7 +202,7 @@ export const contextEngineering = async ({
         const name = agent.title || 'Untitled Agent';
 
         agentMap[agent.id] = { name, role };
-        members.push({ id: agent.id, name, role });
+        members.push({ id: agent.id, name, role, description: agent.description });
 
         // Capture responding agent info
         if (agentId && agent.id === agentId) {
@@ -700,12 +702,12 @@ export const contextEngineering = async ({
   // In auto mode: expose all installed skills so the AI can discover and activate them.
   // In manual mode: only expose user-selected skills (filtered by pluginIds).
   let enabledSkills: OperationSkillSet['skills'] | undefined;
-  if (plugins) {
-    const skillSet = await resolveClientSkills(plugins, disabledPluginIds);
+  if (plugins || skillIdentifiers?.length) {
+    const skillSet = await resolveClientSkills(plugins, disabledPluginIds, skillIdentifiers);
     if (isInAutoSkillMode) {
       enabledSkills = skillSet.skills;
     } else {
-      const selectedIds = new Set(plugins);
+      const selectedIds = new Set([...(plugins ?? []), ...(skillIdentifiers ?? [])]);
       enabledSkills = skillSet.skills.filter((s) => selectedIds.has(s.identifier));
     }
   }

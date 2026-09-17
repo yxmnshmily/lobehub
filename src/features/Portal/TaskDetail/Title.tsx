@@ -2,7 +2,9 @@ import { Flexbox } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { useChatStore } from '@/store/chat';
 import { chatPortalSelectors } from '@/store/chat/selectors';
 import { useTaskStore } from '@/store/task';
@@ -25,10 +27,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const Title = memo(() => {
+  const { i18n } = useTranslation();
   const taskId = useChatStore(chatPortalSelectors.taskDetailId);
   const detail = useTaskStore((s) => (taskId ? s.taskDetailMap[taskId] : undefined));
   const identifier = detail?.identifier ?? taskId;
-  const name = detail?.name;
+  const name = localizeGoalTemplate(detail?.name ?? '', i18n.resolvedLanguage || i18n.language);
 
   return (
     <Flexbox horizontal align={'center'} flex={1} gap={8} style={{ minWidth: 0 }}>

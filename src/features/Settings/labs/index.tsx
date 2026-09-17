@@ -9,8 +9,8 @@ import { FlaskConicalIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonText from '@/components/Skeleton/Text';
 import AsyncError from '@/components/AsyncError';
+import SkeletonText from '@/components/Skeleton/Text';
 import { FORM_STYLE } from '@/const/layoutTokens';
 import SettingHeader from '@/features/Settings/features/SettingHeader';
 import { SettingsSearchAnchor } from '@/features/SettingsSearch/anchor';
@@ -121,7 +121,7 @@ const LabsForm = memo(() => {
       collapsible={false}
       items={items}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );
@@ -143,7 +143,7 @@ const Page = ({ showSettingHeader = true }: PageProps) => {
           icon={FlaskConicalIcon}
           title={tLabs('description')}
           type={'info'}
-          variant={'filled'}
+          variant={'borderless'}
         />
         <LabsForm />
       </Flexbox>

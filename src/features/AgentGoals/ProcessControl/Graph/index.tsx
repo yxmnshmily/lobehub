@@ -24,6 +24,7 @@ import { ChevronRight, Maximize2, X } from 'lucide-react';
 import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { PortalContent } from '@/features/Portal/router';
 import { usePortalPanelWidth } from '@/features/Portal/usePortalPanelWidth';
 import RightPanel from '@/features/RightPanel';
@@ -208,7 +209,7 @@ const stageNodeIds = (graph: GoalGraphView): Set<string> => {
 };
 
 const useSubtitle = () => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   return useCallback(
     (view: GoalNodeView): string => {
       const { node } = view;
@@ -216,10 +217,18 @@ const useSubtitle = () => {
         case 'decision': {
           return node.status === 'waiting'
             ? t('goalProcess.tag.needsDecision')
-            : (view.humanTouches[0]?.resolution ?? node.description?.slice(0, 32) ?? '');
+            : (view.humanTouches[0]?.resolution ??
+                localizeGoalTemplate(
+                  node.description || '',
+                  i18n.resolvedLanguage || i18n.language,
+                ).slice(0, 32) ??
+                '');
         }
         case 'finding': {
-          return view.producedBy?.title ?? '';
+          return localizeGoalTemplate(
+            view.producedBy?.title ?? '',
+            i18n.resolvedLanguage || i18n.language,
+          );
         }
         case 'problem': {
           return node.status === 'resolved'
@@ -227,11 +236,14 @@ const useSubtitle = () => {
             : t('goalProcess.node.unanswered');
         }
         default: {
-          return node.description?.slice(0, 34) ?? '';
+          return localizeGoalTemplate(
+            node.description ?? '',
+            i18n.resolvedLanguage || i18n.language,
+          ).slice(0, 34);
         }
       }
     },
-    [t],
+    [t, i18n.resolvedLanguage, i18n.language],
   );
 };
 
@@ -340,7 +352,7 @@ const Canvas = memo<
       }),
       [fullscreen, hasNavigation],
     );
-    const { t } = useTranslation('chat');
+    const { t, i18n } = useTranslation('chat');
     const containerRef = useRef<HTMLDivElement>(null);
     const subtitleOf = useSubtitle();
     const edgeLabel = useEdgeLabel();
@@ -463,7 +475,7 @@ const Canvas = memo<
               ...(expanded ? { style: { width: box.width, height: box.height } } : {}),
               ariaLabel: graphNodeLabel(
                 t(`goalProcess.kind.${graphNodeKind(graph, item)}`),
-                item.node.title,
+                localizeGoalTemplate(item.node.title, i18n.resolvedLanguage || i18n.language),
                 item.seq,
               ),
               width: box?.width ?? NODE_WIDTH[item.node.kind],
@@ -478,6 +490,8 @@ const Canvas = memo<
         selectedId,
         subtitleOf,
         t,
+        i18n.resolvedLanguage,
+        i18n.language,
         collapsed,
         onInspect,
         onEnter,
@@ -613,6 +627,12 @@ const Canvas = memo<
           preventScrolling={fullscreen}
           proOptions={{ hideAttribution: true }}
           zoomOnScroll={false}
+          ariaLabelConfig={{
+            'controls.ariaLabel': t('goalProcess.graph.controls'),
+            'controls.zoomIn.ariaLabel': t('goalProcess.graph.zoomIn'),
+            'controls.zoomOut.ariaLabel': t('goalProcess.graph.zoomOut'),
+            'controls.fitView.ariaLabel': t('goalProcess.graph.fitView'),
+          }}
           onNodeClick={(_, node) => {
             if (node.type !== 'goalGhost' && node.type !== 'goalExperimentGroup') onSelect(node.id);
           }}

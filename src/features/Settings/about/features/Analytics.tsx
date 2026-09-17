@@ -47,7 +47,7 @@ const Analytics = memo(() => {
       collapsible={false}
       items={[items]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       {...FORM_STYLE}
     />
   );

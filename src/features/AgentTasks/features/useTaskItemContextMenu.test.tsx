@@ -205,3 +205,10 @@ describe('menu ownership', () => {
     }).toMatchSnapshot();
   });
 });
+
+vi.mock('@/features/SuperGroup/useGroupDeletePermission', () => ({
+  useGroupDeletePermission: (allowed: boolean) => ({
+    canDelete: allowed,
+    checkDeletePermission: () => allowed,
+  }),
+}));

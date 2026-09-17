@@ -51,7 +51,7 @@ export const resolveNavPanelKey = (
     }
 
     case 'page': {
-      return 'image';
+      return 'pages';
     }
 
     case 'project': {

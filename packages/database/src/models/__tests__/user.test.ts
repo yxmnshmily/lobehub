@@ -992,10 +992,10 @@ describe('UserModel', () => {
         expect(result.responseLanguage).toBe('zh-CN');
       });
 
-      it('should default to en-US when no language preference set', async () => {
+      it('should default to zh-CN when no language preference set', async () => {
         const result = await UserModel.getInfoForAIGeneration(serverDB, userId);
 
-        expect(result.responseLanguage).toBe('en-US');
+        expect(result.responseLanguage).toBe('zh-CN');
       });
 
       it('should use firstName when fullName is not available', async () => {
@@ -1025,7 +1025,7 @@ describe('UserModel', () => {
         const result = await UserModel.getInfoForAIGeneration(serverDB, 'non-existent-user');
 
         expect(result.userName).toBe('User');
-        expect(result.responseLanguage).toBe('en-US');
+        expect(result.responseLanguage).toBe('zh-CN');
       });
     });
 

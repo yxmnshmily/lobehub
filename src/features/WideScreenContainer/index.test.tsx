@@ -28,9 +28,9 @@ describe('WideScreenContainer mobile gutter', () => {
       .join('\n')
       .replaceAll(/\s/g, '');
 
-    expect(content?.style.getPropertyValue('--wide-screen-container-padding-inline')).toBe('16px');
+    expect(content?.style.getPropertyValue('--wide-screen-container-padding-inline')).toBe('20px');
     expect(stylesheet).toContain(
-      'padding-inline:var(--mobile-page-inner-gutter,var(--wide-screen-container-padding-inline,16px))!important',
+      'padding-inline:var(--mobile-page-inner-gutter,var(--wide-screen-container-padding-inline,10px))!important',
     );
   });
 });

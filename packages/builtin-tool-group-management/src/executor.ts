@@ -37,6 +37,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
         ctx.groupOrchestration!.triggerSpeak({
           agentId: params.agentId,
           instruction: params.instruction,
+          skillIdentifiers: params.skillIdentifiers,
           replyToMessageId: params.replyToMessageId,
           skipCallSupervisor: params.skipCallSupervisor,
           supervisorAgentId: ctx.agentId!,
@@ -50,6 +51,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
       state: {
         agentId: params.agentId,
         instruction: params.instruction,
+        skillIdentifiers: params.skillIdentifiers,
         replyToMessageId: params.replyToMessageId,
         skipCallSupervisor: params.skipCallSupervisor,
         type: 'speak',
@@ -104,6 +106,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
         ctx.groupOrchestration!.triggerDelegate({
           agentId: params.agentId,
           reason: params.reason,
+          skillIdentifiers: params.skillIdentifiers,
           supervisorAgentId: ctx.agentId!,
         }),
       );
@@ -115,6 +118,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
       state: {
         agentId: params.agentId,
         reason: params.reason,
+        skillIdentifiers: params.skillIdentifiers,
         type: 'delegate',
       },
       stop: true,
@@ -128,7 +132,8 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
     params: ExecuteTaskParams,
     ctx: BuiltinToolContext,
   ): Promise<BuiltinToolResult> => {
-    const { agentId, instruction, timeout, skipCallSupervisor, runInClient } = params;
+    const { agentId, instruction, skillIdentifiers, timeout, skipCallSupervisor, runInClient } =
+      params;
 
     // Register afterCompletion callback to trigger async task execution after AgentRuntime completes
     // This follows the same pattern as speak/broadcast - trigger mode, not blocking
@@ -137,6 +142,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
         ctx.groupOrchestration!.triggerExecuteTask({
           agentId,
           instruction,
+          skillIdentifiers,
           runInClient,
           skipCallSupervisor,
           supervisorAgentId: ctx.agentId!,
@@ -152,6 +158,7 @@ class GroupManagementExecutor extends BaseExecutor<typeof GroupManagementApiName
       state: {
         agentId,
         instruction,
+        skillIdentifiers,
         runInClient,
         skipCallSupervisor,
         timeout,

@@ -79,8 +79,14 @@ export class GroupOrchestrationActionImpl {
   triggerSpeak = async (
     params: Parameters<GroupOrchestrationCallbacks['triggerSpeak']>[0],
   ): Promise<void> => {
-    const { supervisorAgentId, agentId, instruction, replyToMessageId, skipCallSupervisor } =
-      params;
+    const {
+      supervisorAgentId,
+      agentId,
+      instruction,
+      skillIdentifiers,
+      replyToMessageId,
+      skipCallSupervisor,
+    } = params;
     log(
       '[triggerSpeak] Starting orchestration with speak: supervisorAgentId=%s, agentId=%s, instruction=%s, skipCallSupervisor=%s',
       supervisorAgentId,
@@ -103,7 +109,7 @@ export class GroupOrchestrationActionImpl {
         type: 'supervisor_decided',
         payload: {
           decision: 'speak',
-          params: { agentId, instruction, replyToMessageId },
+          params: { agentId, instruction, skillIdentifiers, replyToMessageId },
           skipCallSupervisor,
         },
       },
@@ -147,7 +153,7 @@ export class GroupOrchestrationActionImpl {
   triggerDelegate = async (
     params: Parameters<GroupOrchestrationCallbacks['triggerDelegate']>[0],
   ): Promise<void> => {
-    const { supervisorAgentId, agentId, reason } = params;
+    const { supervisorAgentId, agentId, reason, skillIdentifiers } = params;
     log(
       '[triggerDelegate] Starting orchestration with delegate: supervisorAgentId=%s, agentId=%s, reason=%s',
       supervisorAgentId,
@@ -169,7 +175,7 @@ export class GroupOrchestrationActionImpl {
         type: 'supervisor_decided',
         payload: {
           decision: 'delegate',
-          params: { agentId, reason },
+          params: { agentId, reason, skillIdentifiers },
           skipCallSupervisor: false,
         },
       },
@@ -183,6 +189,7 @@ export class GroupOrchestrationActionImpl {
       supervisorAgentId,
       agentId,
       instruction,
+      skillIdentifiers,
       timeout,
       toolMessageId,
       skipCallSupervisor,
@@ -213,7 +220,7 @@ export class GroupOrchestrationActionImpl {
         type: 'supervisor_decided',
         payload: {
           decision: 'execute_task',
-          params: { agentId, instruction, runInClient, timeout, toolMessageId },
+          params: { agentId, instruction, skillIdentifiers, runInClient, timeout, toolMessageId },
           skipCallSupervisor: skipCallSupervisor ?? false,
         },
       },

@@ -10,6 +10,10 @@ import { EditingIndicator, type EditLockClient, useEditLock } from '@/features/E
 import { EditorCanvas } from '@/features/EditorCanvas';
 import { seedAttachments } from '@/features/EditorCanvas/attachmentRegistry';
 import { pickAndInsertAttachments } from '@/features/EditorCanvas/editorAttachments';
+import {
+  localizeGoalEditorData,
+  localizeGoalTemplate,
+} from '@/features/EditorCanvas/localizeGoalTemplate';
 import { usePermission } from '@/hooks/usePermission';
 import { lambdaClient } from '@/libs/trpc/client';
 import { useTaskStore } from '@/store/task';
@@ -31,7 +35,8 @@ const taskLockClient: EditLockClient = {
 const INSTRUCTION_MAX_HEIGHT = 320;
 
 const TaskInstruction = memo(({ compact = false }: { compact?: boolean }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
+  const language = i18n.resolvedLanguage || i18n.language;
   const { allowed: canEditTask } = usePermission('create_content');
   const instruction = useTaskStore(taskDetailSelectors.activeTaskInstruction);
   const instructionRevision = useTaskStore(taskDetailSelectors.activeTaskInstructionRevision);
@@ -70,10 +75,10 @@ const TaskInstruction = memo(({ compact = false }: { compact?: boolean }) => {
 
   const editorData = useMemo(
     () => ({
-      content: instruction ?? '',
-      editorData: persistedEditorData,
+      content: localizeGoalTemplate(instruction ?? '', language),
+      editorData: localizeGoalEditorData(persistedEditorData, language),
     }),
-    [instruction, persistedEditorData],
+    [instruction, persistedEditorData, language],
   );
 
   useEffect(() => {

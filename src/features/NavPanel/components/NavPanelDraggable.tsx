@@ -6,6 +6,7 @@ import { type ReactNode } from 'react';
 import { memo, Suspense, useMemo, useRef } from 'react';
 
 import NavPanelUpgradeEntry from '@/business/client/features/NavPanelUpgradeEntry';
+import { NavSideBarSkeleton } from '@/components/Skeleton/NavPanel/SideBar';
 import { isDesktop } from '@/const/version';
 import Footer from '@/features/HomeSidebar/Footer';
 import { USER_DROPDOWN_ICON_ID } from '@/features/NavPanel/constants';
@@ -17,8 +18,6 @@ import {
   systemStatusSelectors,
 } from '@/store/global/selectors';
 import { isMacOS } from '@/utils/platform';
-
-import { NavSideBarSkeleton } from '@/components/Skeleton/NavPanel/SideBar';
 
 import AccountHeader from '../AccountHeader';
 import { useNavPanelSizeChangeHandler } from '../hooks/useNavPanel';
@@ -332,7 +331,7 @@ export const NavPanelDraggable = memo<NavPanelDraggableProps>(({ activeContent, 
     systemStatusSelectors.leftPanelWidth(s),
   ]);
   const handleSizeChange = useNavPanelSizeChangeHandler();
-  const { lg } = useResponsive();
+  const { xl } = useResponsive();
   const groupSidebar = ['home', 'group', 'tasks', 'data-center', 'apps'].includes(navKey);
   const iconSidebar = supportsCompactNavRail(navKey);
   // Keep the user's saved preference intact. A medium viewport only changes the
@@ -340,7 +339,9 @@ export const NavPanelDraggable = memo<NavPanelDraggableProps>(({ activeContent, 
   const { automaticCompact, compact } = resolveNavPanelPresentation({
     supportsCompactRail: iconSidebar,
     userExpanded: expand ?? true,
-    viewportAllowsExpanded: lg,
+    // 2026-09-17：断点从 lg(992) 提到 xl(1200)——iPad mini 横屏(1024)也要进入
+    // 图标栏 + 弹出菜单模式；1200~1600 之间保持展开侧栏（可拖拽调宽）。
+    viewportAllowsExpanded: xl,
   });
 
   // Defer DraggablePanel mount until system status hydrates; otherwise defaultSize

@@ -26,6 +26,34 @@ const createSkills = (): SkillMeta[] => [
 ];
 
 describe('SkillContextProvider', () => {
+  it.each([false, true])(
+    'keeps user output requirements authoritative with activated=%s',
+    async (activated) => {
+      const provider = new SkillContextProvider({
+        enabledSkills: [
+          {
+            activated,
+            content: 'Write three variants.',
+            description: 'Copywriting',
+            identifier: 'copy',
+            name: 'Copy',
+          },
+        ],
+      });
+      const result = await provider.process(
+        createContext([{ content: 'Write one sentence only.', id: 'u1', role: 'user' }]),
+      );
+      const system = result.messages.find((message) => message.role === 'system')!.content;
+      expect(system).toContain(
+        'Skill defaults for output quantity, format, language and scope yield to the user',
+      );
+      if (activated) expect(system).toContain('Write three variants.');
+      expect(result.messages.find((message) => message.id === 'u1')!.content).toBe(
+        'Write one sentence only.',
+      );
+    },
+  );
+
   it('should inject skill metadata when skills are provided', async () => {
     const skills = createSkills();
     const provider = new SkillContextProvider({ enabledSkills: skills });

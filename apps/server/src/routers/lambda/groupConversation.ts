@@ -98,6 +98,16 @@ const safeGroup = (item: Awaited<ReturnType<GroupRepository['getAccessibleGroupS
 });
 
 const safeTopic = (item: AccessibleConversationTopic) => ({
+  ...(item.cost !== undefined ? { cost: item.cost } : {}),
+  ...(item.businessAssociations !== undefined
+    ? {
+        businessAssociations: item.businessAssociations.map(({ id, kind, title }) => ({
+          id,
+          kind,
+          title,
+        })),
+      }
+    : {}),
   ...(item.favorite !== undefined ? { favorite: item.favorite } : {}),
   ...(item.updatedAt
     ? { updatedAt: item.updatedAt, status: item.status, trigger: item.trigger }
@@ -337,6 +347,10 @@ export const groupConversationRouter = router({
           direction: input.order,
         }),
       );
-      return { items: result.items.map(safeTopic), nextCursor: result.nextCursor };
+      return {
+        items: result.items.map(safeTopic),
+        nextCursor: result.nextCursor,
+        totalCount: result.totalCount,
+      };
     }),
 });

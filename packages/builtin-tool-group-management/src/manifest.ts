@@ -19,6 +19,12 @@ export const GroupManagementManifest: BuiltinToolManifest = {
             description: 'The ID of the agent who should respond.',
             type: 'string',
           },
+          skillIdentifiers: {
+            description:
+              'Exact identifiers of installed builtin, user or agent-document Skills with loadable instructions. Omit when none apply. Project/device Skills with only a location use their existing readFile/activate flow, not this field. The server validates access and loads instructions for this dispatch without changing member configuration.',
+            type: 'array',
+            items: { type: 'string' },
+          },
           instruction: {
             description:
               "Optional instruction or context to guide the agent's response. If omitted, the agent responds based on conversation context.",
@@ -32,7 +38,7 @@ export const GroupManagementManifest: BuiltinToolManifest = {
           skipCallSupervisor: {
             default: false,
             description:
-              'If true, the orchestration will end after this agent responds, without calling the supervisor again. Use this when the user explicitly requests a specific agent (e.g., "@Designer, help me review this UI") and no further orchestration is needed.',
+              "If true, end after this member responds. Set true for the final direct delivery when no further review, handoff or combined result is needed: the member's artifact is the user-facing answer, without a duplicate supervisor summary. Keep false while more coordination is required.",
             type: 'boolean',
           },
         },
@@ -104,6 +110,12 @@ export const GroupManagementManifest: BuiltinToolManifest = {
             description: 'Brief title describing what this task does (shown in UI).',
             type: 'string',
           },
+          skillIdentifiers: {
+            description:
+              'Exact identifiers of installed builtin, user or agent-document Skills with loadable instructions. Omit when none apply. Project/device Skills with only a location use their existing readFile/activate flow, not this field. The server validates access and loads instructions for this dispatch without changing member configuration.',
+            type: 'array',
+            items: { type: 'string' },
+          },
           instruction: {
             description:
               'Clear instruction describing the task to perform. Be specific about expected deliverables.',
@@ -151,6 +163,12 @@ export const GroupManagementManifest: BuiltinToolManifest = {
                 title: {
                   description: 'Brief title describing what this task does (shown in UI).',
                   type: 'string',
+                },
+                skillIdentifiers: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description:
+                    'Exact identifiers of installed builtin, user or agent-document Skills with loadable instructions for this member only. Exclude project/device Skills with only a location; use their existing readFile/activate flow.',
                 },
                 instruction: {
                   description:

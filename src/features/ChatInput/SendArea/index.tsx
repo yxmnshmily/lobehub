@@ -1,4 +1,5 @@
 import { Flexbox } from '@lobehub/ui';
+import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo, useMemo } from 'react';
 
@@ -10,6 +11,42 @@ import { useChatInputStore } from '../store';
 import CreditBalance from './CreditBalance';
 import { resolveSendAreaActionKeys } from './resolveActionKeys';
 import SendButton from './SendButton';
+
+const styles = createStaticStyles(({ css }) => ({
+  credits: css`
+    display: flex;
+    flex: none;
+
+    [data-credit-full-label] {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    [data-credit-compact-icon] {
+      display: none;
+    }
+
+    @container compact-composer (min-width: 0) {
+      [data-credit-trigger] {
+        inline-size: 28px;
+        min-inline-size: 28px;
+        block-size: 28px;
+        padding: 0;
+        border-radius: 50%;
+      }
+
+      [data-credit-full-label] {
+        display: none;
+      }
+
+      [data-credit-compact-icon] {
+        display: block;
+        flex: none;
+      }
+    }
+  `,
+}));
 
 const mapActionsToItems = (keys: ActionKey[]) =>
   keys.map((actionKey) => {
@@ -59,7 +96,11 @@ const SendArea = memo<SendAreaProps>(({ hideContextWindow = true }) => {
     >
       {canShowControls && allowExpand && !audioInputActive && <ContextWindow />}
       {items}
-      {!audioInputActive && <CreditBalance />}
+      {!audioInputActive && (
+        <div className={styles.credits}>
+          <CreditBalance />
+        </div>
+      )}
       {!audioInputActive && <SendButton />}
     </Flexbox>
   );

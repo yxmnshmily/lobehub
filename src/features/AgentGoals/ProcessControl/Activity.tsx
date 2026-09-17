@@ -3,7 +3,7 @@
 import { Empty, Flexbox, Icon } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
-import { BotMessageSquare, ChevronRight } from 'lucide-react';
+import { BotMessageSquare, CalendarDays, ChevronRight } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -59,7 +59,11 @@ const styles = createStaticStyles(({ css }) => ({
     }
   `,
   time: css`
+    display: inline-flex;
     flex: none;
+    gap: 4px;
+    align-items: center;
+
     margin-inline-start: auto;
   `,
 }));
@@ -157,6 +161,7 @@ const ActivityRow = memo<{ onSelect: (nodeId: string) => void; view: GoalNodeVie
             title={title}
             type={'secondary'}
           >
+            <CalendarDays aria-hidden size={14} style={{ flexShrink: 0 }} />
             {text}
           </Text>
         </Flexbox>

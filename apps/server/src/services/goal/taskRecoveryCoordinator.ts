@@ -3,6 +3,7 @@ import debug from 'debug';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
 import { TaskModel } from '@/database/models/task';
+import { TaskTopicModel } from '@/database/models/taskTopic';
 import type { LobeChatDatabase } from '@/database/type';
 import { TaskRunnerService } from '@/server/services/taskRunner';
 
@@ -49,7 +50,13 @@ export class TaskRecoveryCoordinator {
     task: TaskItem;
   }): Promise<TaskRecoveryResult> => {
     const { goal, task } = params;
-    const attempts = task.totalTopics || 0;
+    const revisionAt = (task.context as { goalRevisionAt?: string } | undefined)?.goalRevisionAt;
+    const revisionTime = revisionAt ? Date.parse(revisionAt) : NaN;
+    const attempts = Number.isFinite(revisionTime)
+      ? (
+          await new TaskTopicModel(this.db, this.userId, this.workspaceId).findByTaskId(task.id)
+        ).filter((topic) => topic.createdAt.getTime() >= revisionTime).length
+      : task.totalTopics || 0;
     const attemptBudget = resolveTaskAttemptBudget(goal);
     if (attempts >= attemptBudget) return { outcome: 'exhausted-rounds' };
 

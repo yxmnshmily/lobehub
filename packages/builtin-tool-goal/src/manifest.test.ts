@@ -4,9 +4,14 @@ import { GoalManifest } from './manifest';
 import { GoalApiName } from './types';
 
 describe('GoalManifest', () => {
-  it('exposes only the canonical createGoal workflow', () => {
+  it('exposes goal creation and existing-work tools', () => {
     expect(GoalManifest.identifier).toBe('lobe-goal');
-    expect(GoalManifest.api.map(({ name }) => name)).toEqual([GoalApiName.createGoal]);
+    expect(GoalManifest.api.map(({ name }) => name)).toEqual([
+      GoalApiName.createGoal,
+      GoalApiName.viewGoal,
+      GoalApiName.reviseGoal,
+      GoalApiName.resumeGoal,
+    ]);
     // The goal tool runs under the group supervisor's headless/auto-run mode,
     // which converts 'always' into a blocked tool result instead of pausing for
     // the user — so the goal could never start. It is set to 'never' so the

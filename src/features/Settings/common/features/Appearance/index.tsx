@@ -63,7 +63,7 @@ const Appearance = memo(() => {
       initialValues={general}
       items={[theme]}
       itemsType={'group'}
-      variant={'filled'}
+      variant={'borderless'}
       onValuesChange={(value) => save(() => setSettings({ general: value }))}
       {...FORM_STYLE}
     />

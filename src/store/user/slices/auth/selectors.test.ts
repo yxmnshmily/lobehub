@@ -43,6 +43,19 @@ describe('userProfileSelectors', () => {
     });
   });
 
+  it.each([
+    ['昵称', '昵称'],
+    ['', '13800138000'],
+    ['   ', '13800138000'],
+  ])('prefers nickname %j, otherwise phone, across user name displays', (fullName, expected) => {
+    const store = {
+      isSignedIn: true,
+      user: { fullName, phone: '13800138000', username: 'login-id' },
+    } as unknown as UserStore;
+    expect(userProfileSelectors.nickName(store)).toBe(expected);
+    expect(userProfileSelectors.displayUserName(store)).toBe(expected);
+  });
+
   describe('email', () => {
     it('should return user email if exist', () => {
       const store: UserStore = {

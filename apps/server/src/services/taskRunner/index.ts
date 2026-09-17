@@ -11,6 +11,7 @@ import { AgentModel } from '@/database/models/agent';
 import { BriefModel } from '@/database/models/brief';
 import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
+import { TopicModel } from '@/database/models/topic';
 import type { LobeChatDatabase } from '@/database/type';
 import { AiAgentService } from '@/server/services/aiAgent';
 import { grantPlatformManagedExecution } from '@/server/services/aiAgent/platformManagedExecution';
@@ -94,6 +95,13 @@ export class TaskRunnerService {
     const task = await this.taskModel.resolve(idOrIdentifier);
     if (!task) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
+    }
+
+    if ((task.context as { manualControl?: string } | null)?.manualControl === 'stopping') {
+      throw new TRPCError({
+        code: 'CONFLICT',
+        message: 'Task is stopping. Please wait before starting it again.',
+      });
     }
 
     // Track whether *this* invocation transitioned the task to 'running'. The
@@ -191,6 +199,25 @@ export class TaskRunnerService {
         },
         extraPrompt,
       );
+
+      // Prompt preparation can await tools; a stop that arrived meanwhile
+      // must win over this already-started request.
+      const latestTask = await this.taskModel.findById(task.id);
+      const latestControl = latestTask?.context as {
+        manualControl?: string;
+        manualStopAt?: string;
+      } | null;
+      if (
+        latestControl?.manualControl === 'stopping' ||
+        latestTask?.status === 'canceled' ||
+        latestControl?.manualStopAt !==
+          (task.context as { manualStopAt?: string } | null)?.manualStopAt
+      ) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Task was stopped while preparing this run.',
+        });
+      }
 
       if (task.status !== 'running') {
         await this.taskModel.updateStatus(task.id, 'running', {
@@ -349,6 +376,40 @@ export class TaskRunnerService {
             trigger,
           });
         }
+      }
+
+      const dispatchedTask = await this.taskModel.findById(task.id);
+      const dispatchedControl = dispatchedTask?.context as {
+        manualControl?: string;
+        manualStopAt?: string;
+      } | null;
+      if (
+        dispatchedControl?.manualControl === 'stopping' ||
+        dispatchedTask?.status === 'canceled' ||
+        dispatchedControl?.manualStopAt !==
+          (task.context as { manualStopAt?: string } | null)?.manualStopAt
+      ) {
+        // Do not let the kickoff error handler overwrite a subsequent resume.
+        weSetRunning = false;
+        const interrupted = await aiAgentService.interruptTask({ operationId: result.operationId });
+        if (!interrupted.success || interrupted.deviceCancellationConfirmed === false) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Task interruption was not confirmed.',
+          });
+        }
+        if (result.topicId) {
+          await this.taskTopicModel.cancelIfRunning(task.id, result.topicId, result.operationId);
+          await new TopicModel(this.db, this.userId, this.workspaceId).settleRunningOperation(
+            result.topicId,
+            result.operationId,
+            'active',
+          );
+        }
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Task was stopped while starting this run.',
+        });
       }
 
       await this.taskModel.updateHeartbeat(task.id);

@@ -1,7 +1,7 @@
 import type { VerifyCheckItem, VerifyEvidenceType } from '@lobechat/types';
 
 /** Bump when the plan-gen prompt meaningfully changes (tracing partition key). */
-export const VERIFY_PLAN_PROMPT_VERSION = 'v3';
+export const VERIFY_PLAN_PROMPT_VERSION = 'v4';
 /** Bump when the judge prompt meaningfully changes. */
 export const VERIFY_JUDGE_PROMPT_VERSION = 'v2';
 /** Bump when the report prompt meaningfully changes. */
@@ -217,6 +217,7 @@ export const chainVerifyPlan = ({
     '- Set onFail="auto_repair" when a failure can be fixed by re-running the agent with guidance; otherwise "manual".',
     '- description: a one-sentence summary of what this criterion verifies.',
     '- instruction: a detailed, fine-grained judging rubric for this criterion — the exact conditions that constitute a pass, what counts as a fail, the concrete evidence to look for, and edge cases to check. Be specific and thorough, not a one-liner.',
+    '- Judge the actual delivered result and preserve explicit user standards and material defects. Do not fail an otherwise correct result for review-report headings or item-by-item wording unless the user explicitly requested that format.',
     '- Do not restate criteria already mounted (listed below); propose complementary ones only.',
   ].join('\n');
 

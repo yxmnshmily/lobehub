@@ -241,6 +241,8 @@ export interface InternalExecAgentParams extends ExecAgentParams {
   shareGate?: AgentShareGate;
   /** Abort startup before the agent runtime operation is created */
   signal?: AbortSignal;
+  /** Existing accessible skills selected only for this operation. */
+  skillIdentifiers?: string[];
   /**
    * Whether the LLM call should use streaming.
    * Defaults to true. Set to false for non-streaming scenarios (e.g., bot integrations).

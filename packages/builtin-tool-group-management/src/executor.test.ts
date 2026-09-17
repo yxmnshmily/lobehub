@@ -454,3 +454,35 @@ describe('GroupManagementExecutor', () => {
     });
   });
 });
+
+// Per-dispatch skills must survive the existing deferred orchestration boundary.
+describe('member skill selections', () => {
+  it.each([
+    ['speak', 'triggerSpeak'],
+    ['delegate', 'triggerDelegate'],
+    ['executeAgentTask', 'triggerExecuteTask'],
+  ] as const)('forwards skills through %s', async (api, callbackName) => {
+    let completion: (() => unknown) | undefined;
+    const callback = vi.fn();
+    const result = await groupManagementExecutor[api](
+      {
+        agentId: 'writer',
+        instruction: 'write',
+        title: 'copy',
+        skillIdentifiers: ['copy-skill'],
+      } as any,
+      {
+        agentId: 'supervisor',
+        groupOrchestration: { [callbackName]: callback } as any,
+        registerAfterCompletion: (cb: any) => {
+          completion = cb;
+        },
+      } as any,
+    );
+    await completion?.();
+    expect(callback).toHaveBeenCalledWith(
+      expect.objectContaining({ skillIdentifiers: ['copy-skill'] }),
+    );
+    expect(result.state).toEqual(expect.objectContaining({ skillIdentifiers: ['copy-skill'] }));
+  });
+});

@@ -20,10 +20,13 @@ describe('group orchestration stop boundary', () => {
         getOperation: () => ({ abortController: controller, context: {} }),
         operationId: 'op',
       });
-      const result = await runtime.step(GroupOrchestrationRuntime.createInitialState({}), {
-        payload: {},
-        type: 'init',
-      });
+      const result = await runtime.step(
+        GroupOrchestrationRuntime.createInitialState({ operationId: 'op' }),
+        {
+          payload: {},
+          type: 'init',
+        },
+      );
       expect(executor).not.toHaveBeenCalled();
       expect(result.newState.status).toBe('interrupted');
       expect(result.result).toBeUndefined();

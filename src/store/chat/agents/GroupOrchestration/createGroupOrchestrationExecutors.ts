@@ -11,6 +11,7 @@ import {
   type SupervisorInstructionExecClientAsyncTask,
   type SupervisorInstructionParallelCallAgents,
 } from '@lobechat/agent-runtime';
+import { formatGroupHandoff } from '@lobechat/prompts';
 import { type ConversationContext, type UIChatMessage } from '@lobechat/types';
 import debug from 'debug';
 
@@ -207,6 +208,7 @@ export const createGroupOrchestrationExecutors = (
       const {
         agentId,
         instruction: agentInstruction,
+        skillIdentifiers,
         replyToMessageId,
       } = (instruction as SupervisorInstructionCallAgent).payload;
 
@@ -247,7 +249,7 @@ export const createGroupOrchestrationExecutors = (
           ? [
               ...messages,
               {
-                content: `<speaker name="Supervisor" />\n${agentInstruction ?? 'Respond directly to the referenced group message.'}${replyInstruction}`,
+                content: `${formatGroupHandoff(agentInstruction ?? 'Respond directly to the referenced group message.')}${replyInstruction}`,
                 createdAt: now,
                 id: `virtual_speak_instruction_${now}`,
                 role: 'user',
@@ -260,6 +262,7 @@ export const createGroupOrchestrationExecutors = (
       // - messageContext keeps the group's main conversation context (for message storage)
       // - subAgentId specifies which agent's config to use
       await get().executeClientAgent({
+        skillIdentifiers,
         context: { ...messageContext, subAgentId: agentId },
         messages: messagesWithInstruction,
         parentMessageId: lastMessage.id,
@@ -325,7 +328,7 @@ export const createGroupOrchestrationExecutors = (
         ? [
             ...messages,
             {
-              content: `<speaker name="Supervisor" />\n${agentInstruction}`,
+              content: formatGroupHandoff(agentInstruction),
               createdAt: now,
               id: `virtual_broadcast_instruction_${now}`,
               role: 'user',
@@ -372,7 +375,8 @@ export const createGroupOrchestrationExecutors = (
      * Returns: delegated result
      */
     delegate: async (instruction, state): Promise<GroupOrchestrationExecutorOutput> => {
-      const { agentId, reason } = (instruction as SupervisorInstructionDelegate).payload;
+      const { agentId, reason, skillIdentifiers } = (instruction as SupervisorInstructionDelegate)
+        .payload;
 
       const sessionLogId = `${state.operationId}:delegate`;
       log(`[${sessionLogId}] Delegating to agent: ${agentId}, reason: ${reason}`);
@@ -394,6 +398,7 @@ export const createGroupOrchestrationExecutors = (
 
       // Execute delegated Agent
       await get().executeClientAgent({
+        skillIdentifiers,
         context: { ...messageContext, subAgentId: agentId },
         messages,
         parentMessageId: lastMessage.id,
@@ -429,7 +434,7 @@ export const createGroupOrchestrationExecutors = (
       supervisorInstruction,
       state,
     ): Promise<GroupOrchestrationExecutorOutput> => {
-      const { agentId, instruction, timeout, title, toolMessageId } = (
+      const { agentId, instruction, skillIdentifiers, timeout, title, toolMessageId } = (
         supervisorInstruction as SupervisorInstructionExecAsyncTask
       ).payload;
 
@@ -457,6 +462,7 @@ export const createGroupOrchestrationExecutors = (
 
         // 1. Create task via backend API (backend creates thread with sourceMessageId)
         const createResult = await aiAgentService.execSubAgentTask({
+          skillIdentifiers,
           agentId,
           groupId,
           instruction,
@@ -636,7 +642,7 @@ export const createGroupOrchestrationExecutors = (
       supervisorInstruction,
       state,
     ): Promise<GroupOrchestrationExecutorOutput> => {
-      const { agentId, instruction, title, toolMessageId } = (
+      const { agentId, instruction, skillIdentifiers, title, toolMessageId } = (
         supervisorInstruction as SupervisorInstructionExecClientAsyncTask
       ).payload;
 
@@ -742,6 +748,7 @@ export const createGroupOrchestrationExecutors = (
         log(`[${sessionLogId}] Starting client-side AgentRuntime execution`);
 
         const runtimeResult = await get().executeClientAgent({
+          skillIdentifiers,
           context: subContext,
           messages: threadMessages,
           parentMessageId: userMessageId, // Use server-returned userMessageId
@@ -871,6 +878,7 @@ export const createGroupOrchestrationExecutors = (
         error?: string;
         instruction: string;
         result?: string;
+        skillIdentifiers?: string[];
         status: 'pending' | 'running' | 'completed' | 'failed';
         threadId?: string;
         timeout: number;
@@ -881,6 +889,7 @@ export const createGroupOrchestrationExecutors = (
         agentId: t.agentId,
         status: 'pending',
         instruction: t.instruction,
+        skillIdentifiers: t.skillIdentifiers,
         timeout: t.timeout || 1_800_000, // Default 30 minutes
         title: t.title,
       }));
@@ -918,6 +927,7 @@ export const createGroupOrchestrationExecutors = (
               agentId: tracker.agentId,
               groupId,
               instruction: tracker.instruction,
+              skillIdentifiers: tracker.skillIdentifiers,
               parentMessageId: toolMessageId,
               title: tracker.title,
               topicId,

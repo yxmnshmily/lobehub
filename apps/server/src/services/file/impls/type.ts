@@ -48,7 +48,7 @@ export interface FileServiceImpl {
   /**
    * Delete files in batch
    */
-  deleteFiles: (keys: string[]) => Promise<any>;
+  deleteFiles: (keys: string[], signal?: AbortSignal) => Promise<any>;
 
   /**
    * Get file byte array

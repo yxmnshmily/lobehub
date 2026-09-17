@@ -6,6 +6,9 @@ export type {
 
 export const GoalApiName = {
   createGoal: 'createGoal',
+  viewGoal: 'viewGoal',
+  reviseGoal: 'reviseGoal',
+  resumeGoal: 'resumeGoal',
 } as const;
 
 export type GoalApiNameType = (typeof GoalApiName)[keyof typeof GoalApiName];

@@ -3,7 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { Button, DropdownMenu } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
-import { MoreHorizontal } from 'lucide-react';
+import { ClipboardCheck, FolderOpen, ListTodo, MoreHorizontal, Target } from 'lucide-react';
 
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActiveRouteParams } from '@/hooks/useActiveRouteParams';
@@ -34,8 +34,8 @@ export default function ProjectToolbar() {
           <ProjectHeader project={detail?.project} />
         </div>
         <Button
-          style={{ flexShrink: 0 }}
           size="small"
+          style={{ flexShrink: 0 }}
           type="text"
           onClick={() => navigate(`${root}/conversation`)}
         >
@@ -45,11 +45,27 @@ export default function ProjectToolbar() {
       <Flexbox horizontal align="center" gap={4} style={{ flexShrink: 0 }}>
         <DropdownMenu
           items={[
-            { key: 'projects', label: '全部项目', onClick: () => navigate('/projects') },
-            { key: 'tasks', label: '管理任务', onClick: () => navigate(`${root}/tasks`) },
-            { key: 'goals', label: '查看目标', onClick: () => navigate(`${root}/goals`) },
+            {
+              key: 'projects',
+              icon: FolderOpen,
+              label: '全部项目',
+              onClick: () => navigate('/projects'),
+            },
+            {
+              key: 'tasks',
+              icon: ListTodo,
+              label: '管理任务',
+              onClick: () => navigate(`${root}/tasks`),
+            },
+            {
+              key: 'goals',
+              icon: Target,
+              label: '查看目标',
+              onClick: () => navigate(`${root}/goals`),
+            },
             {
               key: 'acceptance',
+              icon: ClipboardCheck,
               label: '交付与验收',
               onClick: () => navigate(`${root}/acceptance`),
             },

@@ -2,7 +2,15 @@ import type { TaskDetailWorkspaceNode } from '@lobechat/types';
 import { Block, type DropdownItem, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, confirmModal, Tag, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
-import { FileLock2Icon, FileTextIcon, MoreHorizontal, Package, Trash } from 'lucide-react';
+import {
+  CalendarDays,
+  FileLock2Icon,
+  FileTextIcon,
+  LetterText,
+  MoreHorizontal,
+  Package,
+  Trash,
+} from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -79,7 +87,12 @@ const ArtifactCard = memo<{ node: TaskDetailWorkspaceNode }>(({ node }) => {
         {title}
       </Text>
       {sizeLabel && (
-        <Text fontSize={12} style={{ flexShrink: 0 }} type="secondary">
+        <Text
+          fontSize={12}
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          type="secondary"
+        >
+          <LetterText aria-hidden size={14} />
           {sizeLabel}
         </Text>
       )}
@@ -88,7 +101,17 @@ const ArtifactCard = memo<{ node: TaskDetailWorkspaceNode }>(({ node }) => {
           {node.sourceTaskIdentifier}
         </Tag>
       )}
-      {node.createdAt && <Time date={node.createdAt} />}
+      {node.createdAt && (
+        <Flexbox
+          horizontal
+          align="center"
+          gap={4}
+          style={{ flexShrink: 0, color: cssVar.colorTextSecondary }}
+        >
+          <CalendarDays aria-hidden size={14} />
+          <Time date={node.createdAt} />
+        </Flexbox>
+      )}
       <DropdownMenu items={menuItems}>
         <ActionIcon
           icon={MoreHorizontal}

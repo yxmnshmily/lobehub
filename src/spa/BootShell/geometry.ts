@@ -26,6 +26,15 @@ const readIsDark = () => {
 const readNavPanelBackground = () =>
   isDesktop && isMacOS() ? 'transparent' : cssVar.colorBgLayout;
 
+/**
+ * The boot shell draws a fluid, full-viewport brand loading screen: the brand
+ * mark is centered in the whole viewport and the content card adapts to any
+ * window size. Reserving a nav-panel column here (desktop widths, persisted
+ * `showLeftPanel`, auth routes, …) kept squeezing that card into a narrow
+ * right-hand column — a layout the very next paint often doesn't even have
+ * (auth pages, collapsed navs, narrow windows). The real layout applies its
+ * own chrome the moment it mounts; the shell stays adaptive instead.
+ */
 export const readBootShellGeometry = (): BootShellGeometry => {
   const base = {
     isDark: readIsDark(),
@@ -38,13 +47,13 @@ export const readBootShellGeometry = (): BootShellGeometry => {
     return {
       ...base,
       navPanelWidth: systemStatusSelectors.leftPanelWidth(state),
-      showLeftPanel: Boolean(systemStatusSelectors.showLeftPanel(state)),
+      showLeftPanel: false,
     };
   } catch {
     return {
       ...base,
       navPanelWidth: INITIAL_STATUS.leftPanelWidth,
-      showLeftPanel: Boolean(INITIAL_STATUS.showLeftPanel),
+      showLeftPanel: false,
     };
   }
 };

@@ -213,8 +213,8 @@ const Body = memo(() => {
             title={
               <Flexbox horizontal align="center" gap={4}>
                 <Text ellipsis fontSize={12} type={'secondary'} weight={500}>
-                  {t('pageList.title')}
-                  {filteredDocumentsCount > 0 && ` ${filteredDocumentsCount}`}
+                  {t('pageList.historyTitle', { defaultValue: '历史记录' })}
+                  {`（${filteredDocumentsCount}）`}
                 </Text>
                 {isValidating && <NeuralNetworkLoading size={14} />}
               </Flexbox>

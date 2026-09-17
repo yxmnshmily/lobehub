@@ -4,6 +4,7 @@ import { ExclamationCircleOutlined, FolderOpenOutlined } from '@ant-design/icons
 import { FluentEmoji } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { Result } from 'antd';
+import { cssVar } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -65,7 +66,7 @@ const StatusPage = memo<StatusPageProps>(({ status }) => {
   const statusIcon = isArchived ? (
     <FolderOpenOutlined style={{ color: '#8c8c8c' }} />
   ) : (
-    <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+    <ExclamationCircleOutlined style={{ color: cssVar.colorError }} />
   );
 
   return (

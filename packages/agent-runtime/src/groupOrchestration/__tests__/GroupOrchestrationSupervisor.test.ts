@@ -557,3 +557,24 @@ describe('GroupOrchestrationSupervisor', () => {
     });
   });
 });
+
+it.each(['speak', 'delegate', 'execute_task'])(
+  'preserves per-member skills for %s',
+  async (decision) => {
+    const supervisor = new GroupOrchestrationSupervisor({
+      supervisorAgentId: 'boss',
+      maxRounds: 3,
+    });
+    const result = await supervisor.decide(
+      {
+        type: 'supervisor_decided',
+        payload: {
+          decision,
+          params: { agentId: 'writer', instruction: 'write', skillIdentifiers: ['copy'] },
+        },
+      } as any,
+      createMockState(),
+    );
+    expect((result as any).payload.skillIdentifiers).toEqual(['copy']);
+  },
+);

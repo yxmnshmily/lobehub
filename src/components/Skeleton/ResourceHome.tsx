@@ -35,7 +35,33 @@ export const ResourceSectionSkeleton = ({
     }}
   >
     {Array.from({ length: count }).map((_, index) => (
-      <SkeletonBar height={itemHeight} key={index} radius={cssVar.borderRadiusLG} />
+      <Flexbox
+        key={index}
+        style={{
+          height: itemHeight,
+          border: `1px solid ${cssVar.colorBorderSecondary}`,
+          borderRadius: cssVar.borderRadiusLG,
+          overflow: 'hidden',
+        }}
+      >
+        {itemHeight > 100 ? (
+          <>
+            <SkeletonBar height={itemHeight - 56} radius={0} />
+            <Flexbox gap={8} padding={12}>
+              <SkeletonBar height={14} width="68%" />
+              <SkeletonBar height={10} width="38%" />
+            </Flexbox>
+          </>
+        ) : (
+          <Flexbox horizontal align="center" gap={12} padding={12}>
+            <SkeletonBar height={28} width={28} />
+            <Flexbox flex={1} gap={6}>
+              <SkeletonBar height={14} width="62%" />
+              {itemHeight > 52 && <SkeletonBar height={10} width="40%" />}
+            </Flexbox>
+          </Flexbox>
+        )}
+      </Flexbox>
     ))}
   </div>
 );
@@ -43,6 +69,7 @@ export const ResourceSectionSkeleton = ({
 const styles = createStaticStyles(({ css }) => ({
   content: css`
     width: 100%;
+
     /* Must match the real resource pages: full width, 24px inline gutter —
        a centred 1080px column shifted the content on load. */
     padding-block: 32px 64px;

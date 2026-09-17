@@ -18,6 +18,15 @@ vi.mock('@/features/ResourceManager/store', () => ({
 }));
 
 describe('SearchInput', () => {
+  it('returns keyboard focus to the search trigger when Escape closes the input', async () => {
+    const user = userEvent.setup();
+    render(<SearchInput mobile />);
+    await user.click(screen.getByRole('button', { name: 'FileManager.search.placeholder' }));
+    await user.type(screen.getByRole('textbox'), 'photo');
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'FileManager.search.placeholder' })).toHaveFocus();
+  });
+
   it('exposes a labelled 44px clear-search button on mobile', async () => {
     const user = userEvent.setup();
     render(<SearchInput mobile />);
@@ -31,5 +40,6 @@ describe('SearchInput', () => {
     await user.click(clearButton);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(mockSetSearchQuery).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole('button', { name: 'FileManager.search.placeholder' })).toHaveFocus();
   });
 });

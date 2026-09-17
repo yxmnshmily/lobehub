@@ -2,6 +2,7 @@ import { TASK_STATUSES } from '@lobechat/builtin-tool-task';
 import { AgentRuntimeErrorType } from '@lobechat/model-runtime';
 import type { TaskListItem, TaskParticipant, TaskVerifyConfig } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { notifyTaskAssigned } from '@/business/server/task/notifyTaskAssigned';
@@ -15,12 +16,15 @@ import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
 import { TopicModel } from '@/database/models/topic';
 import { UserModel } from '@/database/models/user';
+import { tasks } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
 import { assertAgentUsableBy } from '@/database/utils/agent-access';
+import { buildWorkspaceWhere } from '@/database/utils/workspace';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { markSilentTRPCErrorLog } from '@/libs/trpc/utils/errorLogger';
 import { EditLockService } from '@/server/services/editLock';
+import { ResourceDeletionService } from '@/server/services/resourceDeletion';
 import { publishResourceEvent } from '@/server/services/resourceEvents';
 import { TaskService } from '@/server/services/task';
 import { TaskIntentService } from '@/server/services/task/intent';
@@ -38,6 +42,7 @@ import {
 import { after } from '@/server/utils/scheduleAfterResponse';
 import { TransferErrorCode } from '@/types/transferError';
 
+import { assertGroupResourceDeletable } from './_helpers/assertGroupResourceDeletable';
 import { assertWorkspaceRowManageable } from './_helpers/assertWorkspaceRowManageable';
 
 const taskProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
@@ -730,6 +735,7 @@ export const taskRouter = router({
     .input(z.object({ topicId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
+        await assertGroupResourceDeletable(ctx, 'topic', [input.topicId]);
         await ctx.taskService.deleteTopic(input.topicId);
         return { message: 'Topic deleted', success: true };
       } catch (error) {
@@ -795,14 +801,31 @@ export const taskRouter = router({
 
   clearAll: taskProcedureWrite.mutation(async ({ ctx }) => {
     try {
-      const model = ctx.taskModel;
-      // Workspace clear-all is caller-scoped for every role — owners included
-      // (per docs/usage/workspace-permissions: bulk actions only affect
-      // caller-created content).
-      const restrictToCreator = !!ctx.workspaceId;
-      const count = await model.deleteAll({ restrictToCreator });
-      return { count, message: `${count} tasks deleted`, success: true };
+      // Clear-all remains caller-scoped in a workspace, including for owners.
+      const scope = and(
+        buildWorkspaceWhere(
+          { userId: ctx.userId, workspaceId: ctx.workspaceId ?? undefined },
+          { userId: tasks.createdByUserId, workspaceId: tasks.workspaceId },
+        ),
+        ctx.workspaceId ? eq(tasks.createdByUserId, ctx.userId) : undefined,
+      );
+      await assertGroupResourceDeletable(ctx, 'task', undefined, scope);
+      const selected = await ctx.serverDB.select({ id: tasks.id }).from(tasks).where(scope);
+      const deletion = selected.length
+        ? await new ResourceDeletionService(
+            ctx.serverDB,
+            ctx.userId,
+            ctx.workspaceId ?? undefined,
+            ctx.workspaceRole,
+          ).delete(
+            'task',
+            selected.map(({ id }) => id),
+          )
+        : undefined;
+      const count = deletion?.deletedIds.tasks.length ?? 0;
+      return { count, deletion, message: `${count} tasks deleted`, success: true };
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       console.error('[task:clearAll]', error);
       throw new TRPCError({
         cause: error,
@@ -814,11 +837,20 @@ export const taskRouter = router({
 
   delete: taskProcedureWrite.input(idInput).mutation(async ({ input, ctx }) => {
     try {
+      await assertGroupResourceDeletable(ctx, 'task', [input.id]);
+      // Resolve identifiers before looking up the persisted group scope.
       const model = ctx.taskModel;
-      const task = await resolveOrThrow(model, input.id);
+      const task = await model.resolve(input.id);
+      if (!task) return { data: null, message: 'Task deleted', success: true };
+      await assertGroupResourceDeletable(ctx, 'task', [task.id]);
       assertWorkspaceRowManageable(ctx, task.createdByUserId, 'task');
-      await model.delete(task.id);
-      return { data: task, message: 'Task deleted', success: true };
+      const deletion = await new ResourceDeletionService(
+        ctx.serverDB,
+        ctx.userId,
+        ctx.workspaceId ?? undefined,
+        ctx.workspaceRole,
+      ).delete('task', [task.id]);
+      return { data: task, deletion, message: 'Task deleted', success: true };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       console.error('[task:delete]', error);
@@ -1108,6 +1140,15 @@ export const taskRouter = router({
         message: 'Failed to list tasks',
       });
     }
+  }),
+
+  resume: taskProcedureWrite.input(idInput).mutation(async ({ input, ctx }) => {
+    await ctx.taskService.resume(
+      input.id,
+      await resolveActivityActor(ctx),
+      getTaskExecutionContext(ctx),
+    );
+    return { success: true };
   }),
 
   run: taskProcedureWrite

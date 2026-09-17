@@ -1,6 +1,7 @@
 import { GROUP_CHAT_URL } from '@lobechat/const';
 import { Flexbox } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
+import { House, ListTodo, Target } from 'lucide-react';
 
 import { useQueryRoute } from '@/hooks/useQueryRoute';
 
@@ -16,9 +17,11 @@ export default function GroupPageBreadcrumb({
   detailTitle?: string;
 }) {
   const router = useQueryRoute();
+  const SectionIcon = title === '目标' ? Target : ListTodo;
   return (
     <Flexbox horizontal align="center" gap={8}>
       <Button
+        icon={House}
         type="text"
         onClick={() => {
           if (useGroupWorkRequest.getState().request?.groupId === groupId)
@@ -32,6 +35,7 @@ export default function GroupPageBreadcrumb({
       {detailTitle ? (
         <>
           <Button
+            icon={SectionIcon}
             type="text"
             onClick={() =>
               router.push(`${GROUP_CHAT_URL(groupId)}/${title === '目标' ? 'goals' : 'tasks'}`)
@@ -45,7 +49,10 @@ export default function GroupPageBreadcrumb({
           </Text>
         </>
       ) : (
-        <Text weight={500}>{title}</Text>
+        <Text style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} weight={500}>
+          <SectionIcon aria-hidden size={16} />
+          {title}
+        </Text>
       )}
     </Flexbox>
   );

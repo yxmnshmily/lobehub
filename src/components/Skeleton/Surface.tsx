@@ -5,6 +5,7 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import type { ComponentType } from 'react';
 
 import NavHeader from '@/features/NavHeader';
+import WideScreenContainer from '@/features/WideScreenContainer';
 import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
 import SkeletonBar from './Bar';
@@ -27,11 +28,6 @@ const styles = createStaticStyles(({ css }) => ({
     width: 100%;
     height: 0.5px;
     background: ${cssVar.colorBorderSecondary};
-  `,
-  editor: css`
-    border: 0.5px solid ${cssVar.colorBorderSecondary};
-    border-radius: ${cssVar.borderRadiusLG};
-    background: ${cssVar.colorBgContainer};
   `,
   row: css`
     min-height: 64px;
@@ -134,20 +130,15 @@ const DetailSkeleton = () => (
 );
 
 const EditorSkeleton = () => (
-  <Flexbox align={'center'} flex={1} padding={'32px 24px'}>
-    <Flexbox
-      className={styles.editor}
-      gap={20}
-      padding={'32px clamp(16px, 4vw, 40px) 96px'}
-      width={'min(760px, 100%)'}
-    >
-      <SkeletonBar height={28} width={'54%'} />
-      <SkeletonBar height={14} width={'92%'} />
-      <SkeletonBar height={14} width={'86%'} />
-      <SkeletonBar height={14} width={'64%'} />
-      <SkeletonBar height={180} radius={12} />
+  <WideScreenContainer wrapperStyle={{ flex: 1, minHeight: 0 }}>
+    <Flexbox gap={20} padding="32px 24px 96px">
+      <SkeletonBar height={40} width="54%" />
+      <SkeletonBar height={14} width="32%" />
+      <SkeletonBar height={14} width="92%" />
+      <SkeletonBar height={14} width="86%" />
+      <SkeletonBar height={14} width="64%" />
     </Flexbox>
-  </Flexbox>
+  </WideScreenContainer>
 );
 
 const SurfaceSkeleton = ({

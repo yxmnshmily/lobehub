@@ -58,6 +58,7 @@ vi.mock('../ToolBar/SortDropdown', () => ({ default: () => null }));
 vi.mock('../ToolBar/SourceFilter', () => ({ default: () => null }));
 vi.mock('../ToolBar/ViewSwitcher', () => ({ default: () => null }));
 vi.mock('./Breadcrumb', () => ({ default: () => null }));
+vi.mock('./SelectionSummary', () => ({ default: () => <span>Selection summary</span> }));
 vi.mock('./SearchInput', () => ({ default: () => null }));
 
 describe('Resource explorer mobile header', () => {

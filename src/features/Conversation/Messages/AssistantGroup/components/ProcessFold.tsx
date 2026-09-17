@@ -45,6 +45,8 @@ interface ProcessFoldProps {
   durationText?: string;
   /** Number of steps in the turn = count of assistant (call_llm) messages. */
   stepCount: number;
+  /** Plain-language label for group conversations. */
+  title?: ReactNode;
 }
 
 /**
@@ -54,7 +56,7 @@ interface ProcessFoldProps {
  * visible regardless of this state. Purely a view affordance — never persisted.
  */
 const ProcessFold = memo<ProcessFoldProps>(
-  ({ children, durationText, stepCount, defaultExpanded = false }) => {
+  ({ children, durationText, stepCount, defaultExpanded = false, title: titleOverride }) => {
     const { t } = useTranslation('chat');
     const [expanded, setExpanded] = useState(defaultExpanded);
     const value = useMemo(() => (expanded ? [PROCESS_KEY] : []), [expanded]);
@@ -62,9 +64,10 @@ const ProcessFold = memo<ProcessFoldProps>(
     const title = (
       <Flexbox horizontal align={'center'} className={styles.title} gap={6}>
         <Text style={{ color: 'inherit', minWidth: 0 }}>
-          {durationText
-            ? t('turnProcess.ranFor', { count: stepCount, duration: durationText })
-            : t('turnProcess.done', { count: stepCount })}
+          {titleOverride ??
+            (durationText
+              ? t('turnProcess.ranFor', { count: stepCount, duration: durationText })
+              : t('turnProcess.done', { count: stepCount }))}
         </Text>
         <Icon
           icon={ChevronRight}

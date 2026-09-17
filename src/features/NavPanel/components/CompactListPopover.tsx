@@ -39,6 +39,9 @@ export default function CompactListPopover({
       trigger="click"
       styles={{
         content: {
+          /* 弹层显式浮层底色：默认透明时会透出下层内容（搜索弹层尤其明显） */
+          background: cssVar.colorBgElevated,
+          border: `0.5px solid ${cssVar.colorBorderSecondary}`,
           maxHeight: 'min(600px, 75dvh)',
           overflowY: 'auto',
           overflowX: 'hidden',

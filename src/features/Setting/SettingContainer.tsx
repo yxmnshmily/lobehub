@@ -2,10 +2,34 @@
 
 import { type FlexboxProps } from '@lobehub/ui';
 import { Flexbox } from '@lobehub/ui';
-import { cssVar, useTheme } from 'antd-style';
-import { CSS_MODIFIER_PADDING } from '@/features/Settings/features/cssModifierOverrides';
+import { createStaticStyles, cssVar, cx, useTheme } from 'antd-style';
 import { type PropsWithChildren, type ReactNode } from 'react';
 import { memo } from 'react';
+
+const styles = createStaticStyles(({ css }) => ({
+  /* 统一规格：桌面端保持各页面 props 传入的边距（如 48px）；低于 iPad mini
+     （<768px）四边收成 10px，并把 FormGroup 移动端分支的内层填充（标题条/
+     内容区各 16px）归零——无论嵌套多少层，内容到边缘就是 10px。
+     标题条用行内 justify: space-between 定位；内容区 = 标题条的相邻兄弟。 */
+  container: css`
+    scrollbar-gutter: stable both-edges;
+
+    @media (width <= 767px) {
+      padding-block: 10px !important;
+      padding-inline: 10px !important;
+
+      /* :not([style*='padding']) 排除自带行内 padding 的元素（如服务商列表
+         吸顶搜索行 padding=8），避免清掉它们的水平填充。 */
+      .lobe-flex[style*='justify: space-between']:not([style*='padding']) {
+        padding-inline: 0 !important;
+      }
+
+      .lobe-flex[style*='justify: space-between']:not([style*='padding']) + * {
+        padding-inline: 0 !important;
+      }
+    }
+  `,
+}));
 
 interface SettingContainerProps extends FlexboxProps {
   addonAfter?: ReactNode;
@@ -13,41 +37,32 @@ interface SettingContainerProps extends FlexboxProps {
   maxWidth?: number | string;
   variant?: 'default' | 'secondary';
 }
-/** 路由末段 → 留白表的 tab 键：/lobehub/settings/provider/all 归到 provider */
-const routeTabKeyOf = (pathname: string) => {
-  const clean = String(pathname || '').split('?')[0].replace(/\/+$/, '');
-  const parts = clean.split('/').filter(Boolean);
-  const at = parts.lastIndexOf('settings');
-  if (at < 0 || at + 1 >= parts.length) return null;
-  const seg = parts[at + 1];
-  if (!/^[a-z][a-z0-9-]*$/.test(seg)) return null;
-  return seg === 'all' && at + 2 < parts.length ? parts[at + 2] : seg;
-};
-
 const SettingContainer = memo<PropsWithChildren<SettingContainerProps>>(
-  ({ variant, maxWidth = '100%', children, addonAfter, addonBefore, style, ...rest }) => {
+  ({
+    className,
+    variant,
+    maxWidth = '100%',
+    children,
+    addonAfter,
+    addonBefore,
+    style,
+    ...rest
+  }) => {
     const theme = useTheme();
-    const overridePadding = CSS_MODIFIER_PADDING[routeTabKeyOf(window.location.pathname) || ''];
-    const overridePaddingStyle = overridePadding
-      ? {
-          paddingBottom: overridePadding.bottom,
-          paddingLeft: overridePadding.left ?? overridePadding.right,
-          paddingRight: overridePadding.right,
-          paddingTop: overridePadding.top,
-        }
-      : undefined; // Keep for colorBgContainerSecondary (not in cssVar)
     return (
       <Flexbox
         align={'center'}
+        className={cx(styles.container, className)}
         height={'100%'}
         width={'100%'}
         style={{
           background:
             variant === 'secondary' ? theme.colorBgContainerSecondary : cssVar.colorBgContainer,
-          overflowX: 'hidden',
+          /* 窄窗口下内容（如表单最小宽度、服务商卡片网格）超宽时允许横向滚动，
+             底部出现左右滚动条；桌面端内容不超宽时不会显示滚动条。 */
+          overflowX: 'auto',
           overflowY: 'auto',
           ...style,
-          ...overridePaddingStyle,
         }}
         {...rest}
       >

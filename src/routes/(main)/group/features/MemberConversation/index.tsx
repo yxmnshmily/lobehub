@@ -15,7 +15,7 @@ import { DEFAULT_OPERATION_STATE } from '@/features/Conversation/types/operation
 import ConversationFrame from '@/features/SuperGroup/ConversationFrame';
 import ConversationHeader from '@/features/SuperGroup/ConversationHeader';
 import GroupHeaderActions from '@/features/SuperGroup/GroupHeaderActions';
-import GroupHistoryNotice from '@/features/SuperGroup/GroupHistoryNotice';
+import GroupHistoryNotice, { GroupHistoryAction } from '@/features/SuperGroup/GroupHistoryNotice';
 import GroupWelcome from '@/features/SuperGroup/GroupWelcome';
 import JoinedConversationShareButton from '@/features/SuperGroup/JoinedConversationShareButton';
 import JoinedGroupSidebar, {
@@ -194,7 +194,9 @@ const MemberConversation = ({
                             title: group.title || '群聊',
                           },
                         }}
-                      />
+                      >
+                        <GroupHistoryAction groupId={group.groupId} />
+                      </GroupHeaderActions>
                     }
                     onBack={() => router.push('/group/default', { replace: true })}
                   />
@@ -203,13 +205,16 @@ const MemberConversation = ({
                 <GroupConversationBody
                   groupId={group.groupId}
                   mobile={mobile}
+                  showRecentNotice={!runtime.historyTopicId}
                   beforeInput={
                     <Flexbox gap={12} paddingBlock={12}>
-                      <GroupHistoryNotice
-                        sendToRecent
-                        groupId={group.groupId}
-                        history={!!runtime.historyTopicId}
-                      />
+                      {runtime.historyTopicId && (
+                        <GroupHistoryNotice
+                          sendToRecent
+                          groupId={group.groupId}
+                          history={!!runtime.historyTopicId}
+                        />
+                      )}
                       {feedback && <Alert showIcon title={feedback} type="error" />}
                       {statusText && (
                         <Alert

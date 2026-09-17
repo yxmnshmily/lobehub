@@ -8,6 +8,7 @@ import ErrorMessageExtra, { useErrorContent } from '@/features/Conversation/Erro
 import ErrorContent from '../../../ChatItem/components/ErrorContent';
 import { dataSelectors, messageStateSelectors, useConversationStore } from '../../../store';
 import { AssistantMessageExtra } from '../../Assistant/Extra';
+import GroupProcessDetails from '../../components/GroupProcessDetails';
 import ImageFileListViewer from '../../components/ImageFileListViewer';
 import Reasoning, { hasRenderableReasoning } from '../../components/Reasoning';
 import { Tools } from '../Tools';
@@ -97,7 +98,9 @@ const ContentBlock = memo<ContentBlockProps>(
       <Flexbox gap={8} id={domId ?? id}>
         {showReasoning && (
           <SafeBoundary>
-            <Reasoning {...reasoning} id={id} />
+            <GroupProcessDetails>
+              <Reasoning {...reasoning} id={id} />
+            </GroupProcessDetails>
           </SafeBoundary>
         )}
 

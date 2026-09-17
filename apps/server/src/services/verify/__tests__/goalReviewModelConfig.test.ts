@@ -54,12 +54,18 @@ beforeEach(() => {
 });
 
 describe('Goal review model selection', () => {
+  it('prefers the task model over a default provider whose runtime only initializes', async () => {
+    mocks.init.mockResolvedValue({});
+    expect(await resolve()).toEqual(configured);
+    expect(mocks.init.mock.calls.some((call) => call[2] === 'google')).toBe(false);
+  });
   it('uses an explicitly configured verifier without initializing Google', async () => {
     mocks.agent.mockResolvedValue(configured);
     expect(await resolve(true, 'verifier')).toEqual(configured);
     expect(mocks.init).toHaveBeenCalledExactlyOnceWith(db, 'u1', 'openai', 'w1');
   });
-  it('keeps the pinned reviewer when the deployment can initialize it', async () => {
+  it('uses the deployment reviewer when no task model is configured', async () => {
+    mocks.task.mockResolvedValue({ config: {} });
     mocks.init.mockResolvedValue({});
     expect(await resolve()).toEqual({ model: 'gemini', provider: 'google' });
   });

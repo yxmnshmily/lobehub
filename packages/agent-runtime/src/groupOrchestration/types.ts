@@ -21,6 +21,7 @@ export interface SupervisorInstructionCallSupervisor {
 export interface SupervisorInstructionCallAgent {
   payload: {
     agentId: string;
+    skillIdentifiers?: string[];
     instruction?: string;
     replyToMessageId?: string;
   };
@@ -54,6 +55,7 @@ export interface SupervisorInstructionParallelCallAgents {
 export interface SupervisorInstructionExecAsyncTask {
   payload: {
     agentId: string;
+    skillIdentifiers?: string[];
     instruction: string;
     timeout?: number;
     /** Task title (shown in UI, used as thread title) */
@@ -70,6 +72,7 @@ export interface SupervisorInstructionExecAsyncTask {
 export interface SupervisorInstructionExecClientAsyncTask {
   payload: {
     agentId: string;
+    skillIdentifiers?: string[];
     instruction: string;
     timeout?: number;
     /** Task title (shown in UI, used as thread title) */
@@ -86,6 +89,7 @@ export interface SupervisorInstructionBatchExecAsyncTasks {
   payload: {
     tasks: Array<{
       agentId: string;
+      skillIdentifiers?: string[];
       instruction: string;
       timeout?: number;
       /** Task title (shown in UI, used as thread title) */
@@ -102,6 +106,7 @@ export interface SupervisorInstructionBatchExecAsyncTasks {
 export interface SupervisorInstructionDelegate {
   payload: {
     agentId: string;
+    skillIdentifiers?: string[];
     reason?: string;
   };
   type: 'delegate';

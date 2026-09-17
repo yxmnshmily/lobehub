@@ -1,6 +1,6 @@
 'use client';
 
-import { Flexbox, Markdown } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
 import { Alert, Button, Text } from '@lobehub/ui/base-ui';
 import { useMemo, useState } from 'react';
 
@@ -13,6 +13,7 @@ import {
 import GoalStatusLine from '@/features/Conversation/Messages/GoalTaskCard/GoalStatusLine';
 import { getGoalTaskProgress } from '@/features/Conversation/Messages/GoalTaskCard/goalTaskProgress';
 import { dataSelectors, useConversationStore } from '@/features/Conversation/store';
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useGoalStore } from '@/store/goal';
 import { useTravelTranslation } from '@/utils/i18n/travel';
 
@@ -102,6 +103,7 @@ export default function GroupWorkPanelContent({
             ? [
                 {
                   id: message.id,
+                  content: '',
                   tools: [
                     {
                       ...message.plugin,

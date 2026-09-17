@@ -4,6 +4,7 @@ import { type IEditor, type SlashOptions } from '@lobehub/editor';
 import type { ChatInputActionsProps, Editor, EditorProps } from '@lobehub/editor/react';
 import { type CSSProperties } from 'react';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import SafeBoundary from '@/components/ErrorBoundary';
 
@@ -195,10 +196,11 @@ export interface EditorCanvasWithEditorProps extends EditorCanvasProps {
  */
 export const EditorCanvas = memo<EditorCanvasWithEditorProps>(
   ({ editor, documentId, editorData, entityId, ...props }) => {
+    const { t } = useTranslation('common');
     // documentId mode - fetch and render with loading/error states
     if (documentId) {
       return (
-        <SafeBoundary alertTitle="Editor Error" variant="alert">
+        <SafeBoundary alertTitle={t('errorBoundary.editor')} variant="alert">
           <DocumentIdMode documentId={documentId} editor={editor} {...props} />
         </SafeBoundary>
       );
@@ -207,7 +209,7 @@ export const EditorCanvas = memo<EditorCanvasWithEditorProps>(
     // editorData mode - render with provided data
     if (editorData) {
       return (
-        <SafeBoundary alertTitle="Editor Error" variant="alert">
+        <SafeBoundary alertTitle={t('errorBoundary.editor')} variant="alert">
           <EditorDataMode editor={editor} editorData={editorData} entityId={entityId} {...props} />
         </SafeBoundary>
       );
@@ -217,7 +219,7 @@ export const EditorCanvas = memo<EditorCanvasWithEditorProps>(
     if (!editor) return null;
 
     return (
-      <SafeBoundary alertTitle="Editor Error" variant="alert">
+      <SafeBoundary alertTitle={t('errorBoundary.editor')} variant="alert">
         <InternalEditor editor={editor} {...props} />
       </SafeBoundary>
     );

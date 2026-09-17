@@ -8,6 +8,8 @@ import type {
 
 import { lambdaClient } from '@/libs/trpc/client';
 
+import { clearResourceDeletionCache } from './resourceDeletionCache';
+
 class TaskService {
   // ── Queries ──
 
@@ -97,6 +99,7 @@ class TaskService {
   }): Promise<TaskInstructionSynthesis> => lambdaClient.task.synthesizeInstruction.mutate(params);
 
   create = async (params: {
+    context?: Record<string, unknown>;
     assigneeAgentId?: string;
     assigneeUserId?: string;
     automationMode?: TaskAutomationMode;
@@ -151,9 +154,17 @@ class TaskService {
     },
   ) => lambdaClient.task.update.mutate({ id, ...data });
 
-  delete = async (id: string) => lambdaClient.task.delete.mutate({ id });
+  delete = async (id: string) => {
+    const result = await lambdaClient.task.delete.mutate({ id });
+    await clearResourceDeletionCache(result?.deletion);
+    return result;
+  };
 
-  clearAll = async () => lambdaClient.task.clearAll.mutate();
+  clearAll = async () => {
+    const result = await lambdaClient.task.clearAll.mutate();
+    await clearResourceDeletionCache(result?.deletion);
+    return result;
+  };
 
   updateStatus = async (
     id: string,
@@ -170,6 +181,8 @@ class TaskService {
 
   updateStatusCascade = async (id: string, status: 'canceled' | 'completed') =>
     lambdaClient.task.updateStatusCascade.mutate({ id, status });
+
+  resume = async (id: string) => lambdaClient.task.resume.mutate({ id });
 
   run = async (id: string, params?: { continueTopicId?: string; prompt?: string }) =>
     lambdaClient.task.run.mutate({ id, ...params });

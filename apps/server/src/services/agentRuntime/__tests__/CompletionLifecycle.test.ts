@@ -763,43 +763,50 @@ describe('CompletionLifecycle.dispatchHooks — error persistence', () => {
     vi.restoreAllMocks();
   });
 
-  it('persists budget errors without downgrading them to AgentRuntimeError', async () => {
-    const lifecycle = buildLifecycle();
-    const updateMessage = vi.fn().mockResolvedValue({ success: true });
-    const budget = { required: 12 };
+  it.each(['metadata', 'state'])(
+    'persists budget errors using the %s message anchor',
+    async (anchor) => {
+      const lifecycle = buildLifecycle();
+      const updateMessage = vi.fn().mockResolvedValue({ success: true });
+      const budget = { required: 12 };
 
-    (lifecycle as any).messageModel = { update: updateMessage };
-    vi.spyOn(lifecycle as any, 'persistCompletion').mockResolvedValue(undefined);
-    vi.spyOn(hookDispatcher, 'dispatch').mockResolvedValue(undefined as any);
-    vi.spyOn(hookDispatcher, 'unregister').mockImplementation(function () {});
+      (lifecycle as any).messageModel = { update: updateMessage };
+      vi.spyOn(lifecycle as any, 'persistCompletion').mockResolvedValue(undefined);
+      vi.spyOn(hookDispatcher, 'dispatch').mockResolvedValue(undefined as any);
+      vi.spyOn(hookDispatcher, 'unregister').mockImplementation(function () {});
 
-    await lifecycle.dispatchHooks(
-      'op-1',
-      {
-        error: {
-          budget,
-          error: { message: 'Budget exceeded' },
-          errorType: ChatErrorType.FreePlanLimit,
-          provider: 'lobehub',
+      await lifecycle.dispatchHooks(
+        'op-1',
+        {
+          error: {
+            budget,
+            error: { message: 'Budget exceeded' },
+            errorType: ChatErrorType.FreePlanLimit,
+            provider: 'lobehub',
+          },
+          messages: [{ id: 'msg-1', role: 'assistant', content: '' }],
+          metadata: {
+            _hooks: [],
+            ...(anchor === 'metadata' ? { assistantMessageId: 'msg-1' } : {}),
+          },
+          status: 'error',
         },
-        metadata: { _hooks: [], assistantMessageId: 'msg-1' },
-        status: 'error',
-      },
-      'error',
-    );
+        'error',
+      );
 
-    expect(updateMessage).toHaveBeenCalledWith('msg-1', {
-      error: expect.objectContaining({
-        body: expect.objectContaining({
-          budget,
+      expect(updateMessage).toHaveBeenCalledWith('msg-1', {
+        error: expect.objectContaining({
+          body: expect.objectContaining({
+            budget,
+            message: 'Budget exceeded',
+            provider: 'lobehub',
+          }),
           message: 'Budget exceeded',
-          provider: 'lobehub',
+          type: ChatErrorType.FreePlanLimit,
         }),
-        message: 'Budget exceeded',
-        type: ChatErrorType.FreePlanLimit,
-      }),
-    });
-  });
+      });
+    },
+  );
 
   it('rethrows critical webhook failures after terminal persistence', async () => {
     const lifecycle = buildLifecycle();

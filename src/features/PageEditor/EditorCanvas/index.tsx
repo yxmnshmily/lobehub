@@ -11,6 +11,7 @@ import type { ComposerTarget } from '@/features/Conversation/types';
 import { EditorCanvas as SharedEditorCanvas } from '@/features/EditorCanvas';
 
 import { usePageEditorStore } from '../store';
+import { useNewPageDraft } from '../useNewPageDraft';
 import { usePageEditable } from '../usePageEditable';
 import { useAskCopilotItem } from './useAskCopilotItem';
 import { useDocumentMentionOption } from './useDocumentMentionOption';
@@ -25,6 +26,7 @@ interface EditorCanvasProps {
 const EditorCanvas = memo<EditorCanvasProps>(({ askCopilotTarget, placeholder, style }) => {
   const { t } = useTranslation(['file', 'ui']);
   const editable = usePageEditable();
+  const draft = useNewPageDraft();
 
   const editor = usePageEditorStore((s) => s.editor);
   const documentId = usePageEditorStore((s) => s.documentId);
@@ -39,23 +41,27 @@ const EditorCanvas = memo<EditorCanvasProps>(({ askCopilotTarget, placeholder, s
   );
 
   return (
-    <SharedEditorCanvas
-      className={mentionFilledClassName}
-      documentId={documentId}
-      editable={editable}
-      editor={editor}
-      extraPlugins={extraPlugins}
-      mentionOption={mentionOption}
-      placeholder={placeholder || t('pageEditor.editorPlaceholder')}
-      slashItems={slashItems}
-      style={style}
-      toolbarExtraItems={editable ? askCopilotItem : undefined}
-      unsavedChangesGuard={{
-        enabled: true,
-        message: t('form.unsavedWarning', { ns: 'ui' }),
-        title: t('form.unsavedChanges', { ns: 'ui' }),
-      }}
-    />
+    <>
+      {draft.guard}
+      <SharedEditorCanvas
+        className={mentionFilledClassName}
+        documentId={documentId}
+        editable={editable}
+        editor={editor}
+        extraPlugins={extraPlugins}
+        mentionOption={mentionOption}
+        placeholder={placeholder || t('pageEditor.editorPlaceholder')}
+        slashItems={slashItems}
+        style={style}
+        toolbarExtraItems={editable ? askCopilotItem : undefined}
+        unsavedChangesGuard={{
+          enabled: true,
+          message: t('form.unsavedWarning', { ns: 'ui' }),
+          title: t('form.unsavedChanges', { ns: 'ui' }),
+        }}
+        onContentChange={draft.onChange}
+      />
+    </>
   );
 });
 

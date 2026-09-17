@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useResponsive } from 'antd-style';
 import { memo, useState } from 'react';
 
 import UploadCard, { UPLOAD_CARD_SIZE, type UploadData } from './UploadCard';
@@ -15,15 +15,33 @@ const styles = createStaticStyles(({ css }) => ({
     z-index: 100;
     inset-block-end: -2px;
     inset-inline-end: -2px;
+
+    @media (hover: none), (pointer: coarse) {
+      position: relative;
+      inset: auto;
+    }
   `,
   stack: css`
     position: relative;
-    padding-block: 4px;
+
+    flex-wrap: wrap;
+
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
     padding-inline: 0;
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       .inline-ref-close {
         opacity: 1;
+      }
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      > * + *,
+      [data-reference-cards] > * + * {
+        margin-inline-start: 4px !important;
       }
     }
   `,
@@ -52,12 +70,14 @@ const InlineImageReference = memo<InlineImageReferenceProps>(
     maxCount = 5,
     uploadingPreviews = [],
   }) => {
+    const { mobile } = useResponsive();
+    const [isFocused, setIsFocused] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
     const totalCount = images.length + uploadingPreviews.length;
     const canAddMore = totalCount < maxCount;
     const hasItems = totalCount > 0;
-    const shouldCollapse = hasItems && !isHovered;
+    const shouldCollapse = hasItems && !isHovered && !isFocused && !mobile;
 
     const stackOffset = (index: number) =>
       index > 0 ? (shouldCollapse ? STACK_OFFSET : EXPAND_OFFSET) : 0;
@@ -67,8 +87,12 @@ const InlineImageReference = memo<InlineImageReferenceProps>(
         horizontal
         align={'end'}
         className={styles.stack}
+        onFocusCapture={() => setIsFocused(true)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setIsFocused(false);
+        }}
       >
         {images.map((url, index) => (
           <UploadCard

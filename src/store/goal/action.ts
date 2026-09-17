@@ -104,6 +104,11 @@ export class GoalActionImpl {
     await this.refreshGoalGraph(goalId);
   };
 
+  cancelGoal = async (goalId: string): Promise<void> => {
+    await goalService.cancel(goalId);
+    await this.refreshGoalGraph(goalId);
+  };
+
   pauseGoal = async (goalId: string): Promise<void> => {
     await goalService.pause(goalId);
     await this.refreshGoalGraph(goalId);

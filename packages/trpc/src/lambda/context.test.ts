@@ -87,9 +87,13 @@ vi.mock('@/business/server/workspaceApiKey', () => ({
 }));
 
 const mockHasActiveWorkspaceMembership = vi.hoisted(() => vi.fn(async () => true));
+const mockWorkspaceRole = vi.hoisted(() => vi.fn(() => 'member'));
 
 vi.mock('@/database/models/workspace', () => ({
   hasActiveWorkspaceMembership: mockHasActiveWorkspaceMembership,
+  getActiveWorkspaceMembershipRole: async (
+    ...args: Parameters<typeof mockHasActiveWorkspaceMembership>
+  ) => ((await mockHasActiveWorkspaceMembership(...args)) ? mockWorkspaceRole() : null),
 }));
 
 const workspaceScopedContentRouter = router({
@@ -358,6 +362,7 @@ describe('createLambdaContext', () => {
   });
 
   it('should bind a workspace API key to its own workspace even without the header', async () => {
+    mockWorkspaceRole.mockReturnValueOnce('owner');
     vi.mocked(ApiKeyModel.findByKey).mockResolvedValue(makeApiKeyRecord('ws-1'));
 
     const request = new NextRequest('https://example.com/trpc/lambda', {
@@ -370,6 +375,7 @@ describe('createLambdaContext', () => {
 
     expect(context.userId).toBe('api-user');
     expect(context.workspaceId).toBe('ws-1');
+    expect(context.workspaceRole).toBe('owner');
   });
 
   it('should reject a workspace API key whose issuer is no longer an active member', async () => {
@@ -464,10 +470,63 @@ describe('createLambdaContext', () => {
 
     expect(context.userId).toBe('session-user');
     expect(context.workspaceId).toBe('workspace-member');
+    expect(context.workspaceRole).toBe('member');
     expect(mockHasActiveWorkspaceMembership).toHaveBeenCalledWith(expect.anything(), {
       userId: 'session-user',
       workspaceId: 'workspace-member',
     });
+  });
+
+  it('uses the verified owner role and ignores a forged role header', async () => {
+    mockWorkspaceRole.mockReturnValueOnce('owner');
+    const owner = await createLambdaContext(
+      new NextRequest('https://example.com/trpc/lambda', {
+        headers: { 'X-Workspace-Id': 'ws-owned', 'X-Workspace-Role': 'viewer' },
+      }),
+    );
+    expect(owner.workspaceRole).toBe('owner');
+    const member = await createLambdaContext(
+      new NextRequest('https://example.com/trpc/lambda', {
+        headers: { 'X-Workspace-Id': 'ws-member', 'X-Workspace-Role': 'owner' },
+      }),
+    );
+    expect(member.workspaceRole).toBe('member');
+    const personal = await createLambdaContext(
+      new NextRequest('https://example.com/trpc/lambda', {
+        headers: { 'X-Workspace-Role': 'owner' },
+      }),
+    );
+    expect(personal.workspaceRole).toBeUndefined();
+  });
+
+  it('rejects an unrecognized persisted workspace role without granting access', async () => {
+    mockWorkspaceRole.mockReturnValueOnce('custom-owner');
+    const context = await createLambdaContext(
+      new NextRequest('https://example.com/trpc/lambda', { headers: { 'X-Workspace-Id': 'ws' } }),
+    );
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context).not.toHaveProperty('workspaceRole');
+  });
+
+  it('allows a server middleware to narrow the verified role and clears role outside workspace', async () => {
+    const cloudLikeRouter = router({
+      role: authedProcedure
+        .use((opts) => opts.next({ ctx: { workspaceRole: 'member' as const } }))
+        .query(({ ctx }) => ctx.workspaceRole),
+    });
+    const context = await createContextInner({
+      userId: 'owner',
+      workspaceId: 'ws',
+      workspaceRole: 'owner',
+    });
+    expect(await cloudLikeRouter.createCaller(context).role()).toBe('member');
+    expect(
+      await createContextInner({ userId: 'owner', workspaceRole: 'owner' }),
+    ).not.toHaveProperty('workspaceRole');
+    expect(
+      await createContextInner({ userId: null, workspaceId: 'ws', workspaceRole: 'owner' }),
+    ).not.toHaveProperty('workspaceRole');
   });
 
   it('should fail closed when a session requests a workspace without active membership', async () => {
@@ -579,6 +638,7 @@ describe('createLambdaContext', () => {
   });
 
   it('should keep OIDC auth inside a workspace where the subject is an active member', async () => {
+    mockWorkspaceRole.mockReturnValueOnce('owner');
     const request = new NextRequest('https://example.com/trpc/lambda', {
       headers: { 'Oidc-Auth': 'oidc-token', 'X-Workspace-Id': 'workspace-member' },
     });
@@ -586,6 +646,7 @@ describe('createLambdaContext', () => {
     const context = await createLambdaContext(request);
 
     expect(context.userId).toBe('oidc-user');
+    expect(context.workspaceRole).toBe('owner');
     expect(context.workspaceId).toBe('workspace-member');
     expect(mockHasActiveWorkspaceMembership).toHaveBeenCalledWith(expect.anything(), {
       userId: 'oidc-user',
@@ -682,7 +743,9 @@ describe('createLambdaContext', () => {
 
     const context = await createLambdaContext(request);
 
-    expect(context.userId).toBeUndefined();
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context).not.toHaveProperty('workspaceRole');
     expect(context.resHeaders?.get(AUTH_FAILURE_HEADER)).toBe('jwt_expired');
   });
 
@@ -717,7 +780,9 @@ describe('createLambdaContext', () => {
 
     const context = await createLambdaContext(new NextRequest('https://example.com/trpc/lambda'));
 
-    expect(context.userId).toBeUndefined();
+    expect(context.userId).toBeNull();
+    expect(context.workspaceId).toBeUndefined();
+    expect(context).not.toHaveProperty('workspaceRole');
     expect(context.resHeaders?.get(AUTH_FAILURE_HEADER)).toBe('no_token');
   });
 });

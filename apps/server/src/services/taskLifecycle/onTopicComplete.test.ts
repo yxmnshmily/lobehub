@@ -4,6 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TaskLifecycleService } from './index';
 
+// This case exercises the hosted upgrade remedy; self-hosted installations may
+// intentionally omit the subscription URL.
+vi.mock('@lobechat/business-const', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.mock factory cannot use a top-level type import
+  const original = await importOriginal<typeof import('@lobechat/business-const')>();
+  return {
+    ...original,
+    BRANDING_URL: { ...original.BRANDING_URL, subscription: 'https://example.test/plans' },
+  };
+});
+
 const fakeScheduler = {
   cancelScheduled: vi.fn().mockResolvedValue(undefined),
   scheduleNextTopic: vi.fn().mockResolvedValue('msg-new'),
@@ -82,6 +93,13 @@ const baseTask = (overrides: Partial<TaskItem> = {}): TaskItem =>
     ...overrides,
   }) as unknown as TaskItem;
 
+const operationFindById = vi.fn();
+vi.mock('@/database/models/agentOperation', () => ({
+  AgentOperationModel: vi.fn(function () {
+    return { findById: operationFindById };
+  }),
+}));
+
 describe('TaskLifecycleService.onTopicComplete', () => {
   let service: TaskLifecycleService;
   let updateStatus: ReturnType<typeof vi.fn>;
@@ -93,6 +111,72 @@ describe('TaskLifecycleService.onTopicComplete', () => {
   let createBrief: ReturnType<typeof vi.fn>;
   let getReviewConfig: ReturnType<typeof vi.fn>;
 
+  it.each(['done', 'error'] as const)(
+    'ignores %s from an operation stopped by the user',
+    async (reason) => {
+      operationFindById.mockResolvedValue({ createdAt: new Date('2026-09-13T00:00:00Z') });
+      findById.mockResolvedValue(
+        baseTask({
+          status: 'paused',
+          context: { manualStopAt: '2026-09-13T01:00:00Z' },
+        } as Partial<TaskItem>),
+      );
+      await service.onTopicComplete({
+        operationId: 'old-op',
+        reason,
+        taskId: 'task-1',
+        taskIdentifier: 'TASK-1',
+        topicId: 'old-topic',
+      });
+      expect(updateTopicStatus).not.toHaveBeenCalled();
+      expect(updateStatus).not.toHaveBeenCalled();
+      expect(fakeScheduler.scheduleNextTopic).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['done', 'error'] as const)('ignores stale goal %s after a revision', async (reason) => {
+    goalFindByGraphTask.mockResolvedValue({ id: 'goal-1' });
+    operationFindById.mockResolvedValue({ createdAt: new Date('2026-09-13T00:00:00Z') });
+    findById.mockResolvedValue(
+      baseTask({
+        automationMode: null,
+        context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+      } as Partial<TaskItem>),
+    );
+    await service.onTopicComplete({
+      operationId: 'old-op',
+      reason,
+      runTrigger: 'goal',
+      taskId: 'task-1',
+      taskIdentifier: 'TASK-1',
+    });
+    expect(updateStatus).not.toHaveBeenCalled();
+    expect(updateStatusIfCurrent).not.toHaveBeenCalled();
+  });
+
+  it('rechecks goal revision after handoff synthesis finishes', async () => {
+    goalFindByGraphTask.mockResolvedValue({ id: 'goal-1' });
+    operationFindById.mockResolvedValue({ createdAt: new Date('2026-09-13T00:00:00Z') });
+    findById.mockResolvedValue(baseTask({ automationMode: null }));
+    vi.spyOn(service as any, 'generateHandoff').mockImplementation(async () => {
+      findById.mockResolvedValue(
+        baseTask({
+          automationMode: null,
+          context: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+        } as Partial<TaskItem>),
+      );
+    });
+    await service.onTopicComplete({
+      operationId: 'old-op',
+      reason: 'done',
+      runTrigger: 'goal',
+      taskId: 'task-1',
+      taskIdentifier: 'TASK-1',
+      topicId: 'old-topic',
+      lastAssistantContent: 'Old output',
+    });
+    expect(updateStatusIfCurrent).not.toHaveBeenCalled();
+  });
   it.each(['done', 'error'] as const)(
     'notifies manual root run %s without claiming the whole task is complete',
     async (reason) => {
@@ -147,7 +231,10 @@ describe('TaskLifecycleService.onTopicComplete', () => {
     notifyFailed.mockReset().mockResolvedValue(undefined);
     cascadeOnCompletion.mockReset().mockResolvedValue({ failed: [], paused: [], started: [] });
 
-    service = new TaskLifecycleService({} as any, 'user-1');
+    const db: any = { execute: vi.fn() };
+    db.transaction = async (fn: (tx: any) => unknown) => fn(db);
+    service = new TaskLifecycleService(db, 'user-1');
+    operationFindById.mockReset();
 
     updateStatus = vi.fn().mockResolvedValue(null);
     updateStatusIfCurrent = vi.fn();
@@ -379,10 +466,7 @@ describe('TaskLifecycleService.onTopicComplete', () => {
       const task = baseTask({ automationMode: null, parentTaskId: 'parent-task' });
       const parentTask = baseTask({ id: 'parent-task', identifier: 'TASK-0' });
       updateStatusIfCurrent.mockResolvedValue(task);
-      findById
-        .mockResolvedValueOnce(task)
-        .mockResolvedValueOnce(parentTask)
-        .mockResolvedValue(task);
+      findById.mockImplementation(async (id) => (id === 'parent-task' ? parentTask : task));
       (service as any).taskModel.shouldPauseAfterComplete = vi.fn().mockReturnValue(false);
 
       await service.onTopicComplete({
@@ -405,10 +489,7 @@ describe('TaskLifecycleService.onTopicComplete', () => {
       const task = baseTask({ automationMode: null, parentTaskId: 'parent-task' });
       const parentTask = baseTask({ id: 'parent-task', identifier: 'TASK-0' });
       updateStatusIfCurrent.mockResolvedValue(task);
-      findById
-        .mockResolvedValueOnce(task)
-        .mockResolvedValueOnce(parentTask)
-        .mockResolvedValue(task);
+      findById.mockImplementation(async (id) => (id === 'parent-task' ? parentTask : task));
       (service as any).taskModel.shouldPauseAfterComplete = vi.fn().mockReturnValue(true);
 
       await service.onTopicComplete({

@@ -6,55 +6,71 @@ Use \`lh task\` to manage tasks.
 </task_guides>
 
 <available_skills>
-  <skill name="Artifacts">Generate interactive UI components</skill>
+  <skill name="Artifacts" identifier="artifacts">Generate interactive UI components</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;
 
-exports[`SkillContextProvider > should handle all skills activated (no available_skills list) 1`] = `"Task skill content here"`;
+exports[`SkillContextProvider > should handle all skills activated (no available_skills list) 1`] = `
+"Task skill content here
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
+`;
 
 exports[`SkillContextProvider > should inject skill metadata when skills are provided 1`] = `
 "<available_skills>
-  <skill name="Artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
-  <skill name="My Skill">Custom skill description</skill>
+  <skill name="Artifacts" identifier="artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
+  <skill name="My Skill" identifier="my-skill">Custom skill description</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;
 
 exports[`SkillContextProvider > should merge with existing system message 1`] = `
 "You are a helpful assistant.
 
 <available_skills>
-  <skill name="Artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
-  <skill name="My Skill">Custom skill description</skill>
+  <skill name="Artifacts" identifier="artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
+  <skill name="My Skill" identifier="my-skill">Custom skill description</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;
 
 exports[`SkillContextProvider > should only inject lightweight metadata without content field 1`] = `
 "<available_skills>
-  <skill name="Artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
+  <skill name="Artifacts" identifier="artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;
 
 exports[`SkillContextProvider > should render XML with location attribute 1`] = `
 "<available_skills>
-  <skill name="PDF Processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text from PDF files</skill>
-  <skill name="Data Analysis" location="/path/to/skills/data-analysis/SKILL.md">Analyzes datasets and generates charts</skill>
+  <skill name="PDF Processing" identifier="pdf-processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text from PDF files</skill>
+  <skill name="Data Analysis" identifier="data-analysis" location="/path/to/skills/data-analysis/SKILL.md">Analyzes datasets and generates charts</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;
 
 exports[`SkillContextProvider > should render XML without location when not provided 1`] = `
 "<available_skills>
-  <skill name="My Skill">Custom skill description</skill>
+  <skill name="My Skill" identifier="my-skill">Custom skill description</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed."
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.
+
+Skill defaults for output quantity, format, language and scope yield to the user's explicit request. Apply the relevant skill methods without adding unrequested deliverables or explanations. This does not override system safety or authorization requirements."
 `;

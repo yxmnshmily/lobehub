@@ -1,3 +1,4 @@
+import { BUILTIN_AGENT_SLUGS, getAgentRuntimeConfig } from '@lobechat/builtin-agents';
 import { AuvManifest } from '@lobechat/builtin-tool-auv';
 import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
 import { GoalIdentifier, isGoalPrompt } from '@lobechat/builtin-tool-goal';
@@ -798,6 +799,27 @@ export const discoverTools = async (
             resolvedAgentId,
             appContext.groupId,
           );
+      }
+
+      // The supervisor runtime needs the persisted group context. The earlier
+      // config stage has no roster, so resolve it here after membership checks,
+      // using the same template as the client and preserving the configured role.
+      // Tool exposure remains governed by the authorized composer below.
+      if (group && isGroupSupervisor && agentSlug === BUILTIN_AGENT_SLUGS.groupSupervisor) {
+        const runtime = getAgentRuntimeConfig(agentSlug, {
+          groupSupervisorContext: {
+            availableAgents: roster.map((member) => ({ id: member.agentId, title: member.title })),
+            groupId: appContext.groupId,
+            groupTitle: group.title || 'Group Chat',
+            systemPrompt: agentConfig.systemRole,
+          },
+          model,
+          plugins: agentPlugins,
+        });
+        if (runtime?.systemRole) agentConfig.systemRole = runtime.systemRole;
+        if (runtime?.chatConfig) {
+          agentConfig.chatConfig = { ...agentConfig.chatConfig, ...runtime.chatConfig };
+        }
       }
 
       operationAgentGroup = buildGroupAgentContext(resolvedAgentId, group, roster);

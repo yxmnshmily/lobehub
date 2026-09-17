@@ -24,12 +24,8 @@ it('resolves the share entry against its Vite directory, not the public share UR
 });
 
 describe('resolveViteSpaTemplatePath', () => {
-  it('selects the mobile Vite entry for mobile requests', () => {
-    expect(resolveViteSpaTemplatePath(true)).toBe('/index.mobile.html');
-  });
-
-  it('keeps the default Vite entry for desktop requests', () => {
-    expect(resolveViteSpaTemplatePath(false)).toBe('/');
+  it('always serves the desktop Vite entry (mobile build removed)', () => {
+    expect(resolveViteSpaTemplatePath()).toBe('/');
   });
 });
 

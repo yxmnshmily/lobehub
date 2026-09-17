@@ -256,6 +256,7 @@ export class TaskDetailSliceActionImpl {
   };
 
   createTask = async (params: {
+    context?: Record<string, unknown>;
     assigneeAgentId?: string;
     assigneeUserId?: string;
     automationMode?: 'heartbeat' | 'schedule';

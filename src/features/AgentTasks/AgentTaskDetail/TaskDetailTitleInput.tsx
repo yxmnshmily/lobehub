@@ -3,6 +3,7 @@ import { Input } from 'antd';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { localizeGoalTemplate } from '@/features/EditorCanvas/localizeGoalTemplate';
 import { usePermission } from '@/hooks/usePermission';
 import { useTaskStore } from '@/store/task';
 import { taskDetailSelectors } from '@/store/task/selectors';
@@ -12,17 +13,18 @@ import { styles } from '../shared/style';
 const DEBOUNCE_MS = 300;
 
 const TaskDetailTitleInput = memo(({ compact = false }: { compact?: boolean }) => {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const { allowed: canEditTask } = usePermission('create_content');
   const name = useTaskStore(taskDetailSelectors.activeTaskName);
   const taskId = useTaskStore(taskDetailSelectors.activeTaskId);
   const updateTask = useTaskStore((s) => s.updateTask);
 
-  const [localName, setLocalName] = useState(name ?? '');
+  const displayName = localizeGoalTemplate(name ?? '', i18n.resolvedLanguage || i18n.language);
+  const [localName, setLocalName] = useState(displayName);
 
   useEffect(() => {
-    setLocalName(name ?? '');
-  }, [name]);
+    setLocalName(displayName);
+  }, [displayName]);
 
   const { run: debouncedSave } = useDebounceFn(
     (value: string) => {

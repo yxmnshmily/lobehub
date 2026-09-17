@@ -12,7 +12,7 @@ describe('skillPrompt', () => {
     };
 
     expect(skillPrompt(skill)).toBe(
-      '  <skill name="PDF Processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text and tables from PDF files</skill>',
+      '  <skill name="PDF Processing" identifier="pdf-processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text and tables from PDF files</skill>',
     );
   });
 
@@ -23,7 +23,9 @@ describe('skillPrompt', () => {
       name: 'My Skill',
     };
 
-    expect(skillPrompt(skill)).toBe('  <skill name="My Skill">Custom skill description</skill>');
+    expect(skillPrompt(skill)).toBe(
+      '  <skill name="My Skill" identifier="my-skill">Custom skill description</skill>',
+    );
   });
 });
 
@@ -45,11 +47,11 @@ describe('skillsPrompts', () => {
     ];
 
     const expected = `<available_skills>
-  <skill name="PDF Processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text and tables from PDF files</skill>
-  <skill name="Data Analysis" location="/path/to/skills/data-analysis/SKILL.md">Analyzes datasets and generates charts</skill>
+  <skill name="PDF Processing" identifier="pdf-processing" location="/path/to/skills/pdf-processing/SKILL.md">Extracts text and tables from PDF files</skill>
+  <skill name="Data Analysis" identifier="data-analysis" location="/path/to/skills/data-analysis/SKILL.md">Analyzes datasets and generates charts</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed.`;
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.`;
 
     expect(skillsPrompts(skills)).toBe(expected);
   });
@@ -70,16 +72,38 @@ Use the runSkill tool to activate a skill when needed.`;
     ];
 
     const expected = `<available_skills>
-  <skill name="Artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
-  <skill name="My Skill">Custom skill description</skill>
+  <skill name="Artifacts" identifier="artifacts" location="/path/to/skills/artifacts/SKILL.md">Generate interactive UI components</skill>
+  <skill name="My Skill" identifier="my-skill">Custom skill description</skill>
 </available_skills>
 
-Use the runSkill tool to activate a skill when needed.`;
+Use activateSkill with a listed skill's exact name to load its instructions before applying it. When the user requests Skill-based work, load a relevant available skill unless its full instructions are already in the current context; a name or description is not the skill body.`;
 
     expect(skillsPrompts(skills)).toBe(expected);
+  });
+
+  it('keeps filesystem loading and real activation names explicit', () => {
+    const prompt = skillsPrompts([
+      {
+        name: 'local-copy',
+        identifier: 'local-copy',
+        description: 'Write copy',
+        source: 'project',
+        location: '/skills/copy/SKILL.md',
+      },
+    ]);
+    expect(prompt).toContain('Use activateSkill');
+    expect(prompt).not.toContain('runSkill');
+    expect(prompt).toContain('load it by calling the readFile tool');
+    expect(prompt).toContain('a name or description is not the skill body');
   });
 
   it('should return empty string for empty skills array', () => {
     expect(skillsPrompts([])).toBe('');
   });
+});
+
+it('exposes escaped exact identifiers for member dispatch', () => {
+  expect(skillPrompt({ name: 'A"B', identifier: 'id"<&', description: 'text <tag>' })).toContain(
+    'identifier="id&quot;&lt;&amp;"',
+  );
 });

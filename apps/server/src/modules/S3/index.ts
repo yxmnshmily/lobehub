@@ -90,13 +90,18 @@ export class S3 {
     return this.client.send(command);
   }
 
-  public async deleteFiles(keys: string[]) {
+  public async deleteFiles(keys: string[], signal?: AbortSignal) {
     const command = new DeleteObjectsCommand({
       Bucket: this.bucket,
       Delete: { Objects: keys.map((key) => ({ Key: key })) },
     });
 
-    return this.client.send(command);
+    const result = await this.client.send(command, signal ? { abortSignal: signal } : undefined);
+    // S3 can return HTTP 200 while individual objects failed to delete.
+    if (result.Errors?.length) {
+      throw new Error(`Failed to delete ${result.Errors.length} storage object(s)`);
+    }
+    return result;
   }
 
   public async getFileContent(key: string, byteLength?: number): Promise<string> {

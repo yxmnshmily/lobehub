@@ -69,6 +69,7 @@ export class GroupOrchestrationSupervisor implements IGroupOrchestrationSupervis
             return {
               payload: {
                 agentId: params.agentId as string,
+                skillIdentifiers: params.skillIdentifiers as string[] | undefined,
                 instruction: params.instruction as string | undefined,
                 replyToMessageId: params.replyToMessageId as string | undefined,
               },
@@ -93,6 +94,7 @@ export class GroupOrchestrationSupervisor implements IGroupOrchestrationSupervis
             return {
               payload: {
                 agentId: params.agentId as string,
+                skillIdentifiers: params.skillIdentifiers as string[] | undefined,
                 reason: params.reason as string | undefined,
               },
               type: 'delegate',
@@ -102,6 +104,7 @@ export class GroupOrchestrationSupervisor implements IGroupOrchestrationSupervis
           case 'execute_task': {
             const instructionPayload = {
               agentId: params.agentId as string,
+              skillIdentifiers: params.skillIdentifiers as string[] | undefined,
               instruction: params.instruction as string,
               timeout: params.timeout as number | undefined,
               title: params.title as string | undefined,
@@ -128,6 +131,7 @@ export class GroupOrchestrationSupervisor implements IGroupOrchestrationSupervis
                 tasks: params.tasks as Array<{
                   agentId: string;
                   instruction: string;
+                  skillIdentifiers?: string[];
                   timeout?: number;
                   title?: string;
                 }>,

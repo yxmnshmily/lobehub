@@ -74,6 +74,23 @@ const MODERATION_PAGE_SIZE = 20;
 const CONTENT_CATALOG_LIMIT = 5;
 
 const styles = createStaticStyles(({ css }) => ({
+  customerPage: css`
+    /* The shared settings container supplies the 48px page inset. */
+    /* stylelint-disable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    /* stylelint-enable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
+  `,
+  auditPanel: css`
+    padding: 0;
+
+    /* The shared settings container supplies the 48px page inset. */
+    /* stylelint-disable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
+    border-width: 0;
+    /* stylelint-enable liberty/use-logical-spec, declaration-block-no-redundant-longhand-properties */
+  `,
   page: css`
     container-type: inline-size;
 
@@ -445,8 +462,10 @@ const styles = createStaticStyles(({ css }) => ({
     }
   `,
   directory: css`
-    padding: 16px;
-    border: 0.5px solid ${cssVar.colorBorderSecondary};
+    /* Match the saved flat layout on the first paint, before modifier rules load.
+       The settings shell already supplies the 48px page gutter. */
+    padding: 0;
+    border: 0;
     border-radius: ${cssVar.borderRadiusLG};
   `,
   customerTable: css`
@@ -1804,7 +1823,11 @@ const ModerationSection = () => {
     recommendBanMutation.isPending;
 
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block
+      className={styles.auditPanel}
+      data-testid="service-operations-audit-panel"
+      variant={'outlined'}
+    >
       <Flexbox gap={16}>
         <Flexbox gap={6}>
           <Flexbox horizontal align={'center'} gap={8}>
@@ -2894,17 +2917,17 @@ const ServiceOperations = () => {
   return (
     <Flexbox
       aria-label={translateTravel('账户管理内容')}
-      className={styles.page}
+      className={`${styles.page} ${isContentModerationRoute ? '' : styles.customerPage}`}
+      data-testid="service-operations-customer-page"
       gap={24}
       tabIndex={0}
       role="region"
-      /* Account management keeps one 24px cushion of its own; the moderation
+      /* Account management uses its own editable spacing; the moderation
          view already sits inside the content pane's own padding. */
       style={{
         flex: 1,
         minHeight: 0,
         overflow: 'auto',
-        ...(isContentModerationRoute ? null : { padding: 24 }),
       }}
     >
       {/* 标题与说明已按要求移除，只保留“返回客户列表”这个功能入口 */}

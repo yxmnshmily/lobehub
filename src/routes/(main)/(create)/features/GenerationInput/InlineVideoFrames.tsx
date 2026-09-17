@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, useResponsive } from 'antd-style';
 import { ArrowLeftRight } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,18 +17,39 @@ const styles = createStaticStyles(({ css }) => ({
     z-index: 100;
     inset-block-end: -2px;
     inset-inline-end: -2px;
+
+    @media (hover: none), (pointer: coarse) {
+      position: relative;
+      inset: auto;
+    }
   `,
   refGroup: css`
     position: relative;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
   `,
   stack: css`
     position: relative;
-    padding-block: 4px;
+
+    flex-wrap: wrap;
+
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
     padding-inline: 0;
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       .inline-ref-close {
         opacity: 1;
+      }
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      > * + *,
+      [data-reference-cards] > * + * {
+        margin-inline-start: 4px !important;
       }
     }
   `,
@@ -71,6 +92,8 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
     uploadingPreviews = [],
   }) => {
     const { t } = useTranslation('video');
+    const { mobile } = useResponsive();
+    const [isFocused, setIsFocused] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
     // Combine imageUrl and imageUrls for display
@@ -87,17 +110,22 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
     const totalCount = refFrameUrls.length + uploadingPreviews.length;
     const hasItems = totalCount > 0;
     const canAddMore = totalCount < maxCount;
-    const shouldCollapse = hasItems && !isHovered;
+    const shouldCollapse = hasItems && !isHovered && !isFocused && !mobile;
     const showEndFrame = isSupportEndImage && hasRefFrames;
 
     return (
       <Flexbox horizontal align={'end'} className={styles.stack} gap={6}>
         <Flexbox
+          data-reference-cards
           horizontal
           align={'end'}
           className={styles.refGroup}
+          onFocusCapture={() => setIsFocused(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setIsFocused(false);
+          }}
         >
           {/* Render ref frames (from imageUrl and imageUrls) */}
           {refFrameUrls.map((url, index) => {
@@ -216,6 +244,7 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
             <UploadCard
               imageUrl={endImageUrl}
               label={t('config.endImageUrl.label')}
+              maxFileSize={maxFileSize}
               onRemove={() => onEndImageChange(null)}
               onUpload={(data) => onEndImageChange(data)}
             />

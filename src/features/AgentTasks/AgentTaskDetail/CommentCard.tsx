@@ -1,7 +1,7 @@
 import type { TaskDetailActivity } from '@lobechat/types';
 import { useEditor } from '@lobehub/editor/react';
 import { LexicalRenderer } from '@lobehub/editor/renderer';
-import { Block, type DropdownItem, DropdownMenu, Flexbox, Icon, Markdown } from '@lobehub/ui';
+import { Block, type DropdownItem, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, Avatar, Button, confirmModal, Text } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { MessageCircle, MoreHorizontal, Pencil, Trash } from 'lucide-react';
@@ -17,6 +17,7 @@ import {
   insertFilesIntoEditor,
 } from '@/features/EditorCanvas/editorAttachments';
 import { LinearFileCard } from '@/features/EditorCanvas/LinearFilePlugin';
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useWorkspaceCommentMentionOption } from '@/features/Portal/TopicComments/useWorkspaceCommentMentionOption';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { useTaskStore } from '@/store/task';

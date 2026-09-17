@@ -861,6 +861,43 @@ describe('TaskModel', () => {
 
       expect(measuredTask?.totalRunCost).toBeCloseTo(0.04);
       expect(measuredTask?.totalRunDuration).toBe(240_000);
+      const listed = (await model.list()).tasks.find(({ id }) => id === task.id);
+      expect(listed?.totalRunCost).toBeCloseTo(0.04);
+      expect(listed?.totalRunDuration).toBe(240_000);
+    });
+
+    it('excludes private historical run metrics from another workspace member', async () => {
+      const workspaceId = 'run-stats-workspace';
+      await serverDB
+        .insert(workspaces)
+        .values({ id: workspaceId, name: 'Stats', slug: workspaceId, primaryOwnerId: userId });
+      const owner = new TaskModel(serverDB, userId, workspaceId);
+      const member = new TaskModel(serverDB, 'other-reader', workspaceId);
+      const task = await owner.create({ instruction: 'Now public', visibility: 'public' });
+      await serverDB.insert(topics).values({
+        id: 'private-history-run',
+        userId,
+        workspaceId,
+        totalCost: 9,
+        completedAt: new Date('2026-08-06T10:02:00Z'),
+      });
+      await serverDB.insert(taskTopics).values({
+        taskId: task.id,
+        topicId: 'private-history-run',
+        userId,
+        workspaceId,
+        visibility: 'private',
+        seq: 1,
+        createdAt: new Date('2026-08-06T10:00:00Z'),
+      });
+      expect((await member.list()).tasks.find(({ id }) => id === task.id)).toMatchObject({
+        totalRunCost: 0,
+        totalRunDuration: 0,
+      });
+      expect((await owner.list()).tasks.find(({ id }) => id === task.id)).toMatchObject({
+        totalRunCost: 9,
+        totalRunDuration: 120000,
+      });
     });
 
     it('should aggregate descendant run metrics into the root goal', async () => {
@@ -879,6 +916,14 @@ describe('TaskModel', () => {
         createdAt: startedAt,
         seq: 1,
         taskId: child.id,
+        topicId: 'descendant-goal-run',
+        userId,
+      });
+
+      await serverDB.insert(taskTopics).values({
+        createdAt: startedAt,
+        seq: 1,
+        taskId: root.id,
         topicId: 'descendant-goal-run',
         userId,
       });

@@ -4,5 +4,13 @@
  */
 export const COMPACT_ACTION_SIZE = { blockSize: 28, size: 16 };
 export const COMPACT_ACTION_BAR_CONTEXT = { actionSize: COMPACT_ACTION_SIZE };
-export const COMPACT_ACTION_BAR_STYLE = { paddingLeft: 4, paddingRight: 4 };
+export const COMPACT_ACTION_BAR_STYLE = {
+  display: 'grid',
+  gridTemplateColumns: 'max-content minmax(0, 1fr)',
+  columnGap: 8,
+  containerName: 'compact-composer',
+  containerType: 'inline-size' as const,
+  paddingLeft: 4,
+  paddingRight: 4,
+};
 export const COMPACT_SEND_BUTTON_PROPS = { size: 28 };

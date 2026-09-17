@@ -49,6 +49,13 @@ const testState = vi.hoisted(() => ({
     toggleProviderEnabled: vi.fn(async () => {}),
     toggleProviderModelEnabled: vi.fn(async () => {}),
   },
+  chat: {
+    hasTopic: true,
+    useFetchTopicDetail: vi.fn(() => ({ isLoading: false })),
+    activeTopicId: undefined as string | undefined,
+    topicModel: undefined as { model: string; provider: string } | undefined,
+    updateTopicModel: vi.fn(async () => {}),
+  },
   isDesktop: false,
   permission: {
     canManageAiInfra: true,
@@ -98,6 +105,14 @@ vi.mock('@/features/ChatInput/hooks/useChatInputResourceAccess', () => ({
   useChatInputResourceAccess: () => testState.resourceAccess,
 }));
 
+vi.mock('@/store/chat', () => ({ useChatStore: (selector: any) => selector(testState.chat) }));
+vi.mock('@/store/chat/slices/topic/selectors', () => ({
+  topicSelectors: {
+    activeTopicModel: (s: any) => s.topicModel,
+    getTopicById: () => (s: any) => (s.hasTopic ? {} : undefined),
+  },
+}));
+
 vi.mock('@/hooks/useEnabledChatModels', () => ({
   useEnabledChatModels: () => testState.aiInfra.enabledChatModelList,
 }));
@@ -136,6 +151,11 @@ describe('useChatInputNotice', () => {
   });
 
   beforeEach(() => {
+    testState.chat.hasTopic = true;
+    testState.chat.useFetchTopicDetail.mockReturnValue({ isLoading: false });
+    testState.chat.activeTopicId = undefined;
+    testState.chat.topicModel = undefined;
+    testState.chat.updateTopicModel.mockReset();
     testState.agent.agencyConfig = undefined;
     testState.agent.isConfigLoading = false;
     testState.agentModelSelection = {
@@ -167,6 +187,59 @@ describe('useChatInputNotice', () => {
       isGroupContext: false,
       isResourceGated: false,
     };
+  });
+
+  it('does not flash a disabled default while the topic pin is loading', () => {
+    testState.aiInfra.isInitAiProviderRuntimeState = true;
+    testState.agent.model = 'deepseek-v4-flash';
+    testState.agent.provider = 'deepseek';
+    testState.aiInfra.builtinAiModelList = [
+      { id: 'deepseek-v4-flash', providerId: 'deepseek', type: 'chat' },
+    ];
+    testState.aiInfra.enabledChatModelList = [
+      { id: 'deepseek', children: [{ id: 'deepseek-flash' }] },
+    ];
+    testState.chat.activeTopicId = 'loading-topic';
+    testState.chat.hasTopic = false;
+    testState.chat.useFetchTopicDetail.mockReturnValue({ isLoading: true });
+    const { result, rerender } = renderHook(() => useChatInputNotice());
+    expect(result.current).toBeUndefined();
+    testState.chat.hasTopic = true;
+    testState.chat.useFetchTopicDetail.mockReturnValue({ isLoading: false });
+    testState.chat.topicModel = { model: 'deepseek-flash', provider: 'deepseek' };
+    rerender();
+    expect(result.current).toBeUndefined();
+    testState.chat.topicModel = undefined;
+    rerender();
+    expect(result.current?.key).toBe('input.modelDisabled');
+  });
+
+  it('checks the enabled topic Flash instead of the disabled agent default', () => {
+    testState.aiInfra.isInitAiProviderRuntimeState = true;
+    testState.agent.model = 'deepseek-v4-flash';
+    testState.agent.provider = 'deepseek';
+    testState.aiInfra.builtinAiModelList = [
+      { id: 'deepseek-v4-flash', providerId: 'deepseek', type: 'chat' },
+    ];
+    testState.aiInfra.enabledChatModelList = [
+      { id: 'deepseek', children: [{ id: 'deepseek-flash' }] },
+    ];
+    testState.chat.activeTopicId = 'topic';
+    testState.chat.topicModel = { model: 'deepseek-flash', provider: 'deepseek' };
+    const { result } = renderHook(() => useChatInputNotice());
+    expect(result.current).toBeUndefined();
+  });
+
+  it('still blocks a disabled topic model even when the agent default is enabled', () => {
+    testState.aiInfra.isInitAiProviderRuntimeState = true;
+    testState.aiInfra.enabledChatModelList = [{ id: 'openai', children: [{ id: 'gpt-4o' }] }];
+    testState.aiInfra.builtinAiModelList = [
+      { id: 'deepseek-flash', providerId: 'deepseek', type: 'chat' },
+    ];
+    testState.chat.activeTopicId = 'topic';
+    testState.chat.topicModel = { model: 'deepseek-flash', provider: 'deepseek' };
+    const { result } = renderHook(() => useChatInputNoticeForAgent('page-agent'));
+    expect(result.current?.key).toBe('input.modelDisabled');
   });
 
   it('supports an explicit agent id without reading the ChatInput provider', () => {
@@ -373,6 +446,22 @@ describe('useChatInputNotice', () => {
       model: 'gpt-4o',
       provider: 'openai',
     });
+  });
+
+  it('repairs the topic provider without changing the agent default', async () => {
+    testState.chat.activeTopicId = 'topic';
+    testState.chat.topicModel = { model: 'deepseek-flash', provider: 'removed-provider' };
+    testState.aiInfra.isInitAiProviderRuntimeState = true;
+    testState.aiInfra.builtinAiModelList = [
+      { id: 'deepseek-flash', providerId: 'deepseek', type: 'chat' },
+    ];
+    const { result } = renderHook(() => useChatInputNotice());
+    await act(async () => result.current?.onAction?.());
+    expect(testState.chat.updateTopicModel).toHaveBeenCalledWith('topic', {
+      model: 'deepseek-flash',
+      provider: 'deepseek',
+    });
+    expect(testState.agentModelSelection.selectModel).not.toHaveBeenCalled();
   });
 
   it('reports a provider selection failure separately after enabling the fallback model', async () => {

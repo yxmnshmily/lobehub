@@ -784,6 +784,7 @@ export interface TriggerSpeakParams extends GroupOrchestrationBaseParams {
    * Optional existing group message ID that the target agent is directly replying to.
    */
   replyToMessageId?: string;
+  skillIdentifiers?: string[];
   /**
    * If true, the orchestration will end after this agent responds,
    * without calling the supervisor again.
@@ -827,6 +828,7 @@ export interface TriggerDelegateParams extends GroupOrchestrationBaseParams {
    * Optional reason for delegation
    */
   reason?: string;
+  skillIdentifiers?: string[];
 }
 
 /**
@@ -846,6 +848,7 @@ export interface TriggerExecuteTaskParams extends GroupOrchestrationBaseParams {
    * MUST be true when task requires local-system tools. Default is false (server execution).
    */
   runInClient?: boolean;
+  skillIdentifiers?: string[];
   /**
    * If true, the orchestration will end after the task completes,
    * without calling the supervisor again.
@@ -873,6 +876,7 @@ export interface TriggerExecuteTaskItem {
    * Detailed instruction for the agent to execute
    */
   instruction: string;
+  skillIdentifiers?: string[];
   /**
    * Optional timeout in milliseconds for this specific task
    */

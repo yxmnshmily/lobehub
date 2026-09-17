@@ -17,6 +17,17 @@ const makeCtx = (overrides?: Partial<ToolExecutionContext>): ToolExecutionContex
 const runtime = () => groupManagementRuntime.factory(makeCtx()) as any;
 
 describe('groupManagementRuntime', () => {
+  it.each(['speak', 'delegate', 'executeAgentTask', 'executeAgentTasks'])(
+    'forwards per-run skills through %s',
+    async (method) => {
+      const member = { agentId: 'a', instruction: 'work', skillIdentifiers: ['copy'] };
+      await runtime()[method](
+        method === 'executeAgentTasks' ? { tasks: [member] } : member,
+        makeCtx(),
+      );
+      expect(run.mock.calls[0][0].members[0].skillIdentifiers).toEqual(['copy']);
+    },
+  );
   beforeEach(() => {
     run.mockReset();
     run.mockResolvedValue({ started: true, startedCount: 1 });

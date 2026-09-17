@@ -1,4 +1,8 @@
 import {
+  AgentDocumentsApiName,
+  AgentDocumentsIdentifier,
+} from '@lobechat/builtin-tool-agent-documents';
+import {
   ImageGenerationApiName,
   ImageGenerationIdentifier,
 } from '@lobechat/builtin-tool-image-generation';
@@ -42,3 +46,12 @@ export const isImageBearingTool = (tool: ChatToolPayloadWithResult): boolean => 
 
   return hasUploadedImages(state);
 };
+
+/** Document creation renders a deliverable/streaming preview, not a diagnostic log.
+ * Keep legacy notebook transcripts usable alongside the current document tool.
+ */
+export const isDeliveryBearingTool = (tool: ChatToolPayloadWithResult): boolean =>
+  isImageBearingTool(tool) ||
+  (tool.apiName === AgentDocumentsApiName.createDocument &&
+    (tool.identifier === AgentDocumentsIdentifier || tool.identifier === 'lobe-notebook') &&
+    !!(tool.arguments || (tool.result?.state as { documentId?: string } | undefined)?.documentId));

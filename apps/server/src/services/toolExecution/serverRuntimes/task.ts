@@ -19,7 +19,7 @@ import {
   formatWorkspaceMembers,
   priorityLabel,
 } from '@lobechat/prompts';
-import type { TaskAutomationMode, TaskStatus } from '@lobechat/types';
+import type { TaskAutomationMode, TaskContext, TaskStatus } from '@lobechat/types';
 import { eq } from 'drizzle-orm';
 
 import { notifyTaskAssigned } from '@/business/server/task/notifyTaskAssigned';
@@ -106,6 +106,19 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
   const taskModel = () => deps.taskModel;
   const taskService = () => deps.taskService;
   const taskCaller = () => deps.taskCaller;
+
+  const automaticReturnHint = async (identifier: string): Promise<string | undefined> => {
+    if (!agentId || !topicId) return;
+    try {
+      const task = await taskModel().resolve(identifier);
+      const origin = (task?.context as TaskContext | undefined)?.origin;
+      if (origin?.agentId === agentId && origin.topicId === topicId) {
+        return 'Results will automatically return to this conversation. For now, give only a brief started status; do not poll or start the task again while waiting. The user can still ask for a status check.';
+      }
+    } catch {
+      // A failed optional lookup must not turn a successful launch into a failure.
+    }
+  };
 
   // Base URL for task deep-links embedded in tool results. These results can be
   // pushed to IM / bot channels and mobile, so the link must be ABSOLUTE — and
@@ -790,6 +803,8 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
         const lines = [`Task ${id} started.`];
         if (topicId) lines.push(`  Topic: ${topicId}`);
         if (operationId) lines.push(`  Operation: ${operationId}`);
+        const returnHint = await automaticReturnHint(id);
+        if (returnHint) lines.push(returnHint);
 
         return { content: lines.join('\n'), success: true };
       } catch (error) {
@@ -819,6 +834,8 @@ export const createTaskRuntime = (deps: TaskRuntimeDeps) => {
           lines.push(
             `${index + 1}. ${identifier} — started${topicId ? ` (topic ${topicId})` : ''}`,
           );
+          const returnHint = await automaticReturnHint(identifier);
+          if (returnHint) lines.push(returnHint);
         } catch (error) {
           failed += 1;
           const message = error instanceof Error ? error.message : 'Unknown error';

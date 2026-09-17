@@ -1,15 +1,9 @@
 import type { TaskDetailActivity } from '@lobechat/types';
-import {
-  Block,
-  type DropdownItem,
-  DropdownMenu,
-  Flexbox,
-  Markdown,
-  stopPropagation,
-} from '@lobehub/ui';
+import { Block, type DropdownItem, DropdownMenu, Flexbox, stopPropagation } from '@lobehub/ui';
 import { ActionIcon, Avatar, confirmModal, Tag, Text, toast } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import {
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   CircleDot,
@@ -28,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import CollapsibleContent from '@/components/CollapsibleContent';
 import { DEFAULT_AVATAR } from '@/const/meta';
 import AgentProfilePopup from '@/features/AgentProfileCard/AgentProfilePopup';
+import Markdown from '@/features/EditorCanvas/ResourceMarkdown';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { usePermission } from '@/hooks/usePermission';
 import { useTaskStore } from '@/store/task';
@@ -354,7 +349,13 @@ const TopicCard = memo<TopicCardProps>(({ activity, defaultExpanded = true, prim
 
         <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
           {startedAt && (
-            <Text fontSize={12} title={startedAtTitle} type={'secondary'}>
+            <Text
+              fontSize={12}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              title={startedAtTitle}
+              type={'secondary'}
+            >
+              <CalendarDays aria-hidden size={14} />
               {startedAt}
             </Text>
           )}

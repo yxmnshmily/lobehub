@@ -6,7 +6,7 @@ import type { BreadcrumbProps } from 'antd';
 import { Breadcrumb } from 'antd';
 import { createStaticStyles, cx } from 'antd-style';
 import { ChevronRightIcon, HomeIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { memo } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -23,14 +23,16 @@ const prefixCls = 'ant';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   breadcrumb: css`
     ol {
-      align-items: center;
       flex-wrap: nowrap;
+      align-items: center;
     }
     .${prefixCls}-breadcrumb-separator {
       margin-inline: 6px;
       color: ${cssVar.colorTextQuaternary};
     }
     .${prefixCls}-breadcrumb-link {
+      cursor: pointer;
+
       display: flex !important;
       align-items: center !important;
 
@@ -44,13 +46,44 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       font-size: 13px;
       color: ${cssVar.colorTextDescription};
 
-      cursor: pointer;
-
       transition: background-color 0.2s ${cssVar.motionEaseInOut};
     }
+    .${prefixCls}-breadcrumb-link:has([role='combobox']) {
+      padding: 0 !important;
+    }
+
+    ol:has([role='combobox']) {
+      .${prefixCls}-breadcrumb-link {
+        box-sizing: border-box;
+        height: 32px;
+        min-height: 32px;
+
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+      }
+      a.${prefixCls}-breadcrumb-link {
+        padding-block: 0 !important;
+        padding-inline: 6px !important;
+      }
+      a.${prefixCls}-breadcrumb-link > span {
+        gap: 6px !important;
+      }
+
+      svg {
+        flex: none;
+        width: 18px;
+        height: 18px;
+      }
+      .${prefixCls}-breadcrumb-separator {
+        display: flex;
+        align-items: center;
+        margin-inline: 4px;
+      }
+    }
     a.${prefixCls}-breadcrumb-link:hover {
-      background: ${cssVar.colorFillTertiary};
       color: ${cssVar.colorText};
+      background: ${cssVar.colorFillTertiary};
     }
     a.${prefixCls}-breadcrumb-link {
       &:hover {
@@ -74,10 +107,11 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     align-items: center;
     justify-content: center;
 
+    box-sizing: border-box;
+
     /* Fixed, not minimum: every sidebar that shows only a breadcrumb must
        measure exactly the same, whatever the crumb content is. */
     height: 64px;
-    box-sizing: border-box;
     padding-block: 8px;
   `,
 }));
@@ -116,13 +150,13 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
         title: (
           <span
             aria-label={t('backToHome')}
+            title={t('backToHome')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
               whiteSpace: 'nowrap',
             }}
-            title={t('backToHome')}
           >
             <Icon icon={HomeIcon} />
             <span data-nav-label="">{t('backToHome')}</span>
@@ -132,7 +166,7 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
       ...breadcrumb,
     ].map((item) => ({
       ...item,
-      onClick: (event) => {
+      onClick: (event: MouseEvent<HTMLElement>) => {
         if (isModifierClick(event)) return;
         const href = item.href;
         if (href) {
@@ -180,9 +214,11 @@ const SideBarHeaderLayout = memo<SideBarHeaderLayoutProps>(
         className={cx(styles.container, isBreadcrumbRow && styles.breadcrumbContainer)}
         data-nav-header=""
         flex={'none'}
-        justify={hasActions && isBreadcrumbRow ? 'space-between' : hasActions ? 'space-between' : 'center'}
         paddingBlock={8}
         paddingInline={10}
+        justify={
+          hasActions && isBreadcrumbRow ? 'space-between' : hasActions ? 'space-between' : 'center'
+        }
         /* Three-part symmetric row: an empty left spacer, the breadcrumb in the
            middle and the actions on the right, so the crumb stays optically
            centred and the action keeps the 8px minimum gap from the edge. */

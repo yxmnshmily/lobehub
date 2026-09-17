@@ -2,7 +2,7 @@
 
 import { Flexbox, Icon } from '@lobehub/ui';
 import { ActionIcon, Avatar, Text, useModalContext } from '@lobehub/ui/base-ui';
-import { createStaticStyles } from 'antd-style';
+import { createStaticStyles, useTheme } from 'antd-style';
 import { type LucideIcon, XIcon } from 'lucide-react';
 import { memo, type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -139,8 +139,6 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 12px;
     border-inline-end: 0.5px solid ${cssVar.colorBorderSecondary};
 
-    background: ${cssVar.colorBgContainerSecondary};
-
     @media (width < 768px) {
       overflow-x: auto;
       flex: 0 0 auto;
@@ -158,6 +156,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 const SettingsModalLayout = memo<SettingsModalLayoutProps>(
   ({ avatar, background, title, tabs, activeTab, onTabChange, children }) => {
     const { t } = useTranslation('common');
+    const theme = useTheme();
     const { close } = useModalContext();
     const tabListId = useId();
 
@@ -181,7 +180,12 @@ const SettingsModalLayout = memo<SettingsModalLayoutProps>(
 
         <Flexbox className={styles.body}>
           {tabItems && tabItems.length >= 2 && (
-            <nav aria-label={String(title)} className={styles.sideNav} role={'tablist'}>
+            <nav
+              aria-label={String(title)}
+              className={styles.sideNav}
+              role={'tablist'}
+              style={{ background: theme.colorBgContainerSecondary }}
+            >
               {tabItems.map(({ icon, key, label }) => (
                 <button
                   aria-selected={key === activeTab}

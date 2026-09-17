@@ -51,3 +51,24 @@ it('does not delete before confirmation and forwards the attachment choice', asy
     ['two', false],
   ]);
 });
+
+it('does not overwrite a new page selection when an old deletion finishes', async () => {
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const management = {
+    favoriteTopic: vi.fn(),
+    removeTopic: vi.fn(() => pending),
+    updateTopicStatus: vi.fn(),
+  };
+  useTopicsViewStore.setState({ selectedIds: ['one'], selectMode: true });
+  const { rerender } = render(<BulkActionBar management={management} scopeKey="old" />);
+  fireEvent.click(screen.getAllByRole('button')[2]);
+  const deleting = confirm.mock.calls[0][0].onConfirm(false);
+  rerender(<BulkActionBar management={management} scopeKey="new" />);
+  useTopicsViewStore.setState({ selectedIds: ['new-topic'] });
+  finish();
+  await deleting;
+  expect(useTopicsViewStore.getState().selectedIds).toEqual(['new-topic']);
+});

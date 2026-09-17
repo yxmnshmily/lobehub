@@ -1705,16 +1705,18 @@ export class ChatTopicActionImpl {
     // remove topic (and optionally its uploaded attachments)
     await topicService.removeTopic(id, removeFiles);
     this.#get().internal_dispatchTopic({ type: 'deleteTopic', id }, 'removeTopic');
-    await refreshTopic();
     // drop the deleted topic's message cache so it doesn't orphan in IndexedDB
-    void evictMessageCache((ctx) => ctx.topicId === id);
+    await evictMessageCache(
+      (ctx) => ctx.topicId === id || (!!activeGroupId && ctx.groupId === activeGroupId),
+    );
+    await refreshTopic();
 
     // switch back to default topic
     if (activeTopicId === id) switchTopic(null);
   };
 
   removeUnstarredTopic = async (options?: RemoveUnstarredTopicOptions): Promise<void> => {
-    const { refreshTopic, switchTopic } = this.#get();
+    const { refreshTopic, switchTopic, activeGroupId } = this.#get();
     const topics = topicSelectors.currentUnFavTopics(this.#get());
     const currentUserId = userProfileSelectors.userId(useUserStore.getState());
     const topicIds = topics
@@ -1725,10 +1727,14 @@ export class ChatTopicActionImpl {
     topicIds.forEach((id) =>
       this.#get().internal_dispatchTopic({ type: 'deleteTopic', id }, 'removeUnstarredTopic'),
     );
-    await refreshTopic();
     // drop the deleted topics' message caches
     const removed = new Set(topicIds);
-    void evictMessageCache((ctx) => !!ctx.topicId && removed.has(ctx.topicId));
+    await evictMessageCache(
+      (ctx) =>
+        (!!ctx.topicId && removed.has(ctx.topicId)) ||
+        (!!activeGroupId && ctx.groupId === activeGroupId),
+    );
+    await refreshTopic();
 
     // Switch to default topic
     switchTopic(null);

@@ -5,8 +5,13 @@ import {
   chatGroups,
   chatGroupUserMemberships,
   files,
+  goalNodes,
+  goals,
   messages,
   messagesFiles,
+  projects,
+  tasks,
+  taskTopics,
   topics,
   users,
 } from '@lobechat/database/schemas';
@@ -15,6 +20,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { MessageModel } from '@/database/models/message';
+import { ProjectModel } from '@/database/models/project';
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID } from '@/server/services/user/travelServiceGroup';
 
 import {
@@ -492,6 +498,80 @@ describe('GroupConversationAccessRepository conversation reads', () => {
       .where(eq(topics.id, writerAccessibleTopicId));
     expect(replayed.updatedAt).toEqual(first.updatedAt);
   });
+  it('returns business associations and only this topic cost without exposing another group', async () => {
+    const project = await new ProjectModel(db, ownerId).create({
+      identifier: 'P99001',
+      name: '旅行项目',
+    });
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        id: 'topic-assoc-task',
+        identifier: 'T-assoc',
+        seq: 900001,
+        name: '写文案',
+        instruction: '写文案',
+        createdByUserId: ownerId,
+        config: { groupId },
+        context: { origin: { topicId: laterTopicId } },
+        projectId: project.id,
+      })
+      .returning();
+    const [goal] = await db
+      .insert(goals)
+      .values({
+        id: 'topic-assoc-goal',
+        title: '宣传目标',
+        userId: ownerId,
+        config: { groupId },
+        projectId: project.id,
+      })
+      .returning();
+    await db.insert(goalNodes).values({
+      goalId: goal.id,
+      kind: 'task',
+      taskId: task.id,
+      title: '执行',
+      createdByUserId: ownerId,
+    });
+    await db
+      .insert(taskTopics)
+      .values({ taskId: task.id, topicId: afterJoinTopicId, userId: ownerId, seq: 1 });
+    await db.insert(tasks).values({
+      id: 'topic-assoc-hidden',
+      identifier: 'T-hidden',
+      seq: 900002,
+      name: '其他群秘密',
+      instruction: 'secret',
+      createdByUserId: ownerId,
+      config: { groupId: otherGroupId },
+      context: { origin: { topicId: laterTopicId } },
+    });
+    await db.update(topics).set({ totalCost: 0.015301 }).where(eq(topics.id, afterJoinTopicId));
+    try {
+      for (const actor of [ownerId, memberId]) {
+        const result = await repository.listAccessibleTopics(actor, groupId);
+        const topic = result.items.find((row) => row.id === afterJoinTopicId)!;
+        expect(topic.cost).toBe(0.015301);
+        expect(topic.businessAssociations).toEqual(
+          expect.arrayContaining([
+            { id: task.id, kind: 'task', title: '写文案' },
+            { id: goal.id, kind: 'goal', title: '宣传目标' },
+            { id: project.id, kind: 'project', title: '旅行项目' },
+          ]),
+        );
+        expect(topic.businessAssociations).toHaveLength(3);
+        expect(result.items.find((row) => row.id === laterTopicId)?.businessAssociations).toEqual(
+          topic.businessAssociations,
+        );
+      }
+    } finally {
+      await db.update(topics).set({ totalCost: null }).where(eq(topics.id, afterJoinTopicId));
+      await db.delete(goals).where(eq(goals.id, goal.id));
+      await db.delete(tasks).where(inArray(tasks.id, [task.id, 'topic-assoc-hidden']));
+      await db.delete(projects).where(eq(projects.id, project.id));
+    }
+  });
   it('paginates newest topics without truncating history to ten', async () => {
     const first = await repository.listAccessibleTopics(ownerId, groupId, {
       direction: 'latest',
@@ -580,6 +660,7 @@ describe('GroupConversationAccessRepository conversation reads', () => {
 
   it('returns only twenty recent topics and no continuation without deleting earlier history', async () => {
     const repository = new GroupConversationAccessRepository(db);
+    const baseline = await repository.listAccessibleTopics(ownerId, groupId, { recent: true });
     const recentIds = Array.from({ length: 25 }, (_, index) => `recent-topic-${index}`);
     try {
       await db.insert(topics).values(
@@ -596,6 +677,7 @@ describe('GroupConversationAccessRepository conversation reads', () => {
         recent: true,
       });
       expect(recent.items).toHaveLength(20);
+      expect(recent.totalCount).toBe(baseline.totalCount! + 25);
       expect(recent.items[0].id).toBe('recent-topic-24');
       expect(recent.items.at(-1)?.id).toBe('recent-topic-5');
       expect(recent.nextCursor).toBeNull();
@@ -644,6 +726,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
 
     expect(result.items).toEqual([
       {
+        businessAssociations: [],
+        cost: null,
         createdAt: beforeJoinedAt,
         id: beforeJoinTopicId,
         title: '入群前话题',
@@ -653,6 +737,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
         updatedAt: expect.any(Date),
       },
       {
+        businessAssociations: [],
+        cost: null,
         createdAt: afterJoinedAt,
         id: afterJoinTopicId,
         title: '入群后话题',
@@ -662,6 +748,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
         updatedAt: expect.any(Date),
       },
       {
+        businessAssociations: [],
+        cost: null,
         createdAt: laterAt,
         id: laterTopicId,
         title: '再次入群后话题',
@@ -690,6 +778,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
     await expect(repository.listAccessibleTopics(memberId, groupId)).resolves.toEqual({
       items: [
         {
+          businessAssociations: [],
+          cost: null,
           createdAt: afterJoinedAt,
           id: afterJoinTopicId,
           title: '入群后话题',
@@ -698,6 +788,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
           updatedAt: expect.any(Date),
         },
         {
+          businessAssociations: [],
+          cost: null,
           createdAt: laterAt,
           id: laterTopicId,
           title: '再次入群后话题',
@@ -711,6 +803,8 @@ describe('GroupConversationAccessRepository conversation reads', () => {
     await expect(repository.listAccessibleTopics(rejoinedMemberId, groupId)).resolves.toEqual({
       items: [
         {
+          businessAssociations: [],
+          cost: null,
           createdAt: laterAt,
           id: laterTopicId,
           title: '再次入群后话题',

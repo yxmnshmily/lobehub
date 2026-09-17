@@ -12,7 +12,7 @@ type TaggedReadiness = { readiness: MyTravelGroupReadiness; userId: string };
 export const useMyTravelGroupReadiness = ({
   manageLifecycle = true,
   refreshAgentList = manageLifecycle,
-} = {}) => {
+}: { manageLifecycle?: boolean; refreshAgentList?: boolean } = {}) => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const userId = useUserStore(userProfileSelectors.userId);
   const activeWorkspaceId = useActiveWorkspaceId();

@@ -10,6 +10,7 @@ import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { LOADING_FLAT } from '@/const/message';
 import ContentLoading from '@/features/Conversation/Messages/components/ContentLoading';
@@ -22,7 +23,7 @@ import { messageStateSelectors, useConversationStore } from '../../../store';
 import CouncilList from '../../AgentCouncil/components/CouncilList';
 import { MessageAggregationContext } from '../../Contexts/MessageAggregationContext';
 import { areWorkflowToolsComplete, formatReasoningDuration } from '../toolDisplayNames';
-import { isImageBearingTool } from '../toolRenderRules';
+import { isDeliveryBearingTool, isImageBearingTool } from '../toolRenderRules';
 import { CollapsedMessage } from './CollapsedMessage';
 import GroupItem from './GroupItem';
 import ProcessFold from './ProcessFold';
@@ -43,6 +44,7 @@ const styles = createStaticStyles(({ css }) => {
 
 interface GroupChildrenProps {
   blocks: AssistantContentBlock[];
+  compactProcess?: boolean;
   content?: string;
   contentId?: string;
   defaultWorkflowExpandLevel?: WorkflowExpandLevelDefault;
@@ -183,6 +185,18 @@ const hasRenderedContentAfter = (segments: GroupRenderSegment[], index: number):
     .slice(index + 1)
     .some((seg) => (seg.kind === 'workflow' ? seg.blocks.length > 0 : !isEmptyBlock(seg.block)));
 
+const workflowNeedsAttention = (blocks: RenderableAssistantContentBlock[]): boolean =>
+  blocks.some(
+    (block) =>
+      !!block.error ||
+      block.tools?.some(
+        (tool) =>
+          !!tool.result?.error ||
+          tool.intervention?.status === 'pending' ||
+          tool.intervention?.status === 'rejected',
+      ),
+  );
+
 /**
  * A pending intervention still needs the user's confirmation, so the collapse
  * must keep its streaming "awaiting confirmation" chrome even when a later
@@ -196,6 +210,7 @@ const Group = memo<GroupChildrenProps>(
   ({
     blocks,
     contentId,
+    compactProcess,
     defaultWorkflowExpandLevel,
     disableEditing,
     messageIndex,
@@ -204,6 +219,7 @@ const Group = memo<GroupChildrenProps>(
     isLatestItem,
     enableProcessFold,
   }) => {
+    const { t } = useTranslation('chat');
     const [isCollapsed, isGenerating] = useConversationStore((s) => [
       messageStateSelectors.isMessageCollapsed(id)(s),
       messageStateSelectors.isAssistantGroupItemGenerating(id)(s),
@@ -233,7 +249,7 @@ const Group = memo<GroupChildrenProps>(
 
     const { segments, postToolTailPromoted } = useMemo(() => {
       const partitioned = partitionAssistantGroupBlocks(blocks, {
-        isBreakoutTool: isImageBearingTool,
+        isBreakoutTool: compactProcess ? isDeliveryBearingTool : isImageBearingTool,
         isGenerating,
         toolsPhaseComplete: isGenerating
           ? areWorkflowToolsComplete(blocks.flatMap((block) => block.tools ?? []))
@@ -244,7 +260,7 @@ const Group = memo<GroupChildrenProps>(
         postToolTailPromoted: partitioned.postToolTailPromoted,
         segments: toRenderSegments(partitioned.segments),
       };
-    }, [blocks, isGenerating]);
+    }, [blocks, compactProcess, isGenerating]);
 
     const workflowChromeComplete = !isGenerating || postToolTailPromoted;
 
@@ -287,6 +303,40 @@ const Group = memo<GroupChildrenProps>(
     const renderSegment = (segment: GroupRenderSegment, index: number) => {
       if (segment.kind === 'workflow') {
         if (segment.blocks.length === 0) return null;
+
+        if (
+          compactProcess &&
+          !segment.standalone &&
+          !segment.blocks.some(
+            (block) => block.imageList?.length || block.tools?.some(isDeliveryBearingTool),
+          ) &&
+          !workflowNeedsAttention(segment.blocks)
+        ) {
+          return (
+            <ProcessFold
+              key={segment.blocks[0]?.renderKey ?? `${id}.workflow.${index}`}
+              stepCount={segment.blocks.length}
+              title={t(
+                isGenerating && index === segments.length - 1
+                  ? 'groupProcess.running'
+                  : 'groupProcess.details',
+              )}
+            >
+              <Flexbox gap={8}>
+                {segment.blocks.map((block) => (
+                  <GroupItem
+                    {...withMarkdownStreamingState(block, lastBlockId)}
+                    assistantId={id}
+                    contentId={contentId}
+                    disableEditing={disableEditing}
+                    key={block.renderKey ?? block.id}
+                    messageIndex={messageIndex}
+                  />
+                ))}
+              </Flexbox>
+            </ProcessFold>
+          );
+        }
 
         if (segment.standalone || shouldInlineWorkflowSegment(segment.blocks)) {
           return segment.blocks.map((block, blockIndex) => {
@@ -370,7 +420,7 @@ const Group = memo<GroupChildrenProps>(
     const { processSegments, finalSegments } = splitAssistantGroupFinalAnswer(segments);
     const llmCallCount = countAssistantLlmCalls(segments);
     const foldProcess = shouldFoldProcess({
-      enabled: enableProcessFold,
+      enabled: enableProcessFold && !compactProcess,
       hasFinalAnswer: hasRenderableFinalAnswer(finalSegments),
       isGenerating,
       isLatestItem,
@@ -398,9 +448,17 @@ const Group = memo<GroupChildrenProps>(
           ) : (
             <>
               {segments.map((segment, index) => renderSegment(segment, index))}
-              {showTailRunningIndicator && (
-                <ContentLoading id={id} startTime={lastBlockCreatedAt} />
-              )}
+              {showTailRunningIndicator &&
+                (!compactProcess ||
+                  (lastSegment?.kind === 'workflow' &&
+                    (lastSegment.standalone ||
+                      lastSegment.blocks.some(
+                        (block) =>
+                          block.imageList?.length || block.tools?.some(isDeliveryBearingTool),
+                      ) ||
+                      workflowNeedsAttention(lastSegment.blocks)))) && (
+                  <ContentLoading id={id} startTime={lastBlockCreatedAt} />
+                )}
             </>
           )}
         </Flexbox>

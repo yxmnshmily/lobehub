@@ -2,6 +2,7 @@ import { Tooltip } from '@lobehub/ui';
 import { memo, use, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ModelIcon } from '@/components/LobeIcons';
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useChatStore } from '@/store/chat';
@@ -23,6 +24,7 @@ const ModelSwitch = memo(() => {
   const {
     canDisplayModel,
     canSelectModel,
+    isGroupContext,
     model: agentModel,
     provider: agentProvider,
     selectionLockReason,
@@ -33,6 +35,13 @@ const ModelSwitch = memo(() => {
   // default; a switch pins to the active topic, otherwise updates the agent
   // (via selectModel, which honors workspace member overrides).
   const activeTopicId = useChatStore((s) => s.activeTopicId);
+  const hasTopic = useChatStore(
+    (s) => !!s.activeTopicId && !!topicSelectors.getTopicById(s.activeTopicId)(s),
+  );
+  const useFetchTopicDetail = useChatStore((s) => s.useFetchTopicDetail);
+  // Group conversations can open without mounting the topic sidebar/list.
+  // Hydrate the pin before relying on its cache for display and optimistic writes.
+  useFetchTopicDetail(hasTopic ? undefined : activeTopicId);
   const topicModel = useChatStore(topicSelectors.activeTopicModel);
   const updateTopicModel = useChatStore((s) => s.updateTopicModel);
   const model = topicModel?.model ?? agentModel;
@@ -66,12 +75,20 @@ const ModelSwitch = memo(() => {
     : undefined;
   const triggerText = effortLabel ? `${displayName} ${effortLabel}` : displayName;
 
+  const scopeLabel = isGroupContext ? t('modelSelector.supervisor') : t('modelSelector.model');
+  const scopeHint = isGroupContext
+    ? t(activeTopicId ? 'modelSelector.supervisorTopicHint' : 'modelSelector.supervisorDefaultHint')
+    : undefined;
+
   const trigger = (
     <SelectorTrigger
       aria-disabled={!interactive}
-      ariaLabel={triggerText}
+      ariaLabel={isGroupContext ? `${scopeLabel}：${triggerText}` : triggerText}
+      modelIcon={<ModelIcon model={model} size={16} />}
+      scopeLabel={isGroupContext ? scopeLabel : undefined}
       secondaryText={effortLabel}
       text={displayName}
+      title={scopeHint}
       {...(interactive ? {} : { style: { cursor: 'default' } })}
     />
   );
@@ -87,6 +104,7 @@ const ModelSwitch = memo(() => {
         displayName={displayName}
         effort={effort}
         model={model}
+        modelLabel={scopeLabel}
         placement={dropdownPlacement ?? 'topRight'}
         provider={provider}
         onModelChange={handleModelChange}
@@ -124,6 +142,9 @@ export default function ScopedModelSwitch() {
       <SelectorTrigger
         aria-disabled={!canRetry}
         ariaLabel={label}
+        modelIcon={
+          runtimeModel.model ? <ModelIcon model={runtimeModel.model} size={16} /> : undefined
+        }
         role={canRetry ? 'button' : undefined}
         tabIndex={canRetry ? 0 : undefined}
         text={label}

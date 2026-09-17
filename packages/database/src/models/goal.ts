@@ -57,10 +57,11 @@ export class GoalModel {
   /** Visibility-aware task scope for recursive raw-SQL carrier aggregation. */
   private taskOwnershipSql = (alias?: string) => {
     const prefix = alias ? sql.raw(`${alias}.`) : sql.raw('');
-    return this.workspaceId
+    const scope = this.workspaceId
       ? sql`${prefix}workspace_id = ${this.workspaceId}
             AND (${prefix}visibility = 'public' OR ${prefix}created_by_user_id = ${this.userId})`
       : sql`${prefix}created_by_user_id = ${this.userId} AND ${prefix}workspace_id IS NULL`;
+    return and(scope, groupWorkVisibility(sql`${prefix}config`, this.userId, this.workspaceId))!;
   };
 
   create = async (params: Omit<NewGoal, 'userId' | 'workspaceId'>): Promise<GoalItem> => {
@@ -436,24 +437,28 @@ export class GoalModel {
         WHERE ${inArray(goalNodes.goalId, goalIds)}
           AND ${goalNodes.kind} = 'task'
           AND ${this.taskOwnershipSql('tasks')}
-        UNION ALL
+        UNION
         SELECT task_tree.goal_id, child.id
         FROM ${tasks} child
         JOIN task_tree ON child.parent_task_id = task_tree.task_id
         WHERE ${this.taskOwnershipSql('child')}
+      ), runs AS (
+        SELECT task_tree.goal_id, ${taskTopics.topicId} AS topic_id, min(${taskTopics.createdAt}) AS started_at
+        FROM task_tree JOIN ${taskTopics} ON ${taskTopics.taskId} = task_tree.task_id
+        WHERE ${buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, taskTopics)}
+        GROUP BY task_tree.goal_id, ${taskTopics.topicId}
       )
       SELECT
-        task_tree.goal_id,
+        runs.goal_id,
         coalesce(sum(${topics.totalCost}), 0) AS total_run_cost,
         coalesce(
-          sum(extract(epoch from (${topics.completedAt} - ${taskTopics.createdAt})) * 1000)
+          sum(greatest(0, extract(epoch from (${topics.completedAt} - runs.started_at)) * 1000))
             filter (where ${topics.completedAt} is not null),
           0
         ) AS total_run_duration
-      FROM task_tree
-      LEFT JOIN ${taskTopics} ON ${taskTopics.taskId} = task_tree.task_id
-      LEFT JOIN ${topics} ON ${topics.id} = ${taskTopics.topicId}
-      GROUP BY task_tree.goal_id
+      FROM runs JOIN ${topics} ON ${topics.id} = runs.topic_id
+      WHERE ${buildWorkspaceWhere({ userId: this.userId, workspaceId: this.workspaceId }, topics)}
+      GROUP BY runs.goal_id
     `);
 
     return new Map(

@@ -41,6 +41,7 @@ import { type SubtaskGraphPlan, TaskGraphService } from '../taskGraph';
 import { type ReviewResult, TaskReviewService } from '../taskReview';
 import { TaskRunnerService } from '../taskRunner';
 import { resolveGroupExecution } from '../taskRunner/groupExecution';
+import type { TaskExecutionContext } from '../taskRunner/hostedExecution';
 import { createTaskSchedulerModule } from '../taskScheduler';
 import { resolveTaskAcceptance } from '../verify/taskAcceptance';
 import { collapseActivityLog } from './collapseActivityLog';
@@ -321,7 +322,11 @@ export class TaskService {
     });
   }
 
-  private interruptTaskOperation = async (service: AiAgentService, operationId: string) => {
+  private interruptTaskOperation = async (
+    service: AiAgentService,
+    operationId: string,
+    topicId?: string | null,
+  ) => {
     const result = await service.interruptTask({ operationId });
     if (!result.success || result.deviceCancellationConfirmed === false) {
       throw new TRPCError({
@@ -330,6 +335,7 @@ export class TaskService {
           'Task interruption was not confirmed. The execution remains active; retry stopping it before starting another attempt.',
       });
     }
+    if (topicId) await this.topicModel.settleRunningOperation(topicId, operationId, 'active');
   };
 
   /**
@@ -351,7 +357,7 @@ export class TaskService {
       const aiAgentService = new AiAgentService(this.db, this.userId, {
         workspaceId: this.workspaceId,
       });
-      await this.interruptTaskOperation(aiAgentService, target.operationId);
+      await this.interruptTaskOperation(aiAgentService, target.operationId, topicId);
     }
 
     await this.taskTopicModel.updateStatus(target.taskId, topicId, 'canceled');
@@ -370,7 +376,7 @@ export class TaskService {
       const aiAgentService = new AiAgentService(this.db, this.userId, {
         workspaceId: this.workspaceId,
       });
-      await this.interruptTaskOperation(aiAgentService, target.operationId);
+      await this.interruptTaskOperation(aiAgentService, target.operationId, topicId);
     }
 
     await this.taskTopicModel.remove(target.taskId, topicId);
@@ -440,7 +446,94 @@ export class TaskService {
    *   - entering `completed`: check parent checkpoint, count sibling
    *     completions, kick off any newly-unlocked downstream tasks.
    */
+  private async claimManualControl(id: string, control: 'stopping' | 'resuming') {
+    return this.db.transaction(async (tx) => {
+      const model = new TaskModel(tx, this.userId, this.workspaceId);
+      const task = await model.resolve(id);
+      if (!task) throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
+      await model.lockForStatusChange([task.id]);
+      const current = await model.resolve(id);
+      if (!current) throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
+      if ((current?.context as { manualControl?: string } | null)?.manualControl) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Task control is still in progress. Please retry shortly.',
+        });
+      }
+      await model.updateContext(task.id, { manualControl: control });
+      return current;
+    });
+  }
+
   async updateStatus(
+    input: { error?: string; id: string; status: TaskStatus },
+    actor?: { agentId?: string | null; userId?: string | null },
+    includeDescendants = true,
+  ): Promise<UpdateStatusResult> {
+    if (input.status !== 'paused' && input.status !== 'canceled')
+      return this.applyStatus(input, actor, includeDescendants);
+    const task = await this.claimManualControl(input.id, 'stopping');
+    try {
+      return await this.applyStatus(input, actor, includeDescendants);
+    } finally {
+      await this.taskModel.updateContext(task.id, { manualControl: null });
+    }
+  }
+
+  async resume(
+    id: string,
+    actor?: { agentId?: string | null; userId?: string | null },
+    executionContext?: TaskExecutionContext,
+    options?: { deferExecution?: boolean; deferRootExecution?: boolean },
+  ): Promise<void> {
+    const task = await this.claimManualControl(id, 'resuming');
+    try {
+      if (task.status !== 'paused')
+        throw new TRPCError({ code: 'CONFLICT', message: 'Only a paused task can be resumed.' });
+      const pausedTasks =
+        (task.context as { pausedTasks?: { id: string; status: TaskStatus }[] } | null)
+          ?.pausedTasks ?? [];
+      for (const entry of pausedTasks) {
+        const child = await this.taskModel.findById(entry.id);
+        if (!child || child.status !== 'paused') continue;
+        const restored = await this.taskModel.updateStatusIfCurrent(entry.id, 'paused', 'backlog');
+        if (!restored) continue;
+        if (options?.deferExecution) continue;
+        try {
+          if (
+            entry.status === 'scheduled' ||
+            child.automationMode === 'heartbeat' ||
+            child.automationMode === 'schedule'
+          ) {
+            await this.updateStatus({ id: entry.id, status: 'scheduled' }, actor);
+          } else if (entry.status === 'running') {
+            await new TaskRunnerService(this.db, this.userId, this.workspaceId).runTask({
+              taskId: entry.id,
+              executionContext,
+            });
+          }
+        } catch (error) {
+          await this.taskModel.updateStatusIfCurrent(entry.id, 'backlog', 'paused');
+          throw error;
+        }
+      }
+      if (options?.deferExecution || options?.deferRootExecution) {
+        await this.taskModel.updateStatusIfCurrent(task.id, 'paused', 'backlog');
+      } else if (task.automationMode === 'schedule' || task.automationMode === 'heartbeat') {
+        await this.updateStatus({ id: task.id, status: 'scheduled' }, actor);
+      } else {
+        await new TaskRunnerService(this.db, this.userId, this.workspaceId).runTask({
+          taskId: task.id,
+          executionContext,
+        });
+      }
+      await this.taskModel.updateContext(task.id, { pausedTasks: [] });
+    } finally {
+      await this.taskModel.updateContext(task.id, { manualControl: null });
+    }
+  }
+
+  private async applyStatus(
     input: {
       error?: string;
       id: string;
@@ -452,6 +545,7 @@ export class TaskService {
      * activity feed.
      */
     actor?: { agentId?: string | null; userId?: string | null },
+    includeDescendants = true,
   ): Promise<UpdateStatusResult> {
     const { id, status, error: errorMsg } = input;
 
@@ -463,8 +557,31 @@ export class TaskService {
     }
 
     const resolved = await this.resolveOrThrow(id);
+    const pausedTasks =
+      status === 'paused' && includeDescendants
+        ? (await this.taskModel.findAllDescendants(resolved.id)).filter((task) =>
+            ['running', 'scheduled', 'backlog'].includes(task.status),
+          )
+        : [];
+    const previousPausedTasks =
+      (resolved.context as { pausedTasks?: { id: string; status: TaskStatus }[] } | null)
+        ?.pausedTasks ?? [];
+    const pausedTaskRecords = [
+      ...previousPausedTasks,
+      ...pausedTasks
+        .filter((task) => !previousPausedTasks.some((record) => record.id === task.id))
+        .map(({ id, status }) => ({ id, status })),
+    ];
+    if (status === 'paused' && includeDescendants && pausedTaskRecords.length)
+      await this.taskModel.updateContext(resolved.id, { pausedTasks: pausedTaskRecords });
+    for (const task of pausedTasks)
+      await this.updateStatus({ id: task.id, status: 'paused' }, actor, false);
 
-    if (resolved.status === 'running' && status !== 'running') {
+    if (
+      (resolved.status === 'running' && status !== 'running') ||
+      status === 'paused' ||
+      status === 'canceled'
+    ) {
       const topics = await this.taskTopicModel.findByTaskId(resolved.id);
       const aiAgentService = new AiAgentService(this.db, this.userId, {
         workspaceId: this.workspaceId,
@@ -477,7 +594,7 @@ export class TaskService {
         // to avoid desynchronizing DB state from a still-running operation.
         if (t.operationId) {
           try {
-            await this.interruptTaskOperation(aiAgentService, t.operationId);
+            await this.interruptTaskOperation(aiAgentService, t.operationId, t.topicId);
           } catch (err) {
             console.error(
               '[TaskService.updateStatus] failed to interrupt topic %s:',
@@ -493,6 +610,13 @@ export class TaskService {
     }
 
     const extra: Record<string, unknown> = {};
+    if (status === 'paused' || status === 'canceled') {
+      extra.context = {
+        ...resolved.context,
+        manualStopAt: new Date().toISOString(),
+        ...(status === 'paused' && includeDescendants ? { pausedTasks: pausedTaskRecords } : {}),
+      };
+    }
     if (status === 'running') extra.startedAt = new Date();
     if (status === 'completed' || status === 'failed' || status === 'canceled')
       extra.completedAt = new Date();
@@ -502,6 +626,14 @@ export class TaskService {
       ? await this.taskModel.updateWithLog(resolved.id, { status, ...extra }, actor)
       : await this.taskModel.updateStatus(resolved.id, status, extra);
     if (!task) throw new TRPCError({ code: 'NOT_FOUND', message: 'Task not found' });
+
+    if (status === 'paused' || status === 'canceled') {
+      const tickMessageId = (resolved.context as TaskContext | null)?.scheduler?.tickMessageId;
+      if (tickMessageId)
+        await createTaskSchedulerModule()
+          .cancelScheduled(tickMessageId)
+          .catch(() => undefined);
+    }
 
     // Stamp the schedule run-count window each time the user (re)starts a
     // scheduled task. The cron dispatcher itself flips a task running →
@@ -615,6 +747,19 @@ export class TaskService {
    * sibling in the middle of the cascade.
    */
   async updateStatusCascade(
+    input: { id: string; status: 'canceled' | 'completed' },
+    actor?: { agentId?: string | null; userId?: string | null },
+  ): Promise<UpdateStatusCascadeResult> {
+    if (input.status !== 'canceled') return this.applyStatusCascade(input, actor);
+    const task = await this.claimManualControl(input.id, 'stopping');
+    try {
+      return await this.applyStatusCascade(input, actor);
+    } finally {
+      await this.taskModel.updateContext(task.id, { manualControl: null });
+    }
+  }
+
+  private async applyStatusCascade(
     input: {
       id: string;
       status: 'canceled' | 'completed';
@@ -623,7 +768,10 @@ export class TaskService {
     actor?: { agentId?: string | null; userId?: string | null },
   ): Promise<UpdateStatusCascadeResult> {
     const resolved = await this.resolveOrThrow(input.id);
-    const subtasks = await this.taskModel.findSubtasks(resolved.id);
+    const subtasks =
+      input.status === 'canceled'
+        ? await this.taskModel.findAllDescendants(resolved.id)
+        : await this.taskModel.findSubtasks(resolved.id);
     const unfinishedStatuses = new Set<string>(UNFINISHED_TASK_STATUSES);
     const openSubtasks = subtasks.filter((task) => unfinishedStatuses.has(task.status));
     // Freeze the cascade to this snapshot: both the interrupt pass and the
@@ -641,7 +789,7 @@ export class TaskService {
       const settled = await Promise.allSettled(
         runningTopics.map(async (topic) => {
           if (topic.operationId) {
-            await this.interruptTaskOperation(aiAgentService, topic.operationId);
+            await this.interruptTaskOperation(aiAgentService, topic.operationId, topic.topicId);
           }
         }),
       );
@@ -675,6 +823,10 @@ export class TaskService {
       // the dialog and this write is logged as it really was.
       const locked = actor ? await taskModel.lockForStatusChange(targetIds) : [];
       updatedTasks = await taskModel.updateStatusForIds(targetIds, input.status, { completedAt });
+      if (input.status === 'canceled') {
+        for (const id of targetIds)
+          await taskModel.updateContext(id, { manualStopAt: completedAt.toISOString() });
+      }
 
       // A person confirmed this for the whole family, so every member that
       // moved gets its own row — one INSERT, not one per task.
@@ -693,6 +845,15 @@ export class TaskService {
         );
       }
     });
+
+    if (input.status === 'canceled') {
+      await Promise.allSettled(
+        targetTasks.map(async (task) => {
+          const tickMessageId = (task.context as TaskContext | null)?.scheduler?.tickMessageId;
+          if (tickMessageId) await createTaskSchedulerModule().cancelScheduled(tickMessageId);
+        }),
+      );
+    }
 
     // Best-effort: stop any operation discovered only inside the transaction.
     const interruptedOperationIds = new Set(runningTopics.map((topic) => topic.operationId));
@@ -1194,7 +1355,7 @@ export class TaskService {
           content: handoff?.content,
           id: t.topicId ?? undefined,
           operationId: t.operationId ?? null,
-          runningOperation: t.metadata?.runningOperation ?? null,
+          runningOperation: t.status === 'running' ? (t.metadata?.runningOperation ?? null) : null,
           seq: t.seq,
           status: t.status,
           summary: handoff?.summary,

@@ -222,6 +222,22 @@ describe('FileS3', () => {
   });
 
   describe('deleteFiles', () => {
+    it('passes cancellation to storage so cleanup cannot hold database locks indefinitely', async () => {
+      mockS3ClientSend.mockResolvedValue({});
+      const signal = new AbortController().signal;
+      await new FileS3().deleteFiles(['cleanup-key'], signal);
+      expect(mockS3ClientSend).toHaveBeenCalledWith(expect.anything(), { abortSignal: signal });
+    });
+
+    it('rejects partial storage deletion failures even when the request succeeds', async () => {
+      mockS3ClientSend.mockResolvedValue({
+        Errors: [{ Code: 'AccessDenied', Key: 'private.txt' }],
+      });
+      await expect(new FileS3().deleteFiles(['private.txt'])).rejects.toThrow(
+        'Failed to delete 1 storage object',
+      );
+    });
+
     it('should delete multiple files with correct parameters', async () => {
       const s3 = new FileS3();
       mockS3ClientSend.mockResolvedValue({});

@@ -1041,7 +1041,6 @@ export class CompletionLifecycle {
       if (reason === 'error') {
         await hookDispatcher.dispatch(operationId, 'onError', event, metadata._hooks);
 
-        const assistantMessageId = metadata?.assistantMessageId;
         if (assistantMessageId && state?.error && !options?.skipErrorMessageWrite) {
           // Preserve the semantic error type written by the runtime. Rebuilding
           // this as a generic AgentRuntimeError would lose UI routing data such

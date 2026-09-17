@@ -8,6 +8,9 @@ import { useTaskStore } from '../../store';
 vi.mock('@/services/task', () => ({
   taskService: {
     cancelTopic: vi.fn(),
+    getDetail: vi.fn(),
+    resume: vi.fn(),
+    updateStatusCascade: vi.fn(),
     deleteTopic: vi.fn(),
     run: vi.fn(),
     updateStatus: vi.fn(),
@@ -34,6 +37,28 @@ beforeEach(() => {
 });
 
 describe('TaskLifecycleSliceAction', () => {
+  it('cancels the task family and refreshes retained records', async () => {
+    vi.mocked(taskService.updateStatusCascade).mockResolvedValue({ success: true } as any);
+    const detail = vi
+      .spyOn(useTaskStore.getState(), 'internal_refreshTaskDetail')
+      .mockResolvedValue(undefined);
+    const list = vi.spyOn(useTaskStore.getState(), 'refreshTaskList').mockResolvedValue(undefined);
+    await useTaskStore.getState().cancelTask('T-1');
+    expect(taskService.updateStatusCascade).toHaveBeenCalledWith('T-1', 'canceled');
+    expect(detail).toHaveBeenCalledWith('T-1');
+    expect(list).toHaveBeenCalled();
+  });
+  it('resumes through the server and refreshes the retained task', async () => {
+    vi.mocked(taskService.resume).mockResolvedValue({ success: true });
+    const detail = vi
+      .spyOn(useTaskStore.getState(), 'internal_refreshTaskDetail')
+      .mockResolvedValue(undefined);
+    const list = vi.spyOn(useTaskStore.getState(), 'refreshTaskList').mockResolvedValue(undefined);
+    await useTaskStore.getState().resumeTask('T-1');
+    expect(taskService.resume).toHaveBeenCalledWith('T-1');
+    expect(detail).toHaveBeenCalledWith('T-1');
+    expect(list).toHaveBeenCalled();
+  });
   describe('runTask', () => {
     it('should optimistically set status to running and call service', async () => {
       vi.mocked(taskService.run).mockResolvedValue({ success: true } as any);

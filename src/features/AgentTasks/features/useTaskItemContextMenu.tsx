@@ -1,6 +1,6 @@
 import type { TaskStatus } from '@lobechat/types';
 import { type ContextMenuItem, copyToClipboard, Icon, type MenuInfo } from '@lobehub/ui';
-import { confirmModal, toast } from '@lobehub/ui/base-ui';
+import { toast } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import {
   BarChart3Icon,
@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { useTaskTransferMenuItem } from '@/business/client/hooks/useTaskTransferMenuItem';
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
 import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
 import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { usePermission } from '@/hooks/usePermission';
@@ -63,11 +65,11 @@ export const useTaskContextMenuActions = (
   const appOrigin = useAppOrigin();
   const activeWorkspaceSlug = useActiveWorkspaceSlug();
   const { allowed: canEditTask } = usePermission('create_content');
+  const { canDelete, checkDeletePermission } = useGroupDeletePermission(canEditTask);
 
   const changeTaskStatus = useTaskStatusChange();
   const updateTask = useTaskStore((s) => s.updateTask);
   const refreshTaskList = useTaskStore((s) => s.refreshTaskList);
-  const deleteTask = useTaskStore((s) => s.deleteTask);
   const runTask = useTaskStore((s) => s.runTask);
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
 
@@ -78,13 +80,16 @@ export const useTaskContextMenuActions = (
 
   return useMemo<TaskContextMenuActions>(() => {
     const triggerDelete = (identifier: string) => {
-      if (!canEditTask) return;
-      confirmModal({
-        content: t('taskDetail.deleteConfirm.content'),
-        okButtonProps: { danger: true },
-        okText: t('taskDetail.deleteConfirm.ok'),
-        onOk: async () => {
-          await deleteTask(identifier);
+      if (!checkDeletePermission()) return;
+      void confirmResourceDeletion({
+        resource: 'task',
+        ids: [identifier],
+        canProceed: checkDeletePermission,
+
+        onOk: async (cleanupPending) => {
+          if (!checkDeletePermission()) return;
+          if (!cleanupPending)
+            toast.success(t('deleteSuccess', { ns: 'common', defaultValue: '删除成功' }));
         },
         title: t('taskDetail.deleteConfirm.title'),
       });
@@ -209,19 +214,22 @@ export const useTaskContextMenuActions = (
           sfSymbol: 'doc.on.doc',
         },
         { type: 'divider' },
-        {
-          danger: true,
-          disabled: !canEditTask,
-          icon: <Icon icon={Trash2Icon} />,
-          key: 'delete',
-          label: t('delete', { ns: 'common' }),
-          onClick: ({ domEvent }: MenuInfo) => {
-            domEvent.stopPropagation();
-            if (!canEditTask) return;
-            triggerDelete(task.identifier);
-          },
-          sfSymbol: 'trash',
-        },
+        ...(canDelete
+          ? [
+              {
+                danger: true,
+                icon: <Icon icon={Trash2Icon} />,
+                key: 'delete',
+                label: t('delete', { ns: 'common' }),
+                onClick: ({ domEvent }: MenuInfo) => {
+                  domEvent.stopPropagation();
+                  if (!canEditTask) return;
+                  triggerDelete(task.identifier);
+                },
+                sfSymbol: 'trash' as const,
+              },
+            ]
+          : []),
       ];
     };
 
@@ -301,13 +309,14 @@ export const useTaskContextMenuActions = (
     return { buildItems, installKeyboardHandlers };
   }, [
     canEditTask,
+    canDelete,
+    checkDeletePermission,
     t,
     appOrigin,
     activeWorkspaceSlug,
     changeTaskStatus,
     updateTask,
     refreshTaskList,
-    deleteTask,
     runTask,
     inboxAgentId,
     routeScope,

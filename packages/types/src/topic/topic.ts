@@ -625,6 +625,8 @@ export const chatTopicStatusSchema = z.enum(TOPIC_STATUSES);
 export type ChatTopicStatus = z.infer<typeof chatTopicStatusSchema>;
 
 export interface ChatTopic extends Omit<BaseDataModel, 'meta'> {
+  /** Authorized business objects associated with this conversation. */
+  businessAssociations?: { id: string; kind: 'goal' | 'task' | 'project'; title: string }[];
   completedAt?: Date | null;
   /** Server-side mock until real cost aggregation lands. */
   cost?: number | null;

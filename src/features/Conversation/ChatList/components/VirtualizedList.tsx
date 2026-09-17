@@ -53,6 +53,7 @@ const VirtualizedList = memo<VirtualizedListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastUserScrollIntentAtRef = useRef(0);
+    const previousScrollRef = useRef<{ contextKey: string; offset: number } | null>(null);
 
     // A header slot prepends one synthetic row to the VList, shifting every
     // virtua row index off the message index. All index-based APIs exposed to
@@ -158,6 +159,12 @@ const VirtualizedList = memo<VirtualizedListProps>(
       if (ref) {
         const hasUserScrollIntent =
           Date.now() - lastUserScrollIntentAtRef.current <= USER_SCROLL_INTENT_TTL_MS;
+        const previous = previousScrollRef.current;
+        if (hasUserScrollIntent && previous?.contextKey === contextKey) {
+          const delta = ref.scrollOffset - previous.offset;
+          if (delta !== 0) setScrollState({ scrollDirection: delta > 0 ? 'down' : 'up' });
+        }
+        previousScrollRef.current = { contextKey, offset: ref.scrollOffset };
         onScrollOffset(ref.scrollOffset, hasUserScrollIntent);
       }
 
@@ -178,7 +185,15 @@ const VirtualizedList = memo<VirtualizedListProps>(
       scrollEndTimerRef.current = setTimeout(() => {
         setScrollState({ isScrolling: false });
       }, 150);
-    }, [activeIndex, checkAtBottom, onScrollOffset, recordScroll, setActiveIndex, setScrollState]);
+    }, [
+      activeIndex,
+      checkAtBottom,
+      contextKey,
+      onScrollOffset,
+      recordScroll,
+      setActiveIndex,
+      setScrollState,
+    ]);
 
     const handleScrollEnd = useCallback(() => {
       setScrollState({ isScrolling: false });

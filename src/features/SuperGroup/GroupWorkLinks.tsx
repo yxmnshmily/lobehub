@@ -8,7 +8,9 @@ import { ArrowRight, FolderKanban, ListChecks, Target } from 'lucide-react';
 import { useLocation } from 'react-router';
 
 import { useQueryRoute } from '@/hooks/useQueryRoute';
+import { lambdaQuery } from '@/libs/trpc/client';
 import { useGlobalStore } from '@/store/global';
+import { useProjectStore } from '@/store/project';
 import { useTravelTranslation } from '@/utils/i18n/travel';
 
 import CompactListButton from './CompactListButton';
@@ -24,6 +26,20 @@ export default function GroupWorkLinks({
   const t = useTravelTranslation();
   const router = useQueryRoute();
   const { pathname } = useLocation();
+  const goals = lambdaQuery.goal.list.useQuery(
+    { groupId, limit: 1 },
+    { refetchOnWindowFocus: true, refetchInterval: 5000 },
+  );
+  const tasks = lambdaQuery.task.list.useQuery(
+    { groupId, automated: false, limit: 1 },
+    { refetchOnWindowFocus: true, refetchInterval: 5000 },
+  );
+  const projects = useProjectStore((s) => s.useFetchProjectList)(true);
+  const counts = {
+    goals: goals.data?.total,
+    tasks: tasks.data?.total,
+    projects: projects.data?.data.length,
+  };
   const request = useGroupWorkRequest((s) => s.request);
   return (
     <Flexbox gap="var(--group-nav-gap, 8px)">
@@ -47,7 +63,7 @@ export default function GroupWorkLinks({
             return;
           }
           useGroupWorkRequest.setState({ request: null });
-          router.push(`${GROUP_CHAT_URL(groupId)}/${kind}`);
+          router.push(`${GROUP_CHAT_URL(groupId)}/${kind}`, { replace: true });
           useGlobalStore.getState().toggleMobileTopic(false);
         };
         return compact ? (
@@ -62,6 +78,7 @@ export default function GroupWorkLinks({
           <div data-group-nav-branch="" key={kind}>
             <Button
               aria-current={active ? 'page' : undefined}
+              aria-label={title}
               className="group-nav-section-header"
               type="text"
               style={{
@@ -86,7 +103,10 @@ export default function GroupWorkLinks({
               >
                 <Icon aria-hidden size={18} />
               </span>
-              <span data-nav-label="">{title}</span>
+              <span data-nav-label="">
+                {title}
+                <span style={{ color: cssVar.colorError }}>（{counts[kind] ?? '…'}）</span>
+              </span>
               <ArrowRight
                 aria-hidden
                 color={active ? cssVar.colorText : cssVar.colorTextQuaternary}

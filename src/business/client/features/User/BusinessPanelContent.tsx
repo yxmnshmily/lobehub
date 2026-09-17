@@ -16,7 +16,18 @@ export default function BusinessPanelContent({ onNavigate }: { onNavigate?: () =
     refetchOnWindowFocus: true,
     retry: false,
   });
+  const accountQuery = lambdaQuery.platformCredit.getOwnAccount.useQuery(undefined, {
+    refetchInterval: 15_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  const account = accountQuery.isError ? undefined : accountQuery.data;
   const credits = query.isError ? undefined : query.data;
+  const balancePercent =
+    account && credits?.totalCredits
+      ? Math.max(0, Math.min(100, (account.balanceCredits / credits.totalCredits) * 100))
+      : 0;
   const percent =
     credits && credits.totalCredits > 0
       ? Math.max(0, Math.min(100, (credits.remainingCredits / credits.totalCredits) * 100))
@@ -94,19 +105,19 @@ export default function BusinessPanelContent({ onNavigate }: { onNavigate?: () =
             <span
               style={{ fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
             >
-              {credits ? number(credits.remainingCredits) : '—'}
+              {account ? number(account.balanceCredits) : '—'}
             </span>
             <span
               aria-label={t('userPanel.remainingCredits', { defaultValue: '剩余积分' })}
               aria-valuemax={100}
               aria-valuemin={0}
-              aria-valuenow={credits ? Math.round(percent) : undefined}
+              aria-valuenow={account ? Math.round(balancePercent) : undefined}
               role="progressbar"
               style={{ display: 'inline-flex', flexShrink: 0 }}
             >
               <Progress
                 aria-hidden
-                percent={percent}
+                percent={balancePercent}
                 railColor={cssVar.colorFillSecondary}
                 showInfo={false}
                 size={22}

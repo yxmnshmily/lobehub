@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AcceptanceService } from '../acceptanceService';
 
 const mocks = vi.hoisted(() => ({
+  operationFindById: vi.fn(),
   attachToAcceptance: vi.fn(),
   findById: vi.fn(),
   findOwnTopicById: vi.fn(),
@@ -17,6 +18,12 @@ const mocks = vi.hoisted(() => ({
   taskResolve: vi.fn(),
   updateStatus: vi.fn(),
   updatePolicyStatus: vi.fn(),
+}));
+
+vi.mock('@/database/models/agentOperation', () => ({
+  AgentOperationModel: vi.fn(function () {
+    return { findById: mocks.operationFindById };
+  }),
 }));
 
 vi.mock('@/database/models/acceptance', () => ({
@@ -71,6 +78,45 @@ const acceptance = (status: string) => ({
 });
 
 describe('AcceptanceService decision gating', () => {
+  it('ignores a new verifier round attached to an old task operation', async () => {
+    mocks.findById.mockResolvedValue({
+      ...acceptance('pending'),
+      metadata: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+    });
+    mocks.listByAcceptance.mockResolvedValue([
+      {
+        id: 'late-run',
+        operationId: 'child',
+        status: 'passed',
+        createdAt: new Date('2026-09-13T02:00:00Z'),
+      },
+    ]);
+    mocks.operationFindById.mockImplementation(async (id) =>
+      id === 'child'
+        ? { parentOperationId: 'old-task', createdAt: new Date('2026-09-13T02:00:00Z') }
+        : { taskId: 'task-1', createdAt: new Date('2026-09-13T00:00:00Z') },
+    );
+    await expect(service().recomputeStatus('acc-1')).resolves.toBe('pending');
+    expect(mocks.updatePolicyStatus).not.toHaveBeenCalled();
+  });
+
+  it('does not resurrect an old verdict after a goal revision', async () => {
+    mocks.findById.mockResolvedValue({
+      ...acceptance('pending'),
+      metadata: { goalRevisionAt: '2026-09-13T01:00:00Z' },
+    });
+    mocks.listByAcceptance.mockResolvedValue([
+      {
+        id: 'old-run',
+        roundIndex: 1,
+        status: 'passed',
+        createdAt: new Date('2026-09-13T00:00:00Z'),
+      },
+    ]);
+    await expect(service().recomputeStatus('acc-1')).resolves.toBe('pending');
+    expect(mocks.updatePolicyStatus).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.findPolicyById.mockImplementation(function (...args) {

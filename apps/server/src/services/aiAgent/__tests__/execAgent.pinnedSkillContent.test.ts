@@ -1,6 +1,8 @@
 import type * as ModelBankModule from 'model-bank';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AgentSkillModel } from '@/database/models/agentSkill';
+
 import { AiAgentService } from '../index';
 
 // Verifies that a PINNED skill (DB `agent_skills` row or agent-document bundle)
@@ -275,6 +277,100 @@ describe('AiAgentService.execAgent - pinned skill content injection', () => {
     expect(skillById('db-skill-pinned')?.content).toBe('PINNED SKILL BODY');
     // The auto skill is still listed (activatable) but carries no body.
     expect(skillById('db-skill-auto')?.content).toBeUndefined();
+  });
+
+  it('loads a requested skill for this run alongside existing pinned skills', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      id: 'agent-1',
+      model: 'gpt-4',
+      provider: 'openai',
+      plugins: ['db-skill-pinned'],
+      chatConfig: {},
+    });
+    await service.execAgent({
+      agentId: 'agent-1',
+      prompt: 'Hello',
+      skillIdentifiers: ['db-skill-auto'],
+    });
+    expect(operationSkillSetArg()?.enabledPluginIds).toEqual(
+      expect.arrayContaining(['db-skill-pinned', 'db-skill-auto']),
+    );
+    expect(skillById('db-skill-auto')?.content).toBeTruthy();
+  });
+
+  it.each(['unknown-skill', 'another-user-skill', 'another-workspace-skill'])(
+    'rejects an inaccessible requested skill %s before starting',
+    async (identifier) => {
+      mockGetAgentConfig.mockResolvedValue({
+        id: 'agent-1',
+        model: 'gpt-4',
+        provider: 'openai',
+        plugins: [],
+        chatConfig: {},
+      });
+      await expect(
+        service.execAgent({ agentId: 'agent-1', prompt: 'Hello', skillIdentifiers: [identifier] }),
+      ).rejects.toThrow('Requested skill is unavailable');
+      expect(mockCreateOperation).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a requested skill whose body is empty', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      id: 'agent-1',
+      model: 'gpt-4',
+      provider: 'openai',
+      plugins: [],
+      chatConfig: {},
+    });
+    mockSkillFindByIds.mockResolvedValue([{ ...DB_SKILL_ROWS[1], content: '   ' }]);
+    await expect(
+      service.execAgent({
+        agentId: 'agent-1',
+        prompt: 'Hello',
+        skillIdentifiers: ['db-skill-auto'],
+      }),
+    ).rejects.toThrow('Requested skill is unavailable');
+    expect(mockCreateOperation).not.toHaveBeenCalled();
+  });
+
+  it('keeps skill lookup scoped to the current workspace and caller', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      id: 'agent-1',
+      model: 'gpt-4',
+      provider: 'openai',
+      plugins: [],
+      chatConfig: {},
+    });
+    service = new AiAgentService({} as any, 'test-user-id', { workspaceId: 'workspace-current' });
+    await service.execAgent({
+      agentId: 'agent-1',
+      prompt: 'Hello',
+      skillIdentifiers: ['db-skill-auto'],
+    });
+    expect(AgentSkillModel).toHaveBeenCalledWith(
+      expect.anything(),
+      'test-user-id',
+      'workspace-current',
+    );
+  });
+
+  it('does not override an explicitly disabled skill or grant its tools', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      id: 'agent-1',
+      model: 'gpt-4',
+      provider: 'openai',
+      plugins: [{ identifier: 'db-skill-auto', mode: 'disabled' }],
+      chatConfig: {},
+    });
+    await expect(
+      service.execAgent({
+        agentId: 'agent-1',
+        prompt: 'Hello',
+        skillIdentifiers: ['db-skill-auto'],
+      }),
+    ).rejects.toThrow('Requested skill is unavailable');
+    expect(mockCreateOperation).not.toHaveBeenCalled();
   });
 
   it('fetches bodies only for the pinned subset to keep the op-param payload bounded', async () => {

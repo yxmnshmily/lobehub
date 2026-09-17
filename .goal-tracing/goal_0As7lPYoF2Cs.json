@@ -1,0 +1,3924 @@
+{
+  "advances": [
+    {
+      "completedAt": 1788976007804,
+      "durationMs": 36,
+      "seq": 0,
+      "startedAt": 1788976007768,
+      "ticks": [
+        {
+          "at": 1788976007768,
+          "branch": "plan_decomposition",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Another advance is already planning this goal",
+          "outcome": "waiting_external",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 0,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 1,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "childOperationIds": ["op_1788976024486_agt_DoPfw09fNiV9_tpc_82mzdnnbGysx_d3BkuwWL"],
+      "completedAt": 1788976024550,
+      "durationMs": 16783,
+      "seq": 1,
+      "startedAt": 1788976007767,
+      "ticks": [
+        {
+          "at": 1788976007767,
+          "branch": "plan_decomposition",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Planned 5 exploration directions",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "type": "created_node",
+              "detail": "撰写主文案"
+            },
+            {
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "type": "created_node",
+              "detail": "审阅主文案"
+            },
+            {
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "type": "created_node",
+              "detail": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "type": "created_node",
+              "detail": "审阅封面"
+            },
+            {
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "type": "created_node",
+              "detail": "整理发布笔记并整体验收"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 0,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 1,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1788976023417,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "proposed",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-17",
+          "outcome": "advanced",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023295,
+                "id": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "撰写主文案"
+              },
+              {
+                "createdAt": 1788976023317,
+                "id": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "审阅主文案"
+              },
+              {
+                "createdAt": 1788976023337,
+                "id": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "基于最终文案生成9:16竖版封面"
+              },
+              {
+                "createdAt": 1788976023354,
+                "id": "0acb3547-3f71-419c-9b12-80664e011da9",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "审阅封面"
+              },
+              {
+                "createdAt": 1788976023379,
+                "id": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+                "kind": "task",
+                "priority": 0,
+                "status": "proposed",
+                "taskId": null,
+                "title": "整理发布笔记并整体验收"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "09527c0c-ec26-4b81-84dc-0984153f0e9f",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b"
+              },
+              {
+                "id": "1475ffeb-d54d-4781-b3e3-e156ef777cb9",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12"
+              },
+              {
+                "id": "627092a6-4e34-4129-9b32-58c9471b1741",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787"
+              },
+              {
+                "id": "af55e97e-366d-4a01-92b6-7f3f791e65c0",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "0acb3547-3f71-419c-9b12-80664e011da9"
+              },
+              {
+                "id": "b62a1bc1-34e1-4960-be36-02de4f45ff62",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536"
+              },
+              {
+                "id": "8569f937-9a4c-4e8e-8cb7-07e38363de27",
+                "kind": "depends_on",
+                "sourceNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "targetNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b"
+              },
+              {
+                "id": "d80decae-da50-479d-9e50-f97f3b4e078d",
+                "kind": "depends_on",
+                "sourceNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "targetNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12"
+              },
+              {
+                "id": "438ee539-6130-4f71-afac-3956e44dd2f7",
+                "kind": "depends_on",
+                "sourceNodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+                "targetNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787"
+              },
+              {
+                "id": "593d4db6-f770-4b0f-82d6-be3c69327802",
+                "kind": "depends_on",
+                "sourceNodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+                "targetNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12"
+              },
+              {
+                "id": "eb397409-17bb-4275-942e-2101cc40e5fa",
+                "kind": "depends_on",
+                "sourceNodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+                "targetNodeId": "0acb3547-3f71-419c-9b12-80664e011da9"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 10,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        },
+        {
+          "at": 1788976023510,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 0,
+            "totalCost": 0
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "backlog",
+              "updatedAt": 1788976023450
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-17",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1788976024486_agt_DoPfw09fNiV9_tpc_82mzdnnbGysx_d3BkuwWL",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023295,
+                "id": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_cuCf7TsLKZfO",
+                "title": "撰写主文案"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 10,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "create"
+    },
+    {
+      "childOperationIds": ["op_1788976161176_agt_DoPfw09fNiV9_tpc_sDIYR8RoWzwX_PWhz8P43"],
+      "completedAt": 1788976161252,
+      "durationMs": 1203,
+      "seq": 2,
+      "startedAt": 1788976160049,
+      "ticks": [
+        {
+          "at": 1788976160049,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 1,
+            "totalCost": 0.022473
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "paused",
+              "updatedAt": 1788976160033
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-17",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1788976161176_agt_DoPfw09fNiV9_tpc_sDIYR8RoWzwX_PWhz8P43",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 10,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1788976516292_agt_DoPfw09fNiV9_tpc_xdVIrUg9VIwk_xW36MPUe"],
+      "completedAt": 1788976516376,
+      "durationMs": 939,
+      "seq": 3,
+      "startedAt": 1788976515437,
+      "ticks": [
+        {
+          "at": 1788976515437,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 2,
+            "totalCost": 0.109399
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "paused",
+              "updatedAt": 1788976515427
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-17",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1788976516292_agt_DoPfw09fNiV9_tpc_xdVIrUg9VIwk_xW36MPUe",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 10,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1788976783120,
+      "durationMs": 107,
+      "seq": 4,
+      "startedAt": 1788976783013,
+      "ticks": [
+        {
+          "at": 1788976783013,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 3,
+            "totalCost": 0.13924
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "paused",
+              "updatedAt": 1788976782999
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "detail": "Task attempt budget was exhausted",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "targetId": "c8452e65-1e7c-483d-8d71-1263921d0549",
+              "type": "opened_decision"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 10,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 6,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789015257973,
+      "durationMs": 31,
+      "seq": 5,
+      "startedAt": 1789015257942,
+      "ticks": [
+        {
+          "at": 1789015257942,
+          "branch": "pending_decision",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 3,
+            "totalCost": 0.13924
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "waiting",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "paused",
+              "updatedAt": 1788976782999
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task attempt budget was exhausted. Retry or retire this task node?",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023295,
+                "id": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "kind": "task",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": "task_cuCf7TsLKZfO",
+                "title": "撰写主文案"
+              },
+              {
+                "createdAt": 1788976783080,
+                "id": "c8452e65-1e7c-483d-8d71-1263921d0549",
+                "kind": "decision",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "12a2ff39-81de-4291-b28a-143bf6971b4d",
+                "kind": "leads_to",
+                "sourceNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "targetNodeId": "c8452e65-1e7c-483d-8d71-1263921d0549"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "98ab0b5d-6980-44d6-915d-32ad2bf7a3e0",
+                "nodeId": "c8452e65-1e7c-483d-8d71-1263921d0549",
+                "question": "Task attempt budget was exhausted. Retry or retire this task node?",
+                "resolvedOptionId": null,
+                "status": "pending"
+              }
+            ],
+            "goal": {
+              "status": "review"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 1,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "resume"
+    },
+    {
+      "completedAt": 1789015257990,
+      "durationMs": 28,
+      "seq": 6,
+      "startedAt": 1789015257962,
+      "ticks": [
+        {
+          "at": 1789015257962,
+          "branch": "pending_decision",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 3,
+            "totalCost": 0.13924
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "waiting",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "paused",
+              "updatedAt": 1788976782999
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task attempt budget was exhausted. Retry or retire this task node?",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 1,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "childOperationIds": ["op_1789015287265_agt_DoPfw09fNiV9_tpc_FcjOU8MjfLSF_N81mGxBQ"],
+      "completedAt": 1789015287315,
+      "durationMs": 1343,
+      "seq": 7,
+      "startedAt": 1789015285972,
+      "ticks": [
+        {
+          "at": 1789015285972,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 3,
+            "totalCost": 0.13924
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "backlog",
+              "updatedAt": 1789015285956
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-17",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1789015287265_agt_DoPfw09fNiV9_tpc_FcjOU8MjfLSF_N81mGxBQ",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023295,
+                "id": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_cuCf7TsLKZfO",
+                "title": "撰写主文案"
+              },
+              {
+                "createdAt": 1788976783080,
+                "id": "c8452e65-1e7c-483d-8d71-1263921d0549",
+                "kind": "decision",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "98ab0b5d-6980-44d6-915d-32ad2bf7a3e0",
+                "nodeId": "c8452e65-1e7c-483d-8d71-1263921d0549",
+                "question": "Task attempt budget was exhausted. Retry or retire this task node?",
+                "resolvedOptionId": "retry",
+                "status": "resolved"
+              }
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "decide"
+    },
+    {
+      "completedAt": 1789015463000,
+      "durationMs": 59,
+      "seq": 8,
+      "startedAt": 1789015462941,
+      "ticks": [
+        {
+          "at": 1789015462941,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "running",
+              "updatedAt": 1789015332248
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-17 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "completedAt": 1789015871501,
+      "durationMs": 54,
+      "seq": 9,
+      "startedAt": 1789015871447,
+      "ticks": [
+        {
+          "at": 1789015871447,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "running",
+              "updatedAt": 1789015332248
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-17 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "childOperationIds": ["op_1789027955265_agt_DoPfw09fNiV9_tpc_HcEAOHC5HhlN_zzA5LnRB"],
+      "completedAt": 1789027955412,
+      "durationMs": 2130,
+      "seq": 10,
+      "startedAt": 1789027953282,
+      "ticks": [
+        {
+          "at": 1789027953282,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "running",
+              "updatedAt": 1789015332248
+            }
+          ],
+          "concurrency": 3,
+          "message": "Released the abandoned dispatch claim on task T-17",
+          "outcome": "advanced",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789027953333,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 4,
+            "totalCost": 0.147686
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "backlog",
+              "updatedAt": 1789027953327
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-17",
+          "outcome": "waiting_external",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1789027955265_agt_DoPfw09fNiV9_tpc_HcEAOHC5HhlN_zzA5LnRB",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 1
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "childOperationIds": [
+        "op_1789027955265_agt_DoPfw09fNiV9_tpc_HcEAOHC5HhlN_zzA5LnRB",
+        "op_1789028041856_agt_jPjdoH3ZNsuv_tpc_kkrdEdvTVAu6_oEW1OkCB"
+      ],
+      "completedAt": 1789028041937,
+      "durationMs": 1614,
+      "seq": 11,
+      "startedAt": 1789028040323,
+      "ticks": [
+        {
+          "at": 1789028040323,
+          "branch": "consume_completed",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "priority": 0,
+              "status": "active",
+              "title": "撰写主文案"
+            },
+            {
+              "blockedBy": ["3245744f-fe92-4e80-9523-5cfcbd683f6b"],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_cuCf7TsLKZfO",
+              "identifier": "T-17",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "status": "completed",
+              "updatedAt": 1789028040298
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task outcome was synthesized into a finding",
+          "outcome": "advanced",
+          "taskId": "task_cuCf7TsLKZfO",
+          "effects": [
+            {
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "operationId": "op_1789027955265_agt_DoPfw09fNiV9_tpc_HcEAOHC5HhlN_zzA5LnRB",
+              "targetId": "task_cuCf7TsLKZfO",
+              "type": "node_status",
+              "detail": "resolved"
+            },
+            {
+              "detail": "finding",
+              "nodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+              "targetId": "dbb123ea-0b79-4436-aea6-3d5101a01c71",
+              "type": "created_node"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 11,
+            "findings": 0,
+            "gatesPending": 0,
+            "nodesTotal": 7,
+            "tasksBlocked": 4,
+            "tasksOpen": 5,
+            "tasksReady": 1,
+            "tasksCompleted": 0
+          },
+          "index": 0
+        },
+        {
+          "at": 1789028040468,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.162962
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-27",
+          "outcome": "advanced",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [
+            {
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "targetId": "task_ORNFeS4LKjGy",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023295,
+                "id": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "kind": "task",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": "task_cuCf7TsLKZfO",
+                "title": "撰写主文案"
+              },
+              {
+                "createdAt": 1789028040427,
+                "id": "dbb123ea-0b79-4436-aea6-3d5101a01c71",
+                "kind": "finding",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "阳朔亲子游主文案定稿（15字）"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "b3643225-7cc5-450c-9802-b2328a5619d6",
+                "kind": "produces",
+                "sourceNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b",
+                "targetNodeId": "dbb123ea-0b79-4436-aea6-3d5101a01c71"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 1
+        },
+        {
+          "at": 1789028040596,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.162962
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "backlog",
+              "updatedAt": 1789028040532
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-27",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [
+            {
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "operationId": "op_1789028041856_agt_jPjdoH3ZNsuv_tpc_kkrdEdvTVAu6_oEW1OkCB",
+              "targetId": "task_ORNFeS4LKjGy",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023317,
+                "id": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_ORNFeS4LKjGy",
+                "title": "审阅主文案"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789029039603,
+      "durationMs": 51,
+      "seq": 12,
+      "startedAt": 1789029039552,
+      "ticks": [
+        {
+          "at": 1789029039552,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029091333,
+      "durationMs": 50,
+      "seq": 13,
+      "startedAt": 1789029091283,
+      "ticks": [
+        {
+          "at": 1789029091283,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029159711,
+      "durationMs": 57,
+      "seq": 14,
+      "startedAt": 1789029159654,
+      "ticks": [
+        {
+          "at": 1789029159654,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029280635,
+      "durationMs": 419,
+      "seq": 15,
+      "startedAt": 1789029280216,
+      "ticks": [
+        {
+          "at": 1789029280216,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029401099,
+      "durationMs": 39,
+      "seq": 16,
+      "startedAt": 1789029401060,
+      "ticks": [
+        {
+          "at": 1789029401060,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029521262,
+      "durationMs": 52,
+      "seq": 17,
+      "startedAt": 1789029521210,
+      "ticks": [
+        {
+          "at": 1789029521210,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029641395,
+      "durationMs": 54,
+      "seq": 18,
+      "startedAt": 1789029641341,
+      "ticks": [
+        {
+          "at": 1789029641341,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029761553,
+      "durationMs": 49,
+      "seq": 19,
+      "startedAt": 1789029761504,
+      "ticks": [
+        {
+          "at": 1789029761504,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789029881651,
+      "durationMs": 35,
+      "seq": 20,
+      "startedAt": 1789029881616,
+      "ticks": [
+        {
+          "at": 1789029881616,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789030001779,
+      "durationMs": 47,
+      "seq": 21,
+      "startedAt": 1789030001732,
+      "ticks": [
+        {
+          "at": 1789030001732,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789030121895,
+      "durationMs": 47,
+      "seq": 22,
+      "startedAt": 1789030121848,
+      "ticks": [
+        {
+          "at": 1789030121848,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "running",
+              "updatedAt": 1789028094539
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-27 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789030209167,
+      "durationMs": 80,
+      "seq": 23,
+      "startedAt": 1789030209087,
+      "ticks": [
+        {
+          "at": 1789030209087,
+          "branch": "failure_decision",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "priority": 0,
+              "status": "active",
+              "title": "审阅主文案"
+            },
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+          "candidateTasks": [
+            {
+              "error": "Verification could not run (internal error); the delivery was not evaluated.",
+              "id": "task_ORNFeS4LKjGy",
+              "identifier": "T-27",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "status": "paused",
+              "updatedAt": 1789030209077
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_ORNFeS4LKjGy",
+          "effects": [
+            {
+              "detail": "Verification could not run (internal error); the delivery was not evaluated.",
+              "nodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+              "targetId": "cadb4dd6-4c42-4d9f-8080-a2ebc7edc68c",
+              "type": "opened_decision"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 12,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 8,
+            "tasksBlocked": 3,
+            "tasksOpen": 4,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789042941663,
+      "durationMs": 15,
+      "seq": 24,
+      "startedAt": 1789042941648,
+      "ticks": [
+        {
+          "at": 1789042941648,
+          "branch": "no_frontier",
+          "candidates": [
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "No task node is ready; resolve its dependencies first",
+          "outcome": "no_progress",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "paused"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023317,
+                "id": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": "task_ORNFeS4LKjGy",
+                "title": "审阅主文案"
+              },
+              {
+                "createdAt": 1789030209117,
+                "id": "cadb4dd6-4c42-4d9f-8080-a2ebc7edc68c",
+                "kind": "decision",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "39c0bbe3-335b-4dc6-8b0f-f4bf6667c9d1",
+                "kind": "leads_to",
+                "sourceNodeId": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "targetNodeId": "cadb4dd6-4c42-4d9f-8080-a2ebc7edc68c"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "4d5a4318-29c5-45a9-81d1-114474da4433",
+                "nodeId": "cadb4dd6-4c42-4d9f-8080-a2ebc7edc68c",
+                "question": "Verification could not run (internal error); the delivery was not evaluated.. Retry or retire this task node?",
+                "resolvedOptionId": "retire",
+                "status": "resolved"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 3,
+            "tasksOpen": 3,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "decide"
+    },
+    {
+      "completedAt": 1789045810076,
+      "durationMs": 23,
+      "seq": 25,
+      "startedAt": 1789045810053,
+      "ticks": [
+        {
+          "at": 1789045810053,
+          "branch": "no_frontier",
+          "candidates": [
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "No task node is ready; resolve its dependencies first",
+          "outcome": "no_progress",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "paused"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 3,
+            "tasksOpen": 3,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "resume"
+    },
+    {
+      "completedAt": 1789045810082,
+      "durationMs": 17,
+      "seq": 26,
+      "startedAt": 1789045810065,
+      "ticks": [
+        {
+          "at": 1789045810065,
+          "branch": "goal_paused",
+          "candidates": [
+            {
+              "blockedBy": ["141d474c-28f1-4fd1-957c-111ee9966b12"],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": [
+                "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "0acb3547-3f71-419c-9b12-80664e011da9"
+              ],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Goal is paused",
+          "outcome": "no_progress",
+          "effects": [],
+          "graphDelta": {
+            "goal": {
+              "status": "paused"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 3,
+            "tasksOpen": 3,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "completedAt": 1789046306376,
+      "durationMs": 54,
+      "seq": 27,
+      "startedAt": 1789046306322,
+      "ticks": [
+        {
+          "at": 1789046306322,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 6,
+            "totalCost": 0.202322
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Task node is being claimed by another coordinator",
+          "outcome": "waiting_external",
+          "effects": [],
+          "graphDelta": {
+            "edgesAdded": [
+              {
+                "id": "62c0a8f8-58b6-453a-ac0b-f5de5533fc46",
+                "kind": "depends_on",
+                "sourceNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "targetNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b"
+              },
+              {
+                "id": "45e17579-c13a-4f1f-82ff-e2d9e2eb9897",
+                "kind": "depends_on",
+                "sourceNodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+                "targetNodeId": "3245744f-fe92-4e80-9523-5cfcbd683f6b"
+              }
+            ],
+            "edgesRemoved": [
+              "d80decae-da50-479d-9e50-f97f3b4e078d",
+              "593d4db6-f770-4b0f-82d6-be3c69327802"
+            ],
+            "goal": {
+              "status": "running"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "manual"
+    },
+    {
+      "childOperationIds": ["op_1789046309892_agt_tczVqFc9gmKp_tpc_yqokcTSjT789_wjIKVqVX"],
+      "completedAt": 1789046309997,
+      "durationMs": 3689,
+      "seq": 28,
+      "startedAt": 1789046306308,
+      "ticks": [
+        {
+          "at": 1789046306308,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 6,
+            "totalCost": 0.202322
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "proposed",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-30",
+          "outcome": "advanced",
+          "taskId": "task_SUnPGefJO1xJ",
+          "effects": [
+            {
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "targetId": "task_SUnPGefJO1xJ",
+              "type": "created_task"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        },
+        {
+          "at": 1789046306415,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 6,
+            "totalCost": 0.202322
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "active",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_SUnPGefJO1xJ",
+              "identifier": "T-30",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "status": "backlog",
+              "updatedAt": 1789046306362
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_SUnPGefJO1xJ",
+          "effects": [
+            {
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "operationId": "op_1789046309892_agt_tczVqFc9gmKp_tpc_yqokcTSjT789_wjIKVqVX",
+              "targetId": "task_SUnPGefJO1xJ",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023337,
+                "id": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "kind": "task",
+                "priority": 0,
+                "status": "active",
+                "taskId": "task_SUnPGefJO1xJ",
+                "title": "基于最终文案生成9:16竖版封面"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 1
+        }
+      ],
+      "trigger": "resume"
+    },
+    {
+      "completedAt": 1789047280446,
+      "durationMs": 130,
+      "seq": 29,
+      "startedAt": 1789047280316,
+      "ticks": [
+        {
+          "at": 1789047280318,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "active",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_SUnPGefJO1xJ",
+              "identifier": "T-30",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "status": "running",
+              "updatedAt": 1789046416012
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task T-30 delivered; waiting for verification to settle",
+          "outcome": "waiting_external",
+          "taskId": "task_SUnPGefJO1xJ",
+          "effects": [],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "childOperationIds": ["op_1789047291358_agt_tczVqFc9gmKp_tpc_2NB2SpYAloBv_av8mPySX"],
+      "completedAt": 1789047291552,
+      "durationMs": 7910,
+      "seq": 30,
+      "startedAt": 1789047283642,
+      "ticks": [
+        {
+          "at": 1789047283642,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 7,
+            "totalCost": 0.3466240000000001
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "active",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_SUnPGefJO1xJ",
+              "identifier": "T-30",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "status": "paused",
+              "updatedAt": 1789047283611
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_SUnPGefJO1xJ",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "operationId": "op_1789047291358_agt_tczVqFc9gmKp_tpc_2NB2SpYAloBv_av8mPySX",
+              "targetId": "task_SUnPGefJO1xJ",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1789048121391_agt_tczVqFc9gmKp_tpc_57MBM5wsN3Iy_mysAbwsw"],
+      "completedAt": 1789048121464,
+      "durationMs": 1861,
+      "seq": 31,
+      "startedAt": 1789048119603,
+      "ticks": [
+        {
+          "at": 1789048119603,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 8,
+            "totalCost": 0.469486
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "priority": 0,
+              "status": "active",
+              "title": "基于最终文案生成9:16竖版封面"
+            },
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "chosenNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_SUnPGefJO1xJ",
+              "identifier": "T-30",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "status": "paused",
+              "updatedAt": 1789048119586
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-30",
+          "outcome": "waiting_external",
+          "taskId": "task_SUnPGefJO1xJ",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+              "operationId": "op_1789048121391_agt_tczVqFc9gmKp_tpc_57MBM5wsN3Iy_mysAbwsw",
+              "targetId": "task_SUnPGefJO1xJ",
+              "type": "started_run"
+            }
+          ],
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 3,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789226791950,
+      "durationMs": 71,
+      "seq": 32,
+      "startedAt": 1789226791879,
+      "ticks": [
+        {
+          "at": 1789226791880,
+          "branch": "blocked_by_given_up",
+          "candidates": [
+            {
+              "blockedBy": ["7c7aca14-8ac4-4c9b-b8d4-4420eedab787"],
+              "nodeId": "0acb3547-3f71-419c-9b12-80664e011da9",
+              "priority": 0,
+              "status": "proposed",
+              "title": "审阅封面"
+            },
+            {
+              "blockedBy": ["0acb3547-3f71-419c-9b12-80664e011da9"],
+              "nodeId": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+              "priority": 0,
+              "status": "proposed",
+              "title": "整理发布笔记并整体验收"
+            }
+          ],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "\"基于最终文案生成9:16竖版封面\" was given up, so \"审阅封面\" can never run",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "opened_decision",
+              "detail": "\"基于最终文案生成9:16竖版封面\" was given up, so \"审阅封面\" can never run",
+              "nodeId": "433bc835-a705-407b-95d8-085b806cab14"
+            },
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023317,
+                "id": "141d474c-28f1-4fd1-957c-111ee9966b12",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": null,
+                "title": "审阅主文案"
+              },
+              {
+                "createdAt": 1788976023337,
+                "id": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": null,
+                "title": "基于最终文案生成9:16竖版封面"
+              }
+            ],
+            "goal": {
+              "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:**       为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。 \\\n   *How to judge:*       核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。 \\\n   *How to judge:*       确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。 \\\n   *How to judge:*       核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。 \\\n   *How to judge:*       确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。 \\\n   *How to judge:*       核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。 \\\n   *How to judge:*       整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 13,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 9,
+            "tasksBlocked": 2,
+            "tasksOpen": 2,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "resume"
+    },
+    {
+      "childOperationIds": ["op_1789229303619_agt_tczVqFc9gmKp_tpc_aqqaPDL9djlH_VJng0hrQ"],
+      "completedAt": 1789229303777,
+      "durationMs": 1666,
+      "seq": 33,
+      "startedAt": 1789229302111,
+      "ticks": [
+        {
+          "at": 1789229302111,
+          "branch": "terminal_acceptance",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created Goal-level acceptance Task for the remaining contract",
+          "outcome": "advanced",
+          "effects": [
+            {
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "type": "created_node",
+              "detail": "terminal acceptance"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1788976023354,
+                "id": "0acb3547-3f71-419c-9b12-80664e011da9",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": null,
+                "title": "审阅封面"
+              },
+              {
+                "createdAt": 1788976023379,
+                "id": "fa15c4c7-544c-4b8f-b888-e1b25f2f6536",
+                "kind": "task",
+                "priority": 0,
+                "status": "retired",
+                "taskId": null,
+                "title": "整理发布笔记并整体验收"
+              },
+              {
+                "createdAt": 1789226791895,
+                "id": "433bc835-a705-407b-95d8-085b806cab14",
+                "kind": "decision",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "前置步骤已放弃"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "cc86c8f3-4356-4b6d-904e-23795ce7b2e8",
+                "kind": "leads_to",
+                "sourceNodeId": "7c7aca14-8ac4-4c9b-b8d4-4420eedab787",
+                "targetNodeId": "433bc835-a705-407b-95d8-085b806cab14"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "1d1a5092-5dfd-453a-bdd2-b4a208c06438",
+                "nodeId": "433bc835-a705-407b-95d8-085b806cab14",
+                "question": "\"基于最终文案生成9:16竖版封面\" was given up, so \"审阅封面\" can never run。重做前置步骤，还是放弃依赖它的任务？",
+                "resolvedOptionId": "drop_dependents",
+                "status": "resolved"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 14,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 10,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        },
+        {
+          "at": 1789229302170,
+          "branch": "create_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.163741
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "proposed",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Created responsible task T-27",
+          "outcome": "advanced",
+          "taskId": "task_ghbqTqGL6S9p",
+          "effects": [
+            {
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "targetId": "task_ghbqTqGL6S9p",
+              "type": "created_task"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789229302135,
+                "id": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+                "kind": "task",
+                "priority": -1,
+                "status": "proposed",
+                "taskId": null,
+                "title": "Complete full Goal acceptance"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "6cc087ed-aac6-4656-ae04-643b77167dca",
+                "kind": "decomposes",
+                "sourceNodeId": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+                "targetNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 15,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 1
+        },
+        {
+          "at": 1789229302279,
+          "branch": "dispatch_task",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 5,
+            "totalCost": 0.163741
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ghbqTqGL6S9p",
+              "identifier": "T-27",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "status": "backlog",
+              "updatedAt": 1789229302219
+            }
+          ],
+          "concurrency": 3,
+          "message": "Started task T-27",
+          "outcome": "waiting_external",
+          "taskId": "task_ghbqTqGL6S9p",
+          "effects": [
+            {
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "operationId": "op_1789229303619_agt_tczVqFc9gmKp_tpc_aqqaPDL9djlH_VJng0hrQ",
+              "targetId": "task_ghbqTqGL6S9p",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789229302135,
+                "id": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+                "kind": "task",
+                "priority": -1,
+                "status": "active",
+                "taskId": "task_ghbqTqGL6S9p",
+                "title": "Complete full Goal acceptance"
+              }
+            ]
+          },
+          "graphShape": {
+            "edgesTotal": 15,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 2
+        }
+      ],
+      "trigger": "decide"
+    },
+    {
+      "childOperationIds": ["op_1789230118604_agt_tczVqFc9gmKp_tpc_LQQHjhFrOstV_deRCSZJC"],
+      "completedAt": 1789230118706,
+      "durationMs": 1252,
+      "seq": 34,
+      "startedAt": 1789230117454,
+      "ticks": [
+        {
+          "at": 1789230117455,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 6,
+            "totalCost": 0.375288
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_ghbqTqGL6S9p",
+              "identifier": "T-27",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "status": "paused",
+              "updatedAt": 1789230117439
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-27",
+          "outcome": "waiting_external",
+          "taskId": "task_ghbqTqGL6S9p",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "operationId": "op_1789230118604_agt_tczVqFc9gmKp_tpc_LQQHjhFrOstV_deRCSZJC",
+              "targetId": "task_ghbqTqGL6S9p",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "goal": {
+              "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:**        为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。 \\\n   *How to judge:*        核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。 \\\n   *How to judge:*        确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。 \\\n   *How to judge:*        核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。 \\\n   *How to judge:*        确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。 \\\n   *How to judge:*        核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。 \\\n   *How to judge:*        整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 15,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "childOperationIds": ["op_1789230586700_agt_tczVqFc9gmKp_tpc_9kMCY1c18qJM_0Nlo4OZt"],
+      "completedAt": 1789230586761,
+      "durationMs": 1936,
+      "seq": 35,
+      "startedAt": 1789230584825,
+      "ticks": [
+        {
+          "at": 1789230584825,
+          "branch": "recover_verification",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 7,
+            "totalCost": 0.44741200000000003
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [
+            {
+              "error": "Delivery did not pass verification.",
+              "id": "task_ghbqTqGL6S9p",
+              "identifier": "T-27",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "status": "paused",
+              "updatedAt": 1789230584814
+            }
+          ],
+          "concurrency": 3,
+          "message": "Automatically retried task T-27",
+          "outcome": "waiting_external",
+          "taskId": "task_ghbqTqGL6S9p",
+          "effects": [
+            {
+              "detail": "verification retry",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "operationId": "op_1789230586700_agt_tczVqFc9gmKp_tpc_9kMCY1c18qJM_0Nlo4OZt",
+              "targetId": "task_ghbqTqGL6S9p",
+              "type": "started_run"
+            }
+          ],
+          "graphDelta": {
+            "goal": {
+              "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:**         为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。 \\\n   *How to judge:*         核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。 \\\n   *How to judge:*         确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。 \\\n   *How to judge:*         核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。 \\\n   *How to judge:*         确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。 \\\n   *How to judge:*         核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。 \\\n   *How to judge:*         整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 15,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789231582454,
+      "durationMs": 131,
+      "seq": 36,
+      "startedAt": 1789231582323,
+      "ticks": [
+        {
+          "at": 1789231582323,
+          "branch": "task_running",
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "active",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [
+            {
+              "error": null,
+              "id": "task_ghbqTqGL6S9p",
+              "identifier": "T-27",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "status": "running",
+              "updatedAt": 1789230586749
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task failed; a human decision gate was opened",
+          "outcome": "waiting_human",
+          "taskId": "task_ghbqTqGL6S9p",
+          "effects": [
+            {
+              "detail": "Task attempt budget was exhausted after an operation was abandoned",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "targetId": "c7a5c739-f493-4306-83c6-d6686e24e88d",
+              "type": "opened_decision"
+            }
+          ],
+          "graphDelta": {
+            "goal": {
+              "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:**           为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。 \\\n   *How to judge:*           核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。 \\\n   *How to judge:*           确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。 \\\n   *How to judge:*           核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。 \\\n   *How to judge:*           确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。 \\\n   *How to judge:*           核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。 \\\n   *How to judge:*           整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 15,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 11,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "sweep"
+    },
+    {
+      "completedAt": 1789232423197,
+      "durationMs": 30,
+      "seq": 37,
+      "startedAt": 1789232423167,
+      "ticks": [
+        {
+          "at": 1789232423168,
+          "branch": "pending_decision",
+          "budget": {
+            "costLimitReached": false,
+            "deadlinePassed": false,
+            "maxRounds": null,
+            "maxTotalCost": null,
+            "roundLimitReached": false,
+            "runs": 8,
+            "totalCost": 0.620735
+          },
+          "candidates": [
+            {
+              "blockedBy": [],
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "priority": -1,
+              "status": "waiting",
+              "title": "Complete full Goal acceptance"
+            }
+          ],
+          "chosenNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+          "candidateTasks": [
+            {
+              "error": "Verification could not run (internal error); the delivery was not evaluated.",
+              "id": "task_ghbqTqGL6S9p",
+              "identifier": "T-27",
+              "nodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+              "status": "paused",
+              "updatedAt": 1789232423158
+            }
+          ],
+          "concurrency": 3,
+          "message": "Task attempt budget was exhausted after an operation was abandoned. Retry Goal acceptance or fail this Goal?",
+          "outcome": "waiting_human",
+          "effects": [
+            {
+              "type": "goal_status",
+              "detail": "review"
+            }
+          ],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789229302135,
+                "id": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+                "kind": "task",
+                "priority": -1,
+                "status": "waiting",
+                "taskId": "task_ghbqTqGL6S9p",
+                "title": "Complete full Goal acceptance"
+              },
+              {
+                "createdAt": 1789231582392,
+                "id": "c7a5c739-f493-4306-83c6-d6686e24e88d",
+                "kind": "decision",
+                "priority": 0,
+                "status": "waiting",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "edgesAdded": [
+              {
+                "id": "60bfc896-3024-4477-a1b9-a2defc7cc3a5",
+                "kind": "leads_to",
+                "sourceNodeId": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+                "targetNodeId": "c7a5c739-f493-4306-83c6-d6686e24e88d"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "ec3f7552-83a1-4621-bcc3-866c29cfdb8b",
+                "nodeId": "c7a5c739-f493-4306-83c6-d6686e24e88d",
+                "question": "Task attempt budget was exhausted after an operation was abandoned. Retry Goal acceptance or fail this Goal?",
+                "resolvedOptionId": null,
+                "status": "pending"
+              }
+            ],
+            "goal": {
+              "status": "review"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 16,
+            "findings": 1,
+            "gatesPending": 1,
+            "nodesTotal": 12,
+            "tasksBlocked": 0,
+            "tasksOpen": 1,
+            "tasksReady": 1,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "settle"
+    },
+    {
+      "completedAt": 1789279037822,
+      "durationMs": 16,
+      "seq": 38,
+      "startedAt": 1789279037806,
+      "ticks": [
+        {
+          "at": 1789279037806,
+          "branch": "goal_terminal",
+          "candidates": [],
+          "candidateTasks": [],
+          "concurrency": 3,
+          "message": "Goal is failed",
+          "outcome": "failed",
+          "effects": [],
+          "graphDelta": {
+            "nodesUpserted": [
+              {
+                "createdAt": 1789229302135,
+                "id": "1f83a38d-f24c-4fd0-ad3f-ce9893a406ba",
+                "kind": "task",
+                "priority": -1,
+                "status": "retired",
+                "taskId": "task_ghbqTqGL6S9p",
+                "title": "Complete full Goal acceptance"
+              },
+              {
+                "createdAt": 1789231582392,
+                "id": "c7a5c739-f493-4306-83c6-d6686e24e88d",
+                "kind": "decision",
+                "priority": 0,
+                "status": "resolved",
+                "taskId": null,
+                "title": "Choose how to recover failed task"
+              }
+            ],
+            "decisionsUpserted": [
+              {
+                "id": "ec3f7552-83a1-4621-bcc3-866c29cfdb8b",
+                "nodeId": "c7a5c739-f493-4306-83c6-d6686e24e88d",
+                "question": "Task attempt budget was exhausted after an operation was abandoned. Retry Goal acceptance or fail this Goal?",
+                "resolvedOptionId": "fail",
+                "status": "resolved"
+              }
+            ],
+            "goal": {
+              "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:**               为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。 \\\n   *How to judge:*               核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。 \\\n   *How to judge:*               确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。 \\\n   *How to judge:*               核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。 \\\n   *How to judge:*               确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。 \\\n   *How to judge:*               核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。 \\\n   *How to judge:*               整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。",
+              "status": "failed"
+            }
+          },
+          "graphShape": {
+            "edgesTotal": 16,
+            "findings": 1,
+            "gatesPending": 0,
+            "nodesTotal": 12,
+            "tasksBlocked": 0,
+            "tasksOpen": 0,
+            "tasksReady": 0,
+            "tasksCompleted": 1
+          },
+          "index": 0
+        }
+      ],
+      "trigger": "decide"
+    }
+  ],
+  "completedAt": 1789279037843,
+  "completionReason": "failed",
+  "goalId": "goal_0As7lPYoF2Cs",
+  "graphBaseline": {
+    "decisions": [],
+    "edges": [],
+    "goal": {
+      "agentId": "agt_tczVqFc9gmKp",
+      "id": "goal_0As7lPYoF2Cs",
+      "maxRounds": null,
+      "maxTotalCost": null,
+      "requirement": "## 阳朔亲子两日游宣传计划（文案→封面→发布笔记）\n\n**Scope:** 为\"阳朔亲子两日游\"制作一套完整宣传内容，含三个相互依赖、必须按序推进的环节：① 主文案——30字以内（按中文字数计），突出\"轻松陪伴\"的亲子氛围，表达自然真实、不模板化；② 9:16竖版封面——必须基于已通过团队审阅的最终文案设计生成，画面传达轻松亲子的陪伴感，遵循既有竖版封面规格（9:16，此前验证的豆包渠道可生成 1440×2560 竖图，优先使用已恢复的图片链路；若图片链路不可用必须如实报告，不得用占位冒充成品）；③ 发布笔记——将最终版文案与封面整理成可直接发布的笔记格式。\n\n关键约束：\n1. 每个环节完成后，必须先由团队审阅确认（由旅游攻略审核员对内容质量与真实性把关，必要时请其他成员补充意见），审阅通过后方可进入下一环节；审阅不通过则回到该环节原作者修改，不得跳步、不得用未经审阅的版本继续推进。明确需要团队审阅／整体验收时，必须由不同于作者的另一成员执行审阅，不能把单人产出当作已审阅。\n2. 不虚构景点、价格、时刻、距离等事实信息；不确定的信息宁缺毋滥。\n3. 每项成果只交付一份最终版本，避免重复产出。\n4. 三个环节全部通过各自审阅后，做整体验收交付（核对三份产物版本一致、封面与文案匹配、笔记可直接使用），验收通过才算完成。\n\n**Acceptance criteria** — every one must be satisfied with concrete evidence:\n\n1. **主文案成稿且符合要求** — 产出最终主文案，中文计数≤30字，突出\"轻松陪伴\"的阳朔亲子主题，表达自然、无模板腔。  \n   *How to judge:* 核对最终文案：字数≤30字（中文计数）；主题是否突出轻松陪伴的亲子游氛围；表述是否自然真实。\n2. **主文案通过团队审阅** — 文案环节完成后由不同于作者的成员（旅游攻略审核员）审阅确认，审阅通过后才能进入封面环节。  \n   *How to judge:* 确认文案已获得独立审阅记录且结论为通过；未通过或未经审阅不得推进封面环节。\n3. **9:16竖版封面已生成且与文案一致** — 基于已通过审阅的最终文案生成一张9:16竖版封面，画面传达轻松亲子陪伴感，构图风格贴合文案主题；确认真实图片可查看，非占位。  \n   *How to judge:* 核对封面为真实生成的9:16竖版图片（参考 1440×2560）；风格与最终文案主题一致；无错别字/多余文字元素；若链路失败须如实报告状态。\n4. **封面通过团队审阅** — 封面环节完成后由不同于封面作者的成员审阅确认视觉效果与文案匹配度，通过后才能进入笔记环节。  \n   *How to judge:* 确认封面已获得独立审阅记录且结论为通过；审阅应基于可查看的真实图片。\n5. **发布笔记已整理完成** — 将最终版文案与最终版封面整合为可直接发布的笔记，排版清晰、信息完整。  \n   *How to judge:* 核对笔记包含最终版文案全文与最终版封面图，结构可直接发布，无缺失或版本不一致。\n6. **整体验收通过并交付** — 三个环节全部完成后做整体验收：三份产物齐全、版本相互一致、封面与文案匹配、笔记可直接使用，验收通过后正式交付。  \n   *How to judge:* 整体核对：文案≤30字且为最终版；封面9:16且由该文案驱动；笔记同时包含二者且格式可用；各环节均有独立审阅记录。",
+      "status": "planning",
+      "title": "阳朔亲子两日游宣传计划（文案→封面→发布笔记）"
+    },
+    "nodes": [
+      {
+        "createdAt": 1788976007739,
+        "id": "e64539f0-7c75-436e-ab9a-bb4077e761a2",
+        "kind": "problem",
+        "priority": 0,
+        "status": "active",
+        "taskId": null,
+        "title": "阳朔亲子两日游宣传计划（文案→封面→发布笔记）"
+      }
+    ]
+  },
+  "startedAt": 1788976007768,
+  "title": "阳朔亲子两日游宣传计划（文案→封面→发布笔记）",
+  "totalAdvances": 39,
+  "totalTicks": 47,
+  "traceId": "goal_0As7lPYoF2Cs"
+}

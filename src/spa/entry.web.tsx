@@ -29,6 +29,11 @@ if (window.__DEBUG_PROXY__ || window.location.pathname.startsWith(debugProxyBase
   basename = lobehubMountPath;
 }
 
+/* 2026-09-17：撤销 2026-09-16 的窄窗口挂移动路由树逻辑，并整体删除移动版
+   （mobile 路由树 / entry.mobile / mobile 模板已物理移除）——用户最终口径为
+   "网页端自适应手机端"：任何视口与设备都挂桌面路由树（desktopRoutes），窄窗口下
+   由桌面壳的响应式处理（NavPanel 折叠、对称留白等）自适应。真实手机 UA 也由
+   proxy/define-config 恒派 desktop variant 走本入口（见该文件 isMobile 恒 false）。 */
 const router = createAppRouter(desktopRoutes, { basename });
 
 // Mounting is conditional rather than an early return inside the shell: the hook
@@ -51,20 +56,3 @@ createSPARoot(document.getElementById('root')!).render(
 // live style editor. The widget script lives in the official website assets
 // and is served same-origin (/assets/* -> website), so a classic script tag
 // needs no CORS handling and works under every route.
-/* CSS 修改器“保存”写出的真实样式文件（lobehub/src/styles/css-modifier-overrides.css），平台直接加载 */
-if (!document.getElementById('css-modifier-overrides-link')) {
-  const overridesLink = document.createElement('link');
-  overridesLink.id = 'css-modifier-overrides-link';
-  overridesLink.rel = 'stylesheet';
-  overridesLink.href = '/assets/css/css-modifier-overrides.css?v=20260913c';
-  document.head.appendChild(overridesLink);
-}
-
-if (!document.getElementById('css-modifier-widget-script')) {
-  const cssModifierTag = document.createElement('script');
-  cssModifierTag.id = 'css-modifier-widget-script';
-  /* 版本号防缓存：挂件更新后必须能立即生效 */
-  cssModifierTag.src = '/assets/js/css-modifier-widget.js?v=20260913c';
-  cssModifierTag.async = true;
-  document.head.appendChild(cssModifierTag);
-}

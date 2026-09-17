@@ -165,6 +165,45 @@ describe('ServerToolTransport logging privacy', () => {
     );
   });
 
+  it('forwards loaded pinned skill names for native archive resolution, excluding available-only skills', async () => {
+    mocks.getAgentVisibility.mockResolvedValue('private');
+    mocks.executeTool.mockResolvedValue({ content: 'done', success: true });
+    const transport = new ServerToolTransport({
+      operationId: 'op',
+      serverDB: {},
+      stepIndex: 1,
+      toolExecutionService: { executeTool: mocks.executeTool },
+      userId: 'owner',
+      workspaceId: 'workspace-current',
+    } as any);
+    await transport.run(
+      { apiName: 'execScript', arguments: '{}', id: 'call', identifier: 'lobe-skills' } as any,
+      {
+        activatedSkills: [{ name: 'Previously activated' }],
+        effectiveManifestMap: {},
+        parsedArgs: {},
+        state: {
+          metadata: {
+            operationSkillSet: {
+              enabledPluginIds: ['selected', 'empty'],
+              skills: [
+                { identifier: 'selected', name: 'Copy', content: 'Body' },
+                { identifier: 'empty', name: 'Empty' },
+                { identifier: 'available', name: 'Available', content: 'Not pinned' },
+              ],
+            },
+          },
+        },
+        toolName: 'execScript',
+      } as any,
+    );
+    expect(mocks.executeTool.mock.calls[0][1]).toMatchObject({
+      userId: 'owner',
+      workspaceId: 'workspace-current',
+      activatedSkills: [{ name: 'Copy' }, { name: 'Previously activated' }],
+    });
+  });
+
   it('grants the tool context only the opaque budget bound to the current operation', async () => {
     const sharedBudget = {};
     mocks.getSharedBudget.mockReturnValue(sharedBudget);

@@ -193,12 +193,12 @@ export const MessageWorkMetadataSchema = z.object({
 });
 
 export const AgentDispatchMetadataSchema = z.object({
-  kind: z.enum(['callAgent']),
+  kind: z.enum(['callAgent', 'taskRun']),
   visibility: z.literal('internal'),
 });
 
 export interface AgentDispatchMetadata {
-  kind: 'callAgent';
+  kind: 'callAgent' | 'taskRun';
   visibility: 'internal';
 }
 

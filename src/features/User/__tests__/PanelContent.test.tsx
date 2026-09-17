@@ -7,12 +7,25 @@ import { useUserStore } from '@/store/user';
 import PanelContent from '../UserPanel/PanelContent';
 
 const creditQuery = vi.hoisted(() => ({
+  accountBalance: undefined as number | undefined,
   data: { remainingCredits: 2_500_000, totalCredits: 5_000_000 } as
     { remainingCredits: number; totalCredits: number } | undefined,
   isError: false,
 }));
 vi.mock('@/libs/trpc/client', () => ({
-  lambdaQuery: { platformCredit: { getOwnRegistrationCredits: { useQuery: () => creditQuery } } },
+  lambdaQuery: {
+    platformCredit: {
+      getOwnRegistrationCredits: { useQuery: () => creditQuery },
+      getOwnAccount: {
+        useQuery: () => ({
+          isError: creditQuery.isError,
+          data: creditQuery.data
+            ? { balanceCredits: creditQuery.accountBalance ?? creditQuery.data.remainingCredits }
+            : undefined,
+        }),
+      },
+    },
+  },
 }));
 
 // Mock dependencies
@@ -85,6 +98,7 @@ describe('PanelContent', () => {
   beforeEach(() => {
     creditQuery.data = { remainingCredits: 2_500_000, totalCredits: 5_000_000 };
     creditQuery.isError = false;
+    creditQuery.accountBalance = undefined;
   });
   const closePopover = vi.fn();
 
@@ -124,6 +138,21 @@ describe('PanelContent', () => {
         expect(bar).toHaveAttribute('aria-valuenow', '0');
       }
     });
+    it('separates a depleted gift from paid account credits', () => {
+      act(() => {
+        useUserStore.setState({ isSignedIn: true });
+      });
+      creditQuery.data = { remainingCredits: 0, totalCredits: 5000000 };
+      creditQuery.accountBalance = 1168000;
+      renderWithRouter(<PanelContent closePopover={closePopover} />);
+      expect(screen.getByText('0 / 500万')).toBeInTheDocument();
+      expect(screen.getByText('116.8万')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar', { name: '免费积分' })).toHaveAttribute(
+        'aria-valuenow',
+        '0',
+      );
+    });
+
     it('should render UserInfo when user is signed in', () => {
       act(() => {
         useUserStore.setState({ isSignedIn: true });

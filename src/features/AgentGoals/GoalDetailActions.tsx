@@ -1,20 +1,15 @@
 import { copyToClipboard, Icon } from '@lobehub/ui';
-import {
-  ActionIcon,
-  confirmModal,
-  type DropdownItem,
-  DropdownMenu,
-  toast,
-} from '@lobehub/ui/base-ui';
+import { ActionIcon, type DropdownItem, DropdownMenu, toast } from '@lobehub/ui/base-ui';
 import { CopyIcon, LinkIcon, MoreHorizontalIcon, TrashIcon } from 'lucide-react';
 import { memo, use, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { confirmResourceDeletion } from '@/features/ResourceDeletion/confirmResourceDeletion';
 import { GroupWorkScopeContext, scopeGroupWorkPath } from '@/features/SuperGroup/GroupWorkScope';
+import { useGroupDeletePermission } from '@/features/SuperGroup/useGroupDeletePermission';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { usePermission } from '@/hooks/usePermission';
-import { useGoalStore } from '@/store/goal';
 
 interface GoalDetailActionsProps {
   /** Absent for a goal with no responsible agent — e.g. one created from a project. */
@@ -27,7 +22,7 @@ const GoalDetailActions = memo<GoalDetailActionsProps>(({ agentId, goalId, proje
   const { t } = useTranslation(['chat', 'common']);
   const navigate = useWorkspaceAwareNavigate();
   const { allowed: canEditTask } = usePermission('create_content');
-  const deleteGoal = useGoalStore((s) => s.deleteGoal);
+  const { canDelete, checkDeletePermission } = useGroupDeletePermission(canEditTask);
   // Not `window.location.href`: on desktop that is the `app://renderer` shell
   // origin (and the shell location does not track the active tab) — build the
   // shareable web URL from the app origin and the goal route explicitly.
@@ -60,43 +55,37 @@ const GoalDetailActions = memo<GoalDetailActionsProps>(({ agentId, goalId, proje
         },
       },
       { type: 'divider' },
-      {
-        danger: true,
-        disabled: !canEditTask,
-        icon: <Icon icon={TrashIcon} />,
-        key: 'delete',
-        label: t('delete', { ns: 'common' }),
-        onClick: () => {
-          confirmModal({
-            content: t('goalDetail.deleteConfirm.content'),
-            okButtonProps: { danger: true },
-            okText: t('goalDetail.deleteConfirm.ok'),
-            onOk: async () => {
-              // Mirrors the list scope the goal was rendered under, so the page
-              // the user lands on is the one whose cache was just refreshed.
-              await deleteGoal(
-                agentId,
-                goalId,
-                groupScope
-                  ? `group:${groupScope.groupId}`
-                  : projectId
-                    ? `project:${projectId}`
-                    : undefined,
-              );
-              navigate(
-                agentId
-                  ? `/agent/${agentId}/goals`
-                  : projectId
-                    ? `/project/${projectId}/goals`
-                    : '/',
-              );
+      ...(canDelete
+        ? [
+            {
+              danger: true,
+              icon: <Icon icon={TrashIcon} />,
+              key: 'delete',
+              label: t('delete', { ns: 'common' }),
+              onClick: () => {
+                void confirmResourceDeletion({
+                  resource: 'goal',
+                  ids: [goalId],
+                  canProceed: checkDeletePermission,
+
+                  onOk: async () => {
+                    if (!checkDeletePermission()) return;
+                    navigate(
+                      agentId
+                        ? `/agent/${agentId}/goals`
+                        : projectId
+                          ? `/project/${projectId}/goals`
+                          : '/',
+                    );
+                  },
+                  title: t('goalDetail.deleteConfirm.title'),
+                });
+              },
             },
-            title: t('goalDetail.deleteConfirm.title'),
-          });
-        },
-      },
+          ]
+        : []),
     ],
-    [agentId, groupScope, canEditTask, deleteGoal, goalId, navigate, projectId, shareUrl, t],
+    [agentId, canDelete, checkDeletePermission, goalId, navigate, projectId, shareUrl, t],
   );
 
   return (

@@ -509,6 +509,7 @@ export const userRouter = router({
       email: state.email,
       firstName: state.firstName,
       fullName: state.fullName,
+      phone: state.phone,
 
       // Has conversation if there are messages or has created any assistant
       hasConversation: hasAnyMessages || hasExtraSession,

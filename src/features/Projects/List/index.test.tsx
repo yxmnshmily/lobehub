@@ -22,3 +22,10 @@ it('offers the group project list without requiring the standalone labs switch',
   );
   expect(screen.getByRole('button', { name: 'create.action' })).toBeVisible();
 });
+
+vi.mock('@/features/SuperGroup/useGroupDeletePermission', () => ({
+  useGroupDeletePermission: (allowed: boolean) => ({
+    canDelete: allowed,
+    checkDeletePermission: () => allowed,
+  }),
+}));

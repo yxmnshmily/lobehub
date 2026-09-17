@@ -343,6 +343,7 @@ describe('groupMembershipRouter', () => {
     expect(participants.assistants[0]).not.toHaveProperty('pinned');
     expect(participants.assistants[0]).not.toHaveProperty('sessionGroupId');
     expect(participants).toEqual({
+      totalCount: 2,
       assistants: [
         {
           avatar: null,
@@ -352,6 +353,8 @@ describe('groupMembershipRouter', () => {
           model: 'deepseek-v4-flash',
           provider: 'deepseek',
           title: '旅行规划',
+          tags: [],
+          updatedAt: expect.any(Date),
         },
       ],
       items: [
@@ -377,6 +380,7 @@ describe('groupMembershipRouter', () => {
     expect(JSON.stringify(participants)).not.toMatch(/email|credit|token|canUsePaidAi/iu);
     await expect(owner.listParticipants({ groupId, limit: 1 })).resolves.toMatchObject({
       items: [expect.objectContaining({ memberUserId: ownerId })],
+      totalCount: 2,
       nextOffset: 1,
       viewerMembershipVersion: 0,
       viewerRole: 'owner',

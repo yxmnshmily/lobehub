@@ -3,7 +3,16 @@
 import { Flexbox } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { EyeIcon, PauseIcon, PlayIcon } from 'lucide-react';
+import {
+  Activity,
+  CalendarDays,
+  EyeIcon,
+  Lightbulb,
+  ListTodo,
+  type LucideIcon,
+  Timer,
+  Wallet,
+} from 'lucide-react';
 import { memo, type ReactNode, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -12,15 +21,16 @@ import NotFound from '@/components/404';
 import AsyncError from '@/components/AsyncError';
 import GoalDetailSkeleton from '@/components/Skeleton/GoalDetail';
 import AgentBreadcrumb from '@/features/AgentBreadcrumb';
-import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import { useAgentRoutePath } from '@/features/AgentBreadcrumb/useAgentRoutePath';
+import { useMonthlyExchangeRate } from '@/features/CustomerCenter/useMonthlyExchangeRate';
 import NavHeader from '@/features/NavHeader';
 import { PortalContent } from '@/features/Portal/router';
 import { usePortalPanelWidth } from '@/features/Portal/usePortalPanelWidth';
 import RightPanel from '@/features/RightPanel';
+import ToggleRightPanelButton from '@/features/RightPanel/ToggleRightPanelButton';
 import GroupPageBreadcrumb from '@/features/SuperGroup/GroupPageBreadcrumb';
 import { GroupWorkScopeContext } from '@/features/SuperGroup/GroupWorkScope';
-import ToggleRightPanelButton from '@/features/RightPanel/ToggleRightPanelButton';
+import WorkRunControls from '@/features/SuperGroup/WorkRunControls';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import { useActivityTime } from '@/hooks/useActivityTime';
 import { usePermission } from '@/hooks/usePermission';
@@ -82,15 +92,21 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const Metric = memo<{
+  icon: LucideIcon;
   label: string;
   onClick: () => void;
   value: ReactNode;
-}>(({ label, onClick, value }) => (
+}>(({ icon: Icon, label, onClick, value }) => (
   <Flexbox className={styles.metric} gap={2} onClick={onClick}>
     <Flexbox horizontal align={'center'} gap={7} style={{ minHeight: 26 }}>
       {value}
     </Flexbox>
-    <Text fontSize={12} type={'secondary'}>
+    <Text
+      fontSize={12}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+      type={'secondary'}
+    >
+      <Icon aria-hidden size={14} />
       {label}
     </Text>
   </Flexbox>
@@ -126,8 +142,6 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
   const useFetchGoalGraph = useGoalStore((s) => s.useFetchGoalGraph);
   const { error, isLoading, mutate } = useFetchGoalGraph(goalId);
   const snapshot = useGoalStore(goalSelectors.goalGraph(goalId));
-  const pauseGoal = useGoalStore((s) => s.pauseGoal);
-  const resumeGoal = useGoalStore((s) => s.resumeGoal);
 
   const buildAgentPath = useAgentRoutePath(agentId ?? '');
 
@@ -164,7 +178,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
   const collapsedRailRef = useRef(false);
 
   useEffect(() => {
-    if (showPortal) {
+    if (showPortal || graphFullscreen) {
       if (showLeftPanel && !collapsedRailRef.current) {
         collapsedRailRef.current = true;
         toggleLeftPanel(false);
@@ -175,7 +189,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
       collapsedRailRef.current = false;
       toggleLeftPanel(true);
     }
-  }, [showPortal, showLeftPanel, toggleLeftPanel]);
+  }, [showPortal, graphFullscreen, showLeftPanel, toggleLeftPanel]);
 
   // Leaving the page with the rail still folded would strand it on every other
   // surface, so give it back on the way out.
@@ -221,15 +235,6 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
   const panelExpandable = !!chat.agentId;
   const chatVisible = chat.open && panelExpandable;
 
-  const paused = goal.status === 'paused';
-  // Pace control exists only while the coordinator loop is actually moving (or
-  // explicitly paused). A goal in review awaits the human, and a closed goal
-  // cannot move — pausing either would be a dead or misleading button.
-  const canPause =
-    canEdit &&
-    nodes.length > 0 &&
-    ['paused', 'planning', 'running', 'verifying'].includes(goal.status);
-
   const durationText = goal.startedAt
     ? formatSpan((goal.completedAt ?? new Date()).getTime() - goal.startedAt.getTime())
     : '—';
@@ -261,9 +266,9 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
             <Flexbox horizontal align={'center'} gap={4}>
               {groupScope ? (
                 <GroupPageBreadcrumb
+                  detailTitle={goal.title}
                   groupId={groupScope.groupId}
                   title="目标"
-                  detailTitle={goal.title}
                 />
               ) : agentId ? (
                 <AgentBreadcrumb
@@ -301,8 +306,8 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                 {panelExpandable && (
                   <ToggleRightPanelButton
                     hideWhenExpanded
-                    title="展开对话"
                     expand={showPortal || chatVisible}
+                    title="展开对话"
                     onToggle={() => chat.setOpen(true)}
                   />
                 )}
@@ -318,6 +323,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
               </Text>
               <Flexbox horizontal className={styles.metrics} gap={8} wrap={'wrap'}>
                 <Metric
+                  icon={Activity}
                   label={t('goalProcess.metrics.status')}
                   value={
                     <>
@@ -330,6 +336,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   onClick={open('lifecycle')}
                 />
                 <Metric
+                  icon={ListTodo}
                   label={t('goalProcess.metrics.tasks')}
                   value={
                     <Text fontSize={16} weight={600}>
@@ -339,6 +346,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   onClick={open('tasks')}
                 />
                 <Metric
+                  icon={Lightbulb}
                   label={t('goalProcess.metrics.findings')}
                   value={
                     <Text fontSize={16} weight={600}>
@@ -348,6 +356,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   onClick={open('findings')}
                 />
                 <Metric
+                  icon={Wallet}
                   label={budgetLabel}
                   value={
                     <>
@@ -362,6 +371,7 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   onClick={open('budget')}
                 />
                 <Metric
+                  icon={Timer}
                   label={t('goalProcess.metrics.duration')}
                   value={
                     <Text fontSize={16} weight={600}>
@@ -371,30 +381,13 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
                   onClick={open('duration')}
                 />
                 <Metric
+                  icon={CalendarDays}
                   label={t('goalProcess.metrics.liveness')}
                   value={<LivenessValue latest={liveness.latest} />}
                   onClick={open('liveness')}
                 />
               </Flexbox>
-              {/* Pause/resume above the requirement document — its reviewed
-                  home. The status glyph keeps the "running" animation; this
-                  button is only the control. */}
-              {canPause && (
-                <Flexbox horizontal align={'center'} gap={10} paddingBlock={'8px 0'}>
-                  <Button
-                    icon={paused ? PlayIcon : PauseIcon}
-                    type={paused ? 'primary' : 'default'}
-                    onClick={() => void (paused ? resumeGoal(goal.id) : pauseGoal(goal.id))}
-                  >
-                    {paused ? t('goalProcess.resume') : t('goalProcess.pause')}
-                  </Button>
-                  {paused && (
-                    <Text fontSize={12} type={'secondary'}>
-                      {t('goalProcess.paused')}
-                    </Text>
-                  )}
-                </Flexbox>
-              )}
+              <WorkRunControls id={goal.id} kind="goals" status={goal.status} />
               {goal.requirement && (
                 <GoalRequirement goalId={goal.id} requirement={goal.requirement} />
               )}
@@ -420,11 +413,12 @@ const GoalDetailPage = memo<GoalDetailPageProps>(({ agentId, goalId }) => {
           open, the panel hosts the conversation with the goal's responsible
           agent so a user can just ask about progress. */}
       <RightPanel
+        defaultWidth={340}
         expand={(showPortal || chatVisible) && !graphFullscreen}
-        maxWidth={maxWidth}
-        minWidth={minWidth}
-        width={width}
-        onSizeChange={(size) => updateWidth(size?.width)}
+        maxWidth={showPortal ? maxWidth : 720}
+        minWidth={showPortal ? minWidth : 340}
+        width={showPortal ? width : undefined}
+        onSizeChange={showPortal ? (size) => updateWidth(size?.width) : undefined}
         onExpandChange={(next) => {
           if (!next) clearPortalStack();
           chat.setOpen(next);

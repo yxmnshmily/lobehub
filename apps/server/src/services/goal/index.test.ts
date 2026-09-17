@@ -14,6 +14,7 @@ import { GoalGraphModel } from '@/database/models/goalGraph';
 import { MetricModel } from '@/database/models/metric';
 import { TaskModel } from '@/database/models/task';
 import { TaskTopicModel } from '@/database/models/taskTopic';
+import { VerifyRunModel } from '@/database/models/verifyRun';
 import { WorkModel } from '@/database/models/work';
 import {
   acceptances,
@@ -39,7 +40,9 @@ import { AgentRuntimeCoordinator } from '@/server/modules/AgentRuntime/AgentRunt
 import { PlatformUsageSharedBudgetError } from '../platformUsageBilling/sharedBudget';
 import { TaskService } from '../task';
 import { TaskRunnerService } from '../taskRunner';
+import { AcceptanceService } from '../verify/acceptanceService';
 import { VerifyPlanGeneratorService } from '../verify/planGenerator';
+import { driveTaskFromVerify } from '../verify/settle';
 import { GoalCriteriaGeneratorService } from './criteriaGenerator';
 import {
   LEASE_EXPIRED_ERROR,
@@ -82,6 +85,202 @@ afterEach(async () => {
 });
 
 describe('GoalService', () => {
+  it('allows canceling a failed goal while preserving its graph and finished work', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Failed legacy goal', tasks: ['Copy'] });
+    const created = await service.tick(graph.goal.id);
+    await new TaskModel(serverDB, userId).updateStatus(created.taskId!, 'completed');
+    await new GoalModel(serverDB, userId).update(graph.goal.id, { status: 'failed' });
+    await expect(service.pause(graph.goal.id)).rejects.toThrow('Goal is already finished');
+    await service.cancel(graph.goal.id);
+    const canceled = await service.graph(graph.goal.id);
+    expect(canceled.goal.status).toBe('canceled');
+    expect(canceled.nodes.map((node) => node.id)).toEqual(graph.nodes.map((node) => node.id));
+    expect((await new TaskModel(serverDB, userId).findById(created.taskId!))?.status).toBe(
+      'completed',
+    );
+    await service.cancel(graph.goal.id);
+    await service.tick(graph.goal.id);
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('canceled');
+  });
+
+  it('keeps achieved goals final when cancellation is requested', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Delivered goal', tasks: ['Copy'] });
+    await new GoalModel(serverDB, userId).update(graph.goal.id, { status: 'achieved' });
+    await expect(service.cancel(graph.goal.id)).rejects.toThrow('Goal is already finished');
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('achieved');
+  });
+
+  it('manually pauses linked work, resumes it and cancels without deleting history', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Manual control', tasks: ['Copy'] });
+    const created = await service.tick(graph.goal.id);
+    await new TaskModel(serverDB, userId).updateStatus(created.taskId!, 'running');
+    await service.pause(graph.goal.id);
+    expect((await new TaskModel(serverDB, userId).findById(created.taskId!))?.status).toBe(
+      'paused',
+    );
+    await service.resume(graph.goal.id);
+    expect((await new TaskModel(serverDB, userId).findById(created.taskId!))?.status).toBe(
+      'backlog',
+    );
+    await service.cancel(graph.goal.id);
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('canceled');
+    expect((await new TaskModel(serverDB, userId).findById(created.taskId!))?.status).toBe(
+      'canceled',
+    );
+    await expect(service.resume(graph.goal.id)).rejects.toThrow(/canceled/);
+    await service.tick(graph.goal.id);
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('canceled');
+  });
+
+  it('restores active child work while leaving the graph root for goal dispatch', async () => {
+    const service = new GoalService(serverDB, userId);
+    const model = new TaskModel(serverDB, userId);
+    const graph = await service.create({ title: 'Task subtree', tasks: ['Parent'] });
+    const created = await service.tick(graph.goal.id);
+    const child = await model.create({ instruction: 'Child', parentTaskId: created.taskId! });
+    const grandchild = await model.create({ instruction: 'Grandchild', parentTaskId: child.id });
+    await model.updateStatus(child.id, 'running');
+    await model.updateStatus(grandchild.id, 'running');
+    const run = vi
+      .spyOn(TaskRunnerService.prototype, 'runTask')
+      .mockImplementation(async ({ taskId }) => {
+        expect((await new GoalModel(serverDB, userId).findById(graph.goal.id))?.status).toBe(
+          'running',
+        );
+        await model.updateStatus(taskId, 'running');
+        return {} as never;
+      });
+    await service.pause(graph.goal.id);
+    expect((await model.findById(child.id))?.status).toBe('paused');
+    expect((await model.findById(grandchild.id))?.status).toBe('paused');
+    await service.resume(graph.goal.id);
+    expect((await model.findById(child.id))?.status).toBe('running');
+    expect((await model.findById(grandchild.id))?.status).toBe('running');
+    expect((await model.findById(created.taskId!))?.status).toBe('backlog');
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['running', 'completed', 'failed'] as const)(
+    'cancels unfinished descendants of a %s graph task without rewriting finished work',
+    async (rootStatus) => {
+      const service = new GoalService(serverDB, userId);
+      const model = new TaskModel(serverDB, userId);
+      const graph = await service.create({ title: 'Cancel subtree', tasks: ['Parent'] });
+      const created = await service.tick(graph.goal.id);
+      const child = await model.create({ instruction: 'Child', parentTaskId: created.taskId! });
+      const grandchild = await model.create({ instruction: 'Grandchild', parentTaskId: child.id });
+      const done = await model.create({ instruction: 'Delivered', parentTaskId: child.id });
+      await model.updateStatus(created.taskId!, rootStatus);
+      await model.updateStatus(child.id, 'running');
+      await model.updateStatus(grandchild.id, 'scheduled');
+      await model.updateStatus(done.id, 'completed');
+      await service.cancel(graph.goal.id);
+      expect((await model.findById(child.id))?.status).toBe('canceled');
+      expect((await model.findById(grandchild.id))?.status).toBe('canceled');
+      expect((await model.findById(done.id))?.status).toBe('completed');
+      expect((await model.findById(created.taskId!))?.status).toBe(
+        rootStatus === 'running' ? 'canceled' : rootStatus,
+      );
+    },
+  );
+
+  it.each(['completed', 'failed', 'paused'] as const)(
+    'pauses and resumes active descendants below a %s graph task',
+    async (rootStatus) => {
+      const service = new GoalService(serverDB, userId);
+      const model = new TaskModel(serverDB, userId);
+      const graph = await service.create({ title: 'Pause descendants', tasks: ['Parent'] });
+      const created = await service.tick(graph.goal.id);
+      const child = await model.create({ instruction: 'Child', parentTaskId: created.taskId! });
+      const independent = await model.create({ instruction: 'Own pause', parentTaskId: child.id });
+      await model.updateStatus(created.taskId!, rootStatus);
+      await model.updateStatus(child.id, 'running');
+      await model.updateStatus(independent.id, 'paused');
+      vi.spyOn(TaskRunnerService.prototype, 'runTask').mockImplementation(async ({ taskId }) => {
+        await model.updateStatus(taskId, 'running');
+        return {} as never;
+      });
+      await service.pause(graph.goal.id);
+      expect((await model.findById(child.id))?.status).toBe('paused');
+      await service.resume(graph.goal.id);
+      expect((await model.findById(child.id))?.status).toBe('running');
+      expect((await model.findById(independent.id))?.status).toBe('paused');
+      expect((await model.findById(created.taskId!))?.status).toBe(rootStatus);
+    },
+  );
+
+  it.each([false, true])(
+    'blocks resume while a manual stop is pending (cancel=%s)',
+    async (cancel) => {
+      const service = new GoalService(serverDB, userId);
+      const graph = await service.create({ title: 'Concurrent control', tasks: ['Copy'] });
+      await service.tick(graph.goal.id);
+      let finish!: () => void;
+      let started!: () => void;
+      const stopping = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      vi.spyOn(TaskService.prototype, 'updateStatus').mockImplementationOnce(async () => {
+        started();
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return {} as never;
+      });
+      const stop = cancel ? service.cancel(graph.goal.id) : service.pause(graph.goal.id);
+      await stopping;
+      try {
+        await expect(service.resume(graph.goal.id)).rejects.toThrow(/stopping/);
+      } finally {
+        finish();
+        await stop;
+      }
+      expect((await service.graph(graph.goal.id)).goal.status).toBe(cancel ? 'canceled' : 'paused');
+    },
+  );
+
+  it('releases the manual stop guard after a failed interruption so the user can retry', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Retry stop', tasks: ['Copy'] });
+    await service.tick(graph.goal.id);
+    vi.spyOn(TaskService.prototype, 'updateStatus').mockRejectedValueOnce(
+      new Error('device offline'),
+    );
+    await expect(service.pause(graph.goal.id)).rejects.toThrow('device offline');
+    expect((await service.graph(graph.goal.id)).goal.config?.manualStopPending).toBeUndefined();
+    await service.pause(graph.goal.id);
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('paused');
+  });
+
+  it('keeps independently paused tasks paused and rejects foreign control', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Keep pause', tasks: ['Copy'] });
+    const created = await service.tick(graph.goal.id);
+    await new TaskModel(serverDB, userId).updateStatus(created.taskId!, 'paused');
+    await service.pause(graph.goal.id);
+    await service.resume(graph.goal.id);
+    expect((await new TaskModel(serverDB, userId).findById(created.taskId!))?.status).toBe(
+      'paused',
+    );
+    await expect(new GoalService(serverDB, 'other-user').cancel(graph.goal.id)).rejects.toThrow(
+      /not found/,
+    );
+  });
+
+  it('does not let a stale coordinator transition revive a manually stopped goal', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Late callback', tasks: ['Copy'] });
+    await service.pause(graph.goal.id);
+    await (service as any).transitionStatus(graph.goal, 'running', 'late dispatch');
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('paused');
+    await service.cancel(graph.goal.id);
+    await (service as any).transitionStatus(graph.goal, 'achieved', 'late verification');
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('canceled');
+  });
+
   it('dispatches planned group tasks to their selected members and keeps group list isolation', async () => {
     await serverDB.insert(agents).values([
       { id: 'agt_lead', userId },
@@ -331,6 +530,54 @@ describe('GoalService', () => {
     expect(persisted.goal.requirement).toBe(instruction);
     expect(persisted.nodes.find((node) => node.kind === 'problem')?.description).toBe(instruction);
     expect(persisted.goal.config?.acceptance?.criteriaIds).toHaveLength(1);
+  });
+
+  it('keeps group delivery origin only on the final acceptance task', async () => {
+    await serverDB.insert(agents).values({ id: 'origin-lead', userId });
+    await serverDB.insert(chatGroups).values({ id: 'origin-group', userId });
+    await serverDB
+      .insert(chatGroupsAgents)
+      .values({ chatGroupId: 'origin-group', agentId: 'origin-lead', userId, role: 'supervisor' });
+    await serverDB.insert(topics).values({ id: 'origin-topic', groupId: 'origin-group', userId });
+    const origin = { agentId: 'origin-lead', topicId: 'origin-topic' };
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({
+      config: { groupId: 'origin-group' },
+      title: 'One result',
+      criteria: [{ title: 'Usable result' }],
+      tasks: ['Draft'],
+    });
+    const work = await service.tick(graph.goal.id);
+    const taskModel = new TaskModel(serverDB, userId);
+    expect((await taskModel.findById(work.taskId!))?.context).not.toHaveProperty('origin');
+    const node = (await service.graph(graph.goal.id)).nodes.find(
+      (item) => item.taskId === work.taskId,
+    )!;
+    await service.revise(graph.goal.id, {
+      groupId: 'origin-group',
+      origin,
+      nodeId: node.id,
+      instruction: 'Revised draft',
+    });
+    expect((await service.graph(graph.goal.id)).goal.config?.origin).toEqual(origin);
+    await serverDB.insert(taskTopics).values({
+      taskId: work.taskId!,
+      userId,
+      seq: 1,
+      status: 'completed',
+      handoff: { title: 'Revised', summary: 'Revised', content: 'Revised draft' },
+    });
+    await taskModel.updateStatus(work.taskId!, 'completed');
+    await service.tick(graph.goal.id);
+    await service.tick(graph.goal.id);
+    const final = await service.tick(graph.goal.id);
+    expect((await taskModel.findById(final.taskId!))?.context).toMatchObject({ origin });
+    await expect(
+      service.create({
+        config: { groupId: 'origin-group', origin: { ...origin, topicId: 'missing' } },
+        title: 'Bad',
+      }),
+    ).rejects.toThrow('Origin conversation');
   });
 
   it('rebinding criteria also updates the dispatched terminal acceptance task', async () => {
@@ -914,6 +1161,187 @@ describe('GoalService', () => {
     await expect(service.updateRequirement('goal_missing', 'x')).rejects.toThrow();
   });
 
+  it('revises only the selected completed work and its dependents using the original task ids', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({
+      title: 'Campaign',
+      requirement: 'Deliver campaign',
+      tasks: ['Copy', 'Artwork', 'Publication'],
+    });
+    const model = new GoalGraphModel(serverDB, userId);
+    const taskModel = new TaskModel(serverDB, userId);
+    const nodes = graph.nodes.filter((node) => node.kind === 'task');
+    const byTitle = Object.fromEntries(nodes.map((node) => [node.title, node]));
+    for (const node of nodes) {
+      const task = await taskModel.create({
+        name: node.title,
+        instruction: 'Original ' + node.title,
+      });
+      await model.bindTask(graph.goal.id, node.id, task.id);
+      await taskModel.update(task.id, {
+        status: 'completed',
+        context: { completion: { requestedByOperationId: 'old-operation' } },
+      });
+      await new AcceptanceModel(serverDB, userId).create({
+        subjectType: 'task',
+        subjectId: task.id,
+        status: 'accepted',
+        requirement: 'Original',
+      });
+      await model.updateNodeStatus(graph.goal.id, node.id, 'resolved');
+    }
+    await model.createEdge(graph.goal.id, byTitle.Publication.id, byTitle.Copy.id, 'depends_on');
+    const finding = await model.createNode(graph.goal.id, {
+      kind: 'finding',
+      title: 'Old copy',
+      status: 'resolved',
+    });
+    await model.createEdge(graph.goal.id, byTitle.Copy.id, finding!.id, 'produces');
+    await new GoalModel(serverDB, userId).updateStatus(graph.goal.id, 'achieved');
+    const before = await service.graph(graph.goal.id);
+
+    const result = await service.revise(graph.goal.id, {
+      nodeId: byTitle.Copy.id,
+      instruction: 'Use warmer wording',
+    });
+    const after = await service.graph(graph.goal.id);
+    expect(result.goal.status).toBe('running');
+    expect(after.nodes.find((node) => node.id === byTitle.Copy.id)).toMatchObject({
+      status: 'active',
+      description: 'Use warmer wording',
+      taskId: before.nodes.find((node) => node.id === byTitle.Copy.id)!.taskId,
+    });
+    expect(after.nodes.find((node) => node.id === byTitle.Publication.id)?.status).toBe('active');
+    expect(after.nodes.find((node) => node.id === byTitle.Artwork.id)?.status).toBe('resolved');
+    expect(after.nodes.find((node) => node.id === finding!.id)?.status).toBe('retired');
+    const target = await taskModel.findById(
+      after.nodes.find((node) => node.id === byTitle.Copy.id)!.taskId!,
+    );
+    expect(target).toMatchObject({ status: 'backlog', completedAt: null });
+    expect(target!.instruction).toContain('Use warmer wording');
+    expect((target!.context as Record<string, unknown>).completion).toBeUndefined();
+    const acceptance = await new AcceptanceModel(serverDB, userId).findBySubject(
+      'task',
+      target!.id,
+    );
+    expect(acceptance?.status).toBe('pending');
+    expect(acceptance?.metadata?.goalRevisionAt).toBe(
+      (target!.context as Record<string, unknown>).goalRevisionAt,
+    );
+    expect(acceptance?.requirement).toContain('Use warmer wording');
+    expect(after.goal.maxTotalCost).toBe(before.goal.maxTotalCost);
+    expect(after.goal.maxRounds).toBe(before.goal.maxRounds);
+  });
+
+  it('keeps the goal paused and old instructions intact when cancelling an old run fails', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Poster', tasks: ['Artwork'] });
+    const node = graph.nodes.find((item) => item.kind === 'task')!;
+    const taskModel = new TaskModel(serverDB, userId);
+    const task = await taskModel.create({ instruction: 'Original artwork' });
+    await new GoalGraphModel(serverDB, userId).bindTask(graph.goal.id, node.id, task.id);
+    await taskModel.update(task.id, { status: 'running' });
+    await serverDB.insert(topics).values({ id: 'revision-running-topic', userId });
+    await new TaskTopicModel(serverDB, userId).add(task.id, 'revision-running-topic', { seq: 1 });
+    vi.spyOn(TaskService.prototype, 'cancelTopic').mockRejectedValueOnce(
+      new Error('Cancellation failed'),
+    );
+    await expect(
+      service.revise(graph.goal.id, { nodeId: node.id, instruction: 'New artwork' }),
+    ).rejects.toThrow('Cancellation failed');
+    expect((await service.graph(graph.goal.id)).goal.status).toBe('paused');
+    expect((await taskModel.findById(task.id))?.instruction).toBe('Original artwork');
+  });
+
+  it('does not let a completion from the old graph overwrite the revised task', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Poster', tasks: ['Artwork'] });
+    const node = graph.nodes.find((item) => item.kind === 'task')!;
+    const taskModel = new TaskModel(serverDB, userId);
+    const task = await taskModel.create({ instruction: 'Original artwork' });
+    await new GoalGraphModel(serverDB, userId).bindTask(graph.goal.id, node.id, task.id);
+    await taskModel.update(task.id, { status: 'completed' });
+    const stale = await service.graph(graph.goal.id);
+    const consume = (
+      service as unknown as {
+        consumeCompletedTask: (
+          snapshot: typeof stale,
+          nodeId: string,
+          taskId: string,
+        ) => Promise<unknown>;
+      }
+    ).consumeCompletedTask;
+    // The stale callback may arrive while revision holds the dispatch fence or
+    // after commit; in both orders it must leave the new work outstanding.
+    await Promise.all([
+      service.revise(graph.goal.id, { nodeId: node.id, instruction: 'New artwork' }),
+      consume(stale, node.id, task.id),
+    ]);
+    expect((await taskModel.findById(task.id))?.status).toBe('backlog');
+    expect(
+      (await service.graph(graph.goal.id)).nodes.find((item) => item.id === node.id)?.status,
+    ).toBe('active');
+  });
+
+  it('keeps a real revised task outstanding when an old verification arrives afterwards', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Poster', tasks: ['Artwork'] });
+    const node = graph.nodes.find((item) => item.kind === 'task')!;
+    const taskModel = new TaskModel(serverDB, userId);
+    const task = await taskModel.create({ instruction: 'Original artwork' });
+    await new GoalGraphModel(serverDB, userId).bindTask(graph.goal.id, node.id, task.id);
+    await taskModel.update(task.id, { status: 'completed' });
+    const acceptance = await new AcceptanceModel(serverDB, userId).create({
+      subjectType: 'task',
+      subjectId: task.id,
+      status: 'accepted',
+    });
+    await serverDB.insert(agentOperations).values({
+      id: 'old-artwork-operation',
+      userId,
+      taskId: task.id,
+      status: 'done',
+      createdAt: new Date(Date.now() - 60_000),
+    });
+    const oldRun = await new VerifyRunModel(serverDB, userId).create({
+      operationId: 'old-artwork-operation',
+      acceptanceId: acceptance.id,
+      roundIndex: 1,
+      status: 'passed',
+    });
+
+    await service.revise(graph.goal.id, { nodeId: node.id, instruction: 'New artwork' });
+    await driveTaskFromVerify(serverDB, userId, 'old-artwork-operation');
+    expect(await new AcceptanceService(serverDB, userId).recomputeStatus(acceptance.id)).toBe(
+      'pending',
+    );
+    expect((await taskModel.findById(task.id))?.status).toBe('backlog');
+    expect(
+      (await service.graph(graph.goal.id)).nodes.find((item) => item.id === node.id)?.status,
+    ).toBe('active');
+    expect((await new VerifyRunModel(serverDB, userId).findById(oldRun.id))?.status).toBe('passed');
+  });
+
+  it('rejects a revision from another user or group before changing the goal', async () => {
+    const service = new GoalService(serverDB, userId);
+    const graph = await service.create({ title: 'Private', tasks: ['Copy'] });
+    const node = graph.nodes.find((item) => item.kind === 'task')!;
+    await expect(
+      new GoalService(serverDB, 'other').revise(graph.goal.id, {
+        nodeId: node.id,
+        instruction: 'Change',
+      }),
+    ).rejects.toThrow();
+    await expect(
+      service.revise(graph.goal.id, {
+        nodeId: node.id,
+        instruction: 'Change',
+        groupId: 'other-group',
+      }),
+    ).rejects.toThrow();
+    expect((await service.graph(graph.goal.id)).goal.status).toBe(graph.goal.status);
+  });
+
   it('hands the goal and its unfinished tasks to a new agent', async () => {
     await serverDB.insert(agents).values([
       { id: 'agt_old', slug: 'agt-old', userId },
@@ -1012,6 +1440,31 @@ describe('GoalService', () => {
     const updated = await service.setBudget(graph.goal.id, { maxTotalCost: 50 });
 
     expect(updated?.status).toBe('paused');
+  });
+
+  it('does not interrupt a retained shared task when deleting its goal', async () => {
+    const goalId = 'goal_retained_task';
+    const taskId = 'task_retained_task';
+    await serverDB.insert(goals).values({ id: goalId, userId, title: 'Disposable goal' });
+    await serverDB.insert(tasks).values({
+      id: taskId,
+      createdByUserId: userId,
+      identifier: 'KEEP-1',
+      seq: 1,
+      instruction: 'Shared work',
+      status: 'running',
+    });
+    await serverDB.insert(goalNodes).values({ goalId, taskId, kind: 'task', title: 'Shared task' });
+    await serverDB.insert(topics).values({ id: 'tpc_retained_task', userId });
+    await new TaskTopicModel(serverDB, userId).add(taskId, 'tpc_retained_task', { seq: 1 });
+    vi.spyOn(TaskService.prototype, 'cancelTopic').mockRejectedValue(
+      new Error('must not interrupt retained task'),
+    );
+    await new GoalService(serverDB, userId).delete(goalId, { taskIdsToStop: [] });
+    expect(await serverDB.select().from(goals).where(eq(goals.id, goalId))).toHaveLength(0);
+    expect((await serverDB.select().from(tasks).where(eq(tasks.id, taskId)))[0].status).toBe(
+      'running',
+    );
   });
 
   it('refuses to delete a goal whose running Task cannot be stopped', async () => {
@@ -2513,4 +2966,83 @@ describe('GoalService', () => {
     const next = await service.tick(graph.goal.id);
     expect(next).toMatchObject({ nodeId: dependent.id, outcome: 'advanced' });
   });
+});
+
+it('resolves legacy goal names only within the current group and returns duplicate candidates', async () => {
+  await serverDB.insert(agents).values({ id: 'lookup-lead', userId });
+  await serverDB.insert(chatGroups).values({ id: 'lookup-group', userId });
+  await serverDB
+    .insert(chatGroupsAgents)
+    .values({ chatGroupId: 'lookup-group', agentId: 'lookup-lead', userId, role: 'supervisor' });
+  const service = new GoalService(serverDB, userId);
+  const first = await service.create({
+    config: { groupId: 'lookup-group' },
+    title: 'Legacy exact title',
+    tasks: ['Draft'],
+  });
+  expect((await service.graph('Legacy exact title', 'lookup-group')).goal.id).toBe(first.goal.id);
+  await expect(service.graph('Legacy exact title', 'another-group')).rejects.toThrow();
+  await expect(service.graph('Legacy exact', 'lookup-group')).rejects.toThrow();
+  const second = await service.create({
+    config: { groupId: 'lookup-group' },
+    title: 'Legacy exact title',
+    tasks: ['Other'],
+  });
+  await expect(service.graph('Legacy exact title', 'lookup-group')).rejects.toThrow(first.goal.id);
+  await expect(service.graph('Legacy exact title', 'lookup-group')).rejects.toThrow(second.goal.id);
+});
+
+it('does not synthesize a revised task from a completed pre-revision topic', async () => {
+  const service = new GoalService(serverDB, userId);
+  const graph = await service.create({ tasks: ['Draft'], title: 'Revised delivery' });
+  const run = await service.tick(graph.goal.id);
+  await serverDB.insert(taskTopics).values({
+    taskId: run.taskId!,
+    userId,
+    seq: 1,
+    status: 'completed',
+    createdAt: new Date('2020-01-01'),
+    handoff: { content: 'Obsolete', title: 'Old', summary: 'Old' },
+  });
+  await new TaskModel(serverDB, userId).update(run.taskId!, {
+    context: { goalRevisionAt: new Date().toISOString() },
+    status: 'completed',
+  });
+  const result = await service.tick(graph.goal.id);
+  expect(result.outcome).toBe('no_progress');
+  expect((await service.graph(graph.goal.id)).nodes.some((node) => node.kind === 'finding')).toBe(
+    false,
+  );
+});
+
+it('counts retry attempts within the revision while retaining the goal cost ceiling', async () => {
+  vi.spyOn(TaskRunnerService.prototype, 'runTask').mockResolvedValue({
+    operationId: 'revision-retry-op',
+  } as never);
+  const service = new GoalService(serverDB, userId);
+  const graph = await service.create({
+    config: { recovery: { maxAttemptsPerTask: 2 } },
+    tasks: ['Draft'],
+    title: 'Retry revised work',
+    maxTotalCost: 1,
+  });
+  const run = await service.tick(graph.goal.id);
+  const model = new TaskModel(serverDB, userId);
+  await model.update(run.taskId!, {
+    status: 'paused',
+    totalTopics: 99,
+    context: { goalRevisionAt: '2025-01-01T00:00:00.000Z' },
+  });
+  await serverDB.insert(taskTopics).values([
+    { taskId: run.taskId!, userId, seq: 1, createdAt: new Date('2020-01-01'), status: 'completed' },
+    { taskId: run.taskId!, userId, seq: 2, createdAt: new Date('2026-01-01'), status: 'completed' },
+  ]);
+  const task = (await model.findById(run.taskId!))!;
+  const recovery = new TaskRecoveryCoordinator(serverDB, userId);
+  expect((await recovery.recover({ goal: graph.goal, task, spentCost: 1 })).outcome).toBe(
+    'exhausted-cost',
+  );
+  expect((await recovery.recover({ goal: graph.goal, task, spentCost: 0 })).outcome).toBe(
+    'started',
+  );
 });

@@ -1,4 +1,5 @@
 import type { InitialGoalOverviewContext } from './stepContext';
+import type { TaskOriginContext } from './task';
 import type { AcceptanceStatus } from './verify';
 import type { WorkType } from './work';
 
@@ -238,12 +239,14 @@ export interface GoalManagerState {
 
 export interface GoalConfig {
   acceptance?: GoalAcceptancePolicy;
+  exploration?: GoalExplorationConfig;
   /** Workspace group that owns this goal; the agent is its coordinator. */
   groupId?: string;
 
-  exploration?: GoalExplorationConfig;
   manager?: GoalManagerPolicy;
   managerState?: GoalManagerState;
+  /** Remote stops are in flight; user resume must wait for confirmation. */
+  manualStopPending?: boolean;
   /**
    * How many of a goal's Tasks may be in flight at once. Independent Tasks are
    * the common case — four bug fixes that share no code have no reason to run
@@ -251,19 +254,23 @@ export interface GoalConfig {
    * before the first result came back. Null/undefined uses the default.
    */
   maxConcurrentTasks?: number | null;
+  /** Original group conversation, used only for final delivery. */
+  origin?: TaskOriginContext;
   /** Who the current pause belongs to; cleared when the goal runs again. */
   pausedBy?: GoalPauseReason;
+  /** Tasks paused with this goal, so resume leaves independently paused work alone. */
+  pausedTaskIds?: string[];
   /** Coordinator-owned lease for initial decomposition; not a user policy. */
   planningCheckpoint?: { expiresAt: string; token: string };
   /** Retained after release to distinguish lease-aware retries from legacy planners. */
   planningProtocol?: 'lease-v1';
   recovery?: GoalRecoveryPolicy;
   schedule?: GoalSchedulePolicy;
-  /** Validated group member assigned to each graph task node. */
-  taskAssignments?: Record<string, string>;
   supervision?: GoalSupervisionPolicy;
   /** Durable supervisor topic and bounded incident ledger. */
   supervisorState?: GoalSupervisionState;
+  /** Validated group member assigned to each graph task node. */
+  taskAssignments?: Record<string, string>;
 }
 
 /** Creation accepts planning options, never a separate manager identity or runtime receipt. */
