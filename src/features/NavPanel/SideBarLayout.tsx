@@ -15,6 +15,22 @@ import SkeletonList from '@/features/NavPanel/components/SkeletonList';
  * left column changed shape from route to route. Owning the frame here keeps a
  * single source of truth instead of one copy per sidebar.
  */
+
+/* 侧栏滚动条样式：用注入的 <style> 而非 antd-style 类——类样式在 HMR/样式
+   缓存下可能不生效（"反复不生效"的根因），原生 <style> 注入必定生效。 */
+const SIDEBAR_SCROLL_CSS = `
+[data-nav-layout] {
+  scrollbar-color: var(--ant-color-fill-secondary, rgba(128, 128, 128, 0.45)) transparent;
+  scrollbar-width: thin;
+}
+[data-nav-layout] ::-webkit-scrollbar { width: 8px; height: 8px; }
+[data-nav-layout] ::-webkit-scrollbar-thumb {
+  background: var(--ant-color-fill-secondary, rgba(128, 128, 128, 0.45));
+  border-radius: 4px;
+}
+[data-nav-layout] ::-webkit-scrollbar-track { background: transparent; }
+`;
+
 const styles = createStaticStyles(({ css }) => ({
   surface: css`
     overflow: hidden;
@@ -35,6 +51,7 @@ interface SidebarLayoutProps {
 const SideBarLayout = memo<SidebarLayoutProps>(({ header, body }) => {
   return (
     <div className={styles.surface}>
+      <style dangerouslySetInnerHTML={{ __html: SIDEBAR_SCROLL_CSS }} />
       <Flexbox
         data-nav-layout=""
         gap={1}

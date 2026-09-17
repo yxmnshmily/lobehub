@@ -22,7 +22,7 @@ import { useCategory } from '../../hooks/useCategory';
 const styles = createStaticStyles(({ css }) => ({
   expandedMenu: css`
     padding-block: 4px 16px;
-    padding-inline: 8px;
+    padding-inline: 10px;
 
     a {
       color: inherit;

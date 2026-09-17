@@ -4,7 +4,7 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   contentSurface: css`
     position: relative;
 
-    overflow: hidden;
+    overflow: visible;
     flex: 1;
 
     min-width: 0;
@@ -127,7 +127,10 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   mainContainer: css`
     position: relative;
-    overflow: hidden;
+
+    /* 网站式滚动：本层高度随内容增长，不能裁剪（overflow hidden 会把
+       超出视口的内容裁掉，导致框架层永远收不到溢出、无法滚动）。 */
+    overflow: visible;
     box-sizing: border-box;
     background: ${cssVar.colorBgContainer};
   `,

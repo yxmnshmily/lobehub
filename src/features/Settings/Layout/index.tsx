@@ -24,14 +24,19 @@ const Layout: FC = () => {
       <Flexbox
         className={styles.mainContainer}
         data-settings-desktop-layout="a"
-        flex={1}
-        height={'100%'}
+        style={{
+          /* 网站式滚动：纵向滚动由 DesktopLayoutContainer 框架承担（滚动条
+             贴窗口右缘）。本层纯文档流、高度随内容长高——不能有 flex/height
+             锁，否则内容被压在视口高度里，框架永远"看不到"溢出。 */
+          minHeight: '100%',
+          width: '100%',
+        }}
       >
         <Flexbox
           className={styles.contentSurface}
           data-settings-content-surface=""
           data-settings-surface="flat"
-          height={'100%'}
+          style={{ flex: '0 0 auto', minHeight: '100%', width: '100%' }}
         >
           <RouteSkeletonChromeProvider>
             <Outlet />

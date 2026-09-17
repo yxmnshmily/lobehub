@@ -21,6 +21,17 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgContainer};
   `,
 
+  /* 网站式 overlay 滚动（仅设置页启用）：内层容器承担滚动，原生滚动条隐藏，
+     悬浮滑块由组件渲染（见 index.tsx）——不占布局宽度，观感与 website 一致。 */
+  innerContainerScroll: css`
+    scrollbar-width: none;
+    overflow: auto;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
+
   // Outer container
   outerContainer: css`
     position: relative;

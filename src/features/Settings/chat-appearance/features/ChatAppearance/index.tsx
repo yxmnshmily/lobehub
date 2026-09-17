@@ -2,6 +2,7 @@
 
 import { Flexbox, Form, FormGroup, highlighterThemes, mermaidThemes } from '@lobehub/ui';
 import { Select, Switch, Tabs } from '@lobehub/ui/base-ui';
+import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,20 @@ import ChatTransitionPreview from './ChatTransitionPreview';
 import HighlighterPreview from './HighlighterPreview';
 import LinkIconPreview from './LinkIconPreview';
 import MermaidPreview from './MermaidPreview';
+
+/* 2026-09-17：用户要求"代码高亮主题"分组去掉内填充和边距——
+   覆盖 @lobehub/ui Collapse（FormGroup 桌面端实现）header/content 的 16px padding。 */
+const flatGroupStyles = createStaticStyles(({ css }) => ({
+  flat: css`
+    > .ant-collapse-item > .ant-collapse-header {
+      padding: 0 !important;
+    }
+
+    > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
+      padding: 0 !important;
+    }
+  `,
+}));
 
 const ChatAppearance = memo(() => {
   const { t } = useTranslation('setting');
@@ -133,10 +148,11 @@ const ChatAppearance = memo(() => {
       />
 
       <FormGroup
+        className={flatGroupStyles.flat}
         collapsible={false}
         gap={16}
         title={t('settingChatAppearance.highlighterTheme.title')}
-        variant={'borderless'}
+        variant={'outlined'}
         extra={
           <Flexbox horizontal align={'center'} gap={8}>
             {renderSaveHint('highlighterTheme')}
@@ -147,7 +163,9 @@ const ChatAppearance = memo(() => {
                 value: item.id,
               }))}
               style={{
-                width: 240,
+                /* 2026-09-17：窄视口下收窄让位给左侧标题（"代码高亮主题"避免换行），
+                   宽视口保持 240px 不变。 */
+                width: 'min(240px, 40vw)',
               }}
               onChange={(value) => handleChange('highlighterTheme', value)}
             />

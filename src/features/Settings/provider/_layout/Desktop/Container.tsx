@@ -20,7 +20,7 @@ const Container: FC<PropsWithChildren> = ({ children }) => {
   }, [pathname]);
 
   return (
-    <Flexbox height={'100%'} width={'100%'}>
+    <Flexbox style={{ minHeight: '100%', width: '100%' }}>
       {/* The title is rendered by the shared settings shell so every tab's
           header starts on the same 48px line. */}
       <SettingContainer
@@ -28,9 +28,6 @@ const Container: FC<PropsWithChildren> = ({ children }) => {
         /* 48px page gutter, same as every other settings tab. */
         padding={48}
         ref={scrollRef}
-        style={{
-          minHeight: 0,
-        }}
       >
         {children}
       </SettingContainer>

@@ -19,9 +19,9 @@ import {
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import SkeletonBar from '@/components/Skeleton/Bar';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SharedListSkeleton from '@/components/ListSkeleton';
+import SkeletonBar from '@/components/Skeleton/Bar';
 import { useElectronStore } from '@/store/electron';
 
 import DeviceDetailPanel from './DeviceDetailPanel';
@@ -169,7 +169,9 @@ const styles = createStaticStyles(({ css }) => ({
   `,
   listHeader: css`
     gap: 12px;
+
     min-height: 44px;
+    margin: 20px;
     padding-block: 8px;
     padding-inline: 12px;
     border-block-end: 0.5px solid ${cssVar.colorBorderSecondary};
@@ -296,6 +298,12 @@ const ListSkeleton = memo<{ withHeader?: boolean; bordered?: boolean }>(({ withH
 ));
 
 interface DeviceManagerProps {
+  /**
+   * Hide the list header ("N devices · connect · refresh") when the host page
+   * already surfaces those actions elsewhere (e.g. the settings collapse
+   * header) — otherwise the same controls render twice, stacked.
+   */
+  hideListHeader?: boolean;
   /** Open the enrollment wizard (the modal is owned by the route). */
   onConnect: (tab?: 'cli' | 'desktop') => void;
   /** Which device pool this surface manages. */
@@ -308,169 +316,167 @@ interface DeviceManagerProps {
   visibility?: DeviceVisibility;
 }
 
-/**
- * Master-detail device manager shared by the personal (`/settings/devices`) and
- * workspace (`/:slug/settings/devices`) pages — list + detail panel + onboarding
- * empty state, filtered to the given `scope` (and, for workspace, the active
- * visibility tab).
- */
-const DeviceManager = memo<DeviceManagerProps>(({ onConnect, scope, visibility }) => {
-  const { t } = useTranslation('setting');
-  const isWorkspace = scope === 'workspace';
+const DeviceManager = memo<DeviceManagerProps>(
+  ({ hideListHeader, onConnect, scope, visibility }) => {
+    const { t } = useTranslation('setting');
+    const isWorkspace = scope === 'workspace';
 
-  // Workspace-keyed SWR fetch — the shared hook every device-listing surface
-  // uses (see `useDeviceList` for why the raw TRPC React Query path is wrong).
-  const { data, isLoading, isValidating, error, mutate } = useDeviceList();
-  // `listDevices` is workspace-aware and returns both pools — keep each surface
-  // to its own scope (and visibility tab). Ghost rows (`visibility: null`,
-  // online but unregistered) belong to the shared pool: the server already
-  // strips other members' private devices, so an unclaimed live connection can
-  // only be a public-pool machine.
-  const devices = (data ?? []).filter(
-    (d) => d.scope === scope && (!visibility || (d.visibility ?? 'public') === visibility),
-  );
+    // Workspace-keyed SWR fetch — the shared hook every device-listing surface
+    // uses (see `useDeviceList` for why the raw TRPC React Query path is wrong).
+    const { data, isLoading, isValidating, error, mutate } = useDeviceList();
+    // `listDevices` is workspace-aware and returns both pools — keep each surface
+    // to its own scope (and visibility tab). Ghost rows (`visibility: null`,
+    // online but unregistered) belong to the shared pool: the server already
+    // strips other members' private devices, so an unclaimed live connection can
+    // only be a public-pool machine.
+    const devices = (data ?? []).filter(
+      (d) => d.scope === scope && (!visibility || (d.visibility ?? 'public') === visibility),
+    );
 
-  // The machine the user is on right now (desktop only) — personal pool only;
-  // a workspace device is never "this machine" in the personal sense.
-  const useFetchDeviceInfo = useElectronStore((s) => s.useFetchGatewayDeviceInfo);
-  const gatewayDeviceInfo = useElectronStore((s) => s.gatewayDeviceInfo);
-  useFetchDeviceInfo();
-  const currentDeviceId = !isWorkspace && isDesktop ? gatewayDeviceInfo?.deviceId : undefined;
+    // The machine the user is on right now (desktop only) — personal pool only;
+    // a workspace device is never "this machine" in the personal sense.
+    const useFetchDeviceInfo = useElectronStore((s) => s.useFetchGatewayDeviceInfo);
+    const gatewayDeviceInfo = useElectronStore((s) => s.gatewayDeviceInfo);
+    useFetchDeviceInfo();
+    const currentDeviceId = !isWorkspace && isDesktop ? gatewayDeviceInfo?.deviceId : undefined;
 
-  const [selectedId, setSelectedId] = useState<string>();
+    const [selectedId, setSelectedId] = useState<string>();
 
-  // ─── Empty state: onboarding hero + connect options + capabilities ───
-  // Now gated by AsyncBoundary so a *failed* device fetch renders a failure +
-  // Retry instead of this "connect your first device" onboarding (which falsely
-  // told the user they own no devices — ux Read §1.1 error-as-empty trap).
-  // Workspace machines are headless (CLI-only enrollment), so that scope gets
-  // a single primary button instead of the personal page's connect-method
-  // cards + capabilities. The copy is pool-agnostic; only the hero icon forks
-  // between the shared (server) and private (own machine) pools.
-  const isPrivatePool = isWorkspace && visibility === 'private';
-  const emptyState = (
-    <Flexbox gap={32}>
-      <Flexbox className={isWorkspace ? styles.emptyCard : styles.plainCol}>
-        <Flexbox align={'center'} className={styles.emptyHero} gap={12}>
-          <span className={styles.heroIcon}>
-            <Icon icon={isWorkspace && !isPrivatePool ? ServerIcon : MonitorDownIcon} size={28} />
-          </span>
-          <Text fontSize={18} weight={600}>
-            {t(isWorkspace ? 'workspaceSetting.devices.heroTitle' : 'devices.empty.title')}
-          </Text>
-          <Text style={{ maxWidth: 440 }} type={'secondary'}>
-            {t(isWorkspace ? 'workspaceSetting.devices.heroDesc' : 'devices.empty.desc')}
-          </Text>
-          {isWorkspace && (
-            <Button
-              icon={<Icon icon={TerminalIcon} />}
-              style={{ marginBlockStart: 8 }}
-              type={'primary'}
-              onClick={() => onConnect('cli')}
-            >
-              {t('devices.empty.methodCli.title')}
-            </Button>
+    // ─── Empty state: onboarding hero + connect options + capabilities ───
+    // Now gated by AsyncBoundary so a *failed* device fetch renders a failure +
+    // Retry instead of this "connect your first device" onboarding (which falsely
+    // told the user they own no devices — ux Read §1.1 error-as-empty trap).
+    // Workspace machines are headless (CLI-only enrollment), so that scope gets
+    // a single primary button instead of the personal page's connect-method
+    // cards + capabilities. The copy is pool-agnostic; only the hero icon forks
+    // between the shared (server) and private (own machine) pools.
+    const isPrivatePool = isWorkspace && visibility === 'private';
+    const emptyState = (
+      <Flexbox gap={32}>
+        <Flexbox className={isWorkspace ? styles.emptyCard : styles.plainCol}>
+          <Flexbox align={'center'} className={styles.emptyHero} gap={12}>
+            <span className={styles.heroIcon}>
+              <Icon icon={isWorkspace && !isPrivatePool ? ServerIcon : MonitorDownIcon} size={28} />
+            </span>
+            <Text fontSize={18} weight={600}>
+              {t(isWorkspace ? 'workspaceSetting.devices.heroTitle' : 'devices.empty.title')}
+            </Text>
+            <Text style={{ maxWidth: 440 }} type={'secondary'}>
+              {t(isWorkspace ? 'workspaceSetting.devices.heroDesc' : 'devices.empty.desc')}
+            </Text>
+            {isWorkspace && (
+              <Button
+                icon={<Icon icon={TerminalIcon} />}
+                style={{ marginBlockStart: 8 }}
+                type={'primary'}
+                onClick={() => onConnect('cli')}
+              >
+                {t('devices.empty.methodCli.title')}
+              </Button>
+            )}
+          </Flexbox>
+
+          {!isWorkspace && (
+            <div className={styles.optionGrid}>
+              <ConnectOption
+                badge={t('devices.empty.methodDesktop.badge')}
+                desc={t('devices.empty.methodDesktop.desc')}
+                icon={MonitorDownIcon}
+                title={t('devices.empty.methodDesktop.title')}
+                onClick={() => onConnect('desktop')}
+              />
+              <ConnectOption
+                desc={t('devices.empty.methodCli.desc')}
+                icon={TerminalIcon}
+                title={t('devices.empty.methodCli.title')}
+                onClick={() => onConnect('cli')}
+              />
+            </div>
           )}
         </Flexbox>
 
-        {!isWorkspace && (
-          <div className={styles.optionGrid}>
-            <ConnectOption
-              badge={t('devices.empty.methodDesktop.badge')}
-              desc={t('devices.empty.methodDesktop.desc')}
-              icon={MonitorDownIcon}
-              title={t('devices.empty.methodDesktop.title')}
-              onClick={() => onConnect('desktop')}
-            />
-            <ConnectOption
-              desc={t('devices.empty.methodCli.desc')}
-              icon={TerminalIcon}
-              title={t('devices.empty.methodCli.title')}
-              onClick={() => onConnect('cli')}
-            />
-          </div>
-        )}
+        {!isWorkspace && <Capabilities />}
       </Flexbox>
+    );
 
-      {!isWorkspace && <Capabilities />}
-    </Flexbox>
-  );
+    const selected = selectedId ? devices.find((d) => d.deviceId === selectedId) : undefined;
+    const isCurrent = (id: string) => !!currentDeviceId && id === currentDeviceId;
 
-  const selected = selectedId ? devices.find((d) => d.deviceId === selectedId) : undefined;
-  const isCurrent = (id: string) => !!currentDeviceId && id === currentDeviceId;
-
-  return (
-    <AsyncBoundary
-      data={data}
-      empty={emptyState}
-      error={error}
-      errorVariant={'block'}
-      isEmpty={devices.length === 0}
-      isLoading={isLoading}
-      loading={<ListSkeleton withHeader={!isWorkspace} />}
-      onRetry={() => mutate()}
-    >
-      <Flexbox horizontal align={'flex-start'} className={styles.manager} gap={16}>
-        <Flexbox className={styles.listCol} flex={1}>
-          {/* Workspace scope has no list header — its connect + refresh actions
+    return (
+      <AsyncBoundary
+        data={data}
+        empty={emptyState}
+        error={error}
+        errorVariant={'block'}
+        isEmpty={devices.length === 0}
+        isLoading={isLoading}
+        loading={<ListSkeleton withHeader={!isWorkspace} />}
+        onRetry={() => mutate()}
+      >
+        <Flexbox horizontal align={'flex-start'} className={styles.manager} gap={16}>
+          <Flexbox className={styles.listCol} flex={1}>
+            {/* Workspace scope has no list header — its connect + refresh actions
               live in the page's tab row (beside the visibility tabs). */}
-          {!isWorkspace && (
-            <Flexbox
-              horizontal
-              align={'center'}
-              className={styles.listHeader}
-              justify={'space-between'}
-            >
-              <Text fontSize={12} type={'secondary'} weight={500}>
-                {t('devices.selection.total', { count: devices.length })}
-              </Text>
-              <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
-                <Button
-                  icon={<Icon icon={MonitorUpIcon} />}
-                  size={'small'}
-                  onClick={() => onConnect()}
-                >
-                  {t('devices.connectWizard.button')}
-                </Button>
-                <ActionIcon
-                  icon={RefreshCwIcon}
-                  loading={isValidating}
-                  size={'small'}
-                  title={t('devices.actions.refresh')}
-                  onClick={() => mutate()}
-                />
+            {!isWorkspace && !hideListHeader && (
+              <Flexbox
+                horizontal
+                align={'center'}
+                className={styles.listHeader}
+                justify={'space-between'}
+              >
+                <Text fontSize={12} type={'secondary'} weight={500}>
+                  {t('devices.selection.total', { count: devices.length })}
+                </Text>
+                <Flexbox horizontal align={'center'} flex={'none'} gap={8}>
+                  <Button
+                    icon={<Icon icon={MonitorUpIcon} />}
+                    size={'small'}
+                    onClick={() => onConnect()}
+                  >
+                    {t('devices.connectWizard.button')}
+                  </Button>
+                  <ActionIcon
+                    icon={RefreshCwIcon}
+                    loading={isValidating}
+                    size={'small'}
+                    title={t('devices.actions.refresh')}
+                    onClick={() => mutate()}
+                  />
+                </Flexbox>
               </Flexbox>
+            )}
+            <Flexbox className={styles.listScroll} gap={2} padding={4}>
+              {devices.map((device) => (
+                <DeviceItem
+                  device={device}
+                  isCurrent={isCurrent(device.deviceId)}
+                  key={device.deviceId}
+                  selected={device.deviceId === selectedId}
+                  onSelect={() =>
+                    setSelectedId((prev) =>
+                      prev === device.deviceId ? undefined : device.deviceId,
+                    )
+                  }
+                />
+              ))}
+            </Flexbox>
+          </Flexbox>
+          {selected && (
+            <Flexbox className={styles.detailCol} flex={1}>
+              {/* keyed on deviceId so the form state resets when the selection changes */}
+              <DeviceDetailPanel
+                device={selected}
+                isCurrent={isCurrent(selected.deviceId)}
+                key={selected.deviceId}
+                onClose={() => setSelectedId(undefined)}
+              />
             </Flexbox>
           )}
-          <Flexbox className={styles.listScroll} gap={2} padding={4}>
-            {devices.map((device) => (
-              <DeviceItem
-                device={device}
-                isCurrent={isCurrent(device.deviceId)}
-                key={device.deviceId}
-                selected={device.deviceId === selectedId}
-                onSelect={() =>
-                  setSelectedId((prev) => (prev === device.deviceId ? undefined : device.deviceId))
-                }
-              />
-            ))}
-          </Flexbox>
         </Flexbox>
-        {selected && (
-          <Flexbox className={styles.detailCol} flex={1}>
-            {/* keyed on deviceId so the form state resets when the selection changes */}
-            <DeviceDetailPanel
-              device={selected}
-              isCurrent={isCurrent(selected.deviceId)}
-              key={selected.deviceId}
-              onClose={() => setSelectedId(undefined)}
-            />
-          </Flexbox>
-        )}
-      </Flexbox>
-    </AsyncBoundary>
-  );
-});
+      </AsyncBoundary>
+    );
+  },
+);
 
 DeviceManager.displayName = 'DeviceManager';
 

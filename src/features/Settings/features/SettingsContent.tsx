@@ -153,12 +153,7 @@ const SettingsContent = ({ mobile, activeTab }: SettingsContentProps) => {
   }
 
   return (
-    <Flexbox
-      data-settings-content="deepseek"
-      flex={1}
-      height={'100%'}
-      style={{ minHeight: 0, minWidth: 0, overflow: 'hidden' }}
-    >
+    <Flexbox data-settings-content="deepseek" style={{ minWidth: 0 }}>
       {Object.keys(componentMap).map((tabKey) => {
         if (resolvedTab !== tabKey) return null;
         const content = renderComponent(tabKey);

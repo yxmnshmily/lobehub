@@ -839,7 +839,10 @@ describe('ServiceOperations', () => {
   it('keeps long account content in a keyboard-accessible scroll region', () => {
     render(<ServiceOperations />);
     const content = screen.getByRole('region', { name: '账户管理内容' });
-    expect(content).toHaveStyle({ minHeight: '0', overflow: 'auto' });
+    /* 网站式滚动（2026-09-17）：本节点不再自带 overflow:auto，纵向滚动由
+       Settings/Layout 外壳承担；这里只断言区域可键盘聚焦。 */
+    expect(content).not.toHaveStyle({ overflow: 'auto' });
+    expect(content).toHaveAttribute('tabindex', '0');
     content.focus();
     expect(content).toHaveFocus();
   });

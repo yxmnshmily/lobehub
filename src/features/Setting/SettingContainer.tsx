@@ -12,26 +12,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
      内容区各 16px）归零——无论嵌套多少层，内容到边缘就是 10px。
      标题条用行内 justify: space-between 定位；内容区 = 标题条的相邻兄弟。 */
   container: css`
-    scrollbar-color: ${cssVar.colorFillSecondary} transparent;
-
-    /* 滚动条可见化：macOS 默认 overlay 滚动条只在滚动时闪现，看起来像"没有
-       滚动条"。固定为细条（不随内容变化消失），颜色跟随主题。
-       注意不能用 scrollbar-gutter: stable both-edges——它会在左右各预留
-       ~8px 槽位，叠在 10px 内边距上，视觉边距变成 ~18px（用户实测）。 */
-    scrollbar-width: thin;
-
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      border-radius: 4px;
-      background: ${cssVar.colorFillSecondary};
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
+    /* 容器不再承担滚动（网站式滚动已上移到 Settings/Layout 外壳），因此
+       这里没有滚动条，内边距天然对称：桌面 48px / <768px 四边 10px。
+       （此前的 thin 滚动条 + gutter 补偿方案随滚动上移一并移除。） */
 
     @media (width <= 767px) {
       padding-block: 10px !important;
@@ -72,15 +55,14 @@ const SettingContainer = memo<PropsWithChildren<SettingContainerProps>>(
       <Flexbox
         align={'center'}
         className={cx(styles.container, className)}
-        height={'100%'}
+        data-scroll-page=""
         width={'100%'}
         style={{
           background:
             variant === 'secondary' ? theme.colorBgContainerSecondary : cssVar.colorBgContainer,
-          /* 窄窗口下内容（如表单最小宽度、服务商卡片网格）超宽时允许横向滚动，
-             底部出现左右滚动条；桌面端内容不超宽时不会显示滚动条。 */
-          overflowX: 'auto',
-          overflowY: 'auto',
+          /* 高度随内容增长（滚动由外层 Settings/Layout 外壳承担），内容短时
+             仍撑满整卡保证背景完整。 */
+          minHeight: '100%',
           ...style,
         }}
         {...rest}

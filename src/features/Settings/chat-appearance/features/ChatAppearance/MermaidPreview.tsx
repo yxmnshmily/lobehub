@@ -19,8 +19,14 @@ const MermaidPreview = ({ theme }: { theme?: MermaidProps['theme'] }) => {
 
   return (
     <Center>
-      <Flexbox ref={previewRef} style={{ maxWidth: '100%', overflowX: 'auto' }} width={480}>
-        <Mermaid theme={theme}>{code}</Mermaid>
+      <Flexbox
+        ref={previewRef}
+        style={{ marginBlockStart: 20, maxWidth: '100%', overflowX: 'auto' }}
+        width={480}
+      >
+        <Mermaid theme={theme} variant="borderless">
+          {code}
+        </Mermaid>
       </Flexbox>
     </Center>
   );

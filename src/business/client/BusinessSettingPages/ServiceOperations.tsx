@@ -1,7 +1,7 @@
 'use client';
 
 import { Block, Flexbox, Input, TextArea } from '@lobehub/ui';
-import { Alert, Button, Select, Tabs, Tag, Text, toast } from '@lobehub/ui/base-ui';
+import { Alert, Button, Modal, Select, Tabs, Tag, Text, toast } from '@lobehub/ui/base-ui';
 import type { inferRouterOutputs } from '@trpc/server';
 import { createStaticStyles, cssVar } from 'antd-style';
 import {
@@ -134,21 +134,6 @@ const styles = createStaticStyles(({ css }) => ({
       min-height: 44px;
     }
 
-    /* 页内所有 Block 的内建填充清零（卡片 padding 14px 等），避免与 10px
-       总边距叠加。 */
-    & [style*='--lobe-flex-padding'] {
-      padding: 0 !important;
-    }
-
-    /* 页面级 10px 总边距（用户要求）：共享 SettingContainer 有 48px 页面内边距，
-       这里用 -48px 完全抵消，再自绘 10px——内容到卡片边缘恒为 10px。
-       （之前 -38px + 10px = 实际 20px，算术错误，834px 实测发现。） */
-    @media (width >= 768px) {
-      margin-block: -48px;
-      margin-inline: -48px;
-      padding: 10px;
-    }
-
     @media (width <= 767px) {
       h2 {
         font-size: 20px;
@@ -167,9 +152,9 @@ const styles = createStaticStyles(({ css }) => ({
   detail: css`
     min-width: 0;
 
-    /* 统一 10px 总边距口径：详情盒自身的填充清零（盒边框保留）。 */
+    /* 统一 10px 总边距口径：详情盒自身的填充清零。2026-09-18：边框整圈去掉，不再有上下左右边线。 */
     padding: 0;
-    border: 0.5px solid ${cssVar.colorBorderSecondary};
+    border: 0;
     border-radius: 12px;
 
     background: ${cssVar.colorBgContainer};
@@ -406,7 +391,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex-wrap: wrap;
     gap: 24px;
 
-    padding-block: 16px;
+    padding: 8px;
     border-block: 0.5px solid ${cssVar.colorBorderSecondary};
 
     > * {
@@ -806,7 +791,7 @@ const UserAdminAuditSection = ({
 }) => {
   const translateTravel = useTravelTranslation();
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block padding={0} variant={'borderless'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <FileClock size={18} />
@@ -916,7 +901,7 @@ const UserContentCatalogSection = ({
   ];
 
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block padding={0} variant={'borderless'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <FileClock size={18} />
@@ -1187,7 +1172,7 @@ const UserTravelGroupHealthSection = ({
       padding={20}
       role={'region'}
       style={{ maxWidth: '100%', minWidth: 0 }}
-      variant={'outlined'}
+      variant={'borderless'}
     >
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
@@ -1229,7 +1214,7 @@ const UserTravelGroupHealthSection = ({
                 gap={6}
                 padding={16}
                 style={{ minWidth: 0, overflowWrap: 'anywhere' }}
-                variant={'outlined'}
+                variant={'borderless'}
               >
                 <Flexbox horizontal align={'center'} gap={8}>
                   <ShieldAlert aria-hidden size={18} />
@@ -1265,7 +1250,7 @@ const UserTravelGroupHealthSection = ({
                 gap={6}
                 padding={16}
                 style={{ minWidth: 0, overflowWrap: 'anywhere' }}
-                variant={'outlined'}
+                variant={'borderless'}
               >
                 <Flexbox horizontal align={'center'} gap={8}>
                   <ListChecks aria-hidden size={18} />
@@ -1392,7 +1377,7 @@ const UserSessionOverviewSection = ({
   };
 
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block padding={0} style={{ width: '100%', minWidth: 0 }} variant={'borderless'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'} wrap={'wrap'}>
           <Flexbox horizontal align={'center'} gap={8}>
@@ -1834,14 +1819,14 @@ const ModerationSection = () => {
     <Block
       className={styles.auditPanel}
       data-testid="service-operations-audit-panel"
-      variant={'outlined'}
+      variant={'borderless'}
     >
       <Flexbox gap={16}>
         <Flexbox gap={6}>
           <Flexbox horizontal align={'center'} gap={8}>
             <ShieldAlert size={20} />
             <Text as={'h3'} weight={600}>
-              {translateTravel('敏感信息审计')}
+              {translateTravel('敏感信息')}
             </Text>
           </Flexbox>
           <Text color={'secondary'}>
@@ -1854,10 +1839,10 @@ const ModerationSection = () => {
         <Flexbox horizontal align={'end'} className={styles.filterRow} gap={10} wrap={'wrap'}>
           <Flexbox gap={6} style={{ flex: '1 1 240px' }}>
             <Text as={'label'} fontSize={12} weight={500}>
-              {translateTravel('审计用户 ID')}
+              {translateTravel('用户 ID')}
             </Text>
             <Input
-              aria-label={translateTravel('审计用户 ID')}
+              aria-label={translateTravel('用户 ID')}
               placeholder={translateTravel('留空查看全部用户')}
               value={userIdInput}
               onChange={(event) => setUserIdInput(event.currentTarget.value)}
@@ -1900,7 +1885,7 @@ const ModerationSection = () => {
               onChange={(value) => setVerdictInput(value as '' | ModerationRecord['verdict'])}
             />
           </Flexbox>
-          <Button onClick={applyFilters}>{translateTravel('应用审计筛选')}</Button>
+          <Button onClick={applyFilters}>{translateTravel('应用筛选')}</Button>
         </Flexbox>
 
         {recordsQuery.error ? (
@@ -1921,7 +1906,7 @@ const ModerationSection = () => {
                   justify={'space-between'}
                   wrap={'wrap'}
                 >
-                  <Flexbox gap={5} style={{ flex: '1 1 460px' }}>
+                  <Flexbox gap={5} style={{ flex: '1 1 460px', padding: 8 }}>
                     <Flexbox horizontal align={'center'} gap={8} wrap={'wrap'}>
                       <Text weight={600}>{moderationSourceLabel(record.sourceType)}</Text>
                       <Tag color={record.verdict === 'block' ? 'red' : 'gold'}>
@@ -1975,7 +1960,7 @@ const ModerationSection = () => {
                 setOffset(Math.max(0, offset - MODERATION_PAGE_SIZE));
               }}
             >
-              {translateTravel('审计上一页')}
+              {translateTravel('上一页')}
             </Button>
             <Button
               disabled={offset + records.length >= total}
@@ -1984,60 +1969,64 @@ const ModerationSection = () => {
                 setOffset(offset + MODERATION_PAGE_SIZE);
               }}
             >
-              {translateTravel('审计下一页')}
+              {translateTravel('下一页')}
             </Button>
           </Flexbox>
         </Flexbox>
 
-        {selectedRecordId && (
-          <Block padding={16} variant={'outlined'}>
-            <Flexbox gap={10}>
-              <Text weight={600}>{translateTravel('脱敏审计详情')}</Text>
-              {detailQuery.error ? (
-                <Alert title={translateTravel('审计详情暂时无法读取')} />
-              ) : detailQuery.isLoading || !detailQuery.data ? (
-                <Text color={'secondary'}>{translateTravel('正在读取脱敏预览…')}</Text>
-              ) : (
-                <>
-                  <Block padding={12} variant={'outlined'}>
-                    <Text>
-                      {detailQuery.data.redactedPreview || translateTravel('无可展示的脱敏预览')}
-                    </Text>
-                  </Block>
-                  <Text color={'secondary'}>
-                    {translateTravel('封禁建议只记录处置建议，不会直接封禁用户。')}
+        {/* 2026-09-18：详情从列表底部内嵌块改为居中弹窗显示（用户要求）。 */}
+        <Modal
+          footer={null}
+          open={Boolean(selectedRecordId)}
+          title={translateTravel('脱敏审计详情')}
+          width={520}
+          onCancel={() => setSelectedRecordId('')}
+        >
+          <Flexbox gap={10}>
+            {detailQuery.error ? (
+              <Alert title={translateTravel('审计详情暂时无法读取')} />
+            ) : detailQuery.isLoading || !detailQuery.data ? (
+              <Text color={'secondary'}>{translateTravel('正在读取脱敏预览…')}</Text>
+            ) : (
+              <>
+                <Block padding={12} variant={'outlined'}>
+                  <Text>
+                    {detailQuery.data.redactedPreview || translateTravel('无可展示的脱敏预览')}
                   </Text>
-                  {moderationError && <Alert title={moderationError} />}
-                  <Flexbox horizontal gap={8} wrap={'wrap'}>
-                    <Button
-                      disabled={isMutating}
-                      loading={activeDisposition === 'reviewed' || markReviewedMutation.isPending}
-                      onClick={() => setDisposition('reviewed')}
-                    >
-                      {translateTravel('标记已复核')}
-                    </Button>
-                    <Button
-                      disabled={isMutating}
-                      loading={activeDisposition === 'cleared' || clearMutation.isPending}
-                      onClick={() => setDisposition('cleared')}
-                    >
-                      {translateTravel('解除记录')}
-                    </Button>
-                    <Button
-                      disabled={isMutating}
-                      loading={
-                        activeDisposition === 'ban_recommended' || recommendBanMutation.isPending
-                      }
-                      onClick={() => setDisposition('ban_recommended')}
-                    >
-                      {translateTravel('提出封禁建议')}
-                    </Button>
-                  </Flexbox>
-                </>
-              )}
-            </Flexbox>
-          </Block>
-        )}
+                </Block>
+                <Text color={'secondary'}>
+                  {translateTravel('封禁建议只记录处置建议，不会直接封禁用户。')}
+                </Text>
+                {moderationError && <Alert title={moderationError} />}
+                <Flexbox horizontal gap={8} wrap={'wrap'}>
+                  <Button
+                    disabled={isMutating}
+                    loading={activeDisposition === 'reviewed' || markReviewedMutation.isPending}
+                    onClick={() => setDisposition('reviewed')}
+                  >
+                    {translateTravel('标记已复核')}
+                  </Button>
+                  <Button
+                    disabled={isMutating}
+                    loading={activeDisposition === 'cleared' || clearMutation.isPending}
+                    onClick={() => setDisposition('cleared')}
+                  >
+                    {translateTravel('解除记录')}
+                  </Button>
+                  <Button
+                    disabled={isMutating}
+                    loading={
+                      activeDisposition === 'ban_recommended' || recommendBanMutation.isPending
+                    }
+                    onClick={() => setDisposition('ban_recommended')}
+                  >
+                    {translateTravel('提出封禁建议')}
+                  </Button>
+                </Flexbox>
+              </>
+            )}
+          </Flexbox>
+        </Modal>
       </Flexbox>
     </Block>
   );
@@ -2173,7 +2162,7 @@ const UserAccountControls = ({
   );
 
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block padding={0} variant={'borderless'}>
       <Flexbox gap={14}>
         <Flexbox horizontal align={'center'} gap={8}>
           <UserRoundCog size={18} />
@@ -2368,7 +2357,7 @@ const UserBanControls = ({
   }
 
   return (
-    <Block padding={20} variant={'outlined'}>
+    <Block padding={0} variant={'borderless'}>
       <Flexbox gap={12}>
         <Flexbox horizontal align={'center'} gap={8}>
           <Ban size={18} />
@@ -2930,13 +2919,8 @@ const ServiceOperations = () => {
       gap={24}
       tabIndex={0}
       role="region"
-      /* Account management uses its own editable spacing; the moderation
-         view already sits inside the content pane's own padding. */
-      style={{
-        flex: 1,
-        minHeight: 0,
-        overflow: 'auto',
-      }}
+      /* 高度随内容增长，纵向滚动由 Settings/Layout 外壳承担（网站式滚动，
+         滚动条在页面最右缘）；本节点不再产生卡片内滚动条。 */
     >
       {/* 标题与说明已按要求移除，只保留“返回客户列表”这个功能入口 */}
       {!isContentModerationRoute && workspace === 'customers' && showDetails && selectedUser && (
@@ -3380,7 +3364,7 @@ const ServiceOperations = () => {
 
               {customerDetailTab === 'credits' && (
                 <Flexbox gap={16} role={'tabpanel'}>
-                  <Block padding={20} variant={'outlined'}>
+                  <Block padding={0} variant={'borderless'}>
                     <Flexbox gap={16}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <WalletCards aria-hidden size={18} />
@@ -3487,7 +3471,7 @@ const ServiceOperations = () => {
                     </Flexbox>
                   </Block>
 
-                  <Block padding={20} variant={'outlined'}>
+                  <Block padding={0} variant={'borderless'}>
                     <Flexbox gap={12}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <ShieldAlert aria-hidden size={18} />
@@ -3573,7 +3557,7 @@ const ServiceOperations = () => {
                     </Flexbox>
                   </Block>
 
-                  <Block padding={20} variant={'outlined'}>
+                  <Block padding={0} variant={'borderless'}>
                     <Flexbox gap={12}>
                       <Flexbox horizontal align={'center'} gap={8}>
                         <FileClock size={18} />

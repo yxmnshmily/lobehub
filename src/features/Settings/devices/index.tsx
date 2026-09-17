@@ -2,12 +2,20 @@
 
 import { Flexbox, Form, Icon } from '@lobehub/ui';
 import { ActionIcon, Button, Text } from '@lobehub/ui/base-ui';
+import { createStaticStyles } from 'antd-style';
 import { MonitorUpIcon, RefreshCwIcon } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FORM_STYLE } from '@/const/layoutTokens';
 import { DeviceConnectModal, DeviceManager, useDeviceList } from '@/features/DeviceManager';
+
+/* 标题栏外框与下方内容的间距（2026-09-18） */
+const styles = createStaticStyles(({ css }) => ({
+  collapse: css`
+    margin-block-end: 20px;
+  `,
+}));
 
 const Page = memo(() => {
   const { t } = useTranslation('setting');
@@ -25,14 +33,14 @@ const Page = memo(() => {
   const devices = (data ?? []).filter((device) => device.scope === 'personal');
 
   return (
-    <>
+    <div className={styles.collapse}>
       <Form
         collapsible={false}
         itemsType={'group'}
         variant={'borderless'}
         items={[
           {
-            children: <DeviceManager scope={'personal'} onConnect={handleConnect} />,
+            children: <DeviceManager hideListHeader scope={'personal'} onConnect={handleConnect} />,
             extra: (
               <Flexbox horizontal align={'center'} gap={8}>
                 {devices.length > 0 && (
@@ -68,7 +76,7 @@ const Page = memo(() => {
         scope={'personal'}
         onClose={() => setOpen(false)}
       />
-    </>
+    </div>
   );
 });
 

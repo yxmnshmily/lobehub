@@ -34,8 +34,10 @@ const Layout = memo(({ children, mobile }: ProviderMenuProps) => {
         maxWidth: '100%',
         minWidth: mobile ? 0 : width,
         overflow: mobile ? undefined : 'scroll',
-        /* 24px page gutter on the left of the provider list. */
-        paddingInlineStart: mobile ? 0 : 24,
+        /* 24px page gutter on the left of the provider list; 移动端（<768px）
+           无外层容器，这里自给 10px，与设置页统一口径对齐。 */
+        paddingInlineStart: mobile ? 10 : 24,
+        paddingInlineEnd: mobile ? 10 : 0,
       }}
     >
       <Flexbox
