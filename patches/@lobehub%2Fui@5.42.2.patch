@@ -1278,3 +1278,32 @@ diff --git a/es/DraggablePanel/components/style.mjs b/es/DraggablePanel/componen
        font-weight: 500;
      `
  	};
+diff --git a/es/base-ui/Select/Select.mjs b/es/base-ui/Select/Select.mjs
+--- a/es/base-ui/Select/Select.mjs
++++ b/es/base-ui/Select/Select.mjs
+ import { cx, useThemeMode } from "antd-style";
+ import { Select } from "@base-ui/react/select";
+ //#region src/base-ui/Select/Select.tsx
+-const Select$1 = memo(({ allowClear, autoFocus, className, classNames, defaultOpen, defaultValue, disabled, id, labelRender, listHeight = 512, listItemHeight, loading, mode, name, onChange, onOpenChange, onSelect, open, optionRender, options, placeholder, popupClassName, popupMatchSelectWidth, prefix, readOnly, required, behaviorVariant = "default", selectedIndicatorVariant = "check", shadow, showSearch, size = "middle", style, suffixIcon, suffixIconProps, tokenSeparators, value, variant, virtual }) => {
++const Select$1 = memo(({ allowClear, autoFocus, className, classNames, defaultOpen, defaultValue, disabled, id, labelRender, listHeight = 512, listItemHeight, loading, mode, name, onChange, onOpenChange, onSelect, open, optionRender, options, placeholder, popupClassName, popupMatchSelectWidth, positionerProps, prefix, readOnly, required, behaviorVariant = "default", selectedIndicatorVariant = "check", shadow, showSearch, size = "middle", style, suffixIcon, suffixIconProps, tokenSeparators, value, variant, virtual }) => {
+ 	const { isDarkMode } = useThemeMode();
+ 	const resolvedVariant = variant ?? (isDarkMode ? "filled" : "outlined");
+ 	const isTags = mode === "tags";
+@@ -187,6 +187,7 @@
+ 				className: styles$1.positioner,
+ 				side: "bottom",
+ 				sideOffset: 6,
++				...positionerProps,
+ 				children: /* @__PURE__ */ jsxs(Select.Popup, {
+ 					style: popupStyle,
+ 					className: cx(styles.popup, styles$1.popup, popupClassName, classNames?.popup, classNames?.dropdown),
+diff --git a/es/base-ui/Select/type.d.mts b/es/base-ui/Select/type.d.mts
+--- a/es/base-ui/Select/type.d.mts
++++ b/es/base-ui/Select/type.d.mts
+   placeholder?: ReactNode;
+   popupClassName?: string;
+   popupMatchSelectWidth?: boolean | number;
++  positionerProps?: Record<string, any>;
+   prefix?: ReactNode | IconProps['icon'];
+   readOnly?: boolean;
+   required?: boolean;

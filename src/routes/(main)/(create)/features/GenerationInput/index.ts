@@ -1,3 +1,4 @@
+export { default as AutoScaleActions } from './AutoScaleActions';
 export { default as ConfigAction } from './ConfigAction';
 export { default as GenerationInvalidAPIKey } from './GenerationInvalidAPIKey';
 export { default as GenerationMediaModeSegment } from './GenerationMediaModeSegment';

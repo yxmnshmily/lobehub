@@ -17,12 +17,18 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 0 !important;
   `,
   detailPopup: css`
-    box-sizing: border-box;
-    width: min(400px, ${MOBILE_MODEL_DETAIL_WIDTH});
-    min-width: 0;
-    max-width: ${MOBILE_MODEL_DETAIL_WIDTH};
     user-select: none;
+
     overscroll-behavior: contain;
+
+    box-sizing: border-box;
+
+    /* 宽度自适应内容（2026-09-18 用户要求）：不再固定 400px——价格行
+       （如 ¥42.00 ~ ¥77.00/百万 Token）一长就被裁掉。fit-content 跟随
+       内容伸缩，上限仍受视口宽度保护。 */
+    width: fit-content;
+    min-width: min(320px, ${MOBILE_MODEL_DETAIL_WIDTH});
+    max-width: ${MOBILE_MODEL_DETAIL_WIDTH};
   `,
   dropdownMenu: css`
     user-select: none;

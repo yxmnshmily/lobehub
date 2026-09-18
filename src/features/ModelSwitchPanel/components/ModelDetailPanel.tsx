@@ -32,6 +32,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-block-end: 8px;
   `,
   description: css`
+    /* 限制描述列宽：弹层宽度现在是 fit-content 自适应（见 styles.ts
+       detailPopup），不限制的话长描述会把弹层一路撑到视口宽 */
+    width: min(440px, 100%);
     margin: 0;
     padding-block: 8px;
     padding-inline: 8px;

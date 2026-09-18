@@ -174,6 +174,11 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
         value={mode}
         variant={'borderless'}
         onChange={handleChange}
+        /* 弹层固定向下展开：默认行为在窗口矮时会整个翻转到上方，用户要求
+           始终在下方——side:'none' 关闭翻转，弹层贴触发器下方 6px，
+           空间不足时仅轻微上移（需要 @lobehub/ui 补丁透传 positionerProps，
+           见 patches/@lobehub%2Fui@5.42.2.patch）。 */
+        positionerProps={{ collisionAvoidance: { side: 'none' } }}
       />
     );
   },

@@ -18,6 +18,7 @@ import { useIsDark } from '@/hooks/useIsDark';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryState } from '@/hooks/useQueryParam';
 import {
+  AutoScaleActions,
   ConfigAction,
   GenerationMediaModeSegment,
   GenerationModelNotice,
@@ -305,101 +306,103 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
           ) : undefined
         }
         leftActions={
-          <Flexbox
-            horizontal
-            align={'center'}
-            gap={4}
-            style={canCreate ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
-          >
-            <GenerationMediaModeSegment mode={'image'} />
-            <ModelSwitchPanel
-              ModelItemComponent={ImageModelItem}
-              enabledList={enabledImageModelList}
-              model={currentModel ?? undefined}
-              openOnHover={false}
-              placement="topLeft"
-              pricingMode="image"
-              provider={currentProvider ?? undefined}
-              onModelChange={async ({ model, provider }) => {
-                if (!canCreate) return;
-
-                setModelAndProviderOnSelect(model, provider);
-              }}
+          <AutoScaleActions>
+            <Flexbox
+              horizontal
+              align={'center'}
+              gap={4}
+              style={canCreate ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
             >
-              <ActionIcon
-                aria-label={currentModel ?? t('config.model.label')}
-                icon={<ModelIcon model={currentModel ?? ''} size={22} />}
-                size={{
-                  blockSize: mobile ? 44 : 36,
-                  size: 20,
+              <GenerationMediaModeSegment mode={'image'} />
+              <ModelSwitchPanel
+                ModelItemComponent={ImageModelItem}
+                enabledList={enabledImageModelList}
+                model={currentModel ?? undefined}
+                openOnHover={false}
+                placement="topLeft"
+                pricingMode="image"
+                provider={currentProvider ?? undefined}
+                onModelChange={async ({ model, provider }) => {
+                  if (!canCreate) return;
+
+                  setModelAndProviderOnSelect(model, provider);
+                }}
+              >
+                <ActionIcon
+                  aria-label={currentModel ?? t('config.model.label')}
+                  icon={<ModelIcon model={currentModel ?? ''} size={22} />}
+                  size={{
+                    blockSize: mobile ? 44 : 36,
+                    size: 20,
+                  }}
+                />
+              </ModelSwitchPanel>
+              <ConfigAction
+                title={t('config.title', { defaultValue: 'Config' })}
+                content={
+                  <Flexbox gap={12}>
+                    {isSupportQuality && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.quality.label')}</Text>
+                        <QualitySelect />
+                      </Flexbox>
+                    )}
+                    {isSupportResolution && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.resolution.label')}</Text>
+                        <ResolutionSelect />
+                      </Flexbox>
+                    )}
+                    {isSupportSize && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.size.label')}</Text>
+                        <SizeSelect />
+                      </Flexbox>
+                    )}
+                    {showDimensionControl && <DimensionControlGroup />}
+                    {isSupportSteps && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.steps.label')}</Text>
+                        <StepsSliderInput />
+                      </Flexbox>
+                    )}
+                    {isSupportCfg && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.cfg.label')}</Text>
+                        <CfgSliderInput />
+                      </Flexbox>
+                    )}
+                    {isSupportSeed && (
+                      <Flexbox gap={6}>
+                        <Text fontSize={12}>{t('config.seed.label')}</Text>
+                        <SeedNumberInput />
+                      </Flexbox>
+                    )}
+                    {(isSupportWatermark || isSupportPromptExtend || isSupportWebSearch) && (
+                      <Divider style={{ marginBlock: 4 }} />
+                    )}
+                    {isSupportWatermark && (
+                      <SwitchItem label={t('config.watermark.label')} paramName={'watermark'} />
+                    )}
+                    {isSupportPromptExtend && <PromptExtendItem />}
+                    {isSupportWebSearch && (
+                      <SwitchItem label={t('config.webSearch.label')} paramName={'webSearch'} />
+                    )}
+                  </Flexbox>
+                }
+              />
+              <Action
+                icon={Images}
+                title={t('config.imageNum.label')}
+                trigger={'click'}
+                popover={{
+                  content: <ImageNum />,
+                  minWidth: 220,
+                  title: t('config.imageNum.label'),
                 }}
               />
-            </ModelSwitchPanel>
-            <ConfigAction
-              title={t('config.title', { defaultValue: 'Config' })}
-              content={
-                <Flexbox gap={12}>
-                  {isSupportQuality && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.quality.label')}</Text>
-                      <QualitySelect />
-                    </Flexbox>
-                  )}
-                  {isSupportResolution && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.resolution.label')}</Text>
-                      <ResolutionSelect />
-                    </Flexbox>
-                  )}
-                  {isSupportSize && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.size.label')}</Text>
-                      <SizeSelect />
-                    </Flexbox>
-                  )}
-                  {showDimensionControl && <DimensionControlGroup />}
-                  {isSupportSteps && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.steps.label')}</Text>
-                      <StepsSliderInput />
-                    </Flexbox>
-                  )}
-                  {isSupportCfg && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.cfg.label')}</Text>
-                      <CfgSliderInput />
-                    </Flexbox>
-                  )}
-                  {isSupportSeed && (
-                    <Flexbox gap={6}>
-                      <Text fontSize={12}>{t('config.seed.label')}</Text>
-                      <SeedNumberInput />
-                    </Flexbox>
-                  )}
-                  {(isSupportWatermark || isSupportPromptExtend || isSupportWebSearch) && (
-                    <Divider style={{ marginBlock: 4 }} />
-                  )}
-                  {isSupportWatermark && (
-                    <SwitchItem label={t('config.watermark.label')} paramName={'watermark'} />
-                  )}
-                  {isSupportPromptExtend && <PromptExtendItem />}
-                  {isSupportWebSearch && (
-                    <SwitchItem label={t('config.webSearch.label')} paramName={'webSearch'} />
-                  )}
-                </Flexbox>
-              }
-            />
-            <Action
-              icon={Images}
-              title={t('config.imageNum.label')}
-              trigger={'click'}
-              popover={{
-                content: <ImageNum />,
-                minWidth: 220,
-                title: t('config.imageNum.label'),
-              }}
-            />
-          </Flexbox>
+            </Flexbox>
+          </AutoScaleActions>
         }
         placeholder={
           hasRefImages ? t('config.prompt.placeholderWithRef') : t('config.prompt.placeholder')

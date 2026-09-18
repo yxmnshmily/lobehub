@@ -19,6 +19,7 @@ import { useIsDark } from '@/hooks/useIsDark';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryState } from '@/hooks/useQueryParam';
 import {
+  AutoScaleActions,
   ConfigAction,
   GenerationMediaModeSegment,
   GenerationModelNotice,
@@ -548,103 +549,108 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
             ) : undefined
           }
           leftActions={
-            <Flexbox
-              horizontal
-              align={'center'}
-              gap={4}
-              style={canCreate ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
-            >
-              <GenerationMediaModeSegment mode={'video'} />
-              <ModelSwitchPanel
-                ModelItemComponent={VideoModelItem}
-                enabledList={enabledVideoModelList}
-                model={currentModel ?? undefined}
-                openOnHover={false}
-                placement="topLeft"
-                pricingMode="video"
-                provider={currentProvider ?? undefined}
-                onModelChange={async ({ model, provider }) => {
-                  if (!canCreate) return;
-
-                  setModelAndProviderOnSelect(model, provider);
-                }}
+            <AutoScaleActions>
+              <Flexbox
+                horizontal
+                align={'center'}
+                gap={4}
+                style={canCreate ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
               >
-                <ActionIcon
-                  aria-label={currentModel ?? t('config.model.label')}
-                  icon={<ModelIcon model={currentModel ?? ''} size={22} />}
-                  size={{
-                    blockSize: mobile ? 44 : 36,
-                    size: 20,
+                <GenerationMediaModeSegment mode={'video'} />
+                <ModelSwitchPanel
+                  ModelItemComponent={VideoModelItem}
+                  enabledList={enabledVideoModelList}
+                  model={currentModel ?? undefined}
+                  openOnHover={false}
+                  placement="topLeft"
+                  pricingMode="video"
+                  provider={currentProvider ?? undefined}
+                  onModelChange={async ({ model, provider }) => {
+                    if (!canCreate) return;
+
+                    setModelAndProviderOnSelect(model, provider);
                   }}
+                >
+                  <ActionIcon
+                    aria-label={currentModel ?? t('config.model.label')}
+                    icon={<ModelIcon model={currentModel ?? ''} size={22} />}
+                    size={{
+                      blockSize: mobile ? 44 : 36,
+                      size: 20,
+                    }}
+                  />
+                </ModelSwitchPanel>
+                <ConfigAction
+                  title={t('setting', { ns: 'common' })}
+                  content={
+                    <Flexbox gap={12}>
+                      {isSupportAspectRatio && (
+                        <Flexbox gap={6}>
+                          <Text fontSize={12}>{t('config.aspectRatio.label')}</Text>
+                          <AspectRatioItem />
+                        </Flexbox>
+                      )}
+                      {isSupportResolution && (
+                        <Flexbox gap={6}>
+                          <Text fontSize={12}>{t('config.resolution.label')}</Text>
+                          <ResolutionItem />
+                        </Flexbox>
+                      )}
+                      {isSupportSize && (
+                        <Flexbox gap={6}>
+                          <Text fontSize={12}>{t('config.size.label')}</Text>
+                          <SizeItem />
+                        </Flexbox>
+                      )}
+                      {isSupportSeed && (
+                        <Flexbox gap={6}>
+                          <Text fontSize={12}>{t('config.seed.label')}</Text>
+                          <SeedItem />
+                        </Flexbox>
+                      )}
+                      {(isSupportGenerateAudio ||
+                        isSupportCameraFixed ||
+                        isSupportWatermark ||
+                        isSupportPromptExtend ||
+                        isSupportWebSearch) && <Divider style={{ marginBlock: 4 }} />}
+                      {isSupportGenerateAudio && (
+                        <SwitchItem
+                          label={t('config.generateAudio.label')}
+                          paramName={'generateAudio'}
+                        />
+                      )}
+                      {isSupportCameraFixed && (
+                        <SwitchItem
+                          label={t('config.cameraFixed.label')}
+                          paramName={'cameraFixed'}
+                        />
+                      )}
+                      {isSupportWatermark && (
+                        <SwitchItem label={t('config.watermark.label')} paramName={'watermark'} />
+                      )}
+                      {isSupportPromptExtend && <PromptExtendItem />}
+                      {isSupportWebSearch && (
+                        <SwitchItem label={t('config.webSearch.label')} paramName={'webSearch'} />
+                      )}
+                    </Flexbox>
+                  }
                 />
-              </ModelSwitchPanel>
-              <ConfigAction
-                title={t('setting', { ns: 'common' })}
-                content={
-                  <Flexbox gap={12}>
-                    {isSupportAspectRatio && (
-                      <Flexbox gap={6}>
-                        <Text fontSize={12}>{t('config.aspectRatio.label')}</Text>
-                        <AspectRatioItem />
-                      </Flexbox>
-                    )}
-                    {isSupportResolution && (
-                      <Flexbox gap={6}>
-                        <Text fontSize={12}>{t('config.resolution.label')}</Text>
-                        <ResolutionItem />
-                      </Flexbox>
-                    )}
-                    {isSupportSize && (
-                      <Flexbox gap={6}>
-                        <Text fontSize={12}>{t('config.size.label')}</Text>
-                        <SizeItem />
-                      </Flexbox>
-                    )}
-                    {isSupportSeed && (
-                      <Flexbox gap={6}>
-                        <Text fontSize={12}>{t('config.seed.label')}</Text>
-                        <SeedItem />
-                      </Flexbox>
-                    )}
-                    {(isSupportGenerateAudio ||
-                      isSupportCameraFixed ||
-                      isSupportWatermark ||
-                      isSupportPromptExtend ||
-                      isSupportWebSearch) && <Divider style={{ marginBlock: 4 }} />}
-                    {isSupportGenerateAudio && (
-                      <SwitchItem
-                        label={t('config.generateAudio.label')}
-                        paramName={'generateAudio'}
-                      />
-                    )}
-                    {isSupportCameraFixed && (
-                      <SwitchItem label={t('config.cameraFixed.label')} paramName={'cameraFixed'} />
-                    )}
-                    {isSupportWatermark && (
-                      <SwitchItem label={t('config.watermark.label')} paramName={'watermark'} />
-                    )}
-                    {isSupportPromptExtend && <PromptExtendItem />}
-                    {isSupportWebSearch && (
-                      <SwitchItem label={t('config.webSearch.label')} paramName={'webSearch'} />
-                    )}
-                  </Flexbox>
-                }
-              />
-              {isSupportDuration && (
-                <Action
-                  icon={Clock3}
-                  trigger={'click'}
-                  popover={{
-                    content: <DurationItem />,
-                    minWidth: 220,
-                    title: t('config.duration.label'),
-                  }}
-                  title={[t('config.duration.label'), duration ? `${duration}s` : '']
-                    .filter(Boolean)
-                    .join(' ')}
-                />
-              )}
-            </Flexbox>
+                {isSupportDuration && (
+                  <Action
+                    icon={Clock3}
+                    trigger={'click'}
+                    popover={{
+                      content: <DurationItem />,
+                      minWidth: 220,
+                      title: t('config.duration.label'),
+                    }}
+                    title={[t('config.duration.label'), duration ? `${duration}s` : '']
+                      .filter(Boolean)
+                      .join(' ')}
+                  />
+                )}
+              </Flexbox>
+            </AutoScaleActions>
           }
           placeholder={
             hasRefImages ? t('config.prompt.placeholderWithRef') : t('config.prompt.placeholder')
