@@ -3,7 +3,7 @@
 import { Flexbox, Icon, Popover } from '@lobehub/ui';
 import { ActionIcon, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight, MessageSquareText, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { useConversationStore, useConversationStoreApi } from '@/features/Conversation/store';
@@ -13,63 +13,52 @@ import { travelPromptBlocks } from './prompts';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   banner: css`
-    padding-block: 8px;
+    padding-block: 48px 8px;
   `,
-  /* 2026-09-18 用户定稿：6 个大块（3 列 grid，窄屏 2 列），每块 = 图标 + 标题 + 一句说明。 */
+  label: css`
+    display: inline-flex;
+    flex: none;
+    gap: 6px;
+    align-items: center;
+
+    padding-inline-end: 4px;
+
+    font-size: ${cssVar.fontSizeSM};
+    color: ${cssVar.colorTextSecondary};
+    white-space: nowrap;
+  `,
   root: css`
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    scrollbar-width: thin;
+
+    overflow-x: auto;
+    display: flex;
+    gap: 4px;
+    align-items: center;
 
     width: 100%;
     min-width: 0;
-
-    @media (width <= 480px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   `,
-  block: css`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-start;
+  category: css`
+    flex: none;
 
-    min-width: 0;
-    min-height: 68px;
-    padding-block: 10px;
-    padding-inline: 12px;
-    border: 0.5px solid ${cssVar.colorBorderSecondary};
-    border-radius: 12px;
+    min-height: 32px;
+    padding-inline: 8px;
+    border: 0;
+    border-radius: 8px;
 
-    text-align: start;
-
-    background: ${cssVar.colorBgContainer};
+    font-size: ${cssVar.fontSizeSM};
+    font-weight: 400;
+    color: ${cssVar.colorTextSecondary};
 
     &&,
-    &&:hover {
-      font-weight: 500;
-      color: ${cssVar.colorText};
+    &&:hover,
+    &&[aria-expanded='true'] {
+      color: ${cssVar.colorTextSecondary};
     }
 
     @media (pointer: coarse) {
-      min-height: 60px;
+      min-height: 44px;
     }
-  `,
-  blockTitle: css`
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-    font-size: ${cssVar.fontSizeSM};
-  `,
-  blockDesc: css`
-    overflow: hidden;
-
-    max-width: 100%;
-
-    font-size: 12px;
-    color: ${cssVar.colorTextTertiary};
-    text-overflow: ellipsis;
-    white-space: nowrap;
   `,
   panel: css`
     box-sizing: border-box;
@@ -97,24 +86,40 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow-y: auto;
     overscroll-behavior: contain;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
 
-    max-height: min(320px, 40dvh);
+    max-height: min(240px, 30dvh);
+
+    @media (width <= 480px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
   `,
   prompt: css`
     position: relative;
 
+    justify-content: space-between;
+
     width: 100%;
     min-width: 0;
     height: auto;
+    min-height: 44px;
     padding-block: 10px;
     padding-inline: 8px;
+    border: 0;
+    border-radius: 8px;
 
     text-align: start;
     white-space: normal;
 
-    &::before {
+    &&,
+    &&:hover {
+      font-weight: 400;
+      color: ${cssVar.colorTextSecondary};
+    }
+
+    &:nth-child(n + 3)::before {
       pointer-events: none;
       content: '';
 
@@ -125,20 +130,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
-    &&,
-    &&:hover {
-      font-weight: 400;
-      color: ${cssVar.colorTextSecondary};
-    }
+    @media (width <= 480px) {
+      &:nth-child(2)::before {
+        pointer-events: none;
+        content: '';
 
-    &:first-child::before {
-      display: none;
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 8px;
+
+        border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+      }
     }
-  `,
-  promptText: css`
-    flex: 1;
-    min-width: 0;
-    margin-inline-end: 8px;
   `,
   hint: css`
     overflow: hidden;
@@ -153,12 +156,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-export default function TravelPromptShortcuts() {
-  const blocks = travelPromptBlocks;
+export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?: string } = {}) {
+  /* 2026-09-18 用户定稿：6 个组恢复原来的一排小按钮形态（横排、窄屏横向滚动不换行）；
+     内容为固定的 6 大块（旅游文案 / 图文笔记 / 海报设计 / 详情页设计 / 直播间贴片 / 账号分析）。 */
+  const triggers = travelPromptBlocks.map((block) => ({
+    title: block.title,
+    icon: block.icon,
+    prompts: block.prompts,
+  }));
   const [active, setActive] = useState<number | null>(null);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const categoryButtons = useRef<Array<HTMLButtonElement | null>>([]);
+  const categoryButtons = useRef<Array<HTMLButtonElement | HTMLAnchorElement | null>>([]);
   const fillInputMessage = useConversationStore((s) => s.fillInputMessage);
   const store = useConversationStoreApi();
   const previewRef = useRef<string | null>(null);
@@ -211,7 +220,7 @@ export default function TravelPromptShortcuts() {
     },
     [store],
   );
-  const block = active === null ? undefined : blocks[active];
+  const category = active === null ? undefined : triggers[active];
 
   const close = () => {
     restorePreview();
@@ -219,9 +228,9 @@ export default function TravelPromptShortcuts() {
     setActive(null);
   };
 
-  const panel = block && (
+  const panel = category && (
     <Flexbox
-      aria-label={`${block.title}提示词`}
+      aria-label={`${category.title}提示词`}
       className={styles.panel}
       id={panelId}
       ref={panelRef}
@@ -232,8 +241,8 @@ export default function TravelPromptShortcuts() {
     >
       <Flexbox horizontal align={'center'} className={styles.header}>
         <Flexbox horizontal align={'center'} className={styles.title} gap={8}>
-          <Icon icon={block.icon} size={16} />
-          <span>{block.title}</span>
+          <Icon icon={category.icon} size={16} />
+          <span>{category.title}</span>
         </Flexbox>
         <span className={styles.hint} title="鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。">
           鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。
@@ -245,8 +254,8 @@ export default function TravelPromptShortcuts() {
           onClick={close}
         />
       </Flexbox>
-      <div className={styles.list} key={block.title}>
-        {block.prompts.map((prompt) => (
+      <div className={styles.list} key={category.title}>
+        {category.prompts.map((prompt) => (
           <Button
             className={styles.prompt}
             key={prompt}
@@ -270,13 +279,15 @@ export default function TravelPromptShortcuts() {
               state.updateInputMessage(prompt);
             }}
           >
-            <span className={styles.promptText}>{prompt}</span>
+            <span>{prompt}</span>
             <Icon icon={ChevronRight} size={16} />
           </Button>
         ))}
       </div>
     </Flexbox>
   );
+
+  if (triggers.length === 0) return null;
 
   return (
     <InputBanner className={styles.banner} testId="travel-prompt-banner">
@@ -286,11 +297,15 @@ export default function TravelPromptShortcuts() {
           if (event.key === 'Escape') close();
         }}
       >
-        {blocks.map((item, index) => (
+        <span className={styles.label}>
+          <Icon icon={MessageSquareText} size={16} />
+          快速提示词：
+        </span>
+        {triggers.map((item, index) => (
           <Popover
             nativeButton
             content={active === index ? panel : <span />}
-            key={item.slug}
+            key={item.title}
             open={active === index}
             placement="topLeft"
             trigger="click"
@@ -310,14 +325,14 @@ export default function TravelPromptShortcuts() {
             <Button
               aria-controls={active === index ? panelId : undefined}
               aria-expanded={active === index}
-              className={styles.block}
-              icon={<Icon icon={item.icon} size={18} />}
+              className={styles.category}
+              icon={<Icon icon={item.icon} size={16} />}
+              type={active === index ? 'default' : 'text'}
               ref={(node) => {
                 categoryButtons.current[index] = node;
               }}
             >
-              <span className={styles.blockTitle}>{item.title}</span>
-              <span className={styles.blockDesc}>{item.desc}</span>
+              {item.title}
             </Button>
           </Popover>
         ))}
