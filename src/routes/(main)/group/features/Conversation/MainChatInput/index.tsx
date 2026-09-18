@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { withLobeHubMountPath } from '@/features/Auth/utils/mountedPath';
 import { type ActionKeys } from '@/features/ChatInput';
 import { ChatInput, type ChatInputProps } from '@/features/Conversation';
+import TravelPromptShortcuts from '@/features/TravelPromptShortcuts';
 import { useSession } from '@/libs/better-auth/auth-client';
 import { lambdaQuery } from '@/libs/trpc/client';
 import { useAgentGroupStore } from '@/store/agentGroup';
@@ -89,6 +90,9 @@ const HostedTravelGroupChatInput = memo<
       disableQueue
       children={children}
       createBillingForSend={createBillingForSend}
+      /* 2026-09-18：补回一排提示词——群组首页编辑器（WorkGroupHome）一直有
+         TravelPromptShortcuts，但会话页输入框从没挂过；用户口径是会话页同款。 */
+      inputBanner={<TravelPromptShortcuts />}
       leftActions={leftActions}
       mentionItems={mentionItems}
       rightActions={rightActions}

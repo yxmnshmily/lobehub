@@ -1,8 +1,10 @@
 'use client';
 
-import { createGlobalStyle, createStaticStyles } from 'antd-style';
+import { createGlobalStyle, createStaticStyles, cx } from 'antd-style';
 import { useTheme } from 'next-themes';
 import { type FC, type PropsWithChildren, useEffect, useState } from 'react';
+
+import { useServerConfigStore } from '@/store/serverConfig';
 
 declare global {
   interface Window {
@@ -26,6 +28,11 @@ const styles = createStaticStyles(({ css }) => ({
     /* Share the header's symmetric gutters, including when the sidebar is collapsed. */
     padding-inline: var(--site-shell-gutter, 16px);
 
+    /* 2026-09-18：手机端去掉左右边距（用户要求，仅移动端；桌面保持留白）。 */
+    @media (width <= 767px) {
+      padding-inline: 0;
+    }
+
     @media (width >= 1280px) {
       padding-block-start: 80px;
     }
@@ -41,6 +48,13 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const DialogBounds = createGlobalStyle`
+  /* 页面主体宽度锁定：外部注入的内联宽度（如浏览器缓存的 CSS 修改器脚本
+     写入 #main-content 的固定 440px）不能挤压布局——主体自适应铺满。 */
+  #main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   body:has([data-site-shell-header]) {
     --site-dialog-top: 84px;
     --site-dialog-height: calc(100dvh - var(--site-dialog-top) - 16px);
@@ -187,12 +201,21 @@ export const TravelSiteShell: FC<PropsWithChildren> = ({ children }) => {
   // Keep this frame free of a second site header even after the original Home
   // composer navigates to its conversation. Do not interrupt the active send.
   const [embedded] = useState(() => /\/embed\/home\/?$/.test(window.location.pathname));
+  /* 手机端按服务端设备变体（User-Agent）判定，而非视口宽度——窄窗口的桌面
+     浏览器要保持桌面留白（2026-09-18）。 */
+  const [mobileVariant] = useState(() => Boolean(useServerConfigStore.getState().isMobile));
 
   return (
     <div className={styles.shell}>
       {!embedded && <DialogBounds />}
       {!embedded && <TravelSiteNavigationBridge />}
-      <main className={embedded ? styles.shell : styles.content} id="main-content">
+      <main
+        id="main-content"
+        className={cx(
+          embedded ? styles.shell : styles.content,
+          !embedded && mobileVariant && styles.contentMobile,
+        )}
+      >
         {children}
       </main>
     </div>

@@ -46,6 +46,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     min-height: 100dvh;
     max-height: 100dvh;
 
+    /* 手机端：整窗背景铺满与对话框一致的底色，避免侧边露出更深的
+       colorBgLayout 色带（用户要求：全页背景统一） */
+    @media (width <= 767px) {
+      background: ${cssVar.colorBgContainer};
+    }
+
     @media (device-width >= 576px) {
       overflow: hidden;
     }

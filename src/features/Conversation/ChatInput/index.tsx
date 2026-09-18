@@ -116,6 +116,11 @@ export interface ChatInputProps {
    */
   feature?: ChatInputFeature;
   /**
+   * Optional banner rendered inside the composer, above the editor
+   * (e.g. TravelPromptShortcuts on the group surfaces).
+   */
+  inputBanner?: ReactNode;
+  /**
    * Swap the action bar and send area for skeleton placeholders while
    * the underlying agent/session config is still hydrating. The editor
    * itself stays usable.
@@ -191,6 +196,7 @@ const ChatInput = memo<ChatInputProps>(
     isConfigLoading = false,
     mentionItems,
     controlBarSlot,
+    inputBanner,
     sendMenu,
     sendAreaPrefix,
     sendButtonProps: customSendButtonProps,
@@ -550,6 +556,7 @@ const ChatInput = memo<ChatInputProps>(
             compact={compact}
             controlBarSlot={controlBarSlot}
             hidden={hasPendingInterventions}
+            inputBanner={inputBanner}
             isConfigLoading={isConfigLoading}
             leftContent={leftContent}
             mobile={mobile}

@@ -25,10 +25,24 @@ export default function MobileSidebar({
         horizontal
         flex={1}
         height="100%"
-        style={{ minHeight: 0, minWidth: 0, overflow: 'hidden' }}
+        style={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}
         width="100%"
       >
-        {open && <CompactNavPanel>{sidebar ?? <GroupSidebarContent />}</CompactNavPanel>}
+        {/* 抽屉式悬浮侧栏：展开时覆盖在聊天上方，不再把内容挤窄 */}
+        {open && (
+          <div
+            style={{
+              display: 'flex',
+              insetBlock: 0,
+              insetInlineStart: 0,
+              position: 'absolute',
+              zIndex: 50,
+            }}
+            onClick={() => setOpen(false)}
+          >
+            <CompactNavPanel expanded>{sidebar ?? <GroupSidebarContent />}</CompactNavPanel>
+          </div>
+        )}
         {children}
       </Flexbox>
     </MobileSidebarContext>

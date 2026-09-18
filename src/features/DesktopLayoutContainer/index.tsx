@@ -7,6 +7,7 @@ import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 import { getInnerCssVariables, getOuterCssVariables } from './cssVariables';
 import { LayoutContainerContext } from './LayoutContainerContext';
@@ -65,12 +66,26 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [innerCssVariables]);
 
+  /* 群组页 2026-09-17 曾做过全屏无框（去边距去圆角），2026-09-18 按用户要求
+     恢复标准框：左侧留白、上下留白、圆角都保留，与其它页面一致。 */
+
+  /* 群组页：去掉外层附加的左侧留白（站点壳已有 16px 对称沟槽） */
+  const isGroup = activeNavKey === 'group';
+
+  /* 手机端按服务端设备变体（User-Agent）判定，而非视口宽度——窄窗口的
+     桌面浏览器要保持桌面框（2026-09-18）。 */
+  const mobileVariant = useServerConfigStore(serverConfigSelectors.isMobile);
+
   return (
     <Flexbox
-      className={styles.outerContainer}
       height={'100%'}
       style={outerCssVariables}
       width={'100%'}
+      className={cx(
+        styles.outerContainer,
+        isGroup && styles.outerContainerGroup,
+        mobileVariant && styles.outerContainerMobile,
+      )}
     >
       {pageScroll && <style dangerouslySetInnerHTML={{ __html: CONTENT_SCROLL_CSS }} />}
       <Flexbox
@@ -81,6 +96,7 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
         width={'100%'}
         className={cx(
           styles.innerContainer,
+          mobileVariant && styles.innerContainerMobile,
           /* 设置页：内层容器承担纵向滚动，滚动条为统一外观的原生条
              （样式见上方 CONTENT_SCROLL_CSS 注入）。其它页面保持原样。 */
           pageScroll && styles.innerContainerScroll,

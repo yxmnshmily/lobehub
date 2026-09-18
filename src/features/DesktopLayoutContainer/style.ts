@@ -21,6 +21,12 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgContainer};
   `,
 
+  /* 手机端：去边框线与圆角（按服务端设备变体条件应用，桌面不受影响）。 */
+  innerContainerMobile: css`
+    border: none;
+    border-radius: 0;
+  `,
+
   /* 网站式 overlay 滚动（仅设置页启用）：内层容器承担滚动，原生滚动条隐藏，
      悬浮滑块由组件渲染（见 index.tsx）——不占布局宽度，观感与 website 一致。 */
   innerContainerScroll: css`
@@ -45,5 +51,16 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline-start: var(--container-padding-left, 8px);
 
     background: ${isDesktop ? 'transparent' : cssVar.colorBgLayout};
+  `,
+
+  /* 手机端：去掉左侧留白（按服务端设备变体条件应用，桌面不受影响）。 */
+  outerContainerMobile: css`
+    padding-inline-start: 0;
+  `,
+
+  /* 群组页：去掉外层附加的左侧留白——站点壳已有 16px 对称沟槽，
+     不去掉会造成左 28px / 右 16px 的不对称（用户实测）。 */
+  outerContainerGroup: css`
+    padding-inline-start: 0;
   `,
 }));

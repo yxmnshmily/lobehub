@@ -16,6 +16,8 @@ const panelRender = vi.fn();
 
 let pathname = '/lobe-team/settings/general';
 let narrowViewport = false;
+/* 群组导航条在 <1200px 隐藏（xl 断点），测试通过该变量模拟宽/窄屏 */
+const xlViewport = true;
 const viewportListeners = new Set<() => void>();
 
 vi.mock('@/hooks/useIsMobile', () => ({
@@ -28,6 +30,15 @@ vi.mock('@/hooks/useIsMobile', () => ({
       () => narrowViewport,
     ),
 }));
+
+vi.mock('antd-style', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.mock factory cannot use a top-level type import
+  const actual = await importOriginal<typeof import('antd-style')>();
+  return {
+    ...actual,
+    useResponsive: () => ({ ...actual.useResponsive(), xl: xlViewport }),
+  };
+});
 
 interface WorkspaceMock {
   activeWorkspaceId: string;
