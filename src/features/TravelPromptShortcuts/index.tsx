@@ -60,13 +60,17 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       min-height: 44px;
     }
   `,
+  /* 2026-09-18 用户定稿：弹出层宽度按内容自适应（紧凑），不固定 640；
+     单条提示词超长时单行省略，悬停条目可看全文（title 提示），点击填入完整内容。 */
   panel: css`
     box-sizing: border-box;
-    width: min(640px, calc(100vw - 32px));
+    width: fit-content;
+    min-width: 240px;
+    max-width: calc(100vw - 32px);
     padding-block: 8px 12px;
     padding-inline: 16px;
 
-    /* 2026-09-18 用户定稿：面板带 0.5px 边框线（与全站细线一致）。 */
+    /* 面板带 0.5px 边框线（与全站细线一致）。 */
     border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: inherit;
 
@@ -114,7 +118,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     border-radius: 8px;
 
     text-align: start;
-    white-space: normal;
+
+    /* 紧凑布局：单行省略，全文由 title 提示与点击填入承载。 */
+    white-space: nowrap;
 
     &&,
     &&:hover {
@@ -145,6 +151,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
         border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
       }
     }
+  `,
+  /* 紧凑布局：条目单行省略，全文悬停 title 可见、点击填入完整内容。 */
+  promptTitle: css`
+    overflow: hidden;
+    max-width: 420px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   `,
   hint: css`
     overflow: hidden;
@@ -281,7 +294,7 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
                 state.updateInputMessage(prompt);
               }}
             >
-              <span>{shortTitle}</span>
+              <span className={styles.promptTitle}>{shortTitle}</span>
               <Icon icon={ChevronRight} size={16} />
             </Button>
           );
