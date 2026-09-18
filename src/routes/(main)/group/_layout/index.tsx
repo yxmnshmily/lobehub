@@ -42,7 +42,7 @@ const Layout: FC = () => {
 
   let content;
   if (access.kind === 'loading') {
-    content = <SurfaceSkeleton variant={'detail'} />;
+    content = <SurfaceSkeleton variant={'chat'} />;
   } else if (access.kind === 'error') {
     content = <AsyncError error={access.error} variant={'page'} onRetry={access.retry} />;
   } else if (access.kind === 'unavailable') {
@@ -54,7 +54,7 @@ const Layout: FC = () => {
       );
     const memberProfile = /\/group\/[^/]+\/profile(?:\/|$)/.test(pathname);
     content = routedChild ? (
-      <Suspense fallback={<SurfaceSkeleton variant="detail" />}>
+      <Suspense fallback={<SurfaceSkeleton variant="chat" />}>
         <Outlet />
       </Suspense>
     ) : memberProfile ? (
@@ -69,7 +69,7 @@ const Layout: FC = () => {
   } else if (gid) {
     content = (
       <GroupNotFoundGuard>
-        <Suspense fallback={<SurfaceSkeleton variant="detail" />}>
+        <Suspense fallback={<SurfaceSkeleton variant="chat" />}>
           <Outlet />
         </Suspense>
       </GroupNotFoundGuard>

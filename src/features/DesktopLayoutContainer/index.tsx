@@ -4,10 +4,10 @@ import { type FC, type PropsWithChildren } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
+import { isPhoneDevice } from '@/features/TravelSiteNavigation';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
-import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 import { getInnerCssVariables, getOuterCssVariables } from './cssVariables';
 import { LayoutContainerContext } from './LayoutContainerContext';
@@ -66,26 +66,21 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [innerCssVariables]);
 
-  /* 群组页 2026-09-17 曾做过全屏无框（去边距去圆角），2026-09-18 按用户要求
-     恢复标准框：左侧留白、上下留白、圆角都保留，与其它页面一致。 */
-
-  /* 群组页：去掉外层附加的左侧留白（站点壳已有 16px 对称沟槽） */
-  const isGroup = activeNavKey === 'group';
-
-  /* 手机端按服务端设备变体（User-Agent）判定，而非视口宽度——窄窗口的
-     桌面浏览器要保持桌面框（2026-09-18）。 */
-  const mobileVariant = useServerConfigStore(serverConfigSelectors.isMobile);
+  /* 手机端按 UA 判定真手机（store 的 isMobile 恒 false——移动变体已删，
+     视口宽度会误判窄窗口桌面浏览器，2026-09-18）。 */
+  const mobileVariant = useMemo(() => isPhoneDevice(), []);
 
   return (
     <Flexbox
+      className={cx(styles.outerContainer, mobileVariant && styles.outerContainerMobile)}
+      data-desktop-layout-gap=""
       height={'100%'}
-      style={outerCssVariables}
       width={'100%'}
-      className={cx(
-        styles.outerContainer,
-        isGroup && styles.outerContainerGroup,
-        mobileVariant && styles.outerContainerMobile,
-      )}
+      style={{
+        ...outerCssVariables,
+        /* 网页端左侧沟槽（侧栏↔内容）已由 TravelSiteNavigation 的注入样式
+           锁定为 12px !important（E 值定稿）；这里不再做任何覆盖。 */
+      }}
     >
       {pageScroll && <style dangerouslySetInnerHTML={{ __html: CONTENT_SCROLL_CSS }} />}
       <Flexbox

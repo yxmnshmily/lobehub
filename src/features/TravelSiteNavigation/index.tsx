@@ -4,8 +4,6 @@ import { createGlobalStyle, createStaticStyles, cx } from 'antd-style';
 import { useTheme } from 'next-themes';
 import { type FC, type PropsWithChildren, useEffect, useState } from 'react';
 
-import { getServerConfigStoreState } from '@/store/serverConfig';
-
 declare global {
   interface Window {
     __siteShellNavigationOnly?: boolean;
@@ -28,14 +26,14 @@ const styles = createStaticStyles(({ css }) => ({
     /* Share the header's symmetric gutters, including when the sidebar is collapsed. */
     padding-inline: var(--site-shell-gutter, 16px);
 
-    /* 2026-09-18：手机端去掉左右边距（用户要求，仅移动端；桌面保持留白）。 */
-    @media (width <= 767px) {
-      padding-inline: 0;
-    }
-
     @media (width >= 1280px) {
       padding-block-start: 80px;
     }
+  `,
+  /* 手机端：去掉左右边距（按服务端设备变体条件应用，桌面不受影响；
+     不能用视口媒体查询——窄窗口的桌面浏览器会被误判）。 */
+  contentMobile: css`
+    padding-inline: 0;
   `,
   shell: css`
     overflow: hidden;
@@ -47,12 +45,54 @@ const styles = createStaticStyles(({ css }) => ({
   `,
 }));
 
+/* 真手机判定（UA 口径）：移动路由变体已删（isMobile 恒 false），不能再用；
+   视口宽度也不行——窄窗口的桌面浏览器会被误判。 */
+export const isPhoneDevice = () =>
+  typeof navigator !== 'undefined' &&
+  /Android|iPhone|iPad|iPod|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+
 const DialogBounds = createGlobalStyle`
   /* 页面主体宽度锁定：外部注入的内联宽度（如浏览器缓存的 CSS 修改器脚本
      写入 #main-content 的固定 440px）不能挤压布局——主体自适应铺满。 */
   #main-content {
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  /* 页面级禁止滚动（2026-09-18）：全屏应用，滚动都发生在内部区域。
+     否则 macOS「始终显示滚动条」下页面的一点微小溢出就会在窗口右缘
+     顶出一条系统滚动条，把整个应用往左推——聊天滚动条不再贴窗口边。 */
+  /* stylelint-disable no-descending-specificity -- 设备分档选择器顺序为语义安排，2026-09-18 豁免 */
+  html,
+  body {
+    overflow: hidden !important;
+  }
+
+  /* 左右留白锁定（2026-09-18）：桌面浏览器左侧 16px 留白；右缘 20px（用户
+     定稿 B 值：卡片右缘到窗口右缘固定 20px）；真手机左右贴边。
+     !important 兜底——页内后到的规则/内联样式压不过它。
+     注意：不要给 html 加 scrollbar-gutter 占位——占位只会留下空的右侧槽。 */
+  html[data-travel-device='desktop'] #main-content {
+    padding-inline: 16px 20px !important;
+  }
+
+  /* E 值锁定（2026-09-18 用户定稿）：侧栏与聊天内容之间隙固定 12px——
+     任何内联覆盖（如群组页的 paddingInlineStart:0）都压不过它。
+     仅网页端（UA 门控）；手机端由 outerContainerMobile 贴边，不受影响。 */
+  html[data-travel-device='desktop'] [data-desktop-layout-gap] {
+    padding-inline-start: 12px !important;
+  }
+
+  /* 全宽锁定（2026-09-18）：站点壳外层框与主容器一起锁死全宽——外部注入的
+     内联宽度（缓存的 CSS 修改器脚本）换目标元素挤压布局时同样无效。 */
+  [data-site-shell-frame],
+  #main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  html[data-travel-device='phone'] #main-content {
+    padding-inline: 0 !important;
   }
 
   body:has([data-site-shell-header]) {
@@ -201,22 +241,29 @@ export const TravelSiteShell: FC<PropsWithChildren> = ({ children }) => {
   // Keep this frame free of a second site header even after the original Home
   // composer navigates to its conversation. Do not interrupt the active send.
   const [embedded] = useState(() => /\/embed\/home\/?$/.test(window.location.pathname));
-  /* 手机端按服务端设备变体（User-Agent）判定，而非视口宽度——窄窗口的桌面
-     浏览器要保持桌面留白（2026-09-18）。
-     注意用 getServerConfigStoreState()：该 store 是 zustand createContext 模式，
-     useServerConfigStore 是 hook，没有静态 getState()（2026-09-18 修复白屏）。 */
-  const [mobileVariant] = useState(() => Boolean(getServerConfigStoreState()?.isMobile));
+  /* 设备口径（UA 判定真手机），同步写到 <html data-travel-device>：
+     DialogBounds 的全局留白锁按它分支。store 的 isMobile 恒为 false（移动
+     变体已删），不能作为依据（2026-09-18）。 */
+  const [isPhone] = useState(() => isPhoneDevice());
+
+  useEffect(() => {
+    if (embedded) return;
+    document.documentElement.dataset.travelDevice = isPhone ? 'phone' : 'desktop';
+    return () => {
+      delete document.documentElement.dataset.travelDevice;
+    };
+  }, [embedded, isPhone]);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-site-shell-frame="">
       {!embedded && <DialogBounds />}
       {!embedded && <TravelSiteNavigationBridge />}
       <main
-        id="main-content"
         className={cx(
           embedded ? styles.shell : styles.content,
-          !embedded && mobileVariant && styles.contentMobile,
+          !embedded && isPhone && styles.contentMobile,
         )}
+        id="main-content"
       >
         {children}
       </main>

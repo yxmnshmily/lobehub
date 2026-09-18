@@ -4,7 +4,7 @@ import { GROUP_RECENT_MESSAGE_LIMIT } from '@lobechat/const';
 import { DEFAULT_TRAVEL_SERVICE_GROUP_CLIENT_ID, type UIChatMessage } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { Alert, Button } from '@lobehub/ui/base-ui';
-import { cssVar } from 'antd-style';
+import { createStaticStyles, cssVar } from 'antd-style';
 import {
   memo,
   type ReactNode,
@@ -111,6 +111,7 @@ export function GroupConversationBody({
         }}
       >
         <Flexbox
+          className={styles.messageScroller}
           flex={1}
           style={{ minHeight: 0, overflowX: 'hidden', overflowY: 'auto', position: 'relative' }}
           width="100%"
@@ -171,6 +172,33 @@ export function GroupConversationBody({
     </Flexbox>
   );
 }
+
+/* 消息列滚动容器：真正滚动的是里层 VirtualizedList 的 VList
+   （[data-conversation-viewport]，overflow-y: auto 且 contain: strict），
+   外层 Flexbox 只是布局壳（overflow hidden），不能在这里预留槽——那只会
+   把内容往里挤而里层滚动条原样不动（2026-09-18 实测）。
+   样式直接作用于 VList：8px 滚动条贴其右缘（=容器右缘=窗口右缘），
+   both-edges 在左侧对称预留，内容左右对齐。 */
+const styles = createStaticStyles(({ css, cssVar: v }) => ({
+  messageScroller: css`
+    [data-conversation-viewport] {
+      scrollbar-gutter: stable both-edges;
+
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background: ${v.colorFillSecondary};
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+    }
+  `,
+}));
 
 /**
  * ConversationArea

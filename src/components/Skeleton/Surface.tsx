@@ -10,7 +10,7 @@ import type { RouteSkeletonProps } from '@/spa/router/routeMeta';
 
 import SkeletonBar from './Bar';
 
-export type SurfaceSkeletonVariant = 'detail' | 'editor' | 'form' | 'grid' | 'list';
+export type SurfaceSkeletonVariant = 'chat' | 'detail' | 'editor' | 'form' | 'grid' | 'list';
 
 interface SurfaceSkeletonProps {
   header?: boolean;
@@ -103,6 +103,34 @@ const GridSkeleton = () => (
   </Grid>
 );
 
+/* 2026-09-18：群组会话页专用——骨架对齐真实聊天布局（消息气泡左右交替 + 底部输入框），
+   替代此前误用的 detail（详情页）形态，消除加载期的布局跳变。 */
+const ChatSkeleton = () => (
+  <Flexbox flex={1} gap={12} height={'100%'} padding={16}>
+    <Flexbox flex={1} gap={20} style={{ minHeight: 0, overflow: 'hidden' }}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Flexbox
+          gap={8}
+          justify={index % 2 ? 'flex-end' : 'flex-start'}
+          key={index}
+          style={{ width: '100%' }}
+        >
+          {index % 2 === 0 && <SkeletonBar height={32} radius={'50%'} width={32} />}
+          <Flexbox gap={6}>
+            <SkeletonBar height={12} width={index % 2 ? 64 : 88} />
+            <SkeletonBar
+              height={56 + (index % 2) * 16}
+              radius={16}
+              width={`${52 + (index % 2) * 14}%`}
+            />
+          </Flexbox>
+        </Flexbox>
+      ))}
+    </Flexbox>
+    <SkeletonBar height={96} radius={20} />
+  </Flexbox>
+);
+
 const DetailSkeleton = () => (
   <Flexbox align={'center'} padding={'32px 24px'}>
     <Flexbox gap={24} width={'min(960px, 100%)'}>
@@ -150,6 +178,7 @@ const SurfaceSkeleton = ({
     {header && <HeaderSkeleton height={headerHeight} />}
     <Flexbox flex={1} style={{ minHeight: 0, overflow: 'hidden' }}>
       {variant === 'list' && <ListSkeleton />}
+      {variant === 'chat' && <ChatSkeleton />}
       {variant === 'form' && <FormSkeleton />}
       {variant === 'grid' && <GridSkeleton />}
       {variant === 'editor' && <EditorSkeleton />}

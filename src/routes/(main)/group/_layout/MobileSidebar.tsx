@@ -8,6 +8,12 @@ import { MobileSidebarContext } from '@/features/SuperGroup/useMobileGroupSideba
 
 import GroupSidebarContent from './Sidebar/Content';
 
+/* 手机端群聊：去掉消息块顶部的 8px 起始边距（用户要求：头部边距去掉）；
+   消息之间仍保留 8px 底部间距。注入 <style> 保证生效。 */
+const MOBILE_GROUP_CHAT_CSS = `
+[data-conversation-viewport] .message-wrapper { padding-block-start: 0; }
+`;
+
 export default function MobileSidebar({
   children,
   sidebar,
@@ -21,6 +27,7 @@ export default function MobileSidebar({
   if (disabled) return children;
   return (
     <MobileSidebarContext value={{ open, toggle: () => setOpen((value) => !value) }}>
+      <style dangerouslySetInnerHTML={{ __html: MOBILE_GROUP_CHAT_CSS }} />
       <Flexbox
         horizontal
         flex={1}

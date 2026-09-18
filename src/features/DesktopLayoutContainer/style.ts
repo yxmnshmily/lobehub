@@ -27,15 +27,11 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     border-radius: 0;
   `,
 
-  /* 网站式 overlay 滚动（仅设置页启用）：内层容器承担滚动，原生滚动条隐藏，
-     悬浮滑块由组件渲染（见 index.tsx）——不占布局宽度，观感与 website 一致。 */
+  /* 设置页：内层容器承担纵向滚动。原生滚动条保留，外观由注入的
+     CONTENT_SCROLL_CSS 统一（8px 圆角灰条）——这里不再隐藏，否则桌面端
+     会变成"无滚动条盲滚"。 */
   innerContainerScroll: css`
-    scrollbar-width: none;
     overflow: auto;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
   `,
 
   // Outer container
@@ -46,21 +42,15 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     padding-block: var(--container-padding-top, 8px);
 
-    /* 2026-09-17：按用户要求右侧贴边为 0，左侧保留留白（浏览器 12px / 桌面壳 8px）。
-       只给 inline-start，右侧不撑开——内容直接贴窗口右缘。 */
+    /* 2026-09-18：左侧保留 8px 留白（侧栏与内容之间），窗口右缘贴边 0
+       （用户要求：右缘不加边距，内容与侧栏左右对齐排布）。 */
     padding-inline-start: var(--container-padding-left, 8px);
 
     background: ${isDesktop ? 'transparent' : cssVar.colorBgLayout};
   `,
 
-  /* 手机端：去掉左侧留白（按服务端设备变体条件应用，桌面不受影响）。 */
+  /* 手机端：去掉左右留白（按 UA 设备口径条件应用，桌面不受影响）。 */
   outerContainerMobile: css`
-    padding-inline-start: 0;
-  `,
-
-  /* 群组页：去掉外层附加的左侧留白——站点壳已有 16px 对称沟槽，
-     不去掉会造成左 28px / 右 16px 的不对称（用户实测）。 */
-  outerContainerGroup: css`
-    padding-inline-start: 0;
+    padding-inline: 0;
   `,
 }));
