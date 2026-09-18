@@ -12,7 +12,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
  *   最低 0.35 保底可点；ResizeObserver + resize 监听窗口变化。
  * 网页端不做任何缩放，原样渲染。zoom 走内联样式——本环境必定生效。
  */
-export const AutoScaleActions = memo<{ children: ReactNode }>(({ children }) => {
+const AutoScaleActions = memo<{ children: ReactNode }>(({ children }) => {
   const isMobile = useIsMobile();
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -64,3 +64,5 @@ export const AutoScaleActions = memo<{ children: ReactNode }>(({ children }) => 
 });
 
 AutoScaleActions.displayName = 'AutoScaleActions';
+
+export default AutoScaleActions;
