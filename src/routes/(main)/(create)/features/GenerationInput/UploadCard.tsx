@@ -86,6 +86,11 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
         opacity: 1 !important;
       }
     }
+
+    /* 手机端整卡缩半（与标题 zoom 0.5 同口径），和 + 新建卡保持一致 */
+    @media (width <= 767px) {
+      zoom: 0.5;
+    }
   `,
   filledCardInner: css`
     position: relative;
@@ -133,6 +138,11 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
     &:focus-visible {
       outline: 2px solid ${cssVar.colorPrimary};
       outline-offset: -2px;
+    }
+
+    /* 手机端整卡缩半，与已上传缩略图一致（2026-09-18 用户要求） */
+    @media (width <= 767px) {
+      zoom: 0.5;
     }
   `,
   uploadOverlay: css`
