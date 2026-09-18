@@ -1,9 +1,6 @@
 'use client';
 
-import { useResponsive } from 'antd-style';
 import { memo, useSyncExternalStore } from 'react';
-
-import { useIsMobile } from '@/hooks/useIsMobile';
 
 import { NavPanelDraggable } from './components/NavPanelDraggable';
 import {
@@ -21,8 +18,6 @@ const NavPanelFallback = memo<{ navKey: string }>(({ navKey }) => (
 
 const NavPanel = memo(() => {
   const activeNavKey = useActiveNavKey();
-  const narrowViewport = useIsMobile();
-  const { xl = true } = useResponsive();
   const getActiveContent = () => getNavPanelRegistrySnapshot().get(activeNavKey);
   const registeredContent = useSyncExternalStore(
     subscribeNavPanelRegistry,
@@ -34,10 +29,8 @@ const NavPanel = memo(() => {
     ? { key: activeNavKey, node: registeredContent.node }
     : { key: `pending:${activeNavKey}`, node: <NavPanelFallback navKey={activeNavKey} /> };
 
-  // 群聊页：<1200px（桌面展开侧栏不可用的区间）不渲染桌面图标导航条——
-  // 手机/平板上它只是左侧一条空的深色列，还会把聊天内容挤出右缘；
-  // 群组页有自己的成员侧栏/移动布局。≥1200px 桌面保持原样。
-  if (activeNavKey === 'group' && (narrowViewport || !xl)) return null;
+  // 左侧图标栏任何页面、任何视口（含手机端）都固定显示
+  // （2026-09-18 用户定稿）。此前群聊页在 <1200px 会隐藏它——已移除。
 
   return (
     <>

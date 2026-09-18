@@ -22,6 +22,13 @@ const styles = createStaticStyles(({ css }) => ({
     font-size: inherit;
     line-height: 1.2;
   `,
+  /* 手机端弹层不再整层 zoom（会把三个选项挤得极小），改为选项文字
+     直接用 14px（见上方 heroText 的媒体查询） */
+  heroPopup: css`
+    @media (width <= 767px) {
+      font-size: 14px;
+    }
+  `,
   sidebarSelect: css`
     gap: 4px;
 
@@ -38,6 +45,13 @@ const styles = createStaticStyles(({ css }) => ({
     font-size: 24px;
     font-weight: 600;
     line-height: 1.2;
+
+    /* 手机端弹层选项缩小到可读尺寸：标题 zoom 0.5 后触发文字约 12px，
+       弹层选项用 14px 保持可读且比例协调（不整层 zoom——那会把三个选项
+       挤成一小坨） */
+    @media (width <= 767px) {
+      font-size: 14px;
+    }
   `,
   toolbarItem: css`
     width: 30px;
@@ -91,25 +105,26 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
     const toolbarOptions = useMemo<SegmentedOptions<'image' | 'video' | 'page'>>(
       () => [
         {
-          icon: <Icon icon={ImageIcon} size={16} />,
+          /* 手机端图标 20px：16px 字形在 44px 按钮里显小（2026-09-18） */
+          icon: <Icon icon={ImageIcon} size={mobile ? 20 : 16} />,
           label: t('tab.image'),
           title: t('tab.image'),
           value: 'image',
         },
         {
-          icon: <Icon icon={Video} size={16} />,
+          icon: <Icon icon={Video} size={mobile ? 20 : 16} />,
           label: t('tab.video'),
           title: t('tab.video'),
           value: 'video',
         },
         {
-          icon: <Icon icon={FilePenLine} size={16} />,
+          icon: <Icon icon={FilePenLine} size={mobile ? 20 : 16} />,
           label: t('tab.pages'),
           title: t('tab.pages'),
           value: 'page',
         },
       ],
-      [t],
+      [mobile, t],
     );
 
     const labelRender: SelectProps['labelRender'] = useCallback(
@@ -169,6 +184,7 @@ const GenerationMediaModeSegment = memo<GenerationMediaModeSegmentProps>(
         className={isSidebar ? styles.sidebarSelect : styles.heroSelect}
         labelRender={labelRender}
         options={heroOptions}
+        popupClassName={isHero ? styles.heroPopup : undefined}
         popupMatchSelectWidth={false}
         size={isSidebar ? 'small' : 'large'}
         value={mode}

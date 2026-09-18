@@ -10,13 +10,14 @@ import {
   Icon,
 } from '@lobehub/ui';
 import { Text } from '@lobehub/ui/base-ui';
-import { PlusIcon } from 'lucide-react';
+import { History, PlusIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
+import CompactListPopover from '@/features/NavPanel/components/CompactListPopover';
 import SkeletonList from '@/features/NavPanel/components/SkeletonList';
 import PageEmpty from '@/features/PageEmpty';
 import { usePermission } from '@/hooks/usePermission';
@@ -201,39 +202,22 @@ const Body = memo(() => {
           </AccordionItem>
         </Accordion>
       ) : (
-        <Accordion defaultExpandedKeys={[GroupKey.AllPages]} gap={2}>
-          <AccordionItem
-            action={<Actions />}
-            itemKey={GroupKey.AllPages}
-            paddingBlock={4}
-            paddingInline={'8px 4px'}
-            headerWrapper={(header) => (
-              <ContextMenuTrigger items={dropdownMenu}>{header}</ContextMenuTrigger>
-            )}
-            title={
-              <Flexbox horizontal align="center" gap={4}>
-                <Text ellipsis fontSize={12} type={'secondary'} weight={500}>
-                  {t('pageList.historyTitle', { defaultValue: '历史记录' })}
-                  {`（${filteredDocumentsCount}）`}
-                </Text>
-                {isValidating && <NeuralNetworkLoading size={14} />}
-              </Flexbox>
-            }
+        /* 2026-09-18：复用视频栏目的 CompactListPopover 弹窗模式——
+           历史记录入口弹出浮层列表，与视频/图片栏目手机端一致。 */
+        <CompactListPopover icon={History} title={`历史记录（${filteredDocumentsCount}）`}>
+          <AsyncBoundary
+            data={data}
+            error={error}
+            errorVariant={'inline'}
+            isLoading={isLoading}
+            loading={<SkeletonList />}
+            onRetry={() => mutate()}
           >
-            <AsyncBoundary
-              data={data}
-              error={error}
-              errorVariant={'inline'}
-              isLoading={isLoading}
-              loading={<SkeletonList />}
-              onRetry={() => mutate()}
-            >
-              <Flexbox gap={1} paddingBlock={1}>
-                {filteredDocumentsCount === 0 ? <PageEmpty search={searchActive} /> : <List />}
-              </Flexbox>
-            </AsyncBoundary>
-          </AccordionItem>
-        </Accordion>
+            <Flexbox gap={1} paddingBlock={1}>
+              {filteredDocumentsCount === 0 ? <PageEmpty search={searchActive} /> : <List />}
+            </Flexbox>
+          </AsyncBoundary>
+        </CompactListPopover>
       )}
       <AllPagesDrawer open={allPagesDrawerOpen} onClose={closeAllPagesDrawer} />
     </Flexbox>

@@ -581,6 +581,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                   />
                 </ModelSwitchPanel>
                 <ConfigAction
+                  size={mobile ? { blockSize: 44, size: 22 } : undefined}
                   title={t('setting', { ns: 'common' })}
                   content={
                     <Flexbox gap={12}>
@@ -638,6 +639,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                 {isSupportDuration && (
                   <Action
                     icon={Clock3}
+                    size={mobile ? { blockSize: 44, size: 22 } : undefined}
                     trigger={'click'}
                     popover={{
                       content: <DurationItem />,

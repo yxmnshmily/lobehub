@@ -338,6 +338,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                 />
               </ModelSwitchPanel>
               <ConfigAction
+                size={mobile ? { blockSize: 44, size: 22 } : undefined}
                 title={t('config.title', { defaultValue: 'Config' })}
                 content={
                   <Flexbox gap={12}>
@@ -393,6 +394,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
               />
               <Action
                 icon={Images}
+                size={mobile ? { blockSize: 44, size: 22 } : undefined}
                 title={t('config.imageNum.label')}
                 trigger={'click'}
                 popover={{

@@ -80,6 +80,13 @@ const DialogBounds = createGlobalStyle`
     padding-inline: 16px !important;
   }
 
+  /* 豁免（2026-09-18）：生成页（制作平台 image/video）是全屏应用——
+     16px 边距 + 12px 内衬把输入卡挤到 ~344px，左操作按钮被缩到 0.57 倍。
+     页面挂 data-create-phone 标记时贴边铺满，其余页面 16px 定稿不受影响。 */
+  html[data-travel-device='phone']:has([data-create-phone]) #main-content {
+    padding-inline: 0 !important;
+  }
+
   body:has([data-site-shell-header]) {
     --site-dialog-top: 84px;
     --site-dialog-height: calc(100dvh - var(--site-dialog-top) - 16px);

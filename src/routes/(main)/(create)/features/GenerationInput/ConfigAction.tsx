@@ -8,14 +8,17 @@ import Action from '@/features/ChatInput/ActionBar/components/Action';
 
 interface ConfigActionProps {
   content: ReactNode;
+  /* 透传 ActionIcon 的 size（手机端加大图标字形用） */
+  size?: { blockSize?: number; size?: number };
   title: ReactNode;
 }
 
-const ConfigAction = memo<ConfigActionProps>(({ title, content }) => {
+const ConfigAction = memo<ConfigActionProps>(({ title, content, size }) => {
   return (
     <Action
       icon={SlidersHorizontal}
       popover={{ content, minWidth: 300, title }}
+      size={size}
       title={typeof title === 'string' ? title : undefined}
       trigger={'click'}
     />

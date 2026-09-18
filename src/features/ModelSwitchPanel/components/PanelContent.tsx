@@ -111,7 +111,9 @@ export const PanelContent: FC<PanelContentProps> = ({
         // height (not max-height) lets the inner list flex-shrink and scroll.
         height: `min(${panelHeight}px, var(--available-height, ${panelHeight}px))`,
         position: 'relative',
-        width: DEFAULT_WIDTH,
+        // 宽度同样收进视口（2026-09-18 手机端优化）：窄屏上 320px 固定宽
+        // 会溢出屏幕，clamp 到「视口 - 两侧 16px」；宽屏仍是 320px 不变
+        width: `min(${DEFAULT_WIDTH}px, calc(100vw - 32px))`,
       }}
     >
       {content}

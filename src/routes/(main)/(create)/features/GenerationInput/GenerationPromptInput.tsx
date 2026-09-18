@@ -115,13 +115,18 @@ const GenerationPromptInput = memo<GenerationPromptInputProps>(
               >
                 {leftActions}
               </Flexbox>
-              <Flexbox align={'center'} flex={1} justify={'center'} style={{ minWidth: 0 }}>
+              <Flexbox
+                align={'center'}
+                flex={centerActions ? 1 : '0 0 auto'}
+                justify={'center'}
+                style={{ minWidth: 0 }}
+              >
                 {centerActions}
               </Flexbox>
               <Flexbox
                 horizontal
                 align={'center'}
-                flex={1}
+                flex={'0 0 auto'}
                 gap={8}
                 style={{ justifyContent: 'flex-end', minWidth: 0 }}
               >
