@@ -9,12 +9,15 @@ import CompactListButton from '@/features/SuperGroup/CompactListButton';
 
 const popupClassName = createStaticStyles(
   ({ css }) => css`
-    overflow: hidden;
     box-sizing: border-box;
 
     /* 自适应宽度：窄窗口不低于 300px，宽窗口最多长到 460px，不再固定 300 */
     width: clamp(300px, 36vw, 460px);
     max-width: min(var(--available-width), calc(100vw - 88px));
+
+    /* 不能 overflow: hidden——三角指针从弹层边缘向外伸出 8px（贴边指向
+       触发图标），裁切后只剩层内一条细缝，视觉上成了悬空的「‹」。
+       圆角由内容容器自己承担（见下方 content 的 border-radius）。 */
   `,
 );
 
@@ -52,6 +55,9 @@ export default function CompactListPopover({
           /* 弹层显式浮层底色：默认透明时会透出下层内容（搜索弹层尤其明显） */
           background: cssVar.colorBgElevated,
           border: `0.5px solid ${cssVar.colorBorderSecondary}`,
+          /* popup 不再 overflow:hidden（会裁掉贴边三角指针），圆角由这一层
+             自己承担，保持与 popup 一致的圆角外观 */
+          borderRadius: cssVar.borderRadius,
           maxHeight: 'min(600px, 75dvh)',
           overflowY: 'auto',
           overflowX: 'hidden',

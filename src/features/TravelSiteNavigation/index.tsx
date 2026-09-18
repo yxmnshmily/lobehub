@@ -66,13 +66,6 @@ const DialogBounds = createGlobalStyle`
     overflow: hidden !important;
   }
 
-  /* E 值锁定（2026-09-18 用户定稿）：侧栏与聊天内容之间隙固定 12px——
-     任何内联覆盖（如群组页的 paddingInlineStart:0）都压不过它。
-     仅网页端（UA 门控）；手机端由 outerContainerMobile 贴边，不受影响。 */
-  html[data-travel-device='desktop'] [data-desktop-layout-gap] {
-    padding-inline-start: 12px !important;
-  }
-
   /* 全宽锁定（2026-09-18）：站点壳外层框与主容器一起锁死全宽——外部注入的
      内联宽度（缓存的 CSS 修改器脚本）换目标元素挤压布局时同样无效。 */
   [data-site-shell-frame],
@@ -131,6 +124,16 @@ const DialogBounds = createGlobalStyle`
 
     @media (width >= 1280px) {
       --site-dialog-top: 92px;
+    }
+  }
+
+  /* E 值锁定（2026-09-18 用户定稿）：侧栏与聊天内容之间隙固定 12px——
+     任何内联覆盖（如群组页的 paddingInlineStart:0）都压不过它。
+     仅网页端（UA 门控）且 ≥768px 视口：手机端（≤767px，含桌面窄窗模拟）
+     由外壳自己的媒体查询贴边，12px 沟槽不参与。 */
+  @media (width >= 768px) {
+    html[data-travel-device='desktop'] [data-desktop-layout-gap] {
+      padding-inline-start: 12px !important;
     }
   }
 

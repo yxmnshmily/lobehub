@@ -343,5 +343,8 @@ export const getTravelPromptTriggers = (slug?: string | null) => {
   const category = travelPromptCategories.find((item) => item.slug === slug);
   if (category) return category.groups;
 
-  return [];
+  /* 2026-09-18：无匹配分类时回退到第一个分类（混剪文案），而不是空数组——
+     群主页 / 群会话页的 TravelPromptShortcuts 不带 URL 参数，此前永远渲染 null，
+     用户看到的"一排提示词消失了"就是这里。带合法 slug 的场景不受影响。 */
+  return travelPromptCategories[0]?.groups ?? [];
 };

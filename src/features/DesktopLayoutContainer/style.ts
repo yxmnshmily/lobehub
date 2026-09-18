@@ -45,8 +45,10 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
 
     background: ${isDesktop ? 'transparent' : cssVar.colorBgLayout};
 
-    /* 手机端（≤767px 视口）：去掉左右留白——站点壳已统一提供 16px。 */
+    /* 手机端（≤767px 视口）：去掉左右与顶部留白——内容直接贴边；
+       网页端（≥768px）不受影响，保持左 12px / 上 12px 沟槽。 */
     @media (width <= 767px) {
+      padding-block-start: 0;
       padding-inline: 0;
     }
   `,
