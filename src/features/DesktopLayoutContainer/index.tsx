@@ -73,10 +73,14 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <Flexbox
-      className={styles.outerContainer}
       data-desktop-layout-gap=""
       height={'100%'}
       width={'100%'}
+      className={cx(
+        styles.outerContainer,
+        /* 仅群聊主页手机端（≤767px）去 12px 沟槽；设置等其它页面保留 */
+        activeNavKey === 'group' && styles.outerContainerMobileGroup,
+      )}
       style={{
         ...outerCssVariables,
         /* 网页端左侧沟槽（侧栏↔内容）已由 TravelSiteNavigation 的注入样式

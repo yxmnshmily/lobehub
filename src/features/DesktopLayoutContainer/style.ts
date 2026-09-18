@@ -44,9 +44,12 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline-start: var(--container-padding-left, 8px);
 
     background: ${isDesktop ? 'transparent' : cssVar.colorBgLayout};
+  `,
 
-    /* 手机端（≤767px 视口）：去掉左右与顶部留白——内容直接贴边；
-       网页端（≥768px）不受影响，保持左 12px / 上 12px 沟槽。 */
+  /* 仅群聊主页（navKey=group）手机端（≤767px 视口）：去掉左右与顶部留白，
+     内容直接贴边。设置页等其它页面不套这个类——手机端保留 12px 沟槽
+     （侧栏与内容卡片之间的呼吸间距）。 */
+  outerContainerMobileGroup: css`
     @media (width <= 767px) {
       padding-block-start: 0;
       padding-inline: 0;

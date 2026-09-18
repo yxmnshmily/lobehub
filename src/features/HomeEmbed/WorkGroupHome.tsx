@@ -6,7 +6,6 @@ import { Flexbox } from '@lobehub/ui';
 import { Alert, Button } from '@lobehub/ui/base-ui';
 import { UsersRound } from 'lucide-react';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router';
 
 import AsyncError from '@/components/AsyncError';
 import BrandTextLoading from '@/components/Loading/BrandTextLoading';
@@ -18,7 +17,6 @@ import Home from '@/features/Home';
 import { HOME_INPUT_BODY_HEIGHT } from '@/features/Home/InputArea/constants';
 import TravelGroupReadiness from '@/features/HomeSidebar/Body/Agent/TravelGroupReadiness';
 import TravelPromptShortcuts from '@/features/TravelPromptShortcuts';
-import { COPY_CATEGORY_QUERY_PARAM } from '@/features/TravelPromptShortcuts/prompts';
 import { useInitAgentConfig } from '@/hooks/useInitAgentConfig';
 import { useMyTravelGroupReadiness } from '@/hooks/useMyTravelGroupReadiness';
 import { useOperationState } from '@/hooks/useOperationState';
@@ -29,7 +27,6 @@ import { useChatStore } from '@/store/chat';
 
 /** The Home editor's appearance, inside the real group's send/permission provider. */
 function GroupEditor() {
-  const [searchParams] = useSearchParams();
   const error = useConversationStore(messageStateSelectors.sendMessageError);
   const context = useConversationStore((s) => s.context);
   const fetchMessages = useConversationStore((s) => s.useFetchMessages);
@@ -40,13 +37,9 @@ function GroupEditor() {
       <DesktopChatInput
         actionBarStyle={{ paddingBlockEnd: 8, paddingInline: 8 }}
         dropdownPlacement="bottomLeft"
+        inputBanner={<TravelPromptShortcuts />}
         placeholder="向工作群提问、创建内容或安排任务"
         showControlBar={false}
-        inputBanner={
-          <TravelPromptShortcuts
-            copyCategory={searchParams.get(COPY_CATEGORY_QUERY_PARAM) ?? undefined}
-          />
-        }
         inputContainerProps={{
           minHeight: HOME_INPUT_BODY_HEIGHT,
           resize: false,

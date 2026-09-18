@@ -3,143 +3,162 @@
 import { Flexbox, Icon, Popover } from '@lobehub/ui';
 import { ActionIcon, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { ChevronRight, MessageSquareText, X } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { useConversationStore, useConversationStoreApi } from '@/features/Conversation/store';
 import { InputBanner } from '@/features/Home/InputArea/InputBanner';
 
-import { getTravelPromptTriggers } from './prompts';
+import { travelPromptBlocks } from './prompts';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   banner: css`
-    padding-block: 48px 8px;
+    padding-block: 8px;
   `,
-  label: css`
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: 6px;
-    padding-inline-end: 4px;
-    color: ${cssVar.colorTextSecondary};
-    font-size: ${cssVar.fontSizeSM};
-    white-space: nowrap;
-  `,
+  /* 2026-09-18 用户定稿：6 个大块（3 列 grid，窄屏 2 列），每块 = 图标 + 标题 + 一句说明。 */
   root: css`
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+
     width: 100%;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    min-width: 0;
+
+    @media (width <= 480px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   `,
-  category: css`
-    flex: none;
-    min-height: 32px;
-    padding-inline: 8px;
-    font-size: ${cssVar.fontSizeSM};
-    font-weight: 400;
-    color: ${cssVar.colorTextSecondary};
-    border: 0;
-    border-radius: 8px;
+  block: css`
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+
+    min-width: 0;
+    min-height: 68px;
+    padding-block: 10px;
+    padding-inline: 12px;
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
+    border-radius: 12px;
+
+    text-align: start;
+
+    background: ${cssVar.colorBgContainer};
 
     &&,
-    &&:hover,
-    &&[aria-expanded='true'] {
-      color: ${cssVar.colorTextSecondary};
+    &&:hover {
+      font-weight: 500;
+      color: ${cssVar.colorText};
     }
 
     @media (pointer: coarse) {
-      min-height: 44px;
+      min-height: 60px;
     }
+  `,
+  blockTitle: css`
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-size: ${cssVar.fontSizeSM};
+  `,
+  blockDesc: css`
+    overflow: hidden;
+
+    max-width: 100%;
+
+    font-size: 12px;
+    color: ${cssVar.colorTextTertiary};
+    text-overflow: ellipsis;
+    white-space: nowrap;
   `,
   panel: css`
     box-sizing: border-box;
     width: min(640px, calc(100vw - 32px));
-    padding: 8px 16px 12px;
-    color: ${cssVar.colorTextSecondary};
-    font-weight: 400;
-    background: ${cssVar.colorBgContainer};
+    padding-block: 8px 12px;
+    padding-inline: 16px;
     border-radius: inherit;
+
+    font-weight: 400;
+    color: ${cssVar.colorTextSecondary};
+
+    background: ${cssVar.colorBgContainer};
   `,
   header: css`
+    flex-wrap: nowrap;
     gap: 12px;
     min-width: 0;
-    flex-wrap: nowrap;
   `,
   title: css`
     flex: none;
     white-space: nowrap;
   `,
   list: css`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 12px;
+    scrollbar-width: thin;
+
     overflow-y: auto;
     overscroll-behavior: contain;
-    max-height: min(240px, 30dvh);
-    scrollbar-width: thin;
-    @media (max-width: 480px) {
-      grid-template-columns: minmax(0, 1fr);
-    }
+    display: flex;
+    flex-direction: column;
+
+    max-height: min(320px, 40dvh);
   `,
   prompt: css`
     position: relative;
-    justify-content: space-between;
-    min-width: 0;
+
     width: 100%;
+    min-width: 0;
     height: auto;
-    min-height: 44px;
-    padding: 10px 8px;
-    text-align: left;
+    padding-block: 10px;
+    padding-inline: 8px;
+
+    text-align: start;
     white-space: normal;
-    border: 0;
-    border-radius: 8px;
+
+    &::before {
+      pointer-events: none;
+      content: '';
+
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline: 8px;
+
+      border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+    }
 
     &&,
     &&:hover {
-      color: ${cssVar.colorTextSecondary};
       font-weight: 400;
+      color: ${cssVar.colorTextSecondary};
     }
 
-    &:nth-child(n + 3)::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      inset-inline: 8px;
-      border-top: 0.5px solid ${cssVar.colorBorderSecondary};
-      pointer-events: none;
-    }
-
-    @media (max-width: 480px) {
-      &:nth-child(2)::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        inset-inline: 8px;
-        border-top: 0.5px solid ${cssVar.colorBorderSecondary};
-        pointer-events: none;
-      }
+    &:first-child::before {
+      display: none;
     }
   `,
-  hint: css`
+  promptText: css`
     flex: 1;
     min-width: 0;
+    margin-inline-end: 8px;
+  `,
+  hint: css`
     overflow: hidden;
+    flex: 1;
+
+    min-width: 0;
+
+    font-size: 12px;
+    color: ${cssVar.colorTextSecondary};
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: ${cssVar.colorTextSecondary};
-    font-size: 12px;
   `,
 }));
 
-export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?: string } = {}) {
-  const triggers = getTravelPromptTriggers(copyCategory);
+export default function TravelPromptShortcuts() {
+  const blocks = travelPromptBlocks;
   const [active, setActive] = useState<number | null>(null);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const categoryButtons = useRef<Array<HTMLButtonElement | HTMLAnchorElement | null>>([]);
+  const categoryButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const fillInputMessage = useConversationStore((s) => s.fillInputMessage);
   const store = useConversationStoreApi();
   const previewRef = useRef<string | null>(null);
@@ -192,7 +211,7 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
     },
     [store],
   );
-  const category = active === null ? undefined : triggers[active];
+  const block = active === null ? undefined : blocks[active];
 
   const close = () => {
     restorePreview();
@@ -200,9 +219,9 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
     setActive(null);
   };
 
-  const panel = category && (
+  const panel = block && (
     <Flexbox
-      aria-label={`${category.title}提示词`}
+      aria-label={`${block.title}提示词`}
       className={styles.panel}
       id={panelId}
       ref={panelRef}
@@ -213,8 +232,8 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
     >
       <Flexbox horizontal align={'center'} className={styles.header}>
         <Flexbox horizontal align={'center'} className={styles.title} gap={8}>
-          <Icon icon={category.icon} size={16} />
-          <span>{category.title}</span>
+          <Icon icon={block.icon} size={16} />
+          <span>{block.title}</span>
         </Flexbox>
         <span className={styles.hint} title="鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。">
           鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。
@@ -226,11 +245,11 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
           onClick={close}
         />
       </Flexbox>
-      <div className={styles.list} key={category.title}>
-        {category.prompts.map(([title, prompt]) => (
+      <div className={styles.list} key={block.title}>
+        {block.prompts.map((prompt) => (
           <Button
             className={styles.prompt}
-            key={title}
+            key={prompt}
             type={'text'}
             onMouseLeave={restorePreview}
             onClick={() => {
@@ -251,15 +270,13 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
               state.updateInputMessage(prompt);
             }}
           >
-            <span>{title}</span>
+            <span className={styles.promptText}>{prompt}</span>
             <Icon icon={ChevronRight} size={16} />
           </Button>
         ))}
       </div>
     </Flexbox>
   );
-
-  if (triggers.length === 0) return null;
 
   return (
     <InputBanner className={styles.banner} testId="travel-prompt-banner">
@@ -269,15 +286,11 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
           if (event.key === 'Escape') close();
         }}
       >
-        <span className={styles.label}>
-          <Icon icon={MessageSquareText} size={16} />
-          快速提示词：
-        </span>
-        {triggers.map((item, index) => (
+        {blocks.map((item, index) => (
           <Popover
             nativeButton
             content={active === index ? panel : <span />}
-            key={item.title}
+            key={item.slug}
             open={active === index}
             placement="topLeft"
             trigger="click"
@@ -297,14 +310,14 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
             <Button
               aria-controls={active === index ? panelId : undefined}
               aria-expanded={active === index}
-              className={styles.category}
-              icon={<Icon icon={item.icon} size={16} />}
-              type={active === index ? 'default' : 'text'}
+              className={styles.block}
+              icon={<Icon icon={item.icon} size={18} />}
               ref={(node) => {
                 categoryButtons.current[index] = node;
               }}
             >
-              {item.title}
+              <span className={styles.blockTitle}>{item.title}</span>
+              <span className={styles.blockDesc}>{item.desc}</span>
             </Button>
           </Popover>
         ))}

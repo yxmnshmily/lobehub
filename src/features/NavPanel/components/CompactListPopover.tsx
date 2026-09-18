@@ -1,6 +1,6 @@
 'use client';
 
-import { Popover, PopoverArrow } from '@lobehub/ui/base-ui';
+import { Popover } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -35,19 +35,10 @@ export default function CompactListPopover({
       arrow
       nativeButton
       className={popupClassName}
+      content={children}
       placement="rightTop"
       positionerProps={{ collisionPadding: 8, sideOffset: 10 }}
       trigger="click"
-      content={
-        <>
-          {/* 贴边框的实心三角指针：浮动引擎自动贴在弹层左缘、指向触发图标。
-              注意 popup 不能 overflow:hidden——那会把伸出边缘的三角裁掉，
-              只剩层内一条细缝，看起来就像一个悬空的「‹」符号（已修复：
-              popup 不再裁切，圆角由 content 层自己承担）。 */}
-          <PopoverArrow />
-          {children}
-        </>
-      }
       styles={{
         content: {
           /* 弹层显式浮层底色：默认透明时会透出下层内容（搜索弹层尤其明显） */

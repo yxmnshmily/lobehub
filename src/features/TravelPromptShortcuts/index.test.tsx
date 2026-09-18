@@ -16,32 +16,37 @@ vi.mock('@/features/Conversation/store', () => ({
 }));
 
 /*
- * 2026-09-18 用户定稿：提示词固定为口播文案（talk-copy）组——"线路讲解 / 客户答疑 /
- * 领队故事 / 纯玩说明"，不随 copyCategory、URL 参数或页面变化。以下断言全部按该口径。
+ * 2026-09-18 用户定稿：提示词为 6 个固定大块（旅游文案、图文笔记、海报设计、
+ * 详情页设计、直播间贴片、账号分析），每块 6 条提示词，不依赖任何参数或条件。
  */
+const BLOCK_TITLES = ['旅游文案', '图文笔记', '海报设计', '详情页设计', '直播间贴片', '账号分析'];
+
 describe('TravelPromptShortcuts', () => {
-  it('renders the fixed talk-copy shortcuts without any copyCategory', () => {
+  it('renders the six fixed prompt blocks unconditionally', () => {
     render(<TravelPromptShortcuts />);
 
-    expect(screen.getByRole('button', { name: '线路讲解' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '客户答疑' })).toBeVisible();
+    for (const title of BLOCK_TITLES)
+      expect(screen.getByRole('button', { name: new RegExp(title) })).toBeVisible();
   });
-  it('opens the list outside the composer so its overflow cannot clip the prompts', () => {
+
+  it('opens the block panel outside the composer so overflow cannot clip it', () => {
     const { container } = render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-    const panel = screen.getByRole('region', { name: '线路讲解提示词' });
+    fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
+    const panel = screen.getByRole('region', { name: '旅游文案提示词' });
     expect(container.contains(panel)).toBe(false);
     fireEvent.keyDown(panel, { key: 'Escape' });
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
+
   it('closes on outside press but leaves panel interactions open', () => {
     render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
     fireEvent.pointerDown(screen.getByRole('region'));
     expect(screen.getByRole('region')).toBeInTheDocument();
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
+
   beforeEach(() => {
     state.inputMessage = '';
     state.fillInputMessage.mockReset();
@@ -53,77 +58,40 @@ describe('TravelPromptShortcuts', () => {
 
   it('previews on hover without moving focus, and restores on leave', () => {
     render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-    const prompt = screen.getByRole('button', { name: '讲清多日核心路线' });
+    fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
+    const prompt = screen.getByRole('button', { name: /旅游混剪短视频文案/ });
     fireEvent.mouseEnter(prompt);
     expect(state.editor.setDocument).toHaveBeenCalledWith(
       'text',
-      expect.stringContaining('按天讲清路线'),
-      {
-        keepHistory: true,
-      },
+      expect.stringContaining('节奏卡点'),
+      { keepHistory: true },
     );
     expect(state.fillInputMessage).not.toHaveBeenCalled();
     fireEvent.mouseLeave(prompt);
     expect(state.inputMessage).toBe('');
   });
 
-  it('expands a category, fills a prompt without sending, and closes the list', () => {
+  it('fills a prompt without sending, and closes the panel', () => {
     render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-    fireEvent.click(screen.getByRole('button', { name: '讲清多日核心路线' }));
-    expect(state.fillInputMessage).toHaveBeenCalledWith(expect.stringContaining('按天讲清路线'));
+    fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
+    fireEvent.click(screen.getByRole('button', { name: /旅游混剪短视频文案/ }));
+    expect(state.fillInputMessage).toHaveBeenCalledWith(expect.stringContaining('节奏卡点'));
     expect(screen.queryByRole('button', { name: '关闭提示词' })).not.toBeInTheDocument();
   });
 
-  it('switches prompt groups and supports closing', () => {
+  it('switches blocks and supports closing', () => {
     render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-    fireEvent.click(screen.getByRole('button', { name: '客户答疑' }));
-    expect(screen.getByRole('button', { name: '回答什么时候最合适' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
+    fireEvent.click(screen.getByRole('button', { name: /账号分析/ }));
+    expect(screen.getByRole('button', { name: /抖音账号诊断/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '关闭提示词' }));
-    expect(screen.queryByRole('button', { name: '回答什么时候最合适' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /抖音账号诊断/ })).not.toBeInTheDocument();
   });
 
-  it.each([[undefined], ['mix-copy'], ['talk-copy'], ['other-copy']])(
-    'shows the fixed talk-copy groups regardless of copyCategory (%s)',
-    (slug) => {
-      render(<TravelPromptShortcuts {...(slug ? { copyCategory: slug } : {})} />);
-
-      for (const title of ['线路讲解', '客户答疑', '领队故事', '纯玩说明'])
-        expect(screen.getByRole('button', { name: title })).toBeVisible();
-      expect(screen.queryByRole('button', { name: '行程混剪' })).not.toBeInTheDocument();
-    },
-  );
-
-  it('opens the selected group with several relevant prompts', () => {
+  it('shows six prompts inside an opened block', () => {
     render(<TravelPromptShortcuts />);
-
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-
-    expect(screen.getByRole('region', { name: '线路讲解提示词' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '讲清多日核心路线' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '写第一次来怎么走' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '把详细行程说自然' })).toBeInTheDocument();
-  });
-
-  it('keeps switching previews even with a draft, then restores its rich content', () => {
-    state.inputMessage = '我的草稿';
-    const json = { root: { children: [{ text: '我的草稿' }] } };
-    state.editor.getJSONState.mockReturnValue(json);
-    render(<TravelPromptShortcuts />);
-    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
-    const first = screen.getByRole('button', { name: '讲清多日核心路线' });
-    const second = screen.getByRole('button', { name: '写第一次来怎么走' });
-    expect(first).toBeEnabled();
-    fireEvent.mouseEnter(first);
-    expect(state.inputMessage).toContain('按天讲清路线');
-    fireEvent.mouseLeave(first);
-    fireEvent.mouseEnter(second);
-    expect(state.inputMessage).toContain('第一次到访者');
-    fireEvent.mouseLeave(second);
-    expect(state.inputMessage).toBe('我的草稿');
-    expect(state.editor.setDocument).toHaveBeenLastCalledWith('json', json, { keepHistory: true });
-    expect(state.fillInputMessage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /图文笔记/ }));
+    const prompts = screen.getAllByRole('button', { name: /请参考图文笔记案例栏目/ });
+    expect(prompts).toHaveLength(6);
   });
 });
