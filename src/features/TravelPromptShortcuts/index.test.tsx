@@ -29,11 +29,12 @@ describe('TravelPromptShortcuts', () => {
       expect(screen.getByRole('button', { name: new RegExp(title) })).toBeVisible();
   });
 
-  it('opens the block panel outside the composer so overflow cannot clip it', () => {
+  it('opens the centered panel above the shortcuts row', () => {
     const { container } = render(<TravelPromptShortcuts />);
     fireEvent.click(screen.getByRole('button', { name: /旅游文案/ }));
     const panel = screen.getByRole('region', { name: '旅游文案提示词' });
-    expect(container.contains(panel)).toBe(false);
+    // 面板渲染在提示词排上方（组件内绝对定位、水平居中）。
+    expect(container.contains(panel)).toBe(true);
     fireEvent.keyDown(panel, { key: 'Escape' });
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
