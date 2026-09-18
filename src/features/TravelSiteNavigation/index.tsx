@@ -4,7 +4,7 @@ import { createGlobalStyle, createStaticStyles, cx } from 'antd-style';
 import { useTheme } from 'next-themes';
 import { type FC, type PropsWithChildren, useEffect, useState } from 'react';
 
-import { useServerConfigStore } from '@/store/serverConfig';
+import { getServerConfigStoreState } from '@/store/serverConfig';
 
 declare global {
   interface Window {
@@ -202,8 +202,10 @@ export const TravelSiteShell: FC<PropsWithChildren> = ({ children }) => {
   // composer navigates to its conversation. Do not interrupt the active send.
   const [embedded] = useState(() => /\/embed\/home\/?$/.test(window.location.pathname));
   /* 手机端按服务端设备变体（User-Agent）判定，而非视口宽度——窄窗口的桌面
-     浏览器要保持桌面留白（2026-09-18）。 */
-  const [mobileVariant] = useState(() => Boolean(useServerConfigStore.getState().isMobile));
+     浏览器要保持桌面留白（2026-09-18）。
+     注意用 getServerConfigStoreState()：该 store 是 zustand createContext 模式，
+     useServerConfigStore 是 hook，没有静态 getState()（2026-09-18 修复白屏）。 */
+  const [mobileVariant] = useState(() => Boolean(getServerConfigStoreState()?.isMobile));
 
   return (
     <div className={styles.shell}>
