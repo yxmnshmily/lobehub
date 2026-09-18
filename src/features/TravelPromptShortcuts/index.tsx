@@ -303,6 +303,8 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
         </span>
         {triggers.map((item, index) => (
           <Popover
+            /* 2026-09-18 用户要求：弹出层带指针箭头，指向所点击的提示词组。 */
+            arrow
             nativeButton
             content={active === index ? panel : <span />}
             key={item.title}
