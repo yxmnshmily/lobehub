@@ -65,6 +65,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     width: min(640px, calc(100vw - 32px));
     padding-block: 8px 12px;
     padding-inline: 16px;
+
+    /* 2026-09-18 用户定稿：面板带 0.5px 边框线（与全站细线一致）。 */
+    border: 0.5px solid ${cssVar.colorBorderSecondary};
     border-radius: inherit;
 
     font-weight: 400;
@@ -300,8 +303,7 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
             nativeButton
             content={active === index ? panel : <span />}
             key={item.title}
-            open={active === index}
-            placement="topLeft"
+            placement="top"
             trigger="click"
             styles={{
               content: {
@@ -315,6 +317,9 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
               restorePreview();
               setActive((current) => (open ? index : current === index ? null : current));
             }}
+            open={active === index}
+            /* 2026-09-18 用户定稿：带指针箭头指向所点的组；面板带边框线。 */
+            arrow
           >
             <Button
               aria-controls={active === index ? panelId : undefined}
