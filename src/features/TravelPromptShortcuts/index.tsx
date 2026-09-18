@@ -309,7 +309,7 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
             content={active === index ? panel : <span />}
             key={item.title}
             open={active === index}
-            placement="topLeft"
+            placement="top"
             trigger="click"
             styles={{
               content: {
