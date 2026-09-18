@@ -16,7 +16,7 @@ const styles = createStaticStyles(({ css }) => ({
     flex-grow: 1;
     align-self: center;
 
-    /* 页面统一左右边距：桌面端 20px；手机端由 shell 提供 10px gutter（见下方媒体查询） */
+    /* 页面统一左右边距：桌面端 20px；手机端由站点壳统一提供 16px（见下方媒体查询） */
     padding-inline: var(--wide-screen-container-padding-inline, 20px);
 
     /*
@@ -25,11 +25,10 @@ const styles = createStaticStyles(({ css }) => ({
      * change made the page look like it "opens up" a moment after it appears.
      */
 
+    /* 2026-09-18：手机端内层不再附加留白——站点壳已统一提供左右 16px，
+       这里叠加会造成 16+10 的双份边距（用户要求全站统一 16px）。 */
     @media (width <= 767px) {
-      padding-inline: var(
-        --mobile-page-inner-gutter,
-        var(--wide-screen-container-padding-inline, 10px)
-      ) !important;
+      padding-inline: var(--mobile-page-inner-gutter, 0) !important;
     }
   `,
 }));

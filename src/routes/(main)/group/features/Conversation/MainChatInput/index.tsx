@@ -207,6 +207,9 @@ const MainChatInput = memo<ComposerHostProps & { runtimeProps?: ChatInputProps }
     return (
       <ChatInput
         children={children}
+        /* 2026-09-18：runtimeProps 分支同样挂提示词——ConversationArea 以 runtimeProps
+           为条件选择路径，两条路径必须同款（审查发现的路径不一致缺陷）。 */
+        inputBanner={<TravelPromptShortcuts />}
         leftActions={leftActions}
         mentionItems={mentionItems}
         rightActions={rightActions}

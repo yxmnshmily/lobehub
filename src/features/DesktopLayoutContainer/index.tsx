@@ -4,7 +4,6 @@ import { type FC, type PropsWithChildren } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { useActiveNavKey } from '@/features/NavPanel/useActiveNavKey';
-import { isPhoneDevice } from '@/features/TravelSiteNavigation';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
@@ -25,8 +24,11 @@ const CONTENT_SCROLL_CSS = `
   scrollbar-gutter: stable;
 }
 @media (width <= 767px) {
+  /* 10px 含滚动条：左 10；右 = 2 内边距 + 8 滚动条（gutter）= 10。
+     注意不能清零——站点壳的 16px 在卡片外面，卡片内没有任何填充，
+     清零会让正文直接贴住卡片边（2026-09-18 实测回归）。 */
   [data-overlay-scroll] { padding-left: 10px; padding-right: 2px; padding-block-start: 16px; }
-  /* SettingContainer 自带的 10px 横向填充在这一模式下交给外层统一提供 */
+  /* SettingContainer 自带的横向填充在这一模式下交给外层统一提供 */
   [data-overlay-scroll] [data-scroll-page] { padding-inline: 0 !important; }
 }
 [data-overlay-scroll]::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -66,13 +68,12 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [innerCssVariables]);
 
-  /* 手机端按 UA 判定真手机（store 的 isMobile 恒 false——移动变体已删，
-     视口宽度会误判窄窗口桌面浏览器，2026-09-18）。 */
-  const mobileVariant = useMemo(() => isPhoneDevice(), []);
+  /* 手机端改由 style.ts 内的视口媒体查询处理（≤767px）——CodeBuddy 预览的
+     手机模拟不改 UA，UA 分档在预览里不生效（2026-09-18）。 */
 
   return (
     <Flexbox
-      className={cx(styles.outerContainer, mobileVariant && styles.outerContainerMobile)}
+      className={styles.outerContainer}
       data-desktop-layout-gap=""
       height={'100%'}
       width={'100%'}
@@ -91,7 +92,6 @@ const DesktopLayoutContainer: FC<PropsWithChildren> = ({ children }) => {
         width={'100%'}
         className={cx(
           styles.innerContainer,
-          mobileVariant && styles.innerContainerMobile,
           /* 设置页：内层容器承担纵向滚动，滚动条为统一外观的原生条
              （样式见上方 CONTENT_SCROLL_CSS 注入）。其它页面保持原样。 */
           pageScroll && styles.innerContainerScroll,

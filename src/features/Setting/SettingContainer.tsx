@@ -17,8 +17,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
        （此前的 thin 滚动条 + gutter 补偿方案随滚动上移一并移除。） */
 
     @media (width <= 767px) {
+      /* 2026-09-18：手机端横向留白统一由站点壳提供（左右各 16px），
+         这里不再叠加 10px——三层叠加会变成 36px（用户要求全站统一 16px）。 */
       padding-block: 10px !important;
-      padding-inline: 10px !important;
+      padding-inline: 0 !important;
 
       /* :not([style*='padding']) 排除自带行内 padding 的元素（如服务商列表
          吸顶搜索行 padding=8），避免清掉它们的水平填充。 */

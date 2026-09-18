@@ -30,11 +30,9 @@ const styles = createStaticStyles(({ css }) => ({
       padding-block-start: 80px;
     }
   `,
-  /* 手机端：去掉左右边距（按服务端设备变体条件应用，桌面不受影响；
-     不能用视口媒体查询——窄窗口的桌面浏览器会被误判）。 */
-  contentMobile: css`
-    padding-inline: 0;
-  `,
+  /* 2026-09-18：原 contentMobile（padding-inline:0）已删——手机端由下方
+     html[data-travel-device='phone'] #main-content 的 0 !important 恒定接管，
+     这条无 !important 的版本从未生效（审查发现的死代码）。 */
   shell: css`
     overflow: hidden;
 
@@ -68,14 +66,6 @@ const DialogBounds = createGlobalStyle`
     overflow: hidden !important;
   }
 
-  /* 左右留白锁定（2026-09-18）：桌面浏览器左侧 16px 留白；右缘 20px（用户
-     定稿 B 值：卡片右缘到窗口右缘固定 20px）；真手机左右贴边。
-     !important 兜底——页内后到的规则/内联样式压不过它。
-     注意：不要给 html 加 scrollbar-gutter 占位——占位只会留下空的右侧槽。 */
-  html[data-travel-device='desktop'] #main-content {
-    padding-inline: 16px 20px !important;
-  }
-
   /* E 值锁定（2026-09-18 用户定稿）：侧栏与聊天内容之间隙固定 12px——
      任何内联覆盖（如群组页的 paddingInlineStart:0）都压不过它。
      仅网页端（UA 门控）；手机端由 outerContainerMobile 贴边，不受影响。 */
@@ -91,8 +81,10 @@ const DialogBounds = createGlobalStyle`
     max-width: 100% !important;
   }
 
+  /* 手机端统一左右 16px（2026-09-18 用户定稿：原来右侧 20px 不统一，
+     全站手机端一律左右各 16px）。 */
   html[data-travel-device='phone'] #main-content {
-    padding-inline: 0 !important;
+    padding-inline: 16px !important;
   }
 
   body:has([data-site-shell-header]) {
@@ -139,6 +131,22 @@ const DialogBounds = createGlobalStyle`
 
     @media (width >= 1280px) {
       --site-dialog-top: 92px;
+    }
+  }
+
+  /* 左右留白锁定（2026-09-18 定稿）：按视口宽度分档（不用 UA——CodeBuddy
+     预览的手机模拟不改 UA，UA 分档在预览里永远不生效）：
+     ≤767px（手机端）左右各 16px；>767px（网页端）左 16 / 右 20。
+     !important 兜底——页内后到的规则/内联样式压不过它。 */
+  @media (width <= 767px) {
+    #main-content {
+      padding-inline: 16px !important;
+    }
+  }
+
+  @media (width > 767px) {
+    #main-content {
+      padding-inline: 16px 20px !important;
     }
   }
 `;
@@ -258,13 +266,7 @@ export const TravelSiteShell: FC<PropsWithChildren> = ({ children }) => {
     <div className={styles.shell} data-site-shell-frame="">
       {!embedded && <DialogBounds />}
       {!embedded && <TravelSiteNavigationBridge />}
-      <main
-        className={cx(
-          embedded ? styles.shell : styles.content,
-          !embedded && isPhone && styles.contentMobile,
-        )}
-        id="main-content"
-      >
+      <main className={cx(embedded ? styles.shell : styles.content)} id="main-content">
         {children}
       </main>
     </div>

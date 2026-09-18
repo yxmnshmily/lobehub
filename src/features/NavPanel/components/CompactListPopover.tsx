@@ -1,6 +1,6 @@
 'use client';
 
-import { Popover } from '@lobehub/ui/base-ui';
+import { Popover, PopoverArrow } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -33,12 +33,20 @@ export default function CompactListPopover({
 }) {
   return (
     <Popover
+      arrow
       nativeButton
       className={popupClassName}
-      content={children}
       placement="rightTop"
-      positionerProps={{ collisionPadding: 8, sideOffset: 8 }}
+      positionerProps={{ collisionPadding: 8, sideOffset: 10 }}
       trigger="click"
+      content={
+        <>
+          {/* 边框三角指针（与群内消息评论弹层同款）：浮动引擎自动把它贴在
+              弹层边框上、指向触发图标；placement=rightTop → 出现在左缘向左指 */}
+          <PopoverArrow />
+          {children}
+        </>
+      }
       styles={{
         content: {
           /* 弹层显式浮层底色：默认透明时会透出下层内容（搜索弹层尤其明显） */

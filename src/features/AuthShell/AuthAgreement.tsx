@@ -104,7 +104,8 @@ const AgreementText = memo<AgreementTextProps>(({ i18nKey }) => {
 
 export const useAuthAgreement = (
   requestConfirmation?: RequestAgreementConfirmation,
-  defaultChecked = false,
+  // 2026-09-18 用户要求：协议默认勾选（自动勾选），去掉登录前的手动勾选阻碍。
+  defaultChecked = true,
 ) => {
   const { t } = useTranslation(['auth', 'common']);
   // Read after mount, not during render — the sign-in page is prerendered and a

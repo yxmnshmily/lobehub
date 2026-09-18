@@ -30,6 +30,12 @@ const flatGroupStyles = createStaticStyles(({ css }) => ({
     > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
       padding: 0 !important;
     }
+
+    /* 移动端分支：FormGroup 在 mobile 下不走 Collapse，渲染为普通 div 头/体——
+       上面两条 ant 选择器 no-op，这里按直接子元素归零（审查发现的移动端缺口）。 */
+    > div {
+      padding: 0 !important;
+    }
   `,
 }));
 

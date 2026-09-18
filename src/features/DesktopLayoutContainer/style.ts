@@ -19,12 +19,9 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     );
 
     background: ${cssVar.colorBgContainer};
-  `,
 
-  /* 手机端：去边框线与圆角（按服务端设备变体条件应用，桌面不受影响）。 */
-  innerContainerMobile: css`
-    border: none;
-    border-radius: 0;
+    /* 2026-09-18 用户确认：圆角边框手机端也要保留——不做 ≤767px 去框处理，
+       手机端卡片（左右 16px 内缩）同样带 16px 圆角与细边框。 */
   `,
 
   /* 设置页：内层容器承担纵向滚动。原生滚动条保留，外观由注入的
@@ -47,10 +44,10 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     padding-inline-start: var(--container-padding-left, 8px);
 
     background: ${isDesktop ? 'transparent' : cssVar.colorBgLayout};
-  `,
 
-  /* 手机端：去掉左右留白（按 UA 设备口径条件应用，桌面不受影响）。 */
-  outerContainerMobile: css`
-    padding-inline: 0;
+    /* 手机端（≤767px 视口）：去掉左右留白——站点壳已统一提供 16px。 */
+    @media (width <= 767px) {
+      padding-inline: 0;
+    }
   `,
 }));
