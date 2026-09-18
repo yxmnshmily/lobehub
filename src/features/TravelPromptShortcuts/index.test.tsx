@@ -15,23 +15,28 @@ vi.mock('@/features/Conversation/store', () => ({
   useConversationStoreApi: () => api,
 }));
 
+/*
+ * 2026-09-18 用户定稿：提示词固定为口播文案（talk-copy）组——"线路讲解 / 客户答疑 /
+ * 领队故事 / 纯玩说明"，不随 copyCategory、URL 参数或页面变化。以下断言全部按该口径。
+ */
 describe('TravelPromptShortcuts', () => {
-  it('does not render outside a copywriting case embed', () => {
+  it('renders the fixed talk-copy shortcuts without any copyCategory', () => {
     render(<TravelPromptShortcuts />);
 
-    expect(screen.queryByTestId('travel-prompt-banner')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '线路讲解' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '客户答疑' })).toBeVisible();
   });
   it('opens the list outside the composer so its overflow cannot clip the prompts', () => {
-    const { container } = render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
-    const panel = screen.getByRole('region', { name: '行程混剪提示词' });
+    const { container } = render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    const panel = screen.getByRole('region', { name: '线路讲解提示词' });
     expect(container.contains(panel)).toBe(false);
     fireEvent.keyDown(panel, { key: 'Escape' });
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
   it('closes on outside press but leaves panel interactions open', () => {
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
+    render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
     fireEvent.pointerDown(screen.getByRole('region'));
     expect(screen.getByRole('region')).toBeInTheDocument();
     fireEvent.pointerDown(document.body);
@@ -47,74 +52,75 @@ describe('TravelPromptShortcuts', () => {
   });
 
   it('previews on hover without moving focus, and restores on leave', () => {
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
-    const prompt = screen.getByRole('button', { name: '把案例路线改成混剪脚本' });
+    render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    const prompt = screen.getByRole('button', { name: '讲清多日核心路线' });
     fireEvent.mouseEnter(prompt);
-    expect(state.editor.setDocument).toHaveBeenCalledWith('text', expect.stringContaining('逐镜'), {
-      keepHistory: true,
-    });
+    expect(state.editor.setDocument).toHaveBeenCalledWith(
+      'text',
+      expect.stringContaining('按天讲清路线'),
+      {
+        keepHistory: true,
+      },
+    );
     expect(state.fillInputMessage).not.toHaveBeenCalled();
     fireEvent.mouseLeave(prompt);
     expect(state.inputMessage).toBe('');
   });
 
   it('expands a category, fills a prompt without sending, and closes the list', () => {
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
-    fireEvent.click(screen.getByRole('button', { name: '把案例路线改成混剪脚本' }));
-    expect(state.fillInputMessage).toHaveBeenCalledWith(expect.stringContaining('逐镜'));
+    render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    fireEvent.click(screen.getByRole('button', { name: '讲清多日核心路线' }));
+    expect(state.fillInputMessage).toHaveBeenCalledWith(expect.stringContaining('按天讲清路线'));
     expect(screen.queryByRole('button', { name: '关闭提示词' })).not.toBeInTheDocument();
   });
 
   it('switches prompt groups and supports closing', () => {
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
-    fireEvent.click(screen.getByRole('button', { name: '家庭客群' }));
-    expect(screen.getByRole('button', { name: '写亲子游混剪旁白' })).toBeInTheDocument();
+    render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    fireEvent.click(screen.getByRole('button', { name: '客户答疑' }));
+    expect(screen.getByRole('button', { name: '回答什么时候最合适' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '关闭提示词' }));
-    expect(screen.queryByRole('button', { name: '写亲子游混剪旁白' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '回答什么时候最合适' })).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['mix-copy', ['行程混剪', '家庭客群', '当季种草', '攻略避坑']],
-    ['talk-copy', ['线路讲解', '客户答疑', '领队故事', '纯玩说明']],
-    ['ip-copy', ['导游人设', '专业观点', '实用攻略', '从业故事']],
-    ['ad-copy', ['当季推广', '价格套餐', '品质小团', '家庭客群']],
-    ['brand-copy', ['定制服务', '领队接待', '地域专长', '品牌信任']],
-    ['other-copy', ['省钱路线', '避坑清单', '美食体验', '旅行推广']],
-  ])('shows four case-derived prompt groups for %s', (slug, titles) => {
-    render(<TravelPromptShortcuts copyCategory={slug} />);
+  it.each([[undefined], ['mix-copy'], ['talk-copy'], ['other-copy']])(
+    'shows the fixed talk-copy groups regardless of copyCategory (%s)',
+    (slug) => {
+      render(<TravelPromptShortcuts {...(slug ? { copyCategory: slug } : {})} />);
 
-    for (const title of titles) expect(screen.getByRole('button', { name: title })).toBeVisible();
-    expect(screen.getAllByRole('button')).toHaveLength(4);
-  });
+      for (const title of ['线路讲解', '客户答疑', '领队故事', '纯玩说明'])
+        expect(screen.getByRole('button', { name: title })).toBeVisible();
+      expect(screen.queryByRole('button', { name: '行程混剪' })).not.toBeInTheDocument();
+    },
+  );
 
-  it('opens the selected case-derived group with several relevant prompts', () => {
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
+  it('opens the selected group with several relevant prompts', () => {
+    render(<TravelPromptShortcuts />);
 
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
 
-    expect(screen.getByRole('region', { name: '行程混剪提示词' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '把案例路线改成混剪脚本' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '按天数拆分镜头节奏' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '提炼路线亮点旁白' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '线路讲解提示词' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '讲清多日核心路线' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '写第一次来怎么走' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '把详细行程说自然' })).toBeInTheDocument();
   });
 
   it('keeps switching previews even with a draft, then restores its rich content', () => {
     state.inputMessage = '我的草稿';
     const json = { root: { children: [{ text: '我的草稿' }] } };
     state.editor.getJSONState.mockReturnValue(json);
-    render(<TravelPromptShortcuts copyCategory="mix-copy" />);
-    fireEvent.click(screen.getByRole('button', { name: '行程混剪' }));
-    const first = screen.getByRole('button', { name: '把案例路线改成混剪脚本' });
-    const second = screen.getByRole('button', { name: '按天数拆分镜头节奏' });
+    render(<TravelPromptShortcuts />);
+    fireEvent.click(screen.getByRole('button', { name: '线路讲解' }));
+    const first = screen.getByRole('button', { name: '讲清多日核心路线' });
+    const second = screen.getByRole('button', { name: '写第一次来怎么走' });
     expect(first).toBeEnabled();
     fireEvent.mouseEnter(first);
-    expect(state.inputMessage).toContain('逐镜');
+    expect(state.inputMessage).toContain('按天讲清路线');
     fireEvent.mouseLeave(first);
     fireEvent.mouseEnter(second);
-    expect(state.inputMessage).toContain('按天数');
+    expect(state.inputMessage).toContain('第一次到访者');
     fireEvent.mouseLeave(second);
     expect(state.inputMessage).toBe('我的草稿');
     expect(state.editor.setDocument).toHaveBeenLastCalledWith('json', json, { keepHistory: true });

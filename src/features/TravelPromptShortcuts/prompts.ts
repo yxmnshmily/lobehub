@@ -339,12 +339,10 @@ export const travelPromptCategories = [
   },
 ] as const;
 
-export const getTravelPromptTriggers = (slug?: string | null) => {
-  const category = travelPromptCategories.find((item) => item.slug === slug);
-  if (category) return category.groups;
-
-  /* 2026-09-18：无匹配分类时回退到第一个分类（混剪文案），而不是空数组——
-     群主页 / 群会话页的 TravelPromptShortcuts 不带 URL 参数，此前永远渲染 null，
-     用户看到的"一排提示词消失了"就是这里。带合法 slug 的场景不受影响。 */
-  return travelPromptCategories[0]?.groups ?? [];
+/* 2026-09-18 用户定稿：提示词固定为口播文案（talk-copy）这一组——"线路讲解 / 客户答疑 /
+   领队故事 / 纯玩说明"，不随 URL 参数、页面或分类切换变化。copyCategory 参数保留在
+   签名里以兼容既有调用方，但不再参与选择。 */
+export const getTravelPromptTriggers = (_slug?: string | null) => {
+  const category = travelPromptCategories.find((item) => item.slug === 'talk-copy');
+  return category?.groups ?? [];
 };

@@ -14,10 +14,6 @@ const popupClassName = createStaticStyles(
     /* 自适应宽度：窄窗口不低于 300px，宽窗口最多长到 460px，不再固定 300 */
     width: clamp(300px, 36vw, 460px);
     max-width: min(var(--available-width), calc(100vw - 88px));
-
-    /* 不能 overflow: hidden——三角指针从弹层边缘向外伸出 8px（贴边指向
-       触发图标），裁切后只剩层内一条细缝，视觉上成了悬空的「‹」。
-       圆角由内容容器自己承担（见下方 content 的 border-radius）。 */
   `,
 );
 
@@ -44,8 +40,10 @@ export default function CompactListPopover({
       trigger="click"
       content={
         <>
-          {/* 边框三角指针（与群内消息评论弹层同款）：浮动引擎自动把它贴在
-              弹层边框上、指向触发图标；placement=rightTop → 出现在左缘向左指 */}
+          {/* 贴边框的实心三角指针：浮动引擎自动贴在弹层左缘、指向触发图标。
+              注意 popup 不能 overflow:hidden——那会把伸出边缘的三角裁掉，
+              只剩层内一条细缝，看起来就像一个悬空的「‹」符号（已修复：
+              popup 不再裁切，圆角由 content 层自己承担）。 */}
           <PopoverArrow />
           {children}
         </>
