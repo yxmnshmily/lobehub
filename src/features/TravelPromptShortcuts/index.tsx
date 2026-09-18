@@ -94,14 +94,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow-y: auto;
     overscroll-behavior: contain;
     display: grid;
+
+    /* 2026-09-18 用户定稿：手机端弹出层也是 2 列一排（去掉 ≤480px 退单列的回退）。 */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 12px;
 
     max-height: min(240px, 30dvh);
-
-    @media (width <= 480px) {
-      grid-template-columns: minmax(0, 1fr);
-    }
   `,
   prompt: css`
     position: relative;
@@ -152,10 +150,13 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       }
     }
   `,
-  /* 紧凑布局：条目单行省略，全文悬停 title 可见、点击填入完整内容。 */
+  /* 紧凑布局：条目单行省略，2 列下随格子收缩；全文悬停 title 可见、点击填入完整内容。 */
   promptTitle: css`
     overflow: hidden;
-    max-width: 420px;
+    flex: 1;
+
+    min-width: 0;
+
     text-overflow: ellipsis;
     white-space: nowrap;
   `,
