@@ -146,21 +146,17 @@ const RunResult = memo<RunResultProps>(({ operationId, round = 1, embedded }) =>
   // separate control and left the title looking neutral on a failed round.
   const header = (
     <div className={styles.head}>
-      <Flexbox>
-        <Flexbox horizontal align="center" gap={7}>
-          <Icon
-            color={meta.badge.color === 'default' ? undefined : badgeColorMap[meta.badge.color]}
-            icon={meta.badge.icon}
-            size={16}
-          />
-          <span className={styles.title}>{t('result.title', { round })}</span>
-          <span className={styles.status} style={{ color: badgeTextMap[meta.badge.color] }}>
-            {t(`badge.${meta.badge.key}` as any)}
-          </span>
-        </Flexbox>
-        <div className={styles.sub}>
-          {t(meta.subKey as any, { passed: counts.passed, total: counts.total } as any)}
-        </div>
+      {/* 2026-09-18 用户定稿：一排显示（图标 + 轮次 + 状态），去掉换行的副标题行。 */}
+      <Flexbox horizontal align="center" gap={7} style={{ flexWrap: 'nowrap' }}>
+        <Icon
+          color={meta.badge.color === 'default' ? undefined : badgeColorMap[meta.badge.color]}
+          icon={meta.badge.icon}
+          size={16}
+        />
+        <span className={styles.title}>{t('result.title', { round })}</span>
+        <span className={styles.status} style={{ color: badgeTextMap[meta.badge.color] }}>
+          {t(`badge.${meta.badge.key}` as any)}
+        </span>
       </Flexbox>
     </div>
   );
