@@ -2,13 +2,13 @@
 
 import { Accordion, AccordionItem, Flexbox, Icon } from '@lobehub/ui';
 import { Tabs, Text } from '@lobehub/ui/base-ui';
-import { LayoutGrid, ListIcon } from 'lucide-react';
+import { History, LayoutGrid, ListIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
-import { getRouteById } from '@/config/routes';
 import CompactListPopover from '@/features/NavPanel/components/CompactListPopover';
+import { useEffectiveNavPanelExpanded } from '@/features/NavPanel/hooks/useEffectiveNavPanelExpanded';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
@@ -30,8 +30,10 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
   const isLogin = useUserStore(authSelectors.isLogin);
   const viewMode = useGlobalStore((s) => systemStatusSelectors[viewModeStatusKey](s));
   const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
-  const expanded = useGlobalStore(systemStatusSelectors.showLeftPanel);
-  /* 手机端（≤767px 视口）：历史记录改弹窗（与同栏目收起态一致），不再内联占位 */
+  /* 用"有效展开"判定（与 64px 侧栏壳同一套输入：用户偏好 AND 视口）——
+     不能只读 showLeftPanel，否则窄栏下会把完整网格塞进 64px rail（溢出错乱）。
+     手机端（≤767px）一律弹窗。 */
+  const expanded = useEffectiveNavPanelExpanded();
   const isMobile = useIsMobile();
   const activeWorkspaceId = useActiveWorkspaceId();
 
@@ -71,10 +73,17 @@ const Body = memo<GenerationLayoutCommonProps>((props) => {
     return (
       <Flexbox paddingInline={4}>
         <CompactListPopover
-          icon={getRouteById(namespace)!.icon}
+          /* 历史记录用"历史时间"图标（时钟回溯），不用栏目本身的图片/视频图标 */
+          icon={History}
           title={`${t('topic.title')}（${count}）`}
         >
-          <List namespace={namespace} useStore={useStore} viewModeStatusKey={viewModeStatusKey} />
+          {/* 弹窗内固定为"缩略图+标题"列表形态 */}
+          <List
+            namespace={namespace}
+            useStore={useStore}
+            viewModeOverride="list"
+            viewModeStatusKey={viewModeStatusKey}
+          />
         </CompactListPopover>
       </Flexbox>
     );

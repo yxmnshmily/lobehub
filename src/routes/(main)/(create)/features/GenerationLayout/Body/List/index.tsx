@@ -17,12 +17,15 @@ import TopicList from './TopicList';
 const List = memo<
   Pick<GenerationLayoutCommonProps, 'namespace' | 'useStore' | 'viewModeStatusKey'> & {
     visibility?: 'private' | 'public';
+    /** 弹窗等场景强制视图形态（如 'list' = 缩略图+标题行），优先于全局偏好 */
+    viewModeOverride?: 'grid' | 'list';
   }
->(({ namespace, useStore, viewModeStatusKey, visibility }) => {
+>(({ namespace, useStore, viewModeStatusKey, visibility, viewModeOverride }) => {
   const isLogin = useUserStore(authSelectors.isLogin);
-  const viewMode = useGlobalStore((s) =>
+  const preferredViewMode = useGlobalStore((s) =>
     systemStatusSelectors.showLeftPanel(s) ? systemStatusSelectors[viewModeStatusKey](s) : 'list',
   );
+  const viewMode = viewModeOverride ?? preferredViewMode;
 
   const useFetchGenerationTopics = useStore((s: any) => s.useFetchGenerationTopics);
   const { data, isLoading } = useFetchGenerationTopics(!!isLogin) ?? {};

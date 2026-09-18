@@ -108,3 +108,16 @@ export const travelPromptBlocks: readonly TravelPromptBlock[] = [
     ],
   },
 ];
+
+/* 2026-09-18：旧版一排小按钮组件（9b5097e493 恢复）需要的适配接口——
+   把 6 大块映射成旧数据形态（每组 { title, icon, prompts: [短题, 长文][] }）。
+   恒返回 6 大块，不依赖 copyCategory 参数。 */
+export const getTravelPromptTriggers = (_slug?: string | null) =>
+  travelPromptBlocks.map((block) => ({
+    title: block.title,
+    icon: block.icon,
+    prompts: block.prompts.map((prompt, index) => {
+      const shortTitle = `${block.title} ${index + 1}`;
+      return [shortTitle, prompt] as const;
+    }),
+  }));

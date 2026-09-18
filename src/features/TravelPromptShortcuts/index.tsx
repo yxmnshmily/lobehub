@@ -1,32 +1,32 @@
 'use client';
 
-import { Flexbox, Icon } from '@lobehub/ui';
+import { Flexbox, Icon, Popover } from '@lobehub/ui';
 import { ActionIcon, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
-import { ChevronRight, X } from 'lucide-react';
-import {
-  type MouseEvent as ReactMouseEvent,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { ChevronRight, MessageSquareText, X } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { useConversationStore, useConversationStoreApi } from '@/features/Conversation/store';
 import { InputBanner } from '@/features/Home/InputArea/InputBanner';
 
-import { travelPromptBlocks } from './prompts';
+import { getTravelPromptTriggers } from './prompts';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   banner: css`
-    position: relative;
-
-    /* 面板绝对定位挂在提示词排上方，不能被输入区裁切。 */
-    overflow: visible;
-    padding-block: 8px;
+    padding-block: 48px 8px;
   `,
-  /* 2026-09-18 用户定稿：6 个组一排小按钮（窄屏横向滚动，不换行）。 */
+  label: css`
+    display: inline-flex;
+    flex: none;
+    gap: 6px;
+    align-items: center;
+
+    padding-inline-end: 4px;
+
+    font-size: ${cssVar.fontSizeSM};
+    color: ${cssVar.colorTextSecondary};
+    white-space: nowrap;
+  `,
   root: css`
     scrollbar-width: thin;
 
@@ -60,39 +60,17 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       min-height: 44px;
     }
   `,
-  /* 2026-09-18 用户定稿：面板相对整条提示词排水平居中，不随所点按钮偏移；
-     箭头单独指向被点击的组。 */
-  panelWrap: css`
-    position: absolute;
-    z-index: 100;
-    inset-block-end: calc(100% + 10px);
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
-
-    width: min(640px, calc(100vw - 32px));
-  `,
-  arrow: css`
-    position: absolute;
-    z-index: 101;
-    inset-block-end: calc(100% + 6px);
-    transform: translateX(-50%) rotate(45deg);
-
-    width: 10px;
-    height: 10px;
-
-    background: ${cssVar.colorBgContainer};
-  `,
   panel: css`
     box-sizing: border-box;
+    width: min(640px, calc(100vw - 32px));
     padding-block: 8px 12px;
     padding-inline: 16px;
-    border-radius: 12px;
+    border-radius: inherit;
 
     font-weight: 400;
     color: ${cssVar.colorTextSecondary};
 
     background: ${cssVar.colorBgContainer};
-    box-shadow: ${cssVar.boxShadowSecondary};
   `,
   header: css`
     flex-wrap: nowrap;
@@ -108,24 +86,40 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     overflow-y: auto;
     overscroll-behavior: contain;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
 
-    max-height: min(320px, 40dvh);
+    max-height: min(240px, 30dvh);
+
+    @media (width <= 480px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
   `,
   prompt: css`
     position: relative;
 
+    justify-content: space-between;
+
     width: 100%;
     min-width: 0;
     height: auto;
+    min-height: 44px;
     padding-block: 10px;
     padding-inline: 8px;
+    border: 0;
+    border-radius: 8px;
 
     text-align: start;
     white-space: normal;
 
-    &::before {
+    &&,
+    &&:hover {
+      font-weight: 400;
+      color: ${cssVar.colorTextSecondary};
+    }
+
+    &:nth-child(n + 3)::before {
       pointer-events: none;
       content: '';
 
@@ -136,20 +130,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
     }
 
-    &&,
-    &&:hover {
-      font-weight: 400;
-      color: ${cssVar.colorTextSecondary};
-    }
+    @media (width <= 480px) {
+      &:nth-child(2)::before {
+        pointer-events: none;
+        content: '';
 
-    &:first-child::before {
-      display: none;
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 8px;
+
+        border-block-start: 0.5px solid ${cssVar.colorBorderSecondary};
+      }
     }
-  `,
-  promptText: css`
-    flex: 1;
-    min-width: 0;
-    margin-inline-end: 8px;
   `,
   hint: css`
     overflow: hidden;
@@ -164,19 +156,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-export default function TravelPromptShortcuts() {
-  const blocks = travelPromptBlocks;
+export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?: string } = {}) {
+  const triggers = getTravelPromptTriggers(copyCategory);
   const [active, setActive] = useState<number | null>(null);
-  const [arrowLeft, setArrowLeft] = useState(0);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const categoryButtons = useRef<Array<HTMLButtonElement | null>>([]);
+  const categoryButtons = useRef<Array<HTMLButtonElement | HTMLAnchorElement | null>>([]);
   const fillInputMessage = useConversationStore((s) => s.fillInputMessage);
   const store = useConversationStoreApi();
   const previewRef = useRef<string | null>(null);
   const draftRef = useRef<{ text: string; json?: Record<string, any> } | null>(null);
-
   const restorePreview = useCallback(() => {
     const preview = previewRef.current;
     previewRef.current = null;
@@ -193,7 +182,6 @@ export default function TravelPromptShortcuts() {
       state.updateInputMessage(draft.text);
     }
   }, [store]);
-
   useEffect(() => {
     if (active === null) return;
     const dismissOutside = (event: PointerEvent) => {
@@ -210,7 +198,6 @@ export default function TravelPromptShortcuts() {
     document.addEventListener('pointerdown', dismissOutside, true);
     return () => document.removeEventListener('pointerdown', dismissOutside, true);
   }, [active, restorePreview]);
-
   useEffect(
     () => () => {
       const state = store.getState();
@@ -227,8 +214,7 @@ export default function TravelPromptShortcuts() {
     },
     [store],
   );
-
-  const block = active === null ? undefined : blocks[active];
+  const category = active === null ? undefined : triggers[active];
 
   const close = () => {
     restorePreview();
@@ -236,23 +222,9 @@ export default function TravelPromptShortcuts() {
     setActive(null);
   };
 
-  /* 面板居中于整条提示词排；箭头定位到被点击组的按钮中心。 */
-  const toggleBlock = (index: number) => (event: ReactMouseEvent<HTMLButtonElement>) => {
-    const rootRect = rootRef.current?.getBoundingClientRect();
-    const btnRect = event.currentTarget.getBoundingClientRect();
-    if (rootRect && btnRect) setArrowLeft(btnRect.left + btnRect.width / 2 - rootRect.left);
-    if (active === index) {
-      restorePreview();
-      setActive(null);
-      return;
-    }
-    if (active !== null) restorePreview();
-    setActive(index);
-  };
-
-  const panel = block && (
+  const panel = category && (
     <Flexbox
-      aria-label={`${block.title}提示词`}
+      aria-label={`${category.title}提示词`}
       className={styles.panel}
       id={panelId}
       ref={panelRef}
@@ -263,8 +235,8 @@ export default function TravelPromptShortcuts() {
     >
       <Flexbox horizontal align={'center'} className={styles.header}>
         <Flexbox horizontal align={'center'} className={styles.title} gap={8}>
-          <Icon icon={block.icon} size={16} />
-          <span>{block.title}</span>
+          <Icon icon={category.icon} size={16} />
+          <span>{category.title}</span>
         </Flexbox>
         <span className={styles.hint} title="鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。">
           鼠标移上预览，移开恢复草稿；点击选用，可修改后发送。
@@ -276,11 +248,11 @@ export default function TravelPromptShortcuts() {
           onClick={close}
         />
       </Flexbox>
-      <div className={styles.list} key={block.title}>
-        {block.prompts.map((prompt) => (
+      <div className={styles.list} key={category.title}>
+        {category.prompts.map(([title, prompt]) => (
           <Button
             className={styles.prompt}
-            key={prompt}
+            key={title}
             type={'text'}
             onMouseLeave={restorePreview}
             onClick={() => {
@@ -301,7 +273,7 @@ export default function TravelPromptShortcuts() {
               state.updateInputMessage(prompt);
             }}
           >
-            <span className={styles.promptText}>{prompt}</span>
+            <span>{title}</span>
             <Icon icon={ChevronRight} size={16} />
           </Button>
         ))}
@@ -309,37 +281,56 @@ export default function TravelPromptShortcuts() {
     </Flexbox>
   );
 
+  if (triggers.length === 0) return null;
+
   return (
     <InputBanner className={styles.banner} testId="travel-prompt-banner">
       <div
         className={styles.root}
-        ref={rootRef}
         onKeyDown={(event) => {
           if (event.key === 'Escape') close();
         }}
       >
-        {blocks.map((item, index) => (
-          <Button
-            aria-controls={active === index ? panelId : undefined}
-            aria-expanded={active === index}
-            className={styles.category}
-            icon={<Icon icon={item.icon} size={16} />}
-            key={item.slug}
-            ref={(node) => {
-              categoryButtons.current[index] = node;
+        <span className={styles.label}>
+          <Icon icon={MessageSquareText} size={16} />
+          快速提示词：
+        </span>
+        {triggers.map((item, index) => (
+          <Popover
+            nativeButton
+            content={active === index ? panel : <span />}
+            key={item.title}
+            open={active === index}
+            placement="topLeft"
+            trigger="click"
+            styles={{
+              content: {
+                padding: 0,
+                maxWidth: 'calc(100vw - 32px)',
+                borderRadius: 12,
+                overflow: 'hidden',
+              },
             }}
-            onClick={toggleBlock(index)}
+            onOpenChange={(open) => {
+              restorePreview();
+              setActive((current) => (open ? index : current === index ? null : current));
+            }}
           >
-            {item.title}
-          </Button>
+            <Button
+              aria-controls={active === index ? panelId : undefined}
+              aria-expanded={active === index}
+              className={styles.category}
+              icon={<Icon icon={item.icon} size={16} />}
+              type={active === index ? 'default' : 'text'}
+              ref={(node) => {
+                categoryButtons.current[index] = node;
+              }}
+            >
+              {item.title}
+            </Button>
+          </Popover>
         ))}
       </div>
-      {block && (
-        <>
-          <div className={styles.arrow} style={{ left: arrowLeft }} />
-          <div className={styles.panelWrap}>{panel}</div>
-        </>
-      )}
     </InputBanner>
   );
 }
