@@ -40,8 +40,23 @@ export const sendAuthenticationCode = async (phoneNumber: string, code: string) 
     signal: AbortSignal.timeout(10_000),
   });
   const result = (await response.json()) as {
-    Response?: { Error?: unknown; SendStatusSet?: { Code?: string }[] };
+    Response?: { Error?: unknown; SendStatusSet?: { Code?: string; Message?: string }[] };
   };
-  if (!response.ok || result.Response?.Error || result.Response?.SendStatusSet?.[0]?.Code !== 'Ok')
+  /* 2026-09-18：把腾讯云真实拒绝原因打进服务端日志——此前错误码被吞成
+     "验证码发送失败"，签名/模板/额度问题无法排查。 */
+  if (
+    !response.ok ||
+    result.Response?.Error ||
+    result.Response?.SendStatusSet?.[0]?.Code !== 'Ok'
+  ) {
+    console.error(
+      '[sms] 腾讯云 SendSms 失败:',
+      JSON.stringify({
+        httpStatus: response.status,
+        apiError: result.Response?.Error ?? null,
+        sendStatus: result.Response?.SendStatusSet ?? null,
+      }),
+    );
     throw new Error('SMS_DELIVERY_FAILED');
+  }
 };
