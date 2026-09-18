@@ -109,15 +109,69 @@ export const travelPromptBlocks: readonly TravelPromptBlock[] = [
   },
 ];
 
+/* 2026-09-18 用户定稿：面板条目显示每条提示词的"主核心"短描述，不用"文案 1/2/3"序号。 */
+const blockShortTitles: Record<string, readonly string[]> = {
+  'copywriting': [
+    '混剪种草文案',
+    '导游口播文案',
+    '领队人设文案',
+    '促销硬广文案',
+    '品宣宣传片文案',
+    '对比转化文案',
+  ],
+  'graphic-note': [
+    '爆款首图标题',
+    '笔记正文文案',
+    '图文脚本拆解',
+    '话题标签组合',
+    '置顶评论引导',
+    '行程口语化改写',
+  ],
+  'poster': [
+    '出发倒计时海报',
+    '路线亮点海报',
+    '促销价格海报',
+    '周末短线海报',
+    '亲子主题海报',
+    '节日主题海报',
+  ],
+  'detail-page': [
+    '首屏信任文案',
+    '行程分日排版',
+    '费用清单文案',
+    '服务保障模块',
+    '客户评价模块',
+    '常见问题 FAQ',
+  ],
+  'live-overlay': [
+    '开播主题贴片',
+    '秒杀价格贴片',
+    '亮点轮播贴片',
+    '互动引导贴片',
+    '信任背书贴片',
+    '限时促单贴片',
+  ],
+  'account-audit': [
+    '抖音账号诊断',
+    '小红书账号诊断',
+    '竞品对标分析',
+    '爆款结构拆解',
+    '30 天内容排期',
+    '转化链路诊断',
+  ],
+};
+
 /* 2026-09-18：旧版一排小按钮组件（9b5097e493 恢复）需要的适配接口——
    把 6 大块映射成旧数据形态（每组 { title, icon, prompts: [短题, 长文][] }）。
    恒返回 6 大块，不依赖 copyCategory 参数。 */
 export const getTravelPromptTriggers = (_slug?: string | null) =>
-  travelPromptBlocks.map((block) => ({
-    title: block.title,
-    icon: block.icon,
-    prompts: block.prompts.map((prompt, index) => {
-      const shortTitle = `${block.title} ${index + 1}`;
-      return [shortTitle, prompt] as const;
-    }),
-  }));
+  travelPromptBlocks.map((block) => {
+    const shortTitles = blockShortTitles[block.slug] ?? [];
+    return {
+      title: block.title,
+      icon: block.icon,
+      prompts: block.prompts.map(
+        (prompt, index) => [shortTitles[index] ?? prompt.slice(0, 14), prompt] as const,
+      ),
+    };
+  });

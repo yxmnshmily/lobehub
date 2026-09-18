@@ -252,34 +252,40 @@ export default function TravelPromptShortcuts({ copyCategory }: { copyCategory?:
         />
       </Flexbox>
       <div className={styles.list} key={category.title}>
-        {category.prompts.map(([title, prompt]) => (
-          <Button
-            className={styles.prompt}
-            key={title}
-            type={'text'}
-            onMouseLeave={restorePreview}
-            onClick={() => {
-              previewRef.current = null;
-              draftRef.current = null;
-              setActive(null);
-              fillInputMessage(prompt);
-            }}
-            onMouseEnter={() => {
-              const state = store.getState();
-              if (!draftRef.current)
-                draftRef.current = {
-                  text: state.inputMessage,
-                  json: state.editor?.getJSONState(),
-                };
-              previewRef.current = prompt;
-              state.editor?.setDocument('text', prompt, { keepHistory: true });
-              state.updateInputMessage(prompt);
-            }}
-          >
-            <span>{title}</span>
-            <Icon icon={ChevronRight} size={16} />
-          </Button>
-        ))}
+        {category.prompts.map(([title, prompt]) => {
+          /* 2026-09-18 用户定稿：条目显示主核心短描述（如"混剪种草文案"），
+             不用"文案 1/2/3"序号；短题由 prompts.ts 的映射表提供。 */
+          const shortTitle = title;
+          return (
+            <Button
+              className={styles.prompt}
+              key={shortTitle}
+              title={prompt}
+              type={'text'}
+              onMouseLeave={restorePreview}
+              onClick={() => {
+                previewRef.current = null;
+                draftRef.current = null;
+                setActive(null);
+                fillInputMessage(prompt);
+              }}
+              onMouseEnter={() => {
+                const state = store.getState();
+                if (!draftRef.current)
+                  draftRef.current = {
+                    text: state.inputMessage,
+                    json: state.editor?.getJSONState(),
+                  };
+                previewRef.current = prompt;
+                state.editor?.setDocument('text', prompt, { keepHistory: true });
+                state.updateInputMessage(prompt);
+              }}
+            >
+              <span>{shortTitle}</span>
+              <Icon icon={ChevronRight} size={16} />
+            </Button>
+          );
+        })}
       </div>
     </Flexbox>
   );

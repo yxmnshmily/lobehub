@@ -13,10 +13,10 @@ const styles = createStaticStyles(({ css }) => ({
     font-size: 28px;
     font-weight: bold;
 
-    /* 手机端（≤767px 视口）：整个标题块（文字 + 模式切换）整体缩小一半，
+    /* 手机端（≤767px 视口）：整个标题块（文字 + 模式切换）整体缩至 25%，
        zoom 同时收缩布局尺寸，不留缩放空洞；网页端不变。 */
     @media (width <= 767px) {
-      zoom: 0.5;
+      zoom: 0.25;
     }
   `,
 }));
