@@ -3,7 +3,7 @@ import { type FC, Suspense } from 'react';
 import { Outlet, useLocation, useParams } from 'react-router';
 
 import AsyncError from '@/components/AsyncError';
-import SurfaceSkeleton from '@/components/Skeleton/Surface';
+import ConversationLayoutSkeleton from '@/components/Skeleton/Conversation/Layout';
 import { isDesktop } from '@/const/version';
 import { GroupNotFound, GroupNotFoundGuard } from '@/features/GroupNotFound';
 import ProtocolUrlHandler from '@/features/ProtocolUrlHandler';
@@ -42,7 +42,9 @@ const Layout: FC = () => {
 
   let content;
   if (access.kind === 'loading') {
-    content = <SurfaceSkeleton variant={'chat'} />;
+    /* 2026-09-18：全链路骨架统一用 ConversationLayoutSkeleton（与路由 Suspense fallback
+       同款，含群组 header + ConversationFrame + 消息段），消除加载中骨架形态二次跳变。 */
+    content = <ConversationLayoutSkeleton />;
   } else if (access.kind === 'error') {
     content = <AsyncError error={access.error} variant={'page'} onRetry={access.retry} />;
   } else if (access.kind === 'unavailable') {
@@ -54,7 +56,7 @@ const Layout: FC = () => {
       );
     const memberProfile = /\/group\/[^/]+\/profile(?:\/|$)/.test(pathname);
     content = routedChild ? (
-      <Suspense fallback={<SurfaceSkeleton variant="chat" />}>
+      <Suspense fallback={<ConversationLayoutSkeleton />}>
         <Outlet />
       </Suspense>
     ) : memberProfile ? (
@@ -69,7 +71,7 @@ const Layout: FC = () => {
   } else if (gid) {
     content = (
       <GroupNotFoundGuard>
-        <Suspense fallback={<SurfaceSkeleton variant="chat" />}>
+        <Suspense fallback={<ConversationLayoutSkeleton />}>
           <Outlet />
         </Suspense>
       </GroupNotFoundGuard>
